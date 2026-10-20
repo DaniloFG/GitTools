@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function CommitList({ scope, onScope, selected, onSelect }: Props) {
-  const { data, showMenu, openStudio } = useApp()
+  const { data, showMenu, openStudio, openCompare, openRebase } = useApp()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
   const commits = data.log
@@ -40,6 +40,25 @@ export function CommitList({ scope, onScope, selected, onSelect }: Props) {
     else onSelect([sha])
   }
 
+  // ↑/↓ move a seleção; com Shift, estende a partir da âncora.
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    if (!commits.length) return
+    e.preventDefault()
+    const last = selected.length ? commits.findIndex((c) => c.sha === selected[selected.length - 1]) : -1
+    const next = Math.max(0, Math.min(commits.length - 1, last + (e.key === 'ArrowDown' ? 1 : -1)))
+    if (e.shiftKey && anchor.current !== null) {
+      const [a, b] = [anchor.current, next].sort((x, y) => x - y)
+      const range = commits.slice(a, b + 1).map((c) => c.sha)
+      // Mantém o item "ativo" por último para a próxima seta partir dele.
+      onSelect([...range.filter((s) => s !== commits[next].sha), commits[next].sha])
+    } else {
+      anchor.current = next
+      onSelect([commits[next].sha])
+    }
+    document.querySelectorAll('.commit-row')[next]?.scrollIntoView({ block: 'nearest' })
+  }
+
   const dragShas = (commit: CommitInfo) => (selectedSet.has(commit.sha) ? commits.filter((c) => selectedSet.has(c.sha)).map((c) => c.sha) : [commit.sha])
 
   const menu = (e: React.MouseEvent, commit: CommitInfo) => {
@@ -50,6 +69,10 @@ export function CommitList({ scope, onScope, selected, onSelect }: Props) {
         ? [{ label: `Cherry-pick ${shas.length > 1 ? plural(shas.length, 'commit', 'commits') : 'deste commit'} em ${head}…`, onClick: () => actions.cherryPickCommits(head, shas) }]
         : []),
       { label: 'Abrir no Cherry-pick Studio…', onClick: () => openStudio({ target: head ?? undefined, commits: shas, mode: 'commits' }) },
+      ...(shas.length === 2
+        ? [{ label: 'Comparar estes 2 commits', onClick: () => openCompare({ from: shas[1], to: shas[0] }) }]
+        : [{ label: `Comparar com ${head ?? 'HEAD'}`, onClick: () => openCompare({ from: head ?? 'HEAD', to: commit.sha }) }]),
+      ...(head ? [{ label: 'Rebase interativo a partir daqui (reordenar, juntar, editar)…', onClick: () => openRebase(commit.sha) }] : []),
       'separator',
       { label: 'Nova branch a partir daqui…', onClick: () => actions.createBranch(commit.sha) },
       { label: 'Checkout deste commit (HEAD destacado)', onClick: () => actions.checkout(commit.sha) },
@@ -81,7 +104,7 @@ export function CommitList({ scope, onScope, selected, onSelect }: Props) {
         </span>
         <span className="muted hint">Ctrl/Shift+clique para selecionar vários · arraste para uma branch</span>
       </div>
-      <div className="list-body">
+      <div className="list-body" tabIndex={0} onKeyDown={onKeyDown}>
         {commits.length === 0 && <p className="empty">Nenhum commit ainda.</p>}
         {commits.map((commit, i) => (
           <div

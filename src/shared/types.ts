@@ -161,3 +161,80 @@ export interface PartialApplyOptions {
 }
 
 export type FileApplyMode = 'changes' | 'version'
+
+// ------------------------------------------------------------- conflitos
+
+export interface ConflictDetails {
+  path: string
+  /** Versão do ancestral comum (stage 1), quando existe. */
+  base: string | null
+  /** Versão da branch atual / HEAD (stage 2). Null se o arquivo foi removido desse lado. */
+  ours: string | null
+  /** Versão que está entrando (stage 3). Null se o arquivo foi removido desse lado. */
+  theirs: string | null
+  /** Conteúdo atual do arquivo na pasta, com os marcadores de conflito. */
+  working: string | null
+  binary: boolean
+}
+
+// ------------------------------------------------------------ comparação
+
+export interface Comparison {
+  from: string
+  to: string
+  mergeBase: string | null
+  /** Commits que existem só em `from`. */
+  onlyFrom: CommitInfo[]
+  /** Commits que existem só em `to`. */
+  onlyTo: CommitInfo[]
+  /** Arquivos alterados de `from` (ou do ancestral comum, se pedido) até `to`. */
+  files: ChangedFile[]
+}
+
+// ---------------------------------------------------- blame e histórico
+
+export interface BlameCommit {
+  sha: string
+  author: string
+  email: string
+  date: number
+  summary: string
+}
+
+export interface BlameLine {
+  sha: string
+  /** Número da linha no arquivo atual. */
+  line: number
+  content: string
+}
+
+export interface BlameResult {
+  path: string
+  lines: BlameLine[]
+  commits: Record<string, BlameCommit>
+}
+
+export interface FileHistoryEntry extends CommitInfo {
+  /** Caminho do arquivo neste commit (muda quando o arquivo foi renomeado). */
+  path: string
+}
+
+// --------------------------------------------------- rebase interativo
+
+export type RebaseAction = 'pick' | 'reword' | 'squash' | 'fixup' | 'drop'
+
+export interface RebaseStep {
+  sha: string
+  action: RebaseAction
+  /** Nova mensagem (para reword, ou para o resultado de um squash). */
+  message?: string
+}
+
+export interface RebasePlan {
+  /** Commit a partir do qual a branch será reescrita (null = desde o primeiro commit). */
+  base: string | null
+  /** Commits a reescrever, do mais antigo para o mais novo. */
+  commits: CommitInfo[]
+  /** O intervalo contém commits de merge (eles serão achatados pelo rebase). */
+  hasMerges: boolean
+}

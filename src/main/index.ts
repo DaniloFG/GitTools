@@ -1,8 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
 import { existsSync, statSync, watch, type FSWatcher } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import { REPO_METHODS, type RecentRepo, type RepoMethod } from '../shared/api'
+import { DEFAULT_SETTINGS, REPO_METHODS, type RecentRepo, type RepoMethod, type Settings } from '../shared/api'
 import { runGit } from '../core/exec'
 import { GitRepository } from '../core/repository'
 
@@ -11,6 +11,19 @@ let repo: GitRepository | null = null
 let watcher: FSWatcher | null = null
 
 const recentFile = () => join(app.getPath('userData'), 'recent-repositories.json')
+const settingsFile = () => join(app.getPath('userData'), 'settings.json')
+
+async function loadSettings(): Promise<Settings> {
+  try {
+    return { ...DEFAULT_SETTINGS, ...(JSON.parse(await readFile(settingsFile(), 'utf8')) as Partial<Settings>) }
+  } catch {
+    return { ...DEFAULT_SETTINGS }
+  }
+}
+
+function applyTheme(settings: Settings) {
+  nativeTheme.themeSource = settings.theme
+}
 
 async function loadRecent(): Promise<RecentRepo[]> {
   try {
@@ -76,6 +89,14 @@ function registerIpc() {
     return setRepository(await GitRepository.init(result.filePaths[0]))
   })
 
+  ipcMain.handle('app:getSettings', () => loadSettings())
+
+  ipcMain.handle('app:saveSettings', async (_e, settings: Settings) => {
+    const merged = { ...DEFAULT_SETTINGS, ...settings }
+    await writeFile(settingsFile(), JSON.stringify(merged, null, 2))
+    applyTheme(merged)
+  })
+
   ipcMain.handle('app:currentRepository', () => repo?.info() ?? null)
 
   ipcMain.handle('app:recentRepositories', () => loadRecent())
@@ -104,7 +125,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 640,
     title: 'GitTools',
-    backgroundColor: '#1b1d23',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1b1d23' : '#f6f7f9',
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -127,6 +148,16 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   registerIpc()
+  applyTheme(await loadSettings())
+  // Menu mínimo: mantém copiar/colar (e ferramentas de desenvolvedor só em modo dev);
+  // os demais atalhos são tratados pela interface e podem ser personalizados.
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
+      { role: 'editMenu' },
+      ...(app.isPackaged ? [] : [{ role: 'viewMenu' as const }])
+    ])
+  )
   // Permite abrir direto um repositório: `gittools /caminho/do/repo`.
   const arg = process.argv
     .slice(1)

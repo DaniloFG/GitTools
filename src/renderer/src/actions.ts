@@ -10,6 +10,11 @@ export function useActions() {
   const { data, run, confirm, prompt, choose, openStudio } = app
   const head = currentBranch(data)
 
+  async function stash() {
+    const message = await prompt({ title: 'Guardar alterações (stash)', label: 'Descrição (opcional)', initial: 'WIP', confirmLabel: 'Guardar' })
+    if (message !== null) await run('Stash', () => git.stash(message))
+  }
+
   async function checkout(ref: string) {
     await run(`Checkout de ${ref}`, () => git.checkout(ref))
   }
@@ -141,6 +146,7 @@ export function useActions() {
 
   return {
     head,
+    stash,
     checkout,
     createBranch,
     deleteBranch,

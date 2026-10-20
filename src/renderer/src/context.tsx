@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react'
+import type { Settings } from '../../shared/api'
 import type { BranchInfo, CommitInfo, OperationState, RepoInfo, RepoStatus, StashInfo, TagInfo } from '../../shared/types'
 import type { ChoiceRequest, ChoiceResult, ConfirmRequest, PromptRequest } from './components/Dialogs'
 import type { MenuItem } from './components/ContextMenu'
@@ -21,6 +22,13 @@ export interface StudioRequest {
   mode?: 'branch' | 'commits' | 'files' | 'lines'
 }
 
+export type View = 'history' | 'changes' | 'files' | 'compare'
+
+export interface CompareRequest {
+  from?: string
+  to?: string
+}
+
 export interface AppContextValue {
   repo: RepoInfo
   data: RepoData
@@ -35,6 +43,17 @@ export interface AppContextValue {
   showMenu(event: React.MouseEvent, items: MenuItem[]): void
   openStudio(request: StudioRequest): void
   selectCommit(sha: string): void
+  setView(view: View): void
+  /** Abre o editor de conflitos lado a lado para um arquivo. */
+  openConflict(path: string): void
+  openCompare(request: CompareRequest): void
+  /** Abre blame e histórico de um arquivo. */
+  openFileView(path: string): void
+  /** Abre o rebase interativo a partir de um commit (inclusive). */
+  openRebase(sha: string): void
+  settings: Settings
+  openSettings(): void
+  openShortcuts(): void
 }
 
 export const AppContext = createContext<AppContextValue | null>(null)

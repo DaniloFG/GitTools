@@ -63,7 +63,7 @@ function Section({ title, count, children, collapsed = false }: { title: string;
 }
 
 function BranchItem({ branch, active, onScope }: { branch: BranchInfo; active: boolean; onScope(s: HistoryScope): void }) {
-  const { showMenu, run, openStudio } = useApp()
+  const { showMenu, run, openStudio, openCompare } = useApp()
   const actions = useActions()
   const isRemote = !!branch.remote
   const drop = useDrop(
@@ -87,6 +87,7 @@ function BranchItem({ branch, active, onScope }: { branch: BranchInfo; active: b
             }
           ]
         : []),
+      ...(head && !branch.current ? [{ label: `Comparar com ${head}`, onClick: () => openCompare({ from: head, to: branch.name }) }] : []),
       { label: 'Cherry-pick Studio (origem = esta branch)…', onClick: () => openStudio({ source: branch.name, target: head ?? undefined }) },
       'separator',
       { label: 'Nova branch a partir desta…', onClick: () => actions.createBranch(branch.name) },

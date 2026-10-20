@@ -10,7 +10,7 @@ const LABEL = {
 } as const
 
 export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
-  const { data, run, confirm } = useApp()
+  const { data, run, confirm, openConflict } = useApp()
   const { operation, status } = data
   const conflicts = status.conflicted
   if (operation.kind === 'none' && conflicts.length === 0) return null
@@ -50,6 +50,9 @@ export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
           {conflicts.map((f) => (
             <li key={f.path}>
               <span className="conflict-path">{f.path}</span>
+              <button className="primary" onClick={() => openConflict(f.path)} title="Comparar a versão atual com a que entra e escolher bloco a bloco">
+                Resolver lado a lado
+              </button>
               <button onClick={() => window.gittools.openFile(f.path)}>Abrir no editor</button>
               <button onClick={() => run('Resolvendo', () => git.resolveConflict(f.path, 'ours'))} title="Mantém a versão da branch atual (HEAD)">
                 Usar a atual

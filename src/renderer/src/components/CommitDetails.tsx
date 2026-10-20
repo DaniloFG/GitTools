@@ -55,7 +55,7 @@ function MultiSelection({ shas }: { shas: string[] }) {
 }
 
 function SingleCommit({ sha }: { sha: string }) {
-  const { run, choose, toast } = useApp()
+  const { run, choose, toast, openFileView } = useApp()
   const actions = useActions()
   const head = actions.head
   const [details, setDetails] = useState<CommitDetails | null>(null)
@@ -177,6 +177,7 @@ function SingleCommit({ sha }: { sha: string }) {
                 Aplicar {selection.size ? plural(selection.size, 'linha', 'linhas') : 'linhas'} em {head}
               </button>
               <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>Levar arquivo inteiro…</button>
+              <button onClick={() => openFileView(diff.path)}>Blame / histórico</button>
             </div>
           )}
           <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} />

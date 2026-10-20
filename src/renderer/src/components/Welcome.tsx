@@ -5,9 +5,10 @@ import { relativeDate } from '../format'
 interface Props {
   loading: boolean
   onOpen(path?: string, create?: boolean): void
+  onSettings(): void
 }
 
-export function Welcome({ loading, onOpen }: Props) {
+export function Welcome({ loading, onOpen, onSettings }: Props) {
   const [recent, setRecent] = useState<RecentRepo[]>([])
   useEffect(() => {
     window.gittools.recentRepositories().then(setRecent, () => setRecent([]))
@@ -32,6 +33,9 @@ export function Welcome({ loading, onOpen }: Props) {
               </button>
               <button className="large" onClick={() => onOpen(undefined, true)}>
                 Criar repositório…
+              </button>
+              <button className="large icon-button" onClick={onSettings} title="Configurações">
+                ⚙
               </button>
             </div>
             {recent.length > 0 && (

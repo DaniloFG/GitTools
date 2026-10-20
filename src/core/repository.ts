@@ -1,24 +1,30 @@
 import { existsSync } from 'node:fs'
-import { lstat, readFile } from 'node:fs/promises'
+import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import type { LogOptions, RepoApi } from '../shared/api'
 import type {
+  BlameResult,
   BranchCommit,
   BranchInfo,
   ChangedFile,
   CherryPickOptions,
   CommitDetails,
   CommitInfo,
+  Comparison,
+  ConflictDetails,
   ConflictResolution,
   DiffSource,
   FileApplyMode,
   FileDiff,
+  FileHistoryEntry,
   FileStatus,
   LineAction,
   LineKey,
   OperationResult,
   OperationState,
   PartialApplyOptions,
+  RebasePlan,
+  RebaseStep,
   RepoInfo,
   RepoStatus,
   StashInfo,
@@ -134,6 +140,41 @@ export function parseStatus(output: string): RepoStatus {
     }
   }
   return status
+}
+
+/** Coloca um caminho entre aspas simples para o shell que o git usa nos editores e em `exec`. */
+function shellQuote(path: string): string {
+  return `'${path.replace(/\\/g, '/').replace(/'/g, `'\\''`)}'`
+}
+
+function parseBlame(path: string, output: string): BlameResult {
+  const result: BlameResult = { path, lines: [], commits: {} }
+  const rows = output.split('\n')
+  let current: string | null = null
+  let finalLine = 0
+  for (const row of rows) {
+    if (row.startsWith('\t')) {
+      if (current) result.lines.push({ sha: current, line: finalLine, content: row.slice(1) })
+      continue
+    }
+    const header = /^([0-9a-f]{40}|[0-9a-f]{64}) \d+ (\d+)/.exec(row)
+    if (header) {
+      current = header[1]
+      finalLine = Number(header[2])
+      result.commits[current] ??= { sha: current, author: '', email: '', date: 0, summary: '' }
+      continue
+    }
+    if (!current) continue
+    const commit = result.commits[current]
+    const space = row.indexOf(' ')
+    const key = space === -1 ? row : row.slice(0, space)
+    const value = space === -1 ? '' : row.slice(space + 1)
+    if (key === 'author') commit.author = value
+    else if (key === 'author-mail') commit.email = value.replace(/^<|>$/g, '')
+    else if (key === 'author-time') commit.date = Number(value) * 1000
+    else if (key === 'summary') commit.summary = value
+  }
+  return result
 }
 
 /** Acesso de alto nível a um repositório git, usado pela interface gráfica. */
@@ -808,5 +849,141 @@ export class GitRepository implements RepoApi {
 
   async stashDrop(index: number): Promise<void> {
     await this.git(['stash', 'drop', `stash@{${Number(index)}}`])
+  }
+
+  // ---------------------------------------------------- editor de conflitos
+
+  async conflictDetails(path: string): Promise<ConflictDetails> {
+    const stage = async (n: number) => {
+      const { stdout, exitCode } = await this.git(['show', `:${n}:${path}`], { okExitCodes: [0, 128] })
+      return exitCode === 0 ? stdout : null
+    }
+    const [base, ours, theirs] = await Promise.all([stage(1), stage(2), stage(3)])
+    const buffer = await readFile(join(this.root, path)).catch(() => null)
+    const working = buffer ? buffer.toString('utf8') : null
+    const binary = !!buffer?.subarray(0, 8000).includes(0) || [base, ours, theirs].some((t) => t?.includes('\0'))
+    return { path, base, ours, theirs, working, binary }
+  }
+
+  /** Grava o conteúdo resolvido de um arquivo em conflito e marca como resolvido. */
+  async saveConflictResolution(path: string, content: string): Promise<void> {
+    const full = resolve(this.root, path)
+    if (!full.startsWith(resolve(this.root) + (process.platform === 'win32' ? '\\' : '/'))) throw new Error('Caminho fora do repositório.')
+    await writeFile(full, content, 'utf8')
+    await this.git(['add', '--', path])
+  }
+
+  // ------------------------------------------------------------- comparação
+
+  async compare(from: string, to: string, sinceMergeBase = false): Promise<Comparison> {
+    assertRef(from)
+    assertRef(to)
+    const { stdout: mb, exitCode } = await this.git(['merge-base', from, to], { okExitCodes: [0, 1] })
+    const mergeBase = exitCode === 0 ? mb.trim() : null
+    const [onlyFrom, onlyTo, files] = await Promise.all([
+      this.log({ ref: `${to}..${from}`, limit: 300 }),
+      this.log({ ref: `${from}..${to}`, limit: 300 }),
+      this.git(['diff', '--name-status', '-z', '-M', '--no-color', sinceMergeBase && mergeBase ? mergeBase : from, to, '--']).then((r) =>
+        parseNameStatus(r.stdout)
+      )
+    ])
+    return { from, to, mergeBase, onlyFrom, onlyTo, files }
+  }
+
+  // ---------------------------------------------- arquivos, blame e histórico
+
+  async listFiles(): Promise<string[]> {
+    const { stdout } = await this.git(['ls-files', '-z'])
+    return stdout.split('\0').filter(Boolean)
+  }
+
+  async blame(path: string, rev?: string): Promise<BlameResult> {
+    if (rev) assertRef(rev)
+    const { stdout } = await this.git(['blame', '--porcelain', ...(rev ? [rev] : []), '--', path])
+    return parseBlame(path, stdout)
+  }
+
+  async fileHistory(path: string, limit = 300): Promise<FileHistoryEntry[]> {
+    const { stdout } = await this.git([
+      'log',
+      '--follow',
+      `-n${limit}`,
+      `--format=%x1e${COMMIT_FORMAT.replace('%x1e', '')}`,
+      '--name-only',
+      '--',
+      path
+    ])
+    const entries: FileHistoryEntry[] = []
+    let currentPath = path
+    for (const record of stdout.split(RS)) {
+      if (!record.trim()) continue
+      const [header, ...rest] = record.split('\n')
+      const name = rest.map((l) => l.trim()).find(Boolean)
+      if (name) currentPath = name
+      entries.push({ ...parseCommitFields(header.split(FS)), path: currentPath })
+    }
+    return entries
+  }
+
+  /** Volta um arquivo para a versão que ele tinha num commit (fica no stage). */
+  async restoreFile(sha: string, path: string): Promise<void> {
+    assertRef(sha, 'commit')
+    await this.git(['checkout', sha, '--', path])
+  }
+
+  // ------------------------------------------------------ rebase interativo
+
+  async rebasePlan(fromSha: string): Promise<RebasePlan> {
+    assertRef(fromSha, 'commit')
+    const status = await this.status()
+    if (!status.branch) throw new Error('Faça checkout de uma branch para reescrever o histórico.')
+    const { exitCode } = await this.git(['merge-base', '--is-ancestor', fromSha, 'HEAD'], { okExitCodes: [0, 1] })
+    if (exitCode !== 0) throw new Error(`O commit ${fromSha.slice(0, 8)} não faz parte da branch atual (${status.branch}).`)
+    const { stdout } = await this.git(['rev-list', '--parents', '-n1', fromSha, '--'])
+    const base = stdout.trim().split(' ')[1] ?? null
+    const range = base ? `${base}..HEAD` : 'HEAD'
+    const { stdout: merges } = await this.git(['rev-list', '--merges', '--count', range, '--'])
+    const commits = (await this.log({ ref: range, limit: 1000 })).filter((c) => c.parents.length <= 1).reverse()
+    return { base, commits, hasMerges: Number(merges.trim()) > 0 }
+  }
+
+  async interactiveRebase(base: string | null, steps: RebaseStep[]): Promise<OperationResult> {
+    if (base) assertRef(base, 'commit')
+    if (!steps.length) throw new Error('Nada para reescrever.')
+    const first = steps.find((s) => s.action !== 'drop')
+    if (first && (first.action === 'squash' || first.action === 'fixup')) {
+      throw new Error('O primeiro commit mantido não pode ser juntado a um anterior.')
+    }
+    const { stdout: dirPath } = await this.git(['rev-parse', '--git-path', 'gittools-rebase'])
+    const dir = resolve(this.root, dirPath.trim())
+    await rm(dir, { recursive: true, force: true })
+    await mkdir(dir, { recursive: true })
+
+    const todo: string[] = []
+    for (const [i, step] of steps.entries()) {
+      assertRef(step.sha, 'commit')
+      const amend = async () => {
+        const file = join(dir, `msg-${i}.txt`)
+        await writeFile(file, step.message!, 'utf8')
+        todo.push(`exec git commit --amend --allow-empty -F ${shellQuote(file)}`)
+      }
+      if (step.action === 'reword') {
+        todo.push(`pick ${step.sha}`)
+        if (step.message?.trim()) await amend()
+      } else {
+        todo.push(`${step.action} ${step.sha}`)
+        if (step.action === 'squash' && step.message?.trim()) await amend()
+      }
+    }
+    const todoFile = join(dir, 'todo.txt')
+    await writeFile(todoFile, todo.join('\n') + '\n', 'utf8')
+    try {
+      await this.git(['rebase', '-i', '--autostash', base ?? '--root'], {
+        env: { GIT_SEQUENCE_EDITOR: `cp ${shellQuote(todoFile)}` }
+      })
+      return { ok: true, message: 'Histórico reescrito.', conflicts: [] }
+    } catch (error) {
+      return this.conflictResult(error)
+    }
   }
 }

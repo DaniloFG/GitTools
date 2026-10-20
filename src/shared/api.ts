@@ -1,19 +1,25 @@
 import type {
+  BlameResult,
   BranchCommit,
   BranchInfo,
   ChangedFile,
   CherryPickOptions,
   CommitDetails,
   CommitInfo,
+  Comparison,
+  ConflictDetails,
   ConflictResolution,
   DiffSource,
   FileApplyMode,
   FileDiff,
+  FileHistoryEntry,
   LineAction,
   LineKey,
   OperationResult,
   OperationState,
   PartialApplyOptions,
+  RebasePlan,
+  RebaseStep,
   RepoInfo,
   RepoStatus,
   StashInfo,
@@ -93,6 +99,21 @@ export interface RepoApi {
   stash(message?: string): Promise<void>
   stashApply(index: number, pop?: boolean): Promise<OperationResult>
   stashDrop(index: number): Promise<void>
+
+  // Editor de conflitos
+  conflictDetails(path: string): Promise<ConflictDetails>
+  saveConflictResolution(path: string, content: string): Promise<void>
+
+  // Comparação, arquivos, blame e histórico
+  compare(from: string, to: string, sinceMergeBase?: boolean): Promise<Comparison>
+  listFiles(): Promise<string[]>
+  blame(path: string, rev?: string): Promise<BlameResult>
+  fileHistory(path: string, limit?: number): Promise<FileHistoryEntry[]>
+  restoreFile(sha: string, path: string): Promise<void>
+
+  // Rebase interativo
+  rebasePlan(fromSha: string): Promise<RebasePlan>
+  interactiveRebase(base: string | null, steps: RebaseStep[]): Promise<OperationResult>
 }
 
 export type RepoMethod = keyof RepoApi
@@ -136,8 +157,29 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'push',
   'stash',
   'stashApply',
-  'stashDrop'
+  'stashDrop',
+  'conflictDetails',
+  'saveConflictResolution',
+  'compare',
+  'listFiles',
+  'blame',
+  'fileHistory',
+  'restoreFile',
+  'rebasePlan',
+  'interactiveRebase'
 ]
+
+export type ThemeSetting = 'system' | 'dark' | 'light'
+
+export interface Settings {
+  theme: ThemeSetting
+  /** Escala da interface (1 = 100%). */
+  zoom: number
+  /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
+  shortcuts: Record<string, string>
+}
+
+export const DEFAULT_SETTINGS: Settings = { theme: 'system', zoom: 1, shortcuts: {} }
 
 export interface RecentRepo {
   path: string
@@ -153,6 +195,10 @@ export interface GitToolsBridge {
   initRepository(): Promise<RepoInfo | null>
   recentRepositories(): Promise<RecentRepo[]>
   openFile(relativePath: string): Promise<void>
+  getSettings(): Promise<Settings>
+  saveSettings(settings: Settings): Promise<void>
+  /** Aplica a escala da interface imediatamente. */
+  setZoom(factor: number): void
   invoke<M extends RepoMethod>(method: M, ...args: Parameters<RepoApi[M]>): ReturnType<RepoApi[M]>
   onRepositoryChanged(listener: () => void): () => void
 }

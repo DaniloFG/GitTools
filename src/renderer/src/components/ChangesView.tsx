@@ -10,7 +10,7 @@ import { DiffView } from './DiffView'
 type Area = 'unstaged' | 'staged'
 
 export function ChangesView() {
-  const { data, run, confirm, toast } = useApp()
+  const { data, run, confirm, toast, openConflict, openFileView } = useApp()
   const { status } = data
   const [active, setActive] = useState<{ area: Area; path: string } | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
@@ -80,8 +80,8 @@ export function ChangesView() {
             area="unstaged"
             files={status.conflicted}
             active={active}
-            onActivate={(f) => window.gittools.openFile(f.path)}
-            hint="Resolva pelo painel no topo. Clique para abrir no editor."
+            onActivate={(f) => openConflict(f.path)}
+            hint="Clique num arquivo para resolver lado a lado (atual × resultado × que entra)."
           />
         )}
         <FileGroup
@@ -150,6 +150,7 @@ export function ChangesView() {
                   </button>
                   <button onClick={() => run('Stage', () => git.stageFiles([active.path]))}>Stage arquivo</button>
                   <button onClick={() => window.gittools.openFile(active.path)}>Abrir</button>
+                  <button onClick={() => openFileView(active.path)}>Blame / histórico</button>
                 </>
               ) : (
                 <>

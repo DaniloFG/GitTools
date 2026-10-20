@@ -5,8 +5,8 @@ import { useApp } from '../context'
 import { git } from '../git'
 
 export function Toolbar({ onOpenRepository }: { onOpenRepository(path?: string, create?: boolean): void }) {
-  const { repo, data, run, prompt, showMenu, openStudio } = useApp()
-  const { head, createBranch } = useActions()
+  const { repo, data, run, showMenu, openStudio, openSettings, openShortcuts } = useApp()
+  const { head, createBranch, stash } = useActions()
   const [recent, setRecent] = useState<RecentRepo[]>([])
   const { status } = data
 
@@ -25,11 +25,6 @@ export function Toolbar({ onOpenRepository }: { onOpenRepository(path?: string, 
         .slice(0, 8)
         .map((r) => ({ label: r.name, hint: r.path, onClick: () => onOpenRepository(r.path) }))
     ])
-
-  const stash = async () => {
-    const message = await prompt({ title: 'Guardar alterações (stash)', label: 'Descrição (opcional)', initial: 'WIP', confirmLabel: 'Guardar' })
-    if (message !== null) await run('Stash', () => git.stash(message))
-  }
 
   return (
     <header className="toolbar">
@@ -60,6 +55,12 @@ export function Toolbar({ onOpenRepository }: { onOpenRepository(path?: string, 
       <div className="toolbar-spacer" />
       <button className="primary" onClick={() => openStudio({ target: head ?? undefined })}>
         🍒 Cherry-pick Studio
+      </button>
+      <button className="icon-button" onClick={openShortcuts} title="Atalhos de teclado (F1)">
+        ⌨
+      </button>
+      <button className="icon-button" onClick={openSettings} title="Configurações (Ctrl+,)">
+        ⚙
       </button>
     </header>
   )
