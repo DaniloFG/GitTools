@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { t } from '../i18n'
 import { Modal } from './Modal'
 
 export interface ConfirmRequest {
@@ -63,9 +64,9 @@ function ConfirmDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind
       onClose={() => close(false)}
       footer={
         <>
-          <button onClick={() => close(false)}>Cancelar</button>
+          <button onClick={() => close(false)}>{t('common.cancel')}</button>
           <button className={dialog.danger ? 'danger' : 'primary'} onClick={() => close(true)} autoFocus>
-            {dialog.confirmLabel ?? 'Confirmar'}
+            {dialog.confirmLabel ?? t('common.confirm')}
           </button>
         </>
       }
@@ -87,9 +88,9 @@ function PromptDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind:
       onClose={() => close(null)}
       footer={
         <>
-          <button onClick={() => close(null)}>Cancelar</button>
+          <button onClick={() => close(null)}>{t('common.cancel')}</button>
           <button className="primary" disabled={!value.trim()} onClick={() => close(value.trim())}>
-            {dialog.confirmLabel ?? 'OK'}
+            {dialog.confirmLabel ?? t('common.ok')}
           </button>
         </>
       }

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { t } from '../shared/i18n'
 
 export class GitError extends Error {
   constructor(
@@ -54,6 +55,11 @@ export function runGit(cwd: string, args: string[], options: RunOptions = {}): P
         GIT_SEQUENCE_EDITOR: 'true',
         GIT_MERGE_AUTOEDIT: 'no',
         GIT_PAGER: 'cat',
+        // Saída do git sempre em inglês: a interface traduz o que importa e o
+        // código que interpreta mensagens do git não depende do idioma do sistema.
+        LC_ALL: 'en_US.UTF-8',
+        LANG: 'en_US.UTF-8',
+        LANGUAGE: 'en',
         ...options.env
       }
     })
@@ -61,7 +67,7 @@ export function runGit(cwd: string, args: string[], options: RunOptions = {}): P
     const err: Buffer[] = []
     child.stdout.on('data', (d: Buffer) => out.push(d))
     child.stderr.on('data', (d: Buffer) => err.push(d))
-    child.on('error', (e) => reject(new GitError(`Não foi possível executar o git: ${e.message}`, args, -1, '', '')))
+    child.on('error', (e) => reject(new GitError(t('core.gitNotFound', { error: e.message }), args, -1, '', '')))
     child.on('close', (code) => {
       const stdout = Buffer.concat(out).toString('utf8')
       const stderr = Buffer.concat(err).toString('utf8')
@@ -69,7 +75,7 @@ export function runGit(cwd: string, args: string[], options: RunOptions = {}): P
       if ((options.okExitCodes ?? [0]).includes(exitCode)) {
         resolve({ stdout, stderr, exitCode })
       } else {
-        const message = cleanMessage(stderr) || cleanMessage(stdout) || `git ${args[0]} falhou (código ${exitCode})`
+        const message = cleanMessage(stderr) || cleanMessage(stdout) || t('core.gitFailed', { command: args[0], code: exitCode })
         reject(new GitError(message, args, exitCode, stdout, stderr))
       }
     })

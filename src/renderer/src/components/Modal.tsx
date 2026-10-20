@@ -1,11 +1,12 @@
 import { useEffect, type ReactNode } from 'react'
+import { t } from '../i18n'
 
 interface Props {
   title: ReactNode
   onClose(): void
   children: ReactNode
   footer?: ReactNode
-  size?: 'small' | 'medium' | 'large'
+  size?: 'small' | 'medium' | 'large' | 'settings'
 }
 
 export function Modal({ title, onClose, children, footer, size = 'small' }: Props) {
@@ -20,7 +21,7 @@ export function Modal({ title, onClose, children, footer, size = 'small' }: Prop
       <div className={`modal modal-${size}`} role="dialog" aria-modal="true">
         <header className="modal-header">
           <h2>{title}</h2>
-          <button className="icon-button" onClick={onClose} aria-label="Fechar">
+          <button className="icon-button" onClick={onClose} aria-label={t('common.close')}>
             ✕
           </button>
         </header>

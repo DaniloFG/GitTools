@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import type { FileDiff, FileStatus, LineKey } from '../../../shared/types'
 import { useApp } from '../context'
 import { endDrag, startDrag } from '../dnd'
-import { errorMessage, plural, statusLabel } from '../format'
+import { errorMessage, statusLabel } from '../format'
 import { git } from '../git'
 import { useDrop } from '../useDrop'
+import { t } from '../i18n'
 import { DiffView } from './DiffView'
 
 type Area = 'unstaged' | 'staged'
@@ -49,9 +50,9 @@ export function ChangesView() {
 
   const discard = async (paths: string[]) => {
     const ok = await confirm({
-      title: 'Descartar alterações',
-      message: `As alterações locais de ${plural(paths.length, 'arquivo', 'arquivos')} serão perdidas:\n${paths.join('\n')}`,
-      confirmLabel: 'Descartar',
+      title: t('changes.discardTitle'),
+      message: `${t('changes.discardMessage', { count: paths.length })}\n${paths.join('\n')}`,
+      confirmLabel: t('common.discard'),
       danger: true
     })
     if (ok) await run('Descartando', () => git.discardFiles(paths))
@@ -61,14 +62,14 @@ export function ChangesView() {
     if (!active || !diff) return
     if (action === 'discard') {
       const ok = await confirm({
-        title: 'Descartar linhas',
-        message: `Descartar ${plural(selection.size, 'linha selecionada', 'linhas selecionadas')} de ${diff.path}?`,
-        confirmLabel: 'Descartar',
+        title: t('changes.discardLinesTitle'),
+        message: t('changes.discardLinesMessage', { count: selection.size, path: diff.path }),
+        confirmLabel: t('common.discard'),
         danger: true
       })
       if (!ok) return
     }
-    await run('Aplicando seleção', () => git.applyLines({ kind: active.area }, active.path, [...selection], action))
+    await run(t('busy.applyingSelection'), () => git.applyLines({ kind: active.area }, active.path, [...selection], action))
   }
 
   return (
@@ -76,56 +77,56 @@ export function ChangesView() {
       <div className="changes">
         {status.conflicted.length > 0 && (
           <FileGroup
-            title="Em conflito"
+            title={t('changes.conflicted')}
             area="unstaged"
             files={status.conflicted}
             active={active}
             onActivate={(f) => openConflict(f.path)}
-            hint="Clique num arquivo para resolver lado a lado (atual × resultado × que entra)."
+            hint={t('changes.conflictedHint')}
           />
         )}
         <FileGroup
-          title="Alterações (não staged)"
+          title={t('changes.unstaged')}
           area="unstaged"
           files={status.unstaged}
           active={active}
           onActivate={(f) => setActive({ area: 'unstaged', path: f.path })}
-          onDropFiles={(paths) => run('Unstage', () => git.unstageFiles(paths))}
+          onDropFiles={(paths) => run(t('busy.unstage'), () => git.unstageFiles(paths))}
           actions={
             status.unstaged.length > 0 && (
               <>
-                <button onClick={() => run('Stage', () => git.stageFiles(status.unstaged.map((f) => f.path)))}>Stage tudo ↓</button>
+                <button onClick={() => run(t('busy.stage'), () => git.stageFiles(status.unstaged.map((f) => f.path)))}>{t('changes.stageAll')} ↓</button>
                 <button className="danger subtle" onClick={() => discard(status.unstaged.map((f) => f.path))}>
-                  Descartar tudo
+                  {t('changes.discardAll')}
                 </button>
               </>
             )
           }
           fileActions={(f) => (
             <>
-              <button title="Descartar" onClick={() => discard([f.path])}>
+              <button title={t('common.discard')} onClick={() => discard([f.path])}>
                 ↺
               </button>
-              <button title="Stage" onClick={() => run('Stage', () => git.stageFiles([f.path]))}>
+              <button title={t('changes.stage')} onClick={() => run(t('busy.stage'), () => git.stageFiles([f.path]))}>
                 ＋
               </button>
             </>
           )}
         />
         <FileGroup
-          title="Prontas para commit (staged)"
+          title={t('changes.staged')}
           area="staged"
           files={status.staged}
           active={active}
           onActivate={(f) => setActive({ area: 'staged', path: f.path })}
-          onDropFiles={(paths) => run('Stage', () => git.stageFiles(paths))}
+          onDropFiles={(paths) => run(t('busy.stage'), () => git.stageFiles(paths))}
           actions={
             status.staged.length > 0 && (
-              <button onClick={() => run('Unstage', () => git.unstageFiles(status.staged.map((f) => f.path)))}>Unstage tudo ↑</button>
+              <button onClick={() => run(t('busy.unstage'), () => git.unstageFiles(status.staged.map((f) => f.path)))}>{t('changes.unstageAll')} ↑</button>
             )
           }
           fileActions={(f) => (
-            <button title="Unstage" onClick={() => run('Unstage', () => git.unstageFiles([f.path]))}>
+            <button title={t('changes.unstage')} onClick={() => run(t('busy.unstage'), () => git.unstageFiles([f.path]))}>
               －
             </button>
           )}
@@ -136,28 +137,28 @@ export function ChangesView() {
 
       <section className="details">
         {!active || !diff ? (
-          <p className="empty">Selecione um arquivo para ver as alterações e escolher linhas.</p>
+          <p className="empty">{t('changes.selectFile')}</p>
         ) : (
           <div className="diff-panel">
             <div className="selection-bar">
               {active.area === 'unstaged' ? (
                 <>
                   <button className="primary" disabled={!selection.size} onClick={() => lineAction('stage')}>
-                    Stage {selection.size ? plural(selection.size, 'linha', 'linhas') : 'linhas'}
+                    {t('changes.stageLines', { count: selection.size })}
                   </button>
                   <button className="danger subtle" disabled={!selection.size} onClick={() => lineAction('discard')}>
-                    Descartar linhas
+                    {t('changes.discardLines')}
                   </button>
-                  <button onClick={() => run('Stage', () => git.stageFiles([active.path]))}>Stage arquivo</button>
-                  <button onClick={() => window.gittools.openFile(active.path)}>Abrir</button>
-                  <button onClick={() => openFileView(active.path)}>Blame / histórico</button>
+                  <button onClick={() => run(t('busy.stage'), () => git.stageFiles([active.path]))}>{t('changes.stageFile')}</button>
+                  <button onClick={() => window.gittools.openFile(active.path)}>{t('common.open')}</button>
+                  <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
                 </>
               ) : (
                 <>
                   <button className="primary" disabled={!selection.size} onClick={() => lineAction('unstage')}>
-                    Unstage {selection.size ? plural(selection.size, 'linha', 'linhas') : 'linhas'}
+                    {t('changes.unstageLines', { count: selection.size })}
                   </button>
-                  <button onClick={() => run('Unstage', () => git.unstageFiles([active.path]))}>Unstage arquivo</button>
+                  <button onClick={() => run(t('busy.unstage'), () => git.unstageFiles([active.path]))}>{t('changes.unstageFile')}</button>
                 </>
               )}
             </div>
@@ -197,7 +198,7 @@ function FileGroup({ title, area, files, active, onActivate, onDropFiles, action
       </div>
       {hint && <p className="muted small">{hint}</p>}
       {files.length === 0 ? (
-        <p className="empty small">{onDropFiles ? 'Nada aqui. Arraste arquivos para cá.' : 'Nada aqui.'}</p>
+        <p className="empty small">{onDropFiles ? t('changes.emptyDrop') : t('changes.empty')}</p>
       ) : (
         <ul className="file-list">
           {files.map((f) => {
@@ -220,7 +221,7 @@ function FileGroup({ title, area, files, active, onActivate, onDropFiles, action
                 draggable={!f.conflicted}
                 onDragStart={(e) => {
                   const paths = picked.has(f.path) ? [...picked] : [f.path]
-                  startDrag(e, { type: 'files', area, paths }, paths.length > 1 ? `📄 ${paths.length} arquivos` : `📄 ${f.path}`)
+                  startDrag(e, { type: 'files', area, paths }, paths.length > 1 ? `📄 ${t('common.files', { count: paths.length })}` : `📄 ${f.path}`)
                 }}
                 onDragEnd={endDrag}
               >
@@ -247,7 +248,7 @@ function TrashZone({ onDropFiles }: { onDropFiles(paths: string[]): void }) {
   )
   return (
     <div className={`trash-zone ${drop.over ? 'drop-over' : ''}`} {...drop.props}>
-      🗑 Arraste arquivos não staged aqui para descartar as alterações
+      🗑 {t('changes.trash')}
     </div>
   )
 }
@@ -260,7 +261,7 @@ function CommitBox() {
 
   const commit = async () => {
     if (!canCommit) return
-    const result = await run(amend ? 'Corrigindo último commit' : 'Commit', async () => {
+    const result = await run(amend ? t('busy.amending') : t('busy.commit'), async () => {
       await git.commit(message, amend)
       return true
     })
@@ -273,7 +274,7 @@ function CommitBox() {
   return (
     <div className="commit-box">
       <textarea
-        placeholder="Mensagem do commit (Ctrl+Enter para confirmar)"
+        placeholder={t('changes.commitPlaceholder')}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && commit()}
@@ -293,10 +294,10 @@ function CommitBox() {
             }}
             disabled={!data.status.headSha}
           />
-          Corrigir o último commit (amend)
+          {t('changes.amend')}
         </label>
         <button className="primary" disabled={!canCommit} onClick={commit}>
-          {amend ? 'Corrigir commit' : `Commit${data.status.branch ? ` em ${data.status.branch}` : ''}`}
+          {amend ? t('changes.amendButton') : data.status.branch ? t('changes.commitInto', { branch: data.status.branch }) : t('changes.commit')}
         </button>
       </div>
     </div>

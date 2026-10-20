@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { FileDiff, LineKey } from '../../../shared/types'
 import { changeKeys, hunkKeys, lineKey } from '../../../shared/diffKeys'
+import { t, type MessageKey } from '../i18n'
 
 interface Props {
   file: FileDiff
@@ -9,7 +10,13 @@ interface Props {
   onSelectionChange?(selection: Set<LineKey>): void
 }
 
-const TYPE_LABEL = { added: 'novo', deleted: 'removido', modified: 'modificado', renamed: 'renomeado', copied: 'copiado' }
+const TYPE_LABEL: Record<FileDiff['changeType'], MessageKey> = {
+  added: 'status.untracked',
+  deleted: 'status.deleted',
+  modified: 'status.modified',
+  renamed: 'status.renamed',
+  copied: 'status.copied'
+}
 
 /**
  * Exibe o diff de um arquivo. Com seleção ativa: clique numa linha para marcar/desmarcar,
@@ -71,23 +78,23 @@ export function DiffView({ file, selection, onSelectionChange }: Props) {
               if (el) el.indeterminate = !allSelected && all.some((k) => selection!.has(k))
             }}
             onChange={(e) => update(all, e.target.checked)}
-            title="Selecionar todas as linhas do arquivo"
+            title={t('diff.selectFile')}
           />
         )}
         <span className="diff-path">
           {file.changeType === 'renamed' && file.oldPath ? `${file.oldPath} → ` : ''}
           {file.path}
         </span>
-        <span className={`tag tag-${file.changeType}`}>{TYPE_LABEL[file.changeType]}</span>
+        <span className={`tag tag-${file.changeType}`}>{t(TYPE_LABEL[file.changeType])}</span>
         <span className="diff-stats">
           <span className="add">+{file.additions}</span> <span className="del">−{file.deletions}</span>
         </span>
-        {selectable && <span className="muted small">{selection!.size ? `${all.filter((k) => selection!.has(k)).length} de ${all.length} linhas` : 'clique ou arraste sobre as linhas para selecionar'}</span>}
+        {selectable && <span className="muted small">{selection!.size ? t('diff.selectedOf', { selected: all.filter((k) => selection!.has(k)).length, count: all.length }) : t('diff.selectHint')}</span>}
       </div>
       {file.binary ? (
-        <p className="empty">Arquivo binário — não é possível mostrar as linhas.</p>
+        <p className="empty">{t('diff.binary')}</p>
       ) : file.hunks.length === 0 ? (
-        <p className="empty">Sem alterações de conteúdo (apenas nome ou permissões).</p>
+        <p className="empty">{t('diff.noContent')}</p>
       ) : (
         <table className={`diff-table ${selectable ? 'selectable' : ''}`}>
           <tbody>
@@ -105,7 +112,7 @@ export function DiffView({ file, selection, onSelectionChange }: Props) {
                           if (el) el.indeterminate = !hunkAll && keys.some((k) => selection!.has(k))
                         }}
                         onChange={(e) => update(keys, e.target.checked)}
-                        title="Selecionar este bloco"
+                        title={t('diff.selectHunk')}
                       />
                     )}
                   </td>
@@ -130,7 +137,7 @@ export function DiffView({ file, selection, onSelectionChange }: Props) {
                       <td className="sign">{line.kind === 'add' ? '+' : line.kind === 'del' ? '−' : ''}</td>
                       <td className="code">
                         {line.content || ' '}
-                        {line.noNewline && <span className="no-newline" title="Sem quebra de linha no fim do arquivo">⏎̸</span>}
+                        {line.noNewline && <span className="no-newline" title={t('diff.noNewline')}>⏎̸</span>}
                       </td>
                     </tr>
                   )

@@ -2,9 +2,14 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'e
 import { existsSync, statSync, watch, type FSWatcher } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import { DEFAULT_SETTINGS, REPO_METHODS, type RecentRepo, type RepoMethod, type Settings } from '../shared/api'
+import { REPO_METHODS, type AppInfo, type RecentRepo, type RepoMethod } from '../shared/api'
+import { matchLocale, setLocale, t } from '../shared/i18n'
+import { normalizeSettings, type Settings } from '../shared/settings'
 import { runGit } from '../core/exec'
 import { GitRepository } from '../core/repository'
+
+// Nome fixo: a pasta de dados (configurações, recentes) é a mesma em desenvolvimento e instalado.
+app.setName('GitTools')
 
 let window: BrowserWindow | null = null
 let repo: GitRepository | null = null
@@ -15,14 +20,27 @@ const settingsFile = () => join(app.getPath('userData'), 'settings.json')
 
 async function loadSettings(): Promise<Settings> {
   try {
-    return { ...DEFAULT_SETTINGS, ...(JSON.parse(await readFile(settingsFile(), 'utf8')) as Partial<Settings>) }
+    return normalizeSettings(JSON.parse(await readFile(settingsFile(), 'utf8')))
   } catch {
-    return { ...DEFAULT_SETTINGS }
+    return normalizeSettings({})
   }
 }
 
-function applyTheme(settings: Settings) {
+const systemLocales = () => [...app.getPreferredSystemLanguages(), app.getLocale()]
+
+/** Aplica no processo principal o que depende das configurações: tema nativo e idioma das mensagens. */
+function applySettings(settings: Settings) {
   nativeTheme.themeSource = settings.theme
+  setLocale(settings.language === 'system' ? matchLocale(systemLocales()) : settings.language)
+}
+
+async function gitVersion(): Promise<string | null> {
+  try {
+    const { stdout } = await runGit(app.getPath('home'), ['--version'])
+    return stdout.trim().replace(/^git version /, '')
+  } catch {
+    return null
+  }
 }
 
 async function loadRecent(): Promise<RecentRepo[]> {
@@ -71,7 +89,7 @@ function registerIpc() {
     let target = path
     if (!target) {
       const result = await dialog.showOpenDialog(window!, {
-        title: 'Abrir repositório git',
+        title: t('main.openDialogTitle'),
         properties: ['openDirectory']
       })
       if (result.canceled || !result.filePaths[0]) return null
@@ -82,7 +100,7 @@ function registerIpc() {
 
   ipcMain.handle('app:initRepository', async () => {
     const result = await dialog.showOpenDialog(window!, {
-      title: 'Criar repositório git nesta pasta',
+      title: t('main.initDialogTitle'),
       properties: ['openDirectory', 'createDirectory']
     })
     if (result.canceled || !result.filePaths[0]) return null
@@ -91,11 +109,25 @@ function registerIpc() {
 
   ipcMain.handle('app:getSettings', () => loadSettings())
 
-  ipcMain.handle('app:saveSettings', async (_e, settings: Settings) => {
-    const merged = { ...DEFAULT_SETTINGS, ...settings }
-    await writeFile(settingsFile(), JSON.stringify(merged, null, 2))
-    applyTheme(merged)
+  ipcMain.handle('app:saveSettings', async (_e, settings: unknown) => {
+    const normalized = normalizeSettings(settings)
+    await writeFile(settingsFile(), JSON.stringify(normalized, null, 2))
+    applySettings(normalized)
   })
+
+  ipcMain.handle(
+    'app:info',
+    async (): Promise<AppInfo> => ({
+      version: app.getVersion(),
+      electron: process.versions.electron,
+      chrome: process.versions.chrome,
+      node: process.versions.node,
+      platform: `${process.platform} ${process.arch}`,
+      git: await gitVersion(),
+      settingsFile: settingsFile(),
+      systemLocales: systemLocales()
+    })
+  )
 
   ipcMain.handle('app:currentRepository', () => repo?.info() ?? null)
 
@@ -104,15 +136,15 @@ function registerIpc() {
   ipcMain.handle('app:openFile', async (_e, relativePath: string) => {
     if (!repo) return
     const full = resolve(repo.root, relativePath)
-    if (!full.startsWith(repo.root + sep)) throw new Error('Caminho fora do repositório.')
+    if (!full.startsWith(repo.root + sep) && full !== repo.root) throw new Error(t('main.outsideRepository'))
     const error = await shell.openPath(full)
     if (error) throw new Error(error)
   })
 
   const allowed = new Set<string>(REPO_METHODS)
   ipcMain.handle('repo:invoke', async (_e, method: RepoMethod, args: unknown[]) => {
-    if (!allowed.has(method)) throw new Error(`Operação desconhecida: ${method}`)
-    if (!repo) throw new Error('Nenhum repositório aberto.')
+    if (!allowed.has(method)) throw new Error(t('main.unknownOperation', { method }))
+    if (!repo) throw new Error(t('main.noRepository'))
     const fn = repo[method] as (...a: unknown[]) => Promise<unknown>
     return fn.apply(repo, args)
   })
@@ -148,7 +180,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   registerIpc()
-  applyTheme(await loadSettings())
+  applySettings(await loadSettings())
   // Menu mínimo: mantém copiar/colar (e ferramentas de desenvolvedor só em modo dev);
   // os demais atalhos são tratados pela interface e podem ser personalizados.
   Menu.setApplicationMenu(

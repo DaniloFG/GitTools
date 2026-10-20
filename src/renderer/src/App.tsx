@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DEFAULT_SETTINGS, type Settings } from '../../shared/api'
+import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import type { RepoInfo } from '../../shared/types'
 import {
   AppContext,
@@ -22,13 +22,15 @@ import { FilesView } from './components/FilesView'
 import { KeyboardShortcuts } from './components/KeyboardShortcuts'
 import { OperationBanner } from './components/OperationBanner'
 import { RebaseEditor } from './components/RebaseEditor'
-import { SettingsDialog, ShortcutsHelp } from './components/SettingsDialog'
+import { SettingsCenter } from './components/settings/SettingsCenter'
+import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
 import { Sidebar } from './components/Sidebar'
 import { Toasts, type Toast } from './components/Toasts'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
 import { errorMessage } from './format'
 import { git } from './git'
+import { getLocale, matchLocale, setLocale, textDirection, t, type LocaleId, type MessageKey } from './i18n'
 
 export type HistoryScope = { kind: 'all' } | { kind: 'head' } | { kind: 'ref'; ref: string }
 
@@ -36,17 +38,25 @@ function isOperationResult(value: unknown): value is { ok: boolean; message: str
   return typeof value === 'object' && value !== null && 'ok' in value && 'conflicts' in value
 }
 
-function applySettings(settings: Settings) {
+function resolveLocale(settings: Settings, systemLocales: readonly string[]): LocaleId {
+  return settings.language === 'system' ? matchLocale(systemLocales) : settings.language
+}
+
+/** Aplica tema, escala, idioma e direção do texto (o árabe é escrito da direita para a esquerda). */
+function applySettings(settings: Settings, locale: LocaleId) {
   const root = document.documentElement
   root.dataset.theme = settings.theme
+  root.lang = locale
+  root.dir = textDirection()
+  document.title = 'GitTools'
   window.gittools.setZoom(settings.zoom)
 }
 
-const TABS: { id: View; label: string }[] = [
-  { id: 'history', label: 'Histórico' },
-  { id: 'changes', label: 'Alterações' },
-  { id: 'files', label: 'Arquivos' },
-  { id: 'compare', label: 'Comparar' }
+const TABS: { id: View; label: MessageKey }[] = [
+  { id: 'history', label: 'tabs.history' },
+  { id: 'changes', label: 'tabs.changes' },
+  { id: 'files', label: 'tabs.files' },
+  { id: 'compare', label: 'tabs.compare' }
 ]
 
 export function App() {
@@ -65,18 +75,27 @@ export function App() {
   const [filePath, setFilePath] = useState<string | null>(null)
   const [rebaseFrom, setRebaseFrom] = useState<string | null>(null)
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  /** Configurações em edição, aplicadas na hora para pré-visualização. */
+  const [preview, setPreview] = useState<Settings | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState<string | null>(null)
+  const [systemLocales, setSystemLocales] = useState<readonly string[]>(navigator.languages)
   const [helpOpen, setHelpOpen] = useState(false)
   const toastId = useRef(0)
   const scopeRef = useRef(scope)
   scopeRef.current = scope
 
+  const effective = preview ?? settings
+  const locale = resolveLocale(effective, systemLocales)
+  // O idioma precisa estar ativo antes de os componentes renderizarem seus textos.
+  if (getLocale() !== locale) setLocale(locale)
+
   useEffect(() => {
-    applySettings(settings)
-  }, [settings])
+    applySettings(effective, locale)
+  }, [effective, locale])
 
   useEffect(() => {
     window.gittools.getSettings().then(setSettings, () => undefined)
+    window.gittools.appInfo().then((info) => setSystemLocales(info.systemLocales), () => undefined)
     window.gittools.currentRepository().then((info) => info && setRepo((prev) => prev ?? info))
   }, [])
 
@@ -198,14 +217,28 @@ export function App() {
       },
       openRebase: (sha) => setRebaseFrom(sha),
       settings,
-      openSettings: () => setSettingsOpen(true),
+      openSettings: (section) => setSettingsOpen(section ?? 'general'),
       openShortcuts: () => setHelpOpen(true)
     }
-  }, [repo, data, busy, refresh, run, toast, settings])
+    // locale: força novos textos nos componentes quando o idioma muda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [repo, data, busy, refresh, run, toast, settings, locale])
 
   const settingsDialogs = (
     <>
-      {settingsOpen && <SettingsDialog settings={settings} onSave={saveSettings} onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsCenter
+          settings={settings}
+          initialSection={settingsOpen}
+          onPreview={setPreview}
+          onSave={saveSettings}
+          onClose={() => {
+            setPreview(null)
+            setSettingsOpen(null)
+          }}
+          onShowShortcuts={() => setHelpOpen(true)}
+        />
+      )}
       {helpOpen && <ShortcutsHelp settings={settings} onClose={() => setHelpOpen(false)} />}
     </>
   )
@@ -213,7 +246,7 @@ export function App() {
   if (!repo || !context) {
     return (
       <>
-        <Welcome loading={!!repo} onOpen={openRepository} onSettings={() => setSettingsOpen(true)} />
+        <Welcome loading={!!repo} onOpen={openRepository} onSettings={() => setSettingsOpen('general')} />
         {settingsDialogs}
         <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />
       </>
@@ -241,7 +274,7 @@ export function App() {
             <nav className="tabs">
               {TABS.map((tab) => (
                 <button key={tab.id} className={view === tab.id ? 'active' : ''} onClick={() => setView(tab.id)}>
-                  {tab.label}
+                  {t(tab.label)}
                   {tab.id === 'changes' && changeCount > 0 && <span className="badge">{changeCount}</span>}
                 </button>
               ))}

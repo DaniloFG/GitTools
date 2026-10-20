@@ -4,7 +4,8 @@ import type { HistoryScope } from '../App'
 import { useActions } from '../actions'
 import { useApp } from '../context'
 import { endDrag, startDrag } from '../dnd'
-import { fullDate, plural, relativeDate, shortSha } from '../format'
+import { fullDate, relativeDate, shortSha } from '../format'
+import { t } from '../i18n'
 import { computeGraph, laneColor, type GraphRow } from '../graph'
 import { useDrop } from '../useDrop'
 
@@ -66,21 +67,26 @@ export function CommitList({ scope, onScope, selected, onSelect }: Props) {
     const head = actions.head
     showMenu(e, [
       ...(head
-        ? [{ label: `Cherry-pick ${shas.length > 1 ? plural(shas.length, 'commit', 'commits') : 'deste commit'} em ${head}…`, onClick: () => actions.cherryPickCommits(head, shas) }]
+        ? [
+            {
+              label: t('history.menu.cherryPick', { count: shas.length, target: head }),
+              onClick: () => actions.cherryPickCommits(head, shas, shas.length === 1 ? commit.subject : undefined)
+            }
+          ]
         : []),
-      { label: 'Abrir no Cherry-pick Studio…', onClick: () => openStudio({ target: head ?? undefined, commits: shas, mode: 'commits' }) },
+      { label: t('history.menu.openStudio'), onClick: () => openStudio({ target: head ?? undefined, commits: shas, mode: 'commits' }) },
       ...(shas.length === 2
-        ? [{ label: 'Comparar estes 2 commits', onClick: () => openCompare({ from: shas[1], to: shas[0] }) }]
-        : [{ label: `Comparar com ${head ?? 'HEAD'}`, onClick: () => openCompare({ from: head ?? 'HEAD', to: commit.sha }) }]),
-      ...(head ? [{ label: 'Rebase interativo a partir daqui (reordenar, juntar, editar)…', onClick: () => openRebase(commit.sha) }] : []),
+        ? [{ label: t('history.menu.compareTwo'), onClick: () => openCompare({ from: shas[1], to: shas[0] }) }]
+        : [{ label: t('common.compareWith', { ref: head ?? 'HEAD' }), onClick: () => openCompare({ from: head ?? 'HEAD', to: commit.sha }) }]),
+      ...(head ? [{ label: t('history.menu.rebase'), onClick: () => openRebase(commit.sha) }] : []),
       'separator',
-      { label: 'Nova branch a partir daqui…', onClick: () => actions.createBranch(commit.sha) },
-      { label: 'Checkout deste commit (HEAD destacado)', onClick: () => actions.checkout(commit.sha) },
+      { label: t('history.menu.newBranch'), onClick: () => actions.createBranch(commit.sha) },
+      { label: t('history.menu.checkout'), onClick: () => actions.checkout(commit.sha) },
       'separator',
-      { label: 'Reverter commit…', onClick: () => actions.revert(commit) },
-      { label: `Mover ${head ?? 'HEAD'} para cá (reset)…`, onClick: () => actions.reset(commit) },
+      { label: t('history.menu.revert'), onClick: () => actions.revert(commit) },
+      { label: t('history.menu.reset', { branch: head ?? 'HEAD' }), onClick: () => actions.reset(commit) },
       'separator',
-      { label: 'Copiar SHA', onClick: () => navigator.clipboard.writeText(commit.sha) }
+      { label: t('history.menu.copySha'), onClick: () => navigator.clipboard.writeText(commit.sha) }
     ])
   }
 
@@ -94,18 +100,18 @@ export function CommitList({ scope, onScope, selected, onSelect }: Props) {
             onScope(v === 'all' ? { kind: 'all' } : v === 'head' ? { kind: 'head' } : { kind: 'ref', ref: v.slice(4) })
           }}
         >
-          <option value="all">Todas as branches</option>
-          <option value="head">Branch atual</option>
-          {scope.kind === 'ref' && <option value={`ref:${scope.ref}`}>Branch: {scope.ref}</option>}
+          <option value="all">{t('history.scope.all')}</option>
+          <option value="head">{t('history.scope.head')}</option>
+          {scope.kind === 'ref' && <option value={`ref:${scope.ref}`}>{t('history.scope.ref', { ref: scope.ref })}</option>}
         </select>
         <span className="muted">
-          {plural(commits.length, 'commit', 'commits')}
-          {selected.length > 1 && ` · ${selected.length} selecionados`}
+          {t('history.count', { count: commits.length })}
+          {selected.length > 1 && ` · ${t('history.selected', { count: selected.length })}`}
         </span>
-        <span className="muted hint">Ctrl/Shift+clique para selecionar vários · arraste para uma branch</span>
+        <span className="muted hint">{t('history.hint')}</span>
       </div>
       <div className="list-body" tabIndex={0} onKeyDown={onKeyDown}>
-        {commits.length === 0 && <p className="empty">Nenhum commit ainda.</p>}
+        {commits.length === 0 && <p className="empty">{t('history.empty')}</p>}
         {commits.map((commit, i) => (
           <div
             key={commit.sha}
@@ -117,8 +123,8 @@ export function CommitList({ scope, onScope, selected, onSelect }: Props) {
               const shas = dragShas(commit)
               startDrag(
                 e,
-                { type: 'commits', shas, label: shas.length > 1 ? plural(shas.length, 'commit', 'commits') : `o commit "${commit.subject}"` },
-                shas.length > 1 ? `🍒 ${shas.length} commits` : `🍒 ${shortSha(commit.sha)} ${commit.subject}`
+                { type: 'commits', shas, subject: shas.length === 1 ? commit.subject : undefined },
+                shas.length > 1 ? `🍒 ${t('history.count', { count: shas.length })}` : `🍒 ${shortSha(commit.sha)} ${commit.subject}`
               )
             }}
             onDragEnd={endDrag}
@@ -208,7 +214,7 @@ function BranchBadge({ name, current = false }: { name: string; current?: boolea
         startDrag(e, { type: 'branch', name, remote }, `⎇ ${name}`)
       }}
       onDragEnd={endDrag}
-      title={current ? 'Branch atual' : remote ? 'Branch remota' : 'Branch local — arraste ou solte itens aqui'}
+      title={current ? t('toolbar.currentBranch') : remote ? t('history.badge.remote') : t('history.badge.local')}
       {...drop.props}
     >
       {current ? '● ' : ''}

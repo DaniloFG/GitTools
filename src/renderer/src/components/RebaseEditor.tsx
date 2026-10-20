@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { RebaseAction, RebasePlan } from '../../../shared/types'
 import { useApp } from '../context'
-import { errorMessage, plural, relativeDate, shortSha } from '../format'
+import { errorMessage, relativeDate, shortSha } from '../format'
+import { t, type MessageKey } from '../i18n'
 import { git } from '../git'
 import { Modal } from './Modal'
 
@@ -14,12 +15,12 @@ interface Row {
   message: string
 }
 
-const ACTIONS: { id: RebaseAction; label: string; help: string }[] = [
-  { id: 'pick', label: 'Manter', help: 'Mantém o commit como está.' },
-  { id: 'reword', label: 'Editar mensagem', help: 'Mantém as alterações e troca a mensagem.' },
-  { id: 'squash', label: 'Juntar ao anterior', help: 'Junta ao commit de cima, combinando as mensagens (ou usando a que você escrever).' },
-  { id: 'fixup', label: 'Juntar (descartar mensagem)', help: 'Junta ao commit de cima e descarta a mensagem deste.' },
-  { id: 'drop', label: 'Remover', help: 'Remove o commit do histórico.' }
+const ACTIONS: { id: RebaseAction; label: MessageKey; help: MessageKey }[] = [
+  { id: 'pick', label: 'rebase.actions.pick', help: 'rebase.actions.pickHelp' },
+  { id: 'reword', label: 'rebase.actions.reword', help: 'rebase.actions.rewordHelp' },
+  { id: 'squash', label: 'rebase.actions.squash', help: 'rebase.actions.squashHelp' },
+  { id: 'fixup', label: 'rebase.actions.fixup', help: 'rebase.actions.fixupHelp' },
+  { id: 'drop', label: 'rebase.actions.drop', help: 'rebase.actions.dropHelp' }
 ]
 
 /** Rebase interativo visual: arraste para reordenar e escolha o que fazer com cada commit. */
@@ -61,7 +62,7 @@ export function RebaseEditor({ fromSha, onClose }: { fromSha: string; onClose():
 
   const apply = async () => {
     if (!plan) return
-    const result = await run('Reescrevendo histórico', () =>
+    const result = await run(t('busy.rewriting'), () =>
       git.interactiveRebase(
         plan.base,
         rows.map((r) => ({
@@ -76,37 +77,36 @@ export function RebaseEditor({ fromSha, onClose }: { fromSha: string; onClose():
 
   return (
     <Modal
-      title={`✎ Rebase interativo — ${data.status.branch ?? ''}`}
+      title={`✎ ${t('rebase.title', { branch: data.status.branch ?? '' })}`}
       onClose={onClose}
       size="large"
       footer={
         <>
           <span className="footer-summary">
             {invalid
-              ? 'O primeiro commit mantido não pode ser juntado a um anterior.'
+              ? t('core.firstCannotSquash')
               : plan
-                ? `${plural(rows.length, 'commit', 'commits')} → ${plural(resulting, 'commit', 'commits')} depois do rebase`
+                ? t('rebase.summary', { before: t('history.count', { count: rows.length }), after: t('history.count', { count: resulting }) })
                 : ''}
           </span>
-          <button onClick={onClose}>Cancelar</button>
+          <button onClick={onClose}>{t('common.cancel')}</button>
           <button className="primary" disabled={!plan || !changed || !!invalid} onClick={apply}>
-            Reescrever histórico
+            {t('rebase.apply')}
           </button>
         </>
       }
     >
       {!plan ? (
         <p className="empty">
-          <span className="spinner" /> Carregando commits…
+          <span className="spinner" /> {t('rebase.loading')}
         </p>
       ) : (
         <>
           <p className="muted">
-            Arraste as linhas para mudar a ordem (de cima = mais antigo, para baixo = mais novo). Os commits a partir de{' '}
-            <code>{plan.base ? shortSha(plan.base) : 'o início'}</code> serão recriados.
-            {data.branches.some((b) => b.current && b.upstream) && ' Se a branch já foi enviada (push), será preciso forçar o próximo push.'}
+            {t('rebase.help', { base: plan.base ? shortSha(plan.base) : t('rebase.theBeginning') })}
+            {data.branches.some((b) => b.current && b.upstream) && ` ${t('rebase.forcePushNote')}`}
           </p>
-          {plan.hasMerges && <p className="warning-text">Atenção: há commits de merge neste trecho; eles não aparecem na lista e o histórico ficará linear.</p>}
+          {plan.hasMerges && <p className="warning-text">{t('rebase.mergesWarning')}</p>}
           <ol className="rebase-list">
             {rows.map((row, i) => (
               <li
@@ -134,14 +134,14 @@ export function RebaseEditor({ fromSha, onClose }: { fromSha: string; onClose():
                   setOverIndex(null)
                 }}
               >
-                <span className="drag-handle" title="Arraste para reordenar">
+                <span className="drag-handle" title={t('rebase.dragToReorder')}>
                   ⠿
                 </span>
                 <span className="rebase-move">
-                  <button className="icon-button" disabled={i === 0} onClick={() => move(i, i - 1)} title="Subir">
+                  <button className="icon-button" disabled={i === 0} onClick={() => move(i, i - 1)} title={t('rebase.moveUp')}>
                     ▲
                   </button>
-                  <button className="icon-button" disabled={i === rows.length - 1} onClick={() => move(i, i + 1)} title="Descer">
+                  <button className="icon-button" disabled={i === rows.length - 1} onClick={() => move(i, i + 1)} title={t('rebase.moveDown')}>
                     ▼
                   </button>
                 </span>
@@ -151,22 +151,22 @@ export function RebaseEditor({ fromSha, onClose }: { fromSha: string; onClose():
                     const action = e.target.value as RebaseAction
                     update(i, { action, message: action === 'reword' && !row.message ? row.subject : row.message })
                   }}
-                  title={ACTIONS.find((a) => a.id === row.action)!.help}
+                  title={t(ACTIONS.find((a) => a.id === row.action)!.help)}
                 >
                   {ACTIONS.map((a) => (
                     <option key={a.id} value={a.id}>
-                      {a.label}
+                      {t(a.label)}
                     </option>
                   ))}
                 </select>
                 <code>{shortSha(row.sha)}</code>
                 <div className="rebase-text">
-                  {(row.action === 'squash' || row.action === 'fixup') && <span className="muted">↳ junta ao de cima · </span>}
+                  {(row.action === 'squash' || row.action === 'fixup') && <span className="muted">↳ {t('rebase.joinsAbove')} · </span>}
                   {row.action === 'reword' || row.action === 'squash' ? (
                     <textarea
                       rows={row.action === 'reword' ? 2 : 1}
                       value={row.message}
-                      placeholder={row.action === 'squash' ? `${row.subject} — deixe vazio para combinar as mensagens` : row.subject}
+                      placeholder={row.action === 'squash' ? `${row.subject} — ${t('rebase.squashPlaceholder')}` : row.subject}
                       onChange={(e) => update(i, { message: e.target.value })}
                     />
                   ) : (

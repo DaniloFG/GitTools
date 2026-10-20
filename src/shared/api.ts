@@ -1,3 +1,4 @@
+import type { Settings } from './settings'
 import type {
   BlameResult,
   BranchCommit,
@@ -169,17 +170,18 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'interactiveRebase'
 ]
 
-export type ThemeSetting = 'system' | 'dark' | 'light'
-
-export interface Settings {
-  theme: ThemeSetting
-  /** Escala da interface (1 = 100%). */
-  zoom: number
-  /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
-  shortcuts: Record<string, string>
+export interface AppInfo {
+  version: string
+  electron: string
+  chrome: string
+  node: string
+  platform: string
+  /** Versão do git encontrado no PATH, ou null se não foi encontrado. */
+  git: string | null
+  settingsFile: string
+  /** Idiomas preferidos do sistema operacional, do mais para o menos preferido. */
+  systemLocales: string[]
 }
-
-export const DEFAULT_SETTINGS: Settings = { theme: 'system', zoom: 1, shortcuts: {} }
 
 export interface RecentRepo {
   path: string
@@ -197,6 +199,7 @@ export interface GitToolsBridge {
   openFile(relativePath: string): Promise<void>
   getSettings(): Promise<Settings>
   saveSettings(settings: Settings): Promise<void>
+  appInfo(): Promise<AppInfo>
   /** Aplica a escala da interface imediatamente. */
   setZoom(factor: number): void
   invoke<M extends RepoMethod>(method: M, ...args: Parameters<RepoApi[M]>): ReturnType<RepoApi[M]>

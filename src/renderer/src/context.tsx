@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { Settings } from '../../shared/api'
+import type { Settings } from '../../shared/settings'
 import type { BranchInfo, CommitInfo, OperationState, RepoInfo, RepoStatus, StashInfo, TagInfo } from '../../shared/types'
 import type { ChoiceRequest, ChoiceResult, ConfirmRequest, PromptRequest } from './components/Dialogs'
 import type { MenuItem } from './components/ContextMenu'
@@ -52,7 +52,8 @@ export interface AppContextValue {
   /** Abre o rebase interativo a partir de um commit (inclusive). */
   openRebase(sha: string): void
   settings: Settings
-  openSettings(): void
+  /** Abre a Central de Configurações, opcionalmente numa seção (ex.: "shortcuts"). */
+  openSettings(section?: string): void
   openShortcuts(): void
 }
 

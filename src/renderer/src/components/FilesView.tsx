@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { BlameResult, FileDiff, FileHistoryEntry, LineKey } from '../../../shared/types'
 import { currentBranch, useApp } from '../context'
-import { errorMessage, fullDate, plural, relativeDate, shortSha } from '../format'
+import { useActions } from '../actions'
+import { errorMessage, fullDate, relativeDate, shortSha } from '../format'
+import { t } from '../i18n'
 import { git } from '../git'
 import { DiffView } from './DiffView'
 
@@ -30,7 +32,7 @@ export function FilesView({ path, onPath }: { path: string | null; onPath(path: 
   return (
     <div className="split">
       <div className="files-list">
-        <input className="files-filter" placeholder={`Filtrar ${files.length} arquivos…`} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
+        <input className="files-filter" placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
         <ul className="file-list">
           {filtered.slice(0, MAX_LISTED).map((f) => (
             <li key={f} className={`file-item ${f === path ? 'active' : ''}`} onClick={() => onPath(f)} title={f}>
@@ -38,24 +40,24 @@ export function FilesView({ path, onPath }: { path: string | null; onPath(path: 
             </li>
           ))}
         </ul>
-        {filtered.length > MAX_LISTED && <p className="muted small">Mostrando {MAX_LISTED} de {filtered.length}. Refine o filtro.</p>}
+        {filtered.length > MAX_LISTED && <p className="muted small">{t('files.truncated', { shown: MAX_LISTED, count: filtered.length })}</p>}
       </div>
       <section className="details file-details">
         {!path ? (
-          <p className="empty">Escolha um arquivo para ver quem alterou cada linha (blame) e o histórico dele.</p>
+          <p className="empty">{t('files.empty')}</p>
         ) : (
           <>
             <div className="file-header">
               <code className="diff-path">{path}</code>
               <span className="toolbar-spacer" />
-              <button onClick={() => window.gittools.openFile(path)}>Abrir no editor</button>
+              <button onClick={() => window.gittools.openFile(path)}>{t('common.openInEditor')}</button>
             </div>
             <nav className="tabs">
               <button className={tab === 'blame' ? 'active' : ''} onClick={() => setTab('blame')}>
-                Blame{blameRev ? ` em ${shortSha(blameRev)}` : ''}
+                {blameRev ? t('files.blameAt', { sha: shortSha(blameRev) }) : t('files.blame')}
               </button>
               <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
-                Histórico do arquivo
+                {t('files.history')}
               </button>
             </nav>
             {tab === 'blame' ? (
@@ -114,9 +116,9 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
     <>
       {rev && (
         <p className="muted small">
-          Mostrando o arquivo como estava em {shortSha(rev)}.{' '}
+          {t('files.showingAt', { sha: shortSha(rev) })}{' '}
           <button className="link" onClick={onClearRev}>
-            ver versão atual
+            {t('files.showCurrent')}
           </button>
         </p>
       )}
@@ -133,13 +135,13 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
               <tr key={line.line} className={first ? 'blame-first' : ''}>
                 <td
                   className="blame-gutter"
-                  style={{ borderLeftColor: `color-mix(in srgb, var(--accent) ${Math.round(15 + h * 85)}%, transparent)` }}
-                  title={uncommitted ? 'Alteração ainda não commitada' : `${commit.summary}\n${commit.author} · ${fullDate(commit.date)}\n${commit.sha}\n\nClique para abrir o commit`}
+                  style={{ borderInlineStartColor: `color-mix(in srgb, var(--accent) ${Math.round(15 + h * 85)}%, transparent)` }}
+                  title={uncommitted ? t('files.uncommittedHelp') : `${commit.summary}\n${commit.author} · ${fullDate(commit.date)}\n${commit.sha}\n\n${t('files.clickToOpen')}`}
                   onClick={() => !uncommitted && selectCommit(line.sha)}
                 >
                   {first &&
                     (uncommitted ? (
-                      <span className="muted">não commitado</span>
+                      <span className="muted">{t('files.uncommitted')}</span>
                     ) : (
                       <div className="blame-info">
                         <code>{shortSha(line.sha)}</code> <span className="blame-author">{commit.author}</span>{' '}
@@ -160,7 +162,8 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
 }
 
 function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string): void }) {
-  const { data, run, confirm, choose, toast, selectCommit } = useApp()
+  const { data, run, confirm, toast, selectCommit } = useApp()
+  const actions = useActions()
   const head = currentBranch(data)
   const [entries, setEntries] = useState<FileHistoryEntry[] | null>(null)
   const [active, setActive] = useState<FileHistoryEntry | null>(null)
@@ -189,30 +192,28 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
   }, [active, toast])
 
   if (!entries) return <p className="empty"><span className="spinner" /></p>
-  if (entries.length === 0) return <p className="empty">Este arquivo ainda não tem commits.</p>
+  if (entries.length === 0) return <p className="empty">{t('files.noCommits')}</p>
 
   const restore = async (entry: FileHistoryEntry) => {
     const ok = await confirm({
-      title: 'Restaurar versão',
-      message: `O arquivo ${entry.path} voltará a ficar como no commit ${shortSha(entry.sha)} ("${entry.subject}").\nA alteração fica no stage para você revisar e fazer commit.`,
-      confirmLabel: 'Restaurar'
+      title: t('files.restoreTitle'),
+      message: t('files.restoreMessage', { path: entry.path, sha: shortSha(entry.sha), subject: entry.subject }),
+      confirmLabel: t('files.restore')
     })
-    if (ok) await run('Restaurando', () => git.restoreFile(entry.sha, entry.path))
+    if (ok) await run(t('busy.restoring'), () => git.restoreFile(entry.sha, entry.path))
   }
 
   const applyLines = async () => {
     if (!head || !active || !diff) return
-    const choice = await choose({
-      title: `Aplicar ${plural(selection.size, 'linha', 'linhas')} em ${head}`,
-      message: `De ${diff.path} no commit ${shortSha(active.sha)}`,
-      options: [
-        { id: 'stage', label: 'Aplicar e deixar no stage' },
-        { id: 'commit', label: 'Aplicar e criar commit' }
-      ]
-    })
-    if (!choice) return
-    const message = choice.id === 'commit' ? `${active.subject}\n\n(linhas de ${diff.path} trazidas do commit ${active.sha})` : undefined
-    await run('Aplicando linhas', () => git.cherryPickLines(head, { kind: 'commit', sha: active.sha }, diff.path, [...selection], { commitMessage: message }))
+    const done = await actions.applyLines(
+      head,
+      { kind: 'commit', sha: active.sha },
+      diff.path,
+      [...selection],
+      t('details.linesContext', { path: diff.path, sha: shortSha(active.sha), subject: active.subject }),
+      `${active.subject}\n\n${t('messages.linesFrom', { path: diff.path, sha: active.sha })}`
+    )
+    if (done) setSelection(new Set())
   }
 
   return (
@@ -222,7 +223,7 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
           <li key={e.sha} className={active?.sha === e.sha ? 'active' : ''} onClick={() => setActive(e)}>
             <code>{shortSha(e.sha)}</code>
             <span className="commit-subject">{e.subject}</span>
-            {e.path !== path && <span className="tag" title="Nome do arquivo neste commit">{e.path}</span>}
+            {e.path !== path && <span className="tag" title={t('files.nameAtCommit')}>{e.path}</span>}
             <small className="muted">
               {e.author} · {relativeDate(e.date)}
             </small>
@@ -232,12 +233,12 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
       {active && (
         <div className="diff-panel">
           <div className="selection-bar">
-            <button onClick={() => selectCommit(active.sha)}>Ver commit</button>
-            <button onClick={() => onBlameAt(active.sha)}>Blame nesta versão</button>
-            <button onClick={() => restore(active)}>Restaurar esta versão</button>
+            <button onClick={() => selectCommit(active.sha)}>{t('files.viewCommit')}</button>
+            <button onClick={() => onBlameAt(active.sha)}>{t('files.blameThisVersion')}</button>
+            <button onClick={() => restore(active)}>{t('files.restoreThisVersion')}</button>
             {head && (
               <button className="primary" disabled={!selection.size} onClick={applyLines}>
-                Aplicar {selection.size ? plural(selection.size, 'linha', 'linhas') : 'linhas'} em {head}
+                {t('common.applyLinesInto', { count: selection.size, target: head })}
               </button>
             )}
           </div>

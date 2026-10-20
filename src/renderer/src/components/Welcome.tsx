@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { RecentRepo } from '../../../shared/api'
 import { relativeDate } from '../format'
+import { t } from '../i18n'
 
 interface Props {
   loading: boolean
@@ -20,27 +21,27 @@ export function Welcome({ loading, onOpen, onSettings }: Props) {
         <div className="logo">
           <span className="logo-mark">⑂</span> GitTools
         </div>
-        <p className="muted">Git sem complicação: arraste e clique para fazer merge, rebase e cherry-pick de branches, commits, arquivos e até linhas.</p>
+        <p className="muted">{t('welcome.tagline')}</p>
         {loading ? (
           <p>
-            <span className="spinner" /> Carregando repositório…
+            <span className="spinner" /> {t('welcome.loading')}
           </p>
         ) : (
           <>
             <div className="welcome-actions">
               <button className="primary large" onClick={() => onOpen()}>
-                Abrir repositório…
+                {t('toolbar.openRepository')}
               </button>
               <button className="large" onClick={() => onOpen(undefined, true)}>
-                Criar repositório…
+                {t('toolbar.createRepository')}
               </button>
-              <button className="large icon-button" onClick={onSettings} title="Configurações">
-                ⚙
+              <button className="large" onClick={onSettings} title={t('toolbar.settings')}>
+                ⚙ {t('toolbar.settings')}
               </button>
             </div>
             {recent.length > 0 && (
               <>
-                <h3>Recentes</h3>
+                <h3>{t('welcome.recent')}</h3>
                 <ul className="recent-list">
                   {recent.map((r) => (
                     <li key={r.path}>

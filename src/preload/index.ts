@@ -9,6 +9,7 @@ const bridge: GitToolsBridge = {
   openFile: (relativePath) => ipcRenderer.invoke('app:openFile', relativePath),
   getSettings: () => ipcRenderer.invoke('app:getSettings'),
   saveSettings: (settings) => ipcRenderer.invoke('app:saveSettings', settings),
+  appInfo: () => ipcRenderer.invoke('app:info'),
   setZoom: (factor) => webFrame.setZoomFactor(Math.min(2, Math.max(0.5, factor))),
   invoke: ((method: string, ...args: unknown[]) => ipcRenderer.invoke('repo:invoke', method, args)) as GitToolsBridge['invoke'],
   onRepositoryChanged: (listener) => {

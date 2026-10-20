@@ -4,10 +4,14 @@ import { buildResult, parseConflicts, resolveChunk, type ChunkResolution, type M
 import { useApp } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
+import { t, textDirection } from '../i18n'
 import { Modal } from './Modal'
 
 type Conflict = Extract<MergeChunk, { kind: 'conflict' }>
 const CONTEXT = 3
+
+/** Setas apontando para a coluna da versão atual / da que entra (invertidas em idiomas RTL). */
+const arrows = () => (textDirection() === 'rtl' ? { ours: '→', theirs: '←' } : { ours: '←', theirs: '→' })
 
 /**
  * Editor de conflitos em três colunas: versão atual (HEAD) × resultado × versão que entra.
@@ -38,7 +42,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   }
 
   const save = async () => {
-    const done = await run('Salvando resolução', async () => {
+    const done = await run(t('busy.savingResolution'), async () => {
       await git.saveConflictResolution(path, result)
       return true
     })
@@ -46,7 +50,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   }
 
   const resolveWhole = async (side: 'ours' | 'theirs') => {
-    const done = await run('Resolvendo', async () => {
+    const done = await run(t('busy.resolving'), async () => {
       await git.resolveConflict(path, side)
       return true
     })
@@ -55,9 +59,9 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
 
   if (!details) {
     return (
-      <Modal title={`Conflito em ${path}`} onClose={onClose} size="medium">
+      <Modal title={t('conflict.titleShort', { path })} onClose={onClose} size="medium">
         <p className="empty">
-          <span className="spinner" /> Carregando versões…
+          <span className="spinner" /> {t('conflict.loading')}
         </p>
       </Modal>
     )
@@ -66,25 +70,25 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   // Conflitos sem marcadores no texto: binário, ou um lado removeu o arquivo.
   if (details.binary || !parsed || details.ours === null || details.theirs === null) {
     const reason = details.binary
-      ? 'É um arquivo binário: escolha qual versão manter.'
+      ? t('conflict.binary')
       : details.ours === null
-        ? 'A branch atual removeu este arquivo, mas a versão que entra o alterou.'
+        ? t('conflict.deletedByUs')
         : details.theirs === null
-          ? 'A versão que entra removeu este arquivo, mas a branch atual o alterou.'
-          : 'Não foi possível ler o arquivo.'
+          ? t('conflict.deletedByThem')
+          : t('conflict.unreadable')
     return (
-      <Modal title={`Conflito em ${path}`} onClose={onClose} size="medium">
+      <Modal title={t('conflict.titleShort', { path })} onClose={onClose} size="medium">
         <p>{reason}</p>
         <div className="choice-list">
           <button className="choice" onClick={() => resolveWhole('ours')}>
-            <strong>{details.ours === null ? 'Remover o arquivo' : 'Manter a versão atual (HEAD)'}</strong>
+            <strong>{details.ours === null ? t('conflict.deleteFile') : t('conflict.keepOurs')}</strong>
           </button>
           <button className="choice" onClick={() => resolveWhole('theirs')}>
-            <strong>{details.theirs === null ? 'Remover o arquivo' : 'Manter a versão que entra'}</strong>
+            <strong>{details.theirs === null ? t('conflict.deleteFile') : t('conflict.keepTheirs')}</strong>
           </button>
           <button className="choice" onClick={() => window.gittools.openFile(path)}>
-            <strong>Abrir no editor</strong>
-            <span>Depois de editar, use “✓ Resolvido” no painel de conflitos.</span>
+            <strong>{t('common.openInEditor')}</strong>
+            <span>{t('conflict.editorHelp')}</span>
           </button>
         </div>
       </Modal>
@@ -94,36 +98,40 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   let conflictIndex = -1
   return (
     <Modal
-      title={`Resolver conflito — ${path}`}
+      title={t('conflict.title', { path })}
       onClose={onClose}
       size="large"
       footer={
         <>
           <span className="footer-summary">
             {conflicts.length === 0
-              ? 'Não há marcadores de conflito no arquivo.'
-              : `${resolvedCount} de ${conflicts.length} bloco(s) resolvido(s)`}
+              ? t('conflict.noMarkers')
+              : t('conflict.progress', { resolved: resolvedCount, count: conflicts.length })}
           </span>
-          <button onClick={() => window.gittools.openFile(path)}>Abrir no editor</button>
-          <button onClick={onClose}>Cancelar</button>
+          <button onClick={() => window.gittools.openFile(path)}>{t('common.openInEditor')}</button>
+          <button onClick={onClose}>{t('common.cancel')}</button>
           <button className="primary" disabled={resolvedCount < conflicts.length} onClick={save}>
-            Salvar e marcar como resolvido
+            {t('conflict.save')}
           </button>
         </>
       }
     >
       <div className="merge-toolbar">
-        <span className="muted">Resolver todos:</span>
-        <button onClick={() => setResolutions(conflicts.map(() => ({ kind: 'ours' })))}>← Usar a atual</button>
-        <button onClick={() => setResolutions(conflicts.map(() => ({ kind: 'theirs' })))}>Usar a que entra →</button>
-        <button onClick={() => setResolutions(conflicts.map(() => ({ kind: 'ours-theirs' })))}>Manter as duas</button>
+        <span className="muted">{t('conflict.resolveAll')}</span>
+        <button onClick={() => setResolutions(conflicts.map(() => ({ kind: 'ours' })))}>
+          {arrows().ours} {t('conflict.useOurs')}
+        </button>
+        <button onClick={() => setResolutions(conflicts.map(() => ({ kind: 'theirs' })))}>
+          {t('conflict.useTheirs')} {arrows().theirs}
+        </button>
+        <button onClick={() => setResolutions(conflicts.map(() => ({ kind: 'ours-theirs' })))}>{t('conflict.keepBoth')}</button>
         <button className="link" onClick={() => setResolutions([])}>
-          desfazer escolhas
+          {t('conflict.undoChoices')}
         </button>
         <span className="toolbar-spacer" />
         <label className="checkbox">
           <input type="checkbox" checked={showFinal} onChange={(e) => setShowFinal(e.target.checked)} />
-          Ver arquivo final
+          {t('conflict.showFinal')}
         </label>
       </div>
 
@@ -131,9 +139,9 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
         <pre className="merge-final">{result}</pre>
       ) : (
         <div className="merge-grid">
-          <div className="merge-head ours">Atual ({conflicts[0]?.oursLabel ?? 'HEAD'})</div>
-          <div className="merge-head result">Resultado</div>
-          <div className="merge-head theirs">Que entra ({conflicts[0]?.theirsLabel ?? ''})</div>
+          <div className="merge-head ours">{t('conflict.oursColumn', { label: conflicts[0]?.oursLabel ?? 'HEAD' })}</div>
+          <div className="merge-head result">{t('conflict.resultColumn')}</div>
+          <div className="merge-head theirs">{t('conflict.theirsColumn', { label: conflicts[0]?.theirsLabel ?? '' })}</div>
           {parsed.chunks.map((chunk, c) => {
             if (chunk.kind === 'common') {
               return <CommonChunk key={c} lines={chunk.lines} first={c === 0} last={c === parsed.chunks.length - 1} />
@@ -166,7 +174,7 @@ function CommonChunk({ lines, first, last }: { lines: string[]; first: boolean; 
     <>
       {head.length > 0 && <pre className="merge-common">{head.join('\n')}</pre>}
       <button className="merge-fold" onClick={() => setExpanded(true)}>
-        ⋯ {hidden} linha(s) iguais nas duas versões — clique para mostrar
+        ⋯ {t('conflict.hiddenLines', { count: hidden })}
       </button>
       {tail.length > 0 && <pre className="merge-common">{tail.join('\n')}</pre>}
     </>
@@ -188,31 +196,31 @@ function ConflictBlock({ index, total, chunk, resolution, onResolve }: BlockProp
     <>
       <div className="merge-block-bar">
         <strong>
-          Conflito {index + 1} de {total}
+          {t('conflict.blockOf', { index: index + 1, total })}
         </strong>
         <button className={is('ours') ? 'active' : ''} onClick={() => onResolve({ kind: 'ours' })}>
-          ← Usar a atual
+          {arrows().ours} {t('conflict.useOurs')}
         </button>
         <button className={is('ours-theirs') ? 'active' : ''} onClick={() => onResolve({ kind: 'ours-theirs' })}>
-          Ambas (atual primeiro)
+          {t('conflict.bothOursFirst')}
         </button>
         <button className={is('theirs-ours') ? 'active' : ''} onClick={() => onResolve({ kind: 'theirs-ours' })}>
-          Ambas (que entra primeiro)
+          {t('conflict.bothTheirsFirst')}
         </button>
         <button className={is('theirs') ? 'active' : ''} onClick={() => onResolve({ kind: 'theirs' })}>
-          Usar a que entra →
+          {t('conflict.useTheirs')} {arrows().theirs}
         </button>
         {chunk.base && (
-          <button className={is('base') ? 'active' : ''} onClick={() => onResolve({ kind: 'base' })} title="Versão do ancestral comum">
-            Original
+          <button className={is('base') ? 'active' : ''} onClick={() => onResolve({ kind: 'base' })} title={t('conflict.baseHelp')}>
+            {t('conflict.base')}
           </button>
         )}
         <button className={is('custom') && resolution?.kind === 'custom' && resolution.text === '' ? 'active' : ''} onClick={() => onResolve({ kind: 'custom', text: '' })}>
-          Nenhuma
+          {t('conflict.neither')}
         </button>
         {resolution && (
           <button className="link" onClick={() => onResolve(undefined)}>
-            limpar
+            {t('conflict.clear')}
           </button>
         )}
       </div>
@@ -220,7 +228,7 @@ function ConflictBlock({ index, total, chunk, resolution, onResolve }: BlockProp
       <textarea
         className={`merge-result ${resolution ? 'resolved' : 'pending'}`}
         value={lines ? lines.join('\n') : ''}
-        placeholder="Escolha uma das versões acima ou digite o resultado aqui"
+        placeholder={t('conflict.resultPlaceholder')}
         rows={Math.max(3, chunk.ours.length, chunk.theirs.length, lines?.length ?? 0)}
         spellCheck={false}
         onChange={(e) => onResolve({ kind: 'custom', text: e.target.value })}

@@ -31,6 +31,7 @@ import type {
   TagInfo
 } from '../shared/types'
 import { buildPartialPatch, parseDiff, quotePath } from './diff'
+import { t } from '../shared/i18n'
 import { GitError, runGit, type RunOptions } from './exec'
 
 const DIFF_ARGS = [
@@ -47,8 +48,10 @@ const FS = '\x1f'
 const RS = '\x1e'
 const COMMIT_FORMAT = ['%H', '%P', '%an', '%ae', '%at', '%s', '%D'].join('%x1f') + '%x1e'
 
-function assertRef(ref: string, what = 'referência'): void {
-  if (!ref || ref.startsWith('-') || /[\s\0]/.test(ref)) throw new Error(`${what} inválida: "${ref}"`)
+type RefKind = 'ref' | 'commit' | 'branch' | 'branchName'
+
+function assertRef(ref: string, kind: RefKind = 'ref'): void {
+  if (!ref || ref.startsWith('-') || /[\s\0]/.test(ref)) throw new Error(t(`core.invalidRef.${kind}`, { ref }))
 }
 
 function parseCommitFields(fields: string[]): CommitInfo {
@@ -467,7 +470,7 @@ export class GitRepository implements RepoApi {
   private async findFile(source: DiffSource, path: string): Promise<FileDiff> {
     const files = await this.diff({ ...source, path })
     const file = files.find((f) => f.path === path || f.oldPath === path)
-    if (!file) throw new Error(`Não há alterações em "${path}".`)
+    if (!file) throw new Error(t('core.noChangesIn', { path }))
     return file
   }
 
@@ -475,7 +478,7 @@ export class GitRepository implements RepoApi {
     const file = await this.findFile(source, path)
     const reverse = action === 'unstage' || action === 'discard'
     const patch = buildPartialPatch(file, lines, reverse)
-    if (!patch) throw new Error('Nenhuma linha alterada foi selecionada.')
+    if (!patch) throw new Error(t('core.noLinesSelected'))
     const args = ['apply', '--whitespace=nowarn']
     if (action === 'stage' || action === 'unstage') args.push('--cached')
     if (reverse) args.push('-R')
@@ -487,12 +490,11 @@ export class GitRepository implements RepoApi {
       if (action === 'apply') return this.conflictResult(error)
       throw error
     }
-    const verb = { stage: 'adicionadas ao stage', unstage: 'removidas do stage', discard: 'descartadas', apply: 'aplicadas' }[action]
-    return { ok: true, message: `${lines.length} linha(s) ${verb}.`, conflicts: [] }
+    return { ok: true, message: t(`core.lines.${action}`, { count: lines.length }), conflicts: [] }
   }
 
   async commit(message: string, amend = false): Promise<void> {
-    if (!message.trim()) throw new Error('Escreva uma mensagem de commit.')
+    if (!message.trim()) throw new Error(t('core.commitMessageRequired'))
     await this.git(['commit', '-F', '-', ...(amend ? ['--amend'] : [])], { input: message })
   }
 
@@ -522,7 +524,7 @@ export class GitRepository implements RepoApi {
   }
 
   async createBranch(name: string, startPoint?: string, checkout = false): Promise<void> {
-    assertRef(name, 'nome de branch')
+    assertRef(name, 'branchName')
     if (startPoint) assertRef(startPoint)
     const start = startPoint ? [startPoint] : []
     if (checkout) await this.git(['checkout', '-b', name, ...start, '--'])
@@ -536,7 +538,7 @@ export class GitRepository implements RepoApi {
 
   async renameBranch(oldName: string, newName: string): Promise<void> {
     assertRef(oldName, 'branch')
-    assertRef(newName, 'nome de branch')
+    assertRef(newName, 'branchName')
     await this.git(['branch', '-m', oldName, newName])
   }
 
@@ -548,7 +550,7 @@ export class GitRepository implements RepoApi {
     const detail = error instanceof GitError ? error.message : String(error)
     return {
       ok: false,
-      message: `${prefix}${status.conflicted.length ? 'Há conflitos para resolver.' : 'A operação parou e precisa da sua decisão.'}\n${detail}`,
+      message: `${prefix}${status.conflicted.length ? t('core.conflictsToResolve') : t('core.operationStopped')}\n${detail}`,
       conflicts: status.conflicted.map((f) => f.path)
     }
   }
@@ -557,8 +559,8 @@ export class GitRepository implements RepoApi {
     assertRef(ref)
     if (target) await this.ensureOnBranch(target)
     try {
-      const { stdout } = await this.git(['merge', '--no-edit', ...(noFastForward ? ['--no-ff'] : []), ref])
-      return { ok: true, message: stdout.trim() || `Merge de ${ref} concluído.`, conflicts: [] }
+      await this.git(['merge', '--no-edit', ...(noFastForward ? ['--no-ff'] : []), ref])
+      return { ok: true, message: t('core.mergeDone', { ref }), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
     }
@@ -569,7 +571,7 @@ export class GitRepository implements RepoApi {
     assertRef(onto)
     try {
       await this.git(['rebase', onto, branch])
-      return { ok: true, message: `${branch} agora está sobre ${onto}.`, conflicts: [] }
+      return { ok: true, message: t('core.rebaseDone', { branch, onto }), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
     }
@@ -618,7 +620,7 @@ export class GitRepository implements RepoApi {
   }
 
   async cherryPickCommits(target: string, shas: string[], options: CherryPickOptions = {}): Promise<OperationResult> {
-    if (!shas.length) throw new Error('Selecione ao menos um commit.')
+    if (!shas.length) throw new Error(t('core.selectCommit'))
     const { ordered, parents } = await this.orderCommits(shas)
     await this.ensureOnBranch(target)
     const hasMerge = ordered.some((s) => (parents.get(s)?.length ?? 0) > 1)
@@ -628,7 +630,7 @@ export class GitRepository implements RepoApi {
     if (hasMerge) args.push('-m', '1')
     try {
       await this.git([...args, ...ordered])
-      return { ok: true, message: `${ordered.length} commit(s) aplicado(s) em ${target}.`, conflicts: [] }
+      return { ok: true, message: t('core.commitsApplied', { count: ordered.length, target }), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
     }
@@ -636,7 +638,7 @@ export class GitRepository implements RepoApi {
 
   async cherryPickBranch(source: string, target: string, options: CherryPickOptions = {}): Promise<OperationResult> {
     const commits = (await this.branchCommits(source, target)).filter((c) => !c.alreadyApplied)
-    if (!commits.length) return { ok: true, message: `Nada a aplicar: ${target} já contém tudo de ${source}.`, conflicts: [] }
+    if (!commits.length) return { ok: true, message: t('core.nothingToApply', { target, source }), conflicts: [] }
     return this.cherryPickCommits(
       target,
       commits.map((c) => c.sha),
@@ -648,7 +650,7 @@ export class GitRepository implements RepoApi {
     if (!options.commitMessage) return
     const status = await this.status()
     if (status.staged.length || status.conflicted.length) {
-      throw new Error('Já existem alterações no stage. Faça commit ou unstage delas antes de aplicar com commit automático.')
+      throw new Error(t('core.stagedChangesExist'))
     }
   }
 
@@ -659,8 +661,8 @@ export class GitRepository implements RepoApi {
     mode: FileApplyMode,
     options: PartialApplyOptions = {}
   ): Promise<OperationResult> {
-    if (!shas.length) throw new Error('Selecione ao menos um commit.')
-    if (!paths.length) throw new Error('Selecione ao menos um arquivo.')
+    if (!shas.length) throw new Error(t('core.selectCommit'))
+    if (!paths.length) throw new Error(t('core.selectFile'))
     const { ordered, parents } = await this.orderCommits(shas)
     await this.ensureOnBranch(target)
     await this.assertCanCommitAfter(options)
@@ -686,17 +688,17 @@ export class GitRepository implements RepoApi {
           const left = ordered.length - i - 1
           return this.conflictResult(
             error,
-            `Conflito ao aplicar ${sha.slice(0, 8)}${left ? ` (${left} commit(s) restantes não foram aplicados)` : ''}. `
+            `${t('core.conflictApplying', { sha: sha.slice(0, 8) })}${left ? ` ${t('core.commitsNotApplied', { count: left })}` : ''} `
           )
         }
       }
     }
 
     if (options.commitMessage) await this.commit(options.commitMessage)
-    const what = mode === 'version' ? 'Versão dos arquivos copiada' : 'Alterações dos arquivos aplicadas'
+    const key = mode === 'version' ? 'core.filesCopied' : 'core.filesApplied'
     return {
       ok: true,
-      message: `${what} em ${target}${options.commitMessage ? ' e commit criado' : ' (no stage, pronto para commit)'}.`,
+      message: `${t(key, { target })} ${options.commitMessage ? t('core.commitCreated') : t('core.leftStaged')}`,
       conflicts: []
     }
   }
@@ -708,7 +710,7 @@ export class GitRepository implements RepoApi {
     lines: LineKey[],
     options: PartialApplyOptions = {}
   ): Promise<OperationResult> {
-    if (source.kind !== 'commit' && source.kind !== 'range') throw new Error('A origem das linhas deve ser um commit ou intervalo.')
+    if (source.kind !== 'commit' && source.kind !== 'range') throw new Error(t('core.linesSourceInvalid'))
     await this.ensureOnBranch(target)
     await this.assertCanCommitAfter(options)
     const result = await this.applyLines(source, path, lines, 'apply')
@@ -716,7 +718,7 @@ export class GitRepository implements RepoApi {
     if (options.commitMessage) await this.commit(options.commitMessage)
     return {
       ok: true,
-      message: `${lines.length} linha(s) aplicada(s) em ${target}${options.commitMessage ? ' e commit criado' : ' (no stage, pronto para commit)'}.`,
+      message: `${t('core.linesAppliedTo', { count: lines.length, target })} ${options.commitMessage ? t('core.commitCreated') : t('core.leftStaged')}`,
       conflicts: []
     }
   }
@@ -741,7 +743,7 @@ export class GitRepository implements RepoApi {
 
   async continueOperation(): Promise<OperationResult> {
     const [op, status] = await Promise.all([this.operationState(), this.status()])
-    if (status.conflicted.length) throw new Error('Ainda há conflitos. Resolva todos os arquivos antes de continuar.')
+    if (status.conflicted.length) throw new Error(t('core.stillConflicts'))
     const commands: Record<string, string[]> = {
       'cherry-pick': ['cherry-pick', '--continue'],
       revert: ['revert', '--continue'],
@@ -749,10 +751,10 @@ export class GitRepository implements RepoApi {
       merge: ['commit', '--no-edit']
     }
     const command = commands[op.kind]
-    if (!command) throw new Error('Não há operação em andamento.')
+    if (!command) throw new Error(t('core.noOperation'))
     try {
       await this.git(command)
-      return { ok: true, message: 'Operação concluída.', conflicts: [] }
+      return { ok: true, message: t('core.operationDone'), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
     }
@@ -760,10 +762,10 @@ export class GitRepository implements RepoApi {
 
   async skipOperation(): Promise<OperationResult> {
     const op = await this.operationState()
-    if (op.kind === 'none' || op.kind === 'merge') throw new Error('Esta operação não permite pular.')
+    if (op.kind === 'none' || op.kind === 'merge') throw new Error(t('core.cannotSkip'))
     try {
       await this.git([op.kind, '--skip'])
-      return { ok: true, message: 'Commit pulado.', conflicts: [] }
+      return { ok: true, message: t('core.commitSkipped'), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
     }
@@ -778,7 +780,7 @@ export class GitRepository implements RepoApi {
         await this.git(['checkout', 'HEAD', '--', ...status.conflicted.map((f) => f.path)])
         return
       }
-      throw new Error('Não há operação em andamento.')
+      throw new Error(t('core.noOperation'))
     }
     await this.git([op.kind, '--abort'])
   }
@@ -790,7 +792,7 @@ export class GitRepository implements RepoApi {
     const isMerge = ([...parents.values()][0]?.length ?? 0) > 1
     try {
       await this.git(['revert', '--no-edit', ...(isMerge ? ['-m', '1'] : []), sha])
-      return { ok: true, message: `Commit ${sha.slice(0, 8)} revertido.`, conflicts: [] }
+      return { ok: true, message: t('core.reverted', { sha: sha.slice(0, 8) }), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
     }
@@ -805,13 +807,13 @@ export class GitRepository implements RepoApi {
 
   async fetch(): Promise<string> {
     const { stderr, stdout } = await this.git(['fetch', '--all', '--prune'])
-    return (stderr || stdout).trim() || 'Fetch concluído.'
+    return (stderr || stdout).trim() || t('core.fetchDone')
   }
 
   async pull(): Promise<OperationResult> {
     try {
-      const { stdout } = await this.git(['pull', '--no-edit'])
-      return { ok: true, message: stdout.trim() || 'Pull concluído.', conflicts: [] }
+      await this.git(['pull', '--no-edit'])
+      return { ok: true, message: t('core.pullDone'), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
     }
@@ -819,17 +821,17 @@ export class GitRepository implements RepoApi {
 
   async push(): Promise<string> {
     const status = await this.status()
-    if (!status.branch) throw new Error('Faça checkout de uma branch para enviar (push).')
+    if (!status.branch) throw new Error(t('core.pushNeedsBranch'))
     let args = ['push']
     if (!status.upstream) {
       const { stdout } = await this.git(['remote'])
       const remotes = stdout.split('\n').filter(Boolean)
-      if (!remotes.length) throw new Error('Este repositório não tem remotos configurados.')
+      if (!remotes.length) throw new Error(t('core.noRemotes'))
       const remote = remotes.includes('origin') ? 'origin' : remotes[0]
       args = ['push', '-u', remote, status.branch]
     }
     const { stderr, stdout } = await this.git(args)
-    return (stderr || stdout).trim() || 'Push concluído.'
+    return (stderr || stdout).trim() || t('core.pushDone')
   }
 
   // ------------------------------------------------------------------- stash
@@ -841,7 +843,7 @@ export class GitRepository implements RepoApi {
   async stashApply(index: number, pop = false): Promise<OperationResult> {
     try {
       await this.git(['stash', pop ? 'pop' : 'apply', `stash@{${Number(index)}}`])
-      return { ok: true, message: pop ? 'Stash aplicado e removido.' : 'Stash aplicado.', conflicts: [] }
+      return { ok: true, message: pop ? t('core.stashPopped') : t('core.stashApplied'), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
     }
@@ -868,7 +870,7 @@ export class GitRepository implements RepoApi {
   /** Grava o conteúdo resolvido de um arquivo em conflito e marca como resolvido. */
   async saveConflictResolution(path: string, content: string): Promise<void> {
     const full = resolve(this.root, path)
-    if (!full.startsWith(resolve(this.root) + (process.platform === 'win32' ? '\\' : '/'))) throw new Error('Caminho fora do repositório.')
+    if (!full.startsWith(resolve(this.root) + (process.platform === 'win32' ? '\\' : '/'))) throw new Error(t('main.outsideRepository'))
     await writeFile(full, content, 'utf8')
     await this.git(['add', '--', path])
   }
@@ -936,9 +938,9 @@ export class GitRepository implements RepoApi {
   async rebasePlan(fromSha: string): Promise<RebasePlan> {
     assertRef(fromSha, 'commit')
     const status = await this.status()
-    if (!status.branch) throw new Error('Faça checkout de uma branch para reescrever o histórico.')
+    if (!status.branch) throw new Error(t('core.rebaseNeedsBranch'))
     const { exitCode } = await this.git(['merge-base', '--is-ancestor', fromSha, 'HEAD'], { okExitCodes: [0, 1] })
-    if (exitCode !== 0) throw new Error(`O commit ${fromSha.slice(0, 8)} não faz parte da branch atual (${status.branch}).`)
+    if (exitCode !== 0) throw new Error(t('core.commitNotInBranch', { sha: fromSha.slice(0, 8), branch: status.branch }))
     const { stdout } = await this.git(['rev-list', '--parents', '-n1', fromSha, '--'])
     const base = stdout.trim().split(' ')[1] ?? null
     const range = base ? `${base}..HEAD` : 'HEAD'
@@ -949,10 +951,10 @@ export class GitRepository implements RepoApi {
 
   async interactiveRebase(base: string | null, steps: RebaseStep[]): Promise<OperationResult> {
     if (base) assertRef(base, 'commit')
-    if (!steps.length) throw new Error('Nada para reescrever.')
+    if (!steps.length) throw new Error(t('core.nothingToRewrite'))
     const first = steps.find((s) => s.action !== 'drop')
     if (first && (first.action === 'squash' || first.action === 'fixup')) {
-      throw new Error('O primeiro commit mantido não pode ser juntado a um anterior.')
+      throw new Error(t('core.firstCannotSquash'))
     }
     const { stdout: dirPath } = await this.git(['rev-parse', '--git-path', 'gittools-rebase'])
     const dir = resolve(this.root, dirPath.trim())
@@ -981,7 +983,7 @@ export class GitRepository implements RepoApi {
       await this.git(['rebase', '-i', '--autostash', base ?? '--root'], {
         env: { GIT_SEQUENCE_EDITOR: `cp ${shellQuote(todoFile)}` }
       })
-      return { ok: true, message: 'Histórico reescrito.', conflicts: [] }
+      return { ok: true, message: t('core.historyRewritten'), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
     }

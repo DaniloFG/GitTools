@@ -1,37 +1,64 @@
 // Atalhos de teclado: ações com combinação padrão, que o usuário pode trocar nas configurações.
 
+import type { MessageKey } from '../../shared/i18n'
+
+export type ShortcutGroup = 'navigation' | 'git' | 'app'
+
 export interface ShortcutAction {
   id: string
-  label: string
-  group: string
+  group: ShortcutGroup
   defaultKeys: string
 }
 
 export const SHORTCUT_ACTIONS: ShortcutAction[] = [
-  { id: 'view.history', label: 'Ir para Histórico', group: 'Navegação', defaultKeys: 'Ctrl+1' },
-  { id: 'view.changes', label: 'Ir para Alterações', group: 'Navegação', defaultKeys: 'Ctrl+2' },
-  { id: 'view.files', label: 'Ir para Arquivos (blame e histórico)', group: 'Navegação', defaultKeys: 'Ctrl+3' },
-  { id: 'view.compare', label: 'Ir para Comparar', group: 'Navegação', defaultKeys: 'Ctrl+4' },
-  { id: 'studio', label: 'Abrir Cherry-pick Studio', group: 'Git', defaultKeys: 'Ctrl+Shift+P' },
-  { id: 'branch.new', label: 'Nova branch', group: 'Git', defaultKeys: 'Ctrl+Shift+N' },
-  { id: 'stash', label: 'Guardar alterações (stash)', group: 'Git', defaultKeys: 'Ctrl+Shift+S' },
-  { id: 'fetch', label: 'Fetch', group: 'Git', defaultKeys: 'Ctrl+Shift+F' },
-  { id: 'pull', label: 'Pull', group: 'Git', defaultKeys: 'Ctrl+Shift+L' },
-  { id: 'push', label: 'Push', group: 'Git', defaultKeys: 'Ctrl+Shift+K' },
-  { id: 'refresh', label: 'Atualizar', group: 'Aplicativo', defaultKeys: 'F5' },
-  { id: 'repo.open', label: 'Abrir repositório', group: 'Aplicativo', defaultKeys: 'Ctrl+O' },
-  { id: 'settings', label: 'Configurações', group: 'Aplicativo', defaultKeys: 'Ctrl+,' },
-  { id: 'help', label: 'Lista de atalhos', group: 'Aplicativo', defaultKeys: 'F1' }
+  { id: 'view.history', group: 'navigation', defaultKeys: 'Ctrl+1' },
+  { id: 'view.changes', group: 'navigation', defaultKeys: 'Ctrl+2' },
+  { id: 'view.files', group: 'navigation', defaultKeys: 'Ctrl+3' },
+  { id: 'view.compare', group: 'navigation', defaultKeys: 'Ctrl+4' },
+  { id: 'studio', group: 'git', defaultKeys: 'Ctrl+Shift+P' },
+  { id: 'branch.new', group: 'git', defaultKeys: 'Ctrl+Shift+N' },
+  { id: 'stash', group: 'git', defaultKeys: 'Ctrl+Shift+S' },
+  { id: 'fetch', group: 'git', defaultKeys: 'Ctrl+Shift+F' },
+  { id: 'pull', group: 'git', defaultKeys: 'Ctrl+Shift+L' },
+  { id: 'push', group: 'git', defaultKeys: 'Ctrl+Shift+K' },
+  { id: 'refresh', group: 'app', defaultKeys: 'F5' },
+  { id: 'repo.open', group: 'app', defaultKeys: 'Ctrl+O' },
+  { id: 'settings', group: 'app', defaultKeys: 'Ctrl+,' },
+  { id: 'help', group: 'app', defaultKeys: 'F1' }
 ]
 
+/** Nome traduzível de cada ação (as chaves ficam em `shortcuts.actions`). */
+export const SHORTCUT_LABELS: Record<string, MessageKey> = {
+  'view.history': 'shortcuts.actions.viewHistory',
+  'view.changes': 'shortcuts.actions.viewChanges',
+  'view.files': 'shortcuts.actions.viewFiles',
+  'view.compare': 'shortcuts.actions.viewCompare',
+  studio: 'shortcuts.actions.studio',
+  'branch.new': 'shortcuts.actions.newBranch',
+  stash: 'shortcuts.actions.stash',
+  fetch: 'shortcuts.actions.fetch',
+  pull: 'shortcuts.actions.pull',
+  push: 'shortcuts.actions.push',
+  refresh: 'shortcuts.actions.refresh',
+  'repo.open': 'shortcuts.actions.openRepository',
+  settings: 'shortcuts.actions.settings',
+  help: 'shortcuts.actions.help'
+}
+
+export const SHORTCUT_GROUP_LABELS: Record<ShortcutGroup, MessageKey> = {
+  navigation: 'shortcuts.groups.navigation',
+  git: 'shortcuts.groups.git',
+  app: 'shortcuts.groups.app'
+}
+
 /** Atalhos fixos (dentro de listas e diálogos), exibidos na ajuda. */
-export const FIXED_SHORTCUTS: [string, string][] = [
-  ['↑ / ↓', 'Mover a seleção no histórico'],
-  ['Shift+↑ / Shift+↓', 'Estender a seleção de commits'],
-  ['Ctrl+clique / Shift+clique', 'Selecionar vários commits ou arquivos'],
-  ['Shift+clique numa linha do diff', 'Selecionar um intervalo de linhas'],
-  ['Ctrl+Enter', 'Confirmar o commit'],
-  ['Esc', 'Fechar diálogo ou menu']
+export const FIXED_SHORTCUTS: [string, MessageKey][] = [
+  ['↑ / ↓', 'shortcuts.fixed.moveSelection'],
+  ['Shift+↑ / Shift+↓', 'shortcuts.fixed.extendSelection'],
+  ['Ctrl+click / Shift+click', 'shortcuts.fixed.multiSelect'],
+  ['Shift+click', 'shortcuts.fixed.lineRange'],
+  ['Ctrl+Enter', 'shortcuts.fixed.commit'],
+  ['Esc', 'shortcuts.fixed.close']
 ]
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform)

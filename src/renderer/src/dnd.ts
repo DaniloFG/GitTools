@@ -4,7 +4,7 @@
 
 export type DragPayload =
   | { type: 'branch'; name: string; remote: boolean }
-  | { type: 'commits'; shas: string[]; label: string }
+  | { type: 'commits'; shas: string[]; subject?: string }
   | { type: 'commit-files'; sha: string; paths: string[] }
   | { type: 'files'; area: 'unstaged' | 'staged'; paths: string[] }
 

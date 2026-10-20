@@ -1,5 +1,6 @@
 import type { DiffHunk, DiffLine, FileDiff, LineKey } from '../shared/types'
 import { changeKeys, lineKey } from '../shared/diffKeys'
+import { t } from '../shared/i18n'
 
 export { changeKeys, lineKey }
 
@@ -198,7 +199,7 @@ function formatRange(start: number, count: number): string {
  * Retorna null quando nenhuma linha alterada foi selecionada.
  */
 export function buildPartialPatch(file: FileDiff, selected: Iterable<LineKey> | 'all', reverse = false): string | null {
-  if (file.binary) throw new Error(`O arquivo binário "${file.path}" não permite seleção de linhas.`)
+  if (file.binary) throw new Error(t('core.binaryNoLines', { path: file.path }))
   const all = changeKeys(file)
   const chosen = selected === 'all' ? new Set(all) : new Set(selected)
   const effective = all.filter((k) => chosen.has(k))

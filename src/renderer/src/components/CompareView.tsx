@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import type { ChangedFile, CommitInfo, Comparison, DiffSource, FileDiff, LineKey } from '../../../shared/types'
 import { useActions } from '../actions'
 import { currentBranch, useApp, type CompareRequest } from '../context'
-import { errorMessage, plural, relativeDate, shortSha, statusLabel } from '../format'
+import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
+import { t } from '../i18n'
 import { git } from '../git'
 import { DiffView } from './DiffView'
 
@@ -13,7 +14,7 @@ interface Props {
 
 /** Compara duas branches, tags ou commits quaisquer. */
 export function CompareView({ request, onRequest }: Props) {
-  const { data, run, choose, toast, selectCommit, openFileView } = useApp()
+  const { data, run, toast, selectCommit, openFileView } = useApp()
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''
@@ -87,23 +88,20 @@ export function CompareView({ request, onRequest }: Props) {
 
   const applyLines = async () => {
     if (!head || !diff || !source || !comparison) return
-    const choice = await choose({
-      title: `Aplicar ${plural(selection.size, 'linha', 'linhas')} em ${head}`,
-      message: `De ${diff.path} (${comparison.from} → ${comparison.to})`,
-      options: [
-        { id: 'stage', label: 'Aplicar e deixar no stage' },
-        { id: 'commit', label: 'Aplicar e criar commit' }
-      ]
-    })
-    if (!choice) return
-    const message = choice.id === 'commit' ? `Traz linhas de ${diff.path} de ${comparison.to}` : undefined
-    await run('Aplicando linhas', () => git.cherryPickLines(head, source, diff.path, [...selection], { commitMessage: message }))
-    setSelection(new Set())
+    const done = await actions.applyLines(
+      head,
+      source,
+      diff.path,
+      [...selection],
+      t('compare.linesContext', { path: diff.path, from: comparison.from, to: comparison.to }),
+      t('messages.linesFromRef', { path: diff.path, ref: comparison.to })
+    )
+    if (done) setSelection(new Set())
   }
 
   const copyVersion = async (file: ChangedFile) => {
     if (!head || !comparison) return
-    await run('Copiando versão', () =>
+    await run(t('busy.copyingVersion'), () =>
       git.cherryPickFiles(head, [comparison.to], file.oldPath ? [file.path, file.oldPath] : [file.path], 'version')
     )
   }
@@ -117,46 +115,46 @@ export function CompareView({ request, onRequest }: Props) {
           ))}
         </datalist>
         <label className="field inline">
-          <span>De</span>
-          <input list="compare-refs" value={from} onChange={(e) => setFrom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doCompare()} placeholder="branch, tag ou commit" />
+          <span>{t('compare.from')}</span>
+          <input list="compare-refs" value={from} onChange={(e) => setFrom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doCompare()} placeholder={t('compare.refPlaceholder')} />
         </label>
-        <button className="icon-button" onClick={swap} title="Inverter">
+        <button className="icon-button" onClick={swap} title={t('compare.swap')}>
           ⇄
         </button>
         <label className="field inline">
-          <span>Para</span>
-          <input list="compare-refs" value={to} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doCompare()} placeholder="branch, tag ou commit" />
+          <span>{t('compare.to')}</span>
+          <input list="compare-refs" value={to} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doCompare()} placeholder={t('compare.refPlaceholder')} />
         </label>
-        <label className="checkbox" title="Mostra só o que mudou em “Para” desde que as duas linhas de histórico se separaram (git diff A...B)">
+        <label className="checkbox" title={t('compare.sinceBaseHelp')}>
           <input type="checkbox" checked={sinceBase} onChange={(e) => setSinceBase(e.target.checked)} />
-          Só o que mudou em “Para” desde o ancestral comum
+          {t('compare.sinceBase')}
         </label>
         <button className="primary" onClick={() => onRequest({ from, to })} disabled={loading}>
-          {loading ? <span className="spinner" /> : 'Comparar'}
+          {loading ? <span className="spinner" /> : t('compare.compare')}
         </button>
       </div>
 
       {!comparison ? (
-        <p className="empty">Escolha duas branches, tags ou commits e clique em Comparar.</p>
+        <p className="empty">{t('compare.empty')}</p>
       ) : (
         <div className="split">
           <div className="compare-side">
             <CommitGroup
-              title={`Só em ${comparison.to}`}
+              title={t('compare.onlyIn', { ref: comparison.to })}
               commits={comparison.onlyTo}
               onOpen={selectCommit}
               action={
                 head && comparison.onlyTo.length > 0 && head !== comparison.to
-                  ? { label: `🍒 Levar para ${head}`, run: () => actions.cherryPickCommits(head, [...comparison.onlyTo].reverse().map((c) => c.sha)) }
+                  ? { label: `🍒 ${t('compare.takeTo', { target: head })}`, run: () => actions.cherryPickCommits(head, [...comparison.onlyTo].reverse().map((c) => c.sha)) }
                   : undefined
               }
             />
-            <CommitGroup title={`Só em ${comparison.from}`} commits={comparison.onlyFrom} onOpen={selectCommit} />
+            <CommitGroup title={t('compare.onlyIn', { ref: comparison.from })} commits={comparison.onlyFrom} onOpen={selectCommit} />
             <div className="group-header">
-              <strong>Arquivos diferentes</strong> <span className="count">{comparison.files.length}</span>
+              <strong>{t('compare.differentFiles')}</strong> <span className="count">{comparison.files.length}</span>
             </div>
             {comparison.files.length === 0 ? (
-              <p className="empty small">O conteúdo é idêntico.</p>
+              <p className="empty small">{t('compare.identical')}</p>
             ) : (
               <ul className="file-list">
                 {comparison.files.map((f) => (
@@ -172,7 +170,7 @@ export function CompareView({ request, onRequest }: Props) {
           </div>
           <section className="details">
             {!active ? (
-              <p className="empty">Selecione um arquivo.</p>
+              <p className="empty">{t('compare.selectFile')}</p>
             ) : !diff ? (
               <p className="empty">
                 <span className="spinner" />
@@ -186,14 +184,14 @@ export function CompareView({ request, onRequest }: Props) {
                   {head && (
                     <>
                       <button className="primary" disabled={!selection.size} onClick={applyLines}>
-                        Aplicar {selection.size ? plural(selection.size, 'linha', 'linhas') : 'linhas'} em {head}
+                        {t('common.applyLinesInto', { count: selection.size, target: head })}
                       </button>
-                      <button onClick={() => copyVersion(active)} title={`O arquivo em ${head} fica igual ao de ${comparison.to}`}>
-                        Copiar versão de {comparison.to}
+                      <button onClick={() => copyVersion(active)} title={t('compare.copyVersionHelp', { target: head, ref: comparison.to })}>
+                        {t('compare.copyVersion', { ref: comparison.to })}
                       </button>
                     </>
                   )}
-                  <button onClick={() => openFileView(active.path)}>Blame / histórico</button>
+                  <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
                 </div>
                 <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} />
               </div>
@@ -229,11 +227,11 @@ function CommitGroup({
       </div>
       {open &&
         (commits.length === 0 ? (
-          <p className="empty small">Nenhum commit.</p>
+          <p className="empty small">{t('compare.noCommits')}</p>
         ) : (
           <ul className="compare-commits">
             {commits.map((c) => (
-              <li key={c.sha} onClick={() => onOpen(c.sha)} title="Abrir no histórico">
+              <li key={c.sha} onClick={() => onOpen(c.sha)} title={t('compare.openInHistory')}>
                 <code>{shortSha(c.sha)}</code>
                 <span className="commit-subject">{c.subject}</span>
                 <small className="muted">

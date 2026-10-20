@@ -3,28 +3,21 @@ import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../sha
 import { useActions } from '../actions'
 import { useApp } from '../context'
 import { endDrag, startDrag } from '../dnd'
-import { errorMessage, fullDate, plural, shortSha, statusLabel } from '../format'
+import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
+import { t } from '../i18n'
 import { DiffView } from './DiffView'
 
 export function CommitDetailsPanel({ selected }: { selected: string[] }) {
   if (selected.length === 0) {
     return (
       <section className="details empty-details">
-        <h3>Dicas rápidas</h3>
+        <h3>{t('details.tips.title')}</h3>
         <ul className="tips">
-          <li>
-            <strong>Arraste um commit</strong> (ou vários, com Ctrl/Shift) para uma branch na barra lateral para fazer cherry-pick.
-          </li>
-          <li>
-            <strong>Arraste uma branch</strong> sobre outra para merge, rebase ou cherry-pick da branch inteira.
-          </li>
-          <li>
-            <strong>Clique num commit</strong> para ver os arquivos; arraste um arquivo para uma branch ou selecione linhas do diff e aplique só elas.
-          </li>
-          <li>
-            Use o <strong>🍒 Cherry-pick Studio</strong> para escolher commits, arquivos ou linhas entre duas branches.
-          </li>
+          <li>{t('details.tips.dragCommit')}</li>
+          <li>{t('details.tips.dragBranch')}</li>
+          <li>{t('details.tips.clickCommit')}</li>
+          <li>{t('details.tips.studio')}</li>
         </ul>
       </section>
     )
@@ -38,16 +31,16 @@ function MultiSelection({ shas }: { shas: string[] }) {
   const actions = useActions()
   return (
     <section className="details">
-      <h3>{plural(shas.length, 'commit selecionado', 'commits selecionados')}</h3>
-      <p className="muted">Arraste a seleção para uma branch, ou:</p>
+      <h3>{t('details.multiTitle', { count: shas.length })}</h3>
+      <p className="muted">{t('details.multiHelp')}</p>
       <div className="button-column">
         {actions.head && (
           <button className="primary" onClick={() => actions.cherryPickCommits(actions.head!, shas)}>
-            🍒 Cherry-pick em {actions.head}
+            🍒 {t('details.cherryPickInto', { target: actions.head })}
           </button>
         )}
         <button onClick={() => openStudio({ target: actions.head ?? undefined, commits: shas, mode: 'files' })}>
-          Escolher arquivos ou linhas destes commits…
+          {t('details.chooseFilesOrLines')}
         </button>
       </div>
     </section>
@@ -55,7 +48,7 @@ function MultiSelection({ shas }: { shas: string[] }) {
 }
 
 function SingleCommit({ sha }: { sha: string }) {
-  const { run, choose, toast, openFileView } = useApp()
+  const { toast, openFileView } = useApp()
   const actions = useActions()
   const head = actions.head
   const [details, setDetails] = useState<CommitDetails | null>(null)
@@ -92,18 +85,15 @@ function SingleCommit({ sha }: { sha: string }) {
 
   const applyLines = async () => {
     if (!head || !diff) return
-    const choice = await choose({
-      title: `Aplicar ${plural(selection.size, 'linha', 'linhas')} em ${head}`,
-      message: `De ${diff.path} no commit ${shortSha(sha)} — "${details.subject}"`,
-      options: [
-        { id: 'stage', label: 'Aplicar e deixar no stage', description: 'Você revisa e faz o commit quando quiser (aba Alterações).' },
-        { id: 'commit', label: 'Aplicar e criar commit', description: 'Cria um commit com a mensagem do original e a referência de origem.' }
-      ]
-    })
-    if (!choice) return
-    const message = choice.id === 'commit' ? `${details.subject}\n\n(linhas de ${diff.path} trazidas do commit ${details.sha})` : undefined
-    await run('Aplicando linhas', () => git.cherryPickLines(head, { kind: 'commit', sha }, diff.path, [...selection], { commitMessage: message }))
-    setSelection(new Set())
+    const done = await actions.applyLines(
+      head,
+      { kind: 'commit', sha },
+      diff.path,
+      [...selection],
+      t('details.linesContext', { path: diff.path, sha: shortSha(sha), subject: details.subject }),
+      `${details.subject}\n\n${t('messages.linesFrom', { path: diff.path, sha: details.sha })}`
+    )
+    if (done) setSelection(new Set())
   }
 
   return (
@@ -116,19 +106,19 @@ function SingleCommit({ sha }: { sha: string }) {
             {details.author} &lt;{details.email}&gt;
           </span>
           <span>{fullDate(details.date)}</span>
-          <code title="Clique para copiar" onClick={() => navigator.clipboard.writeText(details.sha)}>
+          <code title={t('common.clickToCopy')} onClick={() => navigator.clipboard.writeText(details.sha)}>
             {shortSha(details.sha)}
           </code>
           {details.parents.length > 1 && <span className="tag">merge</span>}
         </div>
         {head && (
           <div className="button-row">
-            <button className="primary" onClick={() => actions.cherryPickCommits(head, [sha], `o commit "${details.subject}"`)}>
-              🍒 Cherry-pick em {head}
+            <button className="primary" onClick={() => actions.cherryPickCommits(head, [sha], details.subject)}>
+              🍒 {t('details.cherryPickInto', { target: head })}
             </button>
             {checked.size > 0 && (
               <button onClick={() => actions.filesOntoBranch(sha, pathsOf(details.files.filter((f) => checked.has(f.path))), head)}>
-                Levar {plural(checked.size, 'arquivo marcado', 'arquivos marcados')} para {head}…
+                {t('details.takeChecked', { count: checked.size, target: head })}
               </button>
             )}
           </div>
@@ -144,10 +134,14 @@ function SingleCommit({ sha }: { sha: string }) {
             draggable
             onDragStart={(e) => {
               const files = dragFiles(file)
-              startDrag(e, { type: 'commit-files', sha, paths: pathsOf(files) }, files.length > 1 ? `📄 ${files.length} arquivos` : `📄 ${file.path}`)
+              startDrag(
+                e,
+                { type: 'commit-files', sha, paths: pathsOf(files) },
+                files.length > 1 ? `📄 ${t('common.files', { count: files.length })}` : `📄 ${file.path}`
+              )
             }}
             onDragEnd={endDrag}
-            title="Arraste para uma branch para levar este arquivo"
+            title={t('details.dragFile')}
           >
             <input
               type="checkbox"
@@ -172,12 +166,12 @@ function SingleCommit({ sha }: { sha: string }) {
         <div className="diff-panel">
           {head && (
             <div className="selection-bar">
-              <span className="muted">Selecione linhas e aplique só elas em outra branch.</span>
+              <span className="muted">{t('details.selectLinesHelp')}</span>
               <button className="primary" disabled={!selection.size} onClick={applyLines}>
-                Aplicar {selection.size ? plural(selection.size, 'linha', 'linhas') : 'linhas'} em {head}
+                {t('common.applyLinesInto', { count: selection.size, target: head })}
               </button>
-              <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>Levar arquivo inteiro…</button>
-              <button onClick={() => openFileView(diff.path)}>Blame / histórico</button>
+              <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>{t('details.takeWholeFile')}</button>
+              <button onClick={() => openFileView(diff.path)}>{t('common.blameHistory')}</button>
             </div>
           )}
           <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} />

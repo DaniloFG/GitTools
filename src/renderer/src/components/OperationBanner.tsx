@@ -1,13 +1,14 @@
 import { useApp } from '../context'
 import { git } from '../git'
 import { shortSha } from '../format'
+import { t, type MessageKey } from '../i18n'
 
-const LABEL = {
-  merge: 'Merge em andamento',
-  'cherry-pick': 'Cherry-pick em andamento',
-  revert: 'Revert em andamento',
-  rebase: 'Rebase em andamento'
-} as const
+const LABEL: Record<'merge' | 'cherry-pick' | 'revert' | 'rebase', MessageKey> = {
+  merge: 'operation.merge',
+  'cherry-pick': 'operation.cherryPick',
+  revert: 'operation.revert',
+  rebase: 'operation.rebase'
+}
 
 export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
   const { data, run, confirm, openConflict } = useApp()
@@ -17,32 +18,30 @@ export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
 
   const title =
     operation.kind === 'none'
-      ? 'Arquivos em conflito'
-      : `${LABEL[operation.kind]}${operation.head ? ` — ${shortSha(operation.head)}` : ''}${
-          operation.step ? ` (passo ${operation.step} de ${operation.total})` : ''
+      ? t('operation.conflictedFiles')
+      : `${t(LABEL[operation.kind])}${operation.head ? ` — ${shortSha(operation.head)}` : ''}${
+          operation.step ? ` ${t('operation.step', { step: operation.step, total: operation.total ?? 0 })}` : ''
         }`
 
   const abort = async () => {
     const ok = await confirm({
-      title: 'Abortar',
-      message:
-        operation.kind === 'none'
-          ? 'Voltar os arquivos em conflito para a versão do último commit?'
-          : 'Desfazer a operação e voltar ao estado de antes de começar?',
-      confirmLabel: 'Abortar',
+      title: t('operation.abort'),
+      message: operation.kind === 'none' ? t('operation.abortFilesMessage') : t('operation.abortMessage'),
+      confirmLabel: t('operation.abort'),
       danger: true
     })
-    if (ok) await run('Abortando', () => git.abortOperation())
+    if (ok) await run(t('busy.aborting'), () => git.abortOperation())
   }
+
+  const resolve = (path: string, resolution: 'ours' | 'theirs' | 'resolved') =>
+    run(t('busy.resolving'), () => git.resolveConflict(path, resolution))
 
   return (
     <div className={`operation-banner ${conflicts.length ? 'has-conflicts' : ''}`}>
       <div className="operation-title">
         <strong>{title}</strong>
         <span className="muted">
-          {conflicts.length
-            ? `${conflicts.length} arquivo(s) em conflito. Para cada um, escolha uma versão ou edite e marque como resolvido.`
-            : 'Sem conflitos pendentes. Continue para concluir.'}
+          {conflicts.length ? t('operation.conflictsHelp', { count: conflicts.length }) : t('operation.noConflicts')}
         </span>
       </div>
       {conflicts.length > 0 && (
@@ -50,18 +49,18 @@ export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
           {conflicts.map((f) => (
             <li key={f.path}>
               <span className="conflict-path">{f.path}</span>
-              <button className="primary" onClick={() => openConflict(f.path)} title="Comparar a versão atual com a que entra e escolher bloco a bloco">
-                Resolver lado a lado
+              <button className="primary" onClick={() => openConflict(f.path)} title={t('operation.sideBySideHelp')}>
+                {t('operation.sideBySide')}
               </button>
-              <button onClick={() => window.gittools.openFile(f.path)}>Abrir no editor</button>
-              <button onClick={() => run('Resolvendo', () => git.resolveConflict(f.path, 'ours'))} title="Mantém a versão da branch atual (HEAD)">
-                Usar a atual
+              <button onClick={() => window.gittools.openFile(f.path)}>{t('common.openInEditor')}</button>
+              <button onClick={() => resolve(f.path, 'ours')} title={t('operation.useOursHelp')}>
+                {t('conflict.useOurs')}
               </button>
-              <button onClick={() => run('Resolvendo', () => git.resolveConflict(f.path, 'theirs'))} title="Mantém a versão que está sendo aplicada">
-                Usar a que entra
+              <button onClick={() => resolve(f.path, 'theirs')} title={t('operation.useTheirsHelp')}>
+                {t('conflict.useTheirs')}
               </button>
-              <button onClick={() => run('Resolvendo', () => git.resolveConflict(f.path, 'resolved'))} title="Já editei o arquivo e removi os marcadores <<<<<<< >>>>>>>">
-                ✓ Resolvido
+              <button onClick={() => resolve(f.path, 'resolved')} title={t('operation.resolvedHelp')}>
+                ✓ {t('operation.resolved')}
               </button>
             </li>
           ))}
@@ -70,16 +69,18 @@ export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
       <div className="operation-actions">
         {operation.kind !== 'none' ? (
           <>
-            <button className="primary" disabled={conflicts.length > 0} onClick={() => run('Continuando', () => git.continueOperation())}>
-              Continuar
+            <button className="primary" disabled={conflicts.length > 0} onClick={() => run(t('busy.continuing'), () => git.continueOperation())}>
+              {t('operation.continue')}
             </button>
-            {operation.kind !== 'merge' && <button onClick={() => run('Pulando', () => git.skipOperation())}>Pular este commit</button>}
+            {operation.kind !== 'merge' && (
+              <button onClick={() => run(t('busy.skipping'), () => git.skipOperation())}>{t('operation.skip')}</button>
+            )}
           </>
         ) : (
-          <button onClick={onShowChanges}>Ver alterações</button>
+          <button onClick={onShowChanges}>{t('operation.showChanges')}</button>
         )}
         <button className="danger" onClick={abort}>
-          Abortar
+          {t('operation.abort')}
         </button>
       </div>
     </div>

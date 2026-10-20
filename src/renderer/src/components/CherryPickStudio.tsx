@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { BranchCommit, ChangedFile, DiffSource, FileApplyMode, FileDiff, LineKey, OperationResult } from '../../../shared/types'
 import { currentBranch, useApp, type StudioRequest } from '../context'
-import { errorMessage, plural, relativeDate, shortSha, statusLabel } from '../format'
+import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
+import { t, type MessageKey } from '../i18n'
 import { git } from '../git'
 import { DiffView } from './DiffView'
 import { Modal } from './Modal'
 
 type Mode = 'branch' | 'commits' | 'files' | 'lines'
 
-const MODES: { id: Mode; label: string; help: string }[] = [
-  { id: 'branch', label: 'Branch inteira', help: 'Copia todos os commits da origem que ainda não estão no destino, na ordem certa.' },
-  { id: 'commits', label: 'Commits', help: 'Copia só os commits marcados na lista ao lado.' },
-  { id: 'files', label: 'Arquivos', help: 'Traz apenas alguns arquivos dos commits marcados.' },
-  { id: 'lines', label: 'Linhas', help: 'Escolhe exatamente quais linhas trazer de um arquivo.' }
+const MODES: { id: Mode; label: MessageKey; help: MessageKey }[] = [
+  { id: 'branch', label: 'studio.modes.branch', help: 'studio.modes.branchHelp' },
+  { id: 'commits', label: 'studio.modes.commits', help: 'studio.modes.commitsHelp' },
+  { id: 'files', label: 'studio.modes.files', help: 'studio.modes.filesHelp' },
+  { id: 'lines', label: 'studio.modes.lines', help: 'studio.modes.linesHelp' }
 ]
 
 /** Valor especial de origem: commits escolhidos no histórico, sem branch de origem. */
@@ -126,19 +127,22 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
   // Mensagem de commit sugerida.
   useEffect(() => {
     if (messageTouched) return
-    const origin = source === SELECTION ? 'commits selecionados' : source
-    const what = mode === 'lines' ? `linhas de ${linePath ?? ''}` : 'arquivos'
+    const origin = source === SELECTION ? t('studio.selectedCommits') : source
     if (chosen.length === 1) {
-      setMessage(`${chosen[0].subject}\n\n(${what} trazidos de ${shortSha(chosen[0].sha)} via cherry-pick parcial)`)
+      const note =
+        mode === 'lines'
+          ? t('messages.partialLines', { path: linePath ?? '', sha: shortSha(chosen[0].sha) })
+          : t('messages.partialFiles', { sha: shortSha(chosen[0].sha) })
+      setMessage(`${chosen[0].subject}\n\n${note}`)
     } else if (chosen.length > 1) {
       setMessage(
-        `Cherry-pick parcial de ${origin}\n\nCommits de origem:\n${chosen.map((c) => `- ${shortSha(c.sha)} ${c.subject}`).join('\n')}`
+        `${t('messages.partialFrom', { origin })}\n\n${t('messages.sourceCommits')}\n${chosen.map((c) => `- ${shortSha(c.sha)} ${c.subject}`).join('\n')}`
       )
     }
   }, [chosen, mode, linePath, source, messageTouched])
 
   const targetIsHead = target === head
-  const sourceLabel = source === SELECTION ? 'commits selecionados' : source
+  const sourceLabel = source === SELECTION ? t('studio.selectedCommits') : source
 
   const finish = (result: OperationResult | undefined) => {
     if (result) onClose()
@@ -147,19 +151,19 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
   const apply = async () => {
     const commitMessage = autoCommit && message.trim() ? message : undefined
     if (mode === 'branch') {
-      finish(await run(`Cherry-pick de ${source}`, () => git.cherryPickBranch(source, target, { recordOrigin })))
+      finish(await run(t('busy.cherryPickFrom', { ref: source }), () => git.cherryPickBranch(source, target, { recordOrigin })))
     } else if (mode === 'commits') {
-      finish(await run('Cherry-pick', () => git.cherryPickCommits(target, chosen.map((c) => c.sha), { recordOrigin, noCommit })))
+      finish(await run(t('busy.cherryPick'), () => git.cherryPickCommits(target, chosen.map((c) => c.sha), { recordOrigin, noCommit })))
     } else if (mode === 'files') {
       const paths = files.filter((f) => checkedFiles.has(f.path)).flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]))
       finish(
-        await run('Aplicando arquivos', () =>
+        await run(t('busy.applyingFiles'), () =>
           git.cherryPickFiles(target, chosen.map((c) => c.sha), paths, fileMode, { commitMessage })
         )
       )
     } else if (lineSource && lineDiff) {
       finish(
-        await run('Aplicando linhas', () =>
+        await run(t('busy.applyingLines'), () =>
           git.cherryPickLines(target, lineSource, lineDiff.path, [...lineSelection], { commitMessage })
         )
       )
@@ -177,14 +181,15 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
           ? chosen.length > 0 && checkedFiles.size > 0
           : !!lineDiff && lineSelection.size > 0)
 
+  const into = target || '…'
   const applyLabel =
     mode === 'branch'
-      ? `Aplicar ${plural(pending.length, 'commit', 'commits')}`
+      ? t('studio.applyCommits', { count: pending.length, target: into })
       : mode === 'commits'
-        ? `Aplicar ${plural(chosen.length, 'commit', 'commits')}`
+        ? t('studio.applyCommits', { count: chosen.length, target: into })
         : mode === 'files'
-          ? `Aplicar ${plural(checkedFiles.size, 'arquivo', 'arquivos')}`
-          : `Aplicar ${plural(lineSelection.size, 'linha', 'linhas')}`
+          ? t('studio.applyFiles', { count: checkedFiles.size, target: into })
+          : t('common.applyLinesInto', { count: lineSelection.size, target: into })
 
   const toggle = (sha: string, on: boolean) => {
     const next = new Set(checked)
@@ -195,18 +200,18 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
 
   return (
     <Modal
-      title="🍒 Cherry-pick Studio"
+      title={`🍒 ${t('studio.name')}`}
       onClose={onClose}
       size="large"
       footer={
         <>
           <span className="muted footer-summary">
-            {target && !targetIsHead && `Será feito checkout de "${target}" antes de aplicar. `}
-            {mode !== 'branch' && mode !== 'commits' && !autoCommit && 'As alterações ficarão no stage para revisão.'}
+            {target && !targetIsHead && `${t('studio.willCheckout', { target })} `}
+            {mode !== 'branch' && mode !== 'commits' && !autoCommit && t('studio.leftStaged')}
           </span>
-          <button onClick={onClose}>Cancelar</button>
+          <button onClick={onClose}>{t('common.cancel')}</button>
           <button className="primary" disabled={!canApply} onClick={apply}>
-            {applyLabel} em {target || '…'}
+            {applyLabel}
           </button>
         </>
       }
@@ -214,17 +219,17 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
       <div className="studio">
         <div className="studio-branches">
           <label className="field inline">
-            <span>Origem</span>
+            <span>{t('studio.source')}</span>
             <select value={source} onChange={(e) => setSource(e.target.value)}>
-              {fromSelection && <option value={SELECTION}>Commits selecionados no histórico</option>}
-              <optgroup label="Locais">
+              {fromSelection && <option value={SELECTION}>{t('studio.selectedInHistory')}</option>}
+              <optgroup label={t('studio.localBranches')}>
                 {local.map((b) => (
                   <option key={b.fullRef} value={b.name}>
                     {b.name}
                   </option>
                 ))}
               </optgroup>
-              <optgroup label="Remotas">
+              <optgroup label={t('studio.remoteBranches')}>
                 {data.branches
                   .filter((b) => b.remote)
                   .map((b) => (
@@ -237,7 +242,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
           </label>
           <button
             className="icon-button"
-            title="Inverter origem e destino"
+            title={t('studio.swap')}
             disabled={source === SELECTION || !local.some((b) => b.name === source)}
             onClick={() => {
               setSource(target)
@@ -248,12 +253,12 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
           </button>
           <span className="arrow">→</span>
           <label className="field inline">
-            <span>Destino</span>
+            <span>{t('studio.target')}</span>
             <select value={target} onChange={(e) => setTarget(e.target.value)}>
               {local.map((b) => (
                 <option key={b.fullRef} value={b.name}>
                   {b.name}
-                  {b.current ? ' (atual)' : ''}
+                  {b.current ? ` ${t('studio.currentSuffix')}` : ''}
                 </option>
               ))}
             </select>
@@ -263,32 +268,32 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
         <div className="studio-body">
           <div className="studio-commits">
             <div className="group-header">
-              <strong>Commits de {sourceLabel}</strong>
+              <strong>{t('studio.commitsOf', { source: sourceLabel })}</strong>
               {commits && <span className="count">{commits.length}</span>}
               <span className="toolbar-spacer" />
               {mode !== 'branch' && commits && commits.length > 0 && (
                 <>
                   <button className="link" onClick={() => setChecked(new Set(pending.map((c) => c.sha)))}>
-                    todos
+                    {t('common.all')}
                   </button>
                   <button className="link" onClick={() => setChecked(new Set())}>
-                    nenhum
+                    {t('common.none')}
                   </button>
                 </>
               )}
             </div>
             {commits === null ? (
               <p className="empty">
-                <span className="spinner" /> Comparando branches…
+                <span className="spinner" /> {t('studio.comparing')}
               </p>
             ) : source === target ? (
-              <p className="empty">Origem e destino são a mesma branch.</p>
+              <p className="empty">{t('studio.sameBranch')}</p>
             ) : commits.length === 0 ? (
-              <p className="empty">Nada a trazer: {target} já tem tudo de {sourceLabel}.</p>
+              <p className="empty">{t('studio.nothingToBring', { target, source: sourceLabel })}</p>
             ) : (
               <ul className="studio-commit-list">
                 {commits.map((c) => (
-                  <li key={c.sha} className={c.alreadyApplied ? 'applied' : ''} title={c.alreadyApplied ? 'Já existe um commit equivalente no destino' : c.subject}>
+                  <li key={c.sha} className={c.alreadyApplied ? 'applied' : ''} title={c.alreadyApplied ? t('studio.alreadyAppliedHelp') : c.subject}>
                     <label>
                       <input
                         type="checkbox"
@@ -298,7 +303,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                       />
                       <code>{shortSha(c.sha)}</code>
                       <span className="commit-subject">{c.subject}</span>
-                      {c.alreadyApplied && <span className="tag">já aplicado</span>}
+                      {c.alreadyApplied && <span className="tag">{t('studio.alreadyApplied')}</span>}
                       <small className="muted">{relativeDate(c.date)}</small>
                     </label>
                   </li>
@@ -316,48 +321,48 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                   disabled={m.id === 'branch' && source === SELECTION}
                   onClick={() => setMode(m.id)}
                 >
-                  {m.label}
+                  {t(m.label)}
                 </button>
               ))}
             </nav>
-            <p className="muted">{MODES.find((m) => m.id === mode)!.help}</p>
+            <p className="muted">{t(MODES.find((m) => m.id === mode)!.help)}</p>
 
             {(mode === 'branch' || mode === 'commits') && (
               <div className="studio-options">
                 <p>
                   {mode === 'branch'
-                    ? `${plural(pending.length, 'commit será aplicado', 'commits serão aplicados')} em ${target}, do mais antigo para o mais novo.`
-                    : `${plural(chosen.length, 'commit marcado será aplicado', 'commits marcados serão aplicados')} em ${target}, do mais antigo para o mais novo.`}
-                  {(commits?.length ?? 0) > pending.length && ` ${plural((commits?.length ?? 0) - pending.length, 'commit equivalente já está', 'commits equivalentes já estão')} no destino.`}
+                    ? t('studio.willApplyBranch', { count: pending.length, target })
+                    : t('studio.willApplyChecked', { count: chosen.length, target })}
+                  {(commits?.length ?? 0) > pending.length && ` ${t('studio.equivalentInTarget', { count: (commits?.length ?? 0) - pending.length })}`}
                 </p>
                 <label className="checkbox">
                   <input type="checkbox" checked={recordOrigin} onChange={(e) => setRecordOrigin(e.target.checked)} />
-                  Registrar o commit de origem na mensagem (-x)
+                  {t('studio.recordOrigin')}
                 </label>
                 {mode === 'commits' && (
                   <label className="checkbox">
                     <input type="checkbox" checked={noCommit} onChange={(e) => setNoCommit(e.target.checked)} />
-                    Não criar commits — só aplicar as alterações no stage (para juntar tudo num commit só)
+                    {t('studio.noCommit')}
                   </label>
                 )}
-                <p className="muted small">Se houver conflito, o GitTools para e mostra os arquivos para você escolher a versão, continuar, pular ou abortar.</p>
+                <p className="muted small">{t('studio.conflictNote')}</p>
               </div>
             )}
 
             {mode === 'files' && (
               <div className="studio-options">
                 {chosen.length === 0 ? (
-                  <p className="empty">Marque ao menos um commit.</p>
+                  <p className="empty">{t('studio.checkACommit')}</p>
                 ) : (
                   <>
                     <div className="group-header">
-                      <strong>Arquivos alterados</strong> <span className="count">{files.length}</span>
+                      <strong>{t('studio.changedFiles')}</strong> <span className="count">{files.length}</span>
                       <span className="toolbar-spacer" />
                       <button className="link" onClick={() => setCheckedFiles(new Set(files.map((f) => f.path)))}>
-                        todos
+                        {t('common.all')}
                       </button>
                       <button className="link" onClick={() => setCheckedFiles(new Set())}>
-                        nenhum
+                        {t('common.none')}
                       </button>
                     </div>
                     <ul className="file-list bordered">
@@ -386,13 +391,13 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                       <label className="checkbox">
                         <input type="radio" checked={fileMode === 'changes'} onChange={() => setFileMode('changes')} />
                         <span>
-                          <strong>Aplicar as alterações</strong> — traz só o que os commits mudaram nesses arquivos
+                          <strong>{t('actions.files.changes')}</strong> — {t('studio.changesHelp')}
                         </span>
                       </label>
                       <label className="checkbox">
                         <input type="radio" checked={fileMode === 'version'} onChange={() => setFileMode('version')} />
                         <span>
-                          <strong>Copiar a versão</strong> — o arquivo fica igual ao do commit mais novo marcado
+                          <strong>{t('studio.version')}</strong> — {t('studio.versionHelp')}
                         </span>
                       </label>
                     </div>
@@ -404,13 +409,13 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
             {mode === 'lines' && (
               <div className="studio-lines">
                 {chosen.length === 0 ? (
-                  <p className="empty">Marque ao menos um commit.</p>
+                  <p className="empty">{t('studio.checkACommit')}</p>
                 ) : !lineSource ? (
-                  <p className="empty">Não é possível montar a diferença a partir do primeiro commit do repositório; marque só ele ou outros commits.</p>
+                  <p className="empty">{t('studio.rootRange')}</p>
                 ) : (
                   <>
                     <label className="field inline">
-                      <span>Arquivo</span>
+                      <span>{t('common.file')}</span>
                       <select value={linePath ?? ''} onChange={(e) => setLinePath(e.target.value)}>
                         {files.map((f) => (
                           <option key={f.path} value={f.path}>
@@ -421,8 +426,8 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                     </label>
                     {chosen.length > 1 && (
                       <p className="muted small">
-                        Mostrando a diferença acumulada de {shortSha(chosen[chosen.length - 1].sha)} até {shortSha(chosen[0].sha)}
-                        {chosen.length < (commits?.length ?? 0) ? ' (inclui os commits intermediários)' : ''}.
+                        {t('studio.cumulative', { from: shortSha(chosen[chosen.length - 1].sha), to: shortSha(chosen[0].sha) })}
+                        {chosen.length < (commits?.length ?? 0) ? ` ${t('studio.includesIntermediate')}` : ''}
                       </p>
                     )}
                     {lineDiff ? (
@@ -441,7 +446,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
               <div className="commit-box compact">
                 <label className="checkbox">
                   <input type="checkbox" checked={autoCommit} onChange={(e) => setAutoCommit(e.target.checked)} />
-                  Criar commit automaticamente
+                  {t('actions.files.autoCommit')}
                 </label>
                 {autoCommit && (
                   <textarea

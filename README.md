@@ -25,7 +25,7 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Ver o histórico de um arquivo                 | Aba **Arquivos** → *Histórico do arquivo* (segue renomeações). Restaure uma versão antiga ou traga só algumas linhas dela. |
 | Reordenar, juntar, renomear ou remover commits | Botão direito num commit → **Rebase interativo**: arraste para reordenar e escolha a ação de cada commit.        |
 | Outras operações                              | Checkout (duplo clique), criar/renomear/excluir branch, revert, reset, stash, fetch, pull e push (botão direito / barra superior). |
-| Tema e atalhos                                | ⚙ Configurações: tema claro/escuro/do sistema, tamanho da interface e atalhos de teclado personalizáveis (F1 lista todos). |
+| Idioma, tema e atalhos                        | ⚙ **Configurações** (canto superior direito): idioma, tema claro/escuro/do sistema, tamanho da interface e atalhos de teclado personalizáveis (F1 lista todos). |
 
 ### Cherry-pick de linhas
 
@@ -61,6 +61,34 @@ Arraste (ou use ▲▼) para reordenar e escolha para cada commit: *Manter*, *Ed
 anterior* (squash, com mensagem combinada ou nova), *Juntar descartando a mensagem* (fixup) ou *Remover*.
 Alterações locais são guardadas e devolvidas automaticamente (`--autostash`); conflitos aparecem no
 mesmo painel das outras operações.
+
+### Idiomas
+
+A interface inteira — inclusive as mensagens de erro e de resultado das operações git — está disponível em:
+
+| Idioma | Código |
+| --- | --- |
+| Português (Brasil) | `pt-BR` |
+| English | `en` |
+| 简体中文 (chinês simplificado) | `zh-CN` |
+| हिन्दी (hindi) | `hi` |
+| Español | `es` |
+| العربية (árabe, escrito da direita para a esquerda) | `ar` |
+
+Por padrão o GitTools segue o idioma do sistema operacional; troque em ⚙ Configurações → Geral.
+A mudança é aplicada na hora, como prévia, e só é gravada ao clicar em *Salvar*.
+
+| Árabe (layout espelhado) | Chinês |
+| --- | --- |
+| ![Interface em árabe](docs/screenshots/idioma-arabe-rtl.png) | ![Interface em chinês](docs/screenshots/idioma-chines.png) |
+
+### Configurações
+
+![Central de Configurações](docs/screenshots/configuracoes.png)
+
+Todas as opções gerais ficam num único lugar, separadas em seções: **Geral** (idioma),
+**Aparência** (tema e tamanho), **Atalhos de teclado** e **Sobre** (versões do GitTools, do git e
+do sistema, local do arquivo de configurações e "Restaurar padrões").
 
 ### Atalhos de teclado
 
@@ -107,11 +135,17 @@ src/
 │                       (branch/commits/arquivos/linhas), conflitos, comparação, blame, histórico, stash, remotos
 ├── main/               Processo principal do Electron: janela, diálogos, IPC
 ├── preload/            Ponte segura (contextIsolation) exposta como window.gittools
-├── shared/             Tipos, contrato da API e leitura/montagem de marcadores de conflito
+├── shared/             Tipos, contrato da API, marcadores de conflito, configurações e idiomas
+│   ├── settings.ts     Formato, valores padrão e validação das configurações
+│   └── i18n/           Traduções (usadas pelo motor git, pelo processo principal e pela interface)
+│       ├── locales.ts  Lista de idiomas e detecção do idioma do sistema
+│       ├── translator.ts  Parâmetros {nome} e plurais (Intl.PluralRules)
+│       └── messages/   Um arquivo por idioma; pt-BR.ts é a referência
 └── renderer/           Interface em React
     └── src/components/ Histórico com grafo, detalhes do commit, diff com seleção de linhas, alterações,
                         Cherry-pick Studio, editor de conflitos, comparação, blame/histórico,
-                        rebase interativo, configurações e atalhos
+                        rebase interativo e atalhos
+        └── settings/   Central de Configurações: sections.tsx registra as seções
 ```
 
 - O GitTools usa o **git instalado na máquina** (não reimplementa o Git), então respeita suas
@@ -126,6 +160,26 @@ src/
   *unstage* e o *descartar* de linhas.
 - O **rebase interativo** gera a lista de tarefas do `git rebase -i` a partir da tela; mensagens
   novas são aplicadas com `exec git commit --amend -F <arquivo>`, então nada depende de editor.
+
+### Como adicionar um idioma
+
+1. Copie `src/shared/i18n/messages/en.ts` para `src/shared/i18n/messages/<código>.ts` e traduza os textos.
+   O TypeScript acusa qualquer chave faltando ou sobrando, e `npm test` confere se os parâmetros
+   (`{count}`, `{branch}`…) foram mantidos.
+2. Registre o arquivo em `src/shared/i18n/messages/index.ts`.
+3. Acrescente o código em `LOCALE_IDS` e uma entrada em `LOCALES` (`src/shared/i18n/locales.ts`),
+   com `dir: 'rtl'` se o idioma for escrito da direita para a esquerda.
+
+Plurais seguem as regras do Unicode CLDR: use `{ one, other }`, ou as formas que o idioma tiver
+(`zero`, `two`, `few`, `many`); `zero`, quando existe, é usado para o número 0 em qualquer idioma.
+
+### Como adicionar uma opção de configuração
+
+1. Acrescente o campo em `Settings`, o valor em `DEFAULT_SETTINGS` e a validação em
+   `normalizeSettings` (`src/shared/settings.ts`).
+2. Mostre o campo numa seção existente ou crie uma nova e registre-a em
+   `src/renderer/src/components/settings/sections.tsx`. A central cuida da navegação, da prévia,
+   da validação e do salvamento.
 
 ## Ideias para o futuro
 

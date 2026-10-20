@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useActions } from '../actions'
 import { useApp } from '../context'
 import { git } from '../git'
+import { t } from '../i18n'
 import { comboFromEvent, resolveBindings, worksInInputs } from '../shortcuts'
 
 /** Escuta o teclado e executa as ações conforme os atalhos configurados. */
@@ -34,12 +35,12 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         studio: () => app.openStudio({ target: actions.head ?? undefined }),
         'branch.new': () => actions.createBranch(),
         stash: () => actions.stash(),
-        fetch: () => app.run('Fetch', () => git.fetch()),
-        pull: () => app.run('Pull', () => git.pull()),
-        push: () => app.run('Push', () => git.push()),
+        fetch: () => app.run(t('busy.fetch'), () => git.fetch()),
+        pull: () => app.run(t('busy.pull'), () => git.pull()),
+        push: () => app.run(t('busy.push'), () => git.push()),
         refresh: () => app.refresh(),
         'repo.open': onOpenRepository,
-        settings: app.openSettings,
+        settings: () => app.openSettings(),
         help: app.openShortcuts
       }
       void handlers[action]?.()

@@ -7,6 +7,7 @@ import { endDrag, startDrag } from '../dnd'
 import { git } from '../git'
 import { relativeDate } from '../format'
 import { useDrop } from '../useDrop'
+import { t } from '../i18n'
 
 interface Props {
   scope: HistoryScope
@@ -23,25 +24,25 @@ export function Sidebar({ scope, onScope }: Props) {
 
   return (
     <aside className="sidebar">
-      <p className="sidebar-hint">Arraste uma branch, commit ou arquivo sobre uma branch local para merge, rebase ou cherry-pick.</p>
-      <Section title="Branches" count={local.length}>
+      <p className="sidebar-hint">{t('sidebar.hint')}</p>
+      <Section title={t('sidebar.branches')} count={local.length}>
         {local.map((b) => (
           <BranchItem key={b.fullRef} branch={b} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
         ))}
       </Section>
       {[...remotes.entries()].map(([remote, list]) => (
-        <Section key={remote} title={`Remoto: ${remote}`} count={list.length} collapsed>
+        <Section key={remote} title={t('sidebar.remote', { remote })} count={list.length} collapsed>
           {list.map((b) => (
             <BranchItem key={b.fullRef} branch={b} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
           ))}
         </Section>
       ))}
-      <Section title="Tags" count={data.tags.length} collapsed>
+      <Section title={t('sidebar.tags')} count={data.tags.length} collapsed>
         {data.tags.map((t) => (
           <TagItem key={t.name} name={t.name} sha={t.sha} />
         ))}
       </Section>
-      <Section title="Stashes" count={data.stashes.length}>
+      <Section title={t('sidebar.stashes')} count={data.stashes.length}>
         {data.stashes.map((s) => (
           <StashItem key={s.ref} stash={s} />
         ))}
@@ -74,28 +75,28 @@ function BranchItem({ branch, active, onScope }: { branch: BranchInfo; active: b
 
   const menu = (e: React.MouseEvent) =>
     showMenu(e, [
-      { label: 'Checkout', onClick: () => actions.checkout(branch.name), disabled: branch.current },
-      { label: 'Ver histórico desta branch', onClick: () => onScope({ kind: 'ref', ref: branch.name }) },
+      { label: t('sidebar.menu.checkout'), onClick: () => actions.checkout(branch.name), disabled: branch.current },
+      { label: t('sidebar.menu.history'), onClick: () => onScope({ kind: 'ref', ref: branch.name }) },
       'separator',
       ...(head && !branch.current
         ? [
-            { label: `Merge de ${branch.name} em ${head}`, onClick: () => run('Merge', () => git.merge(branch.name, head)) },
-            ...(isRemote ? [] : [{ label: `Rebase de ${head} sobre ${branch.name}`, onClick: () => run('Rebase', () => git.rebase(head, branch.name)) }]),
+            { label: t('actions.branchDrop.merge', { source: branch.name, target: head }), onClick: () => run(t('busy.merge', { ref: branch.name }), () => git.merge(branch.name, head)) },
+            ...(isRemote ? [] : [{ label: t('actions.branchDrop.rebase', { source: head, target: branch.name }), onClick: () => run(t('busy.rebase', { ref: head }), () => git.rebase(head, branch.name)) }]),
             {
-              label: `Cherry-pick de todos os commits em ${head}…`,
+              label: t('sidebar.menu.cherryAll', { target: head }),
               onClick: () => actions.branchOntoBranch(branch.name, head, isRemote)
             }
           ]
         : []),
-      ...(head && !branch.current ? [{ label: `Comparar com ${head}`, onClick: () => openCompare({ from: head, to: branch.name }) }] : []),
-      { label: 'Cherry-pick Studio (origem = esta branch)…', onClick: () => openStudio({ source: branch.name, target: head ?? undefined }) },
+      ...(head && !branch.current ? [{ label: t('common.compareWith', { ref: head }), onClick: () => openCompare({ from: head, to: branch.name }) }] : []),
+      { label: t('sidebar.menu.studio'), onClick: () => openStudio({ source: branch.name, target: head ?? undefined }) },
       'separator',
-      { label: 'Nova branch a partir desta…', onClick: () => actions.createBranch(branch.name) },
+      { label: t('sidebar.menu.newBranch'), onClick: () => actions.createBranch(branch.name) },
       ...(isRemote
         ? []
         : [
-            { label: 'Renomear…', onClick: () => actions.renameBranch(branch) },
-            { label: 'Excluir…', onClick: () => actions.deleteBranch(branch), danger: true, disabled: branch.current }
+            { label: t('sidebar.menu.rename'), onClick: () => actions.renameBranch(branch) },
+            { label: t('sidebar.menu.delete'), onClick: () => actions.deleteBranch(branch), danger: true, disabled: branch.current }
           ])
     ])
 
@@ -109,7 +110,7 @@ function BranchItem({ branch, active, onScope }: { branch: BranchInfo; active: b
       onClick={() => onScope({ kind: 'ref', ref: branch.name })}
       onDoubleClick={() => !branch.current && actions.checkout(branch.name)}
       onContextMenu={menu}
-      title={`${branch.name}\n${branch.subject}\n${relativeDate(branch.date)}\n\nDuplo clique: checkout · Botão direito: mais ações`}
+      title={`${branch.name}\n${branch.subject}\n${relativeDate(branch.date)}\n\n${t('sidebar.branchTooltip')}`}
       {...drop.props}
     >
       <span className="branch-icon">{branch.current ? '●' : '⎇'}</span>
@@ -120,7 +121,7 @@ function BranchItem({ branch, active, onScope }: { branch: BranchInfo; active: b
           {branch.behind > 0 && ` ↓${branch.behind}`}
         </span>
       )}
-      {drop.over && <span className="drop-hint">soltar aqui</span>}
+      {drop.over && <span className="drop-hint">{t('sidebar.dropHere')}</span>}
     </li>
   )
 }
@@ -134,8 +135,8 @@ function TagItem({ name, sha }: { name: string; sha: string }) {
       onClick={() => selectCommit(sha)}
       onContextMenu={(e) =>
         showMenu(e, [
-          { label: 'Checkout (HEAD destacado)', onClick: () => actions.checkout(name) },
-          { label: 'Nova branch a partir desta tag…', onClick: () => actions.createBranch(name) }
+          { label: t('sidebar.menu.checkoutDetached'), onClick: () => actions.checkout(name) },
+          { label: t('sidebar.menu.newBranchFromTag'), onClick: () => actions.createBranch(name) }
         ])
       }
     >
@@ -148,20 +149,25 @@ function TagItem({ name, sha }: { name: string; sha: string }) {
 function StashItem({ stash }: { stash: StashInfo }) {
   const { run, confirm } = useApp()
   const drop = async () => {
-    const ok = await confirm({ title: 'Descartar stash', message: `Descartar "${stash.message}"?`, confirmLabel: 'Descartar', danger: true })
-    if (ok) await run('Descartando stash', () => git.stashDrop(stash.index))
+    const ok = await confirm({
+      title: t('sidebar.stash.dropTitle'),
+      message: t('sidebar.stash.dropMessage', { message: stash.message }),
+      confirmLabel: t('common.discard'),
+      danger: true
+    })
+    if (ok) await run(t('busy.droppingStash'), () => git.stashDrop(stash.index))
   }
   return (
     <li className="stash-item" title={`${stash.ref} · ${relativeDate(stash.date)}`}>
       <span className="branch-name">{stash.message}</span>
       <span className="stash-actions">
-        <button onClick={() => run('Aplicando stash', () => git.stashApply(stash.index, true))} title="Aplicar e remover (pop)">
+        <button onClick={() => run(t('busy.applyingStash'), () => git.stashApply(stash.index, true))} title={t('sidebar.stash.pop')}>
           ⤓
         </button>
-        <button onClick={() => run('Aplicando stash', () => git.stashApply(stash.index))} title="Aplicar e manter">
+        <button onClick={() => run(t('busy.applyingStash'), () => git.stashApply(stash.index))} title={t('sidebar.stash.apply')}>
           ⧉
         </button>
-        <button onClick={drop} title="Descartar">
+        <button onClick={drop} title={t('common.discard')}>
           ✕
         </button>
       </span>

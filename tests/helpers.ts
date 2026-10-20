@@ -1,9 +1,13 @@
+import { setLocale } from '../src/shared/i18n'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach } from 'vitest'
 import { runGit } from '../src/core/exec'
 import { GitRepository } from '../src/core/repository'
+
+// Os testes verificam mensagens em português.
+setLocale('pt-BR')
 
 const created: string[] = []
 
