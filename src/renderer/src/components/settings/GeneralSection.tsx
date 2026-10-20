@@ -19,9 +19,12 @@ export function GeneralSection({ draft, update }: SettingsSectionProps) {
           <span className="muted small">{t('settings.general.detected', { language: detectedName })}</span>
         </label>
         {LOCALES.map((locale) => (
-          <label key={locale.id} className={`language-option ${draft.language === locale.id ? 'selected' : ''}`} lang={locale.id} dir={locale.dir}>
+          <label key={locale.id} className={`language-option ${draft.language === locale.id ? 'selected' : ''}`}>
             <input type="radio" name="language" checked={draft.language === locale.id} onChange={() => update({ language: locale.id })} />
-            <span className="language-native">{locale.nativeName}</span>
+            {/* Só o nome nativo usa a direção do idioma; o cartão segue o layout dos demais. */}
+            <span className="language-native" lang={locale.id} dir={locale.dir}>
+              {locale.nativeName}
+            </span>
             <span className="muted small" dir="ltr">
               {locale.englishName}
             </span>

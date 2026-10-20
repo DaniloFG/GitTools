@@ -1693,6 +1693,8 @@ kbd.duplicate {
 .language-native {
   font-size: 14px;
   font-weight: 600;
+  /* Alinha pelo início do cartão mesmo quando o nome é escrito da direita para a esquerda. */
+  justify-self: start;
 }
 .about-table code {
   word-break: break-all;
