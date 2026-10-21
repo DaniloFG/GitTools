@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import type { RepoInfo } from '../../shared/types'
 import {
@@ -18,6 +18,7 @@ import { CompareView } from './components/CompareView'
 import { ConflictEditor } from './components/ConflictEditor'
 import { ContextMenu, type MenuItem, type MenuState } from './components/ContextMenu'
 import { DialogHost, type DialogState } from './components/Dialogs'
+import { DiffWindow, type DiffWindowRequest } from './components/DiffWindow'
 import { FilesView } from './components/FilesView'
 import { KeyboardShortcuts } from './components/KeyboardShortcuts'
 import { OperationBanner } from './components/OperationBanner'
@@ -31,6 +32,8 @@ import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
 import { errorMessage } from './format'
 import { git } from './git'
+import { useLayout } from './layout'
+import { startReorder, useOrder } from './reorder'
 import { getLocale, matchLocale, setLocale, textDirection, t, type LocaleId, type MessageKey } from './i18n'
 
 export type HistoryScope = { kind: 'all' } | { kind: 'head' } | { kind: 'ref'; ref: string }
@@ -55,12 +58,50 @@ function applySettings(settings: Settings, locale: LocaleId) {
   window.gittools.setZoom(settings.zoom)
 }
 
-const TABS: { id: View; label: MessageKey }[] = [
-  { id: 'history', label: 'tabs.history' },
-  { id: 'changes', label: 'tabs.changes' },
-  { id: 'files', label: 'tabs.files' },
-  { id: 'compare', label: 'tabs.compare' }
-]
+const TAB_LABELS: Record<View, MessageKey> = {
+  history: 'tabs.history',
+  changes: 'tabs.changes',
+  files: 'tabs.files',
+  compare: 'tabs.compare'
+}
+const TAB_IDS = Object.keys(TAB_LABELS) as View[]
+const parseTabsPosition = (value: unknown): 'top' | 'bottom' => (value === 'bottom' ? 'bottom' : 'top')
+
+/** Abas da área central: podem ser reordenadas arrastando e ficar em cima ou embaixo (botão direito). */
+function Tabs({ view, onView, changeCount }: { view: View; onView(view: View): void; changeCount: number }) {
+  const { showMenu } = useContext(AppContext)!
+  const [order, move] = useOrder('tabs', TAB_IDS)
+  const [position, setPosition] = useLayout('tabs.position', parseTabsPosition)
+  return (
+    <nav
+      className={`tabs tabs-${position}`}
+      style={{ order: position === 'bottom' ? 2 : 0 }}
+      title={t('layout.reorderHelp')}
+      onContextMenu={(e) =>
+        showMenu(e, [
+          {
+            label: position === 'bottom' ? t('layout.tabsTop') : t('layout.tabsBottom'),
+            onClick: () => setPosition(position === 'bottom' ? undefined : 'bottom')
+          }
+        ])
+      }
+    >
+      {order.map((id) => (
+        <button
+          key={id}
+          className={view === id ? 'active' : ''}
+          data-reorder="tabs"
+          data-reorder-id={id}
+          onPointerDown={(e) => startReorder(e, 'tabs', id, (a, b) => move(a as View, b as View))}
+          onClick={() => onView(id)}
+        >
+          {t(TAB_LABELS[id])}
+          {id === 'changes' && changeCount > 0 && <span className="badge">{changeCount}</span>}
+        </button>
+      ))}
+    </nav>
+  )
+}
 
 export function App() {
   const [repo, setRepo] = useState<RepoInfo | null>(null)
@@ -78,6 +119,7 @@ export function App() {
   const [compare, setCompare] = useState<CompareRequest>({})
   const [filePath, setFilePath] = useState<string | null>(null)
   const [rebaseFrom, setRebaseFrom] = useState<string | null>(null)
+  const [diffWindow, setDiffWindow] = useState<DiffWindowRequest | null>(null)
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   /** Configurações em edição, aplicadas na hora para pré-visualização. */
   const [preview, setPreview] = useState<Settings | null>(null)
@@ -220,6 +262,14 @@ export function App() {
         setView('files')
       },
       openRebase: (sha) => setRebaseFrom(sha),
+      openInEditor: (path = '.') => {
+        if (!settings.editor) {
+          toast('info', t('editor.chooseFirst'))
+          setSettingsOpen('editor')
+          return
+        }
+        window.gittools.openInEditor(path).catch((error) => toast('error', errorMessage(error)))
+      },
       settings,
       openSettings: (section) => setSettingsOpen(section ?? 'general'),
       openShortcuts: () => setHelpOpen(true)
@@ -258,7 +308,7 @@ export function App() {
   }
 
   const changeCount = data!.status.staged.length + data!.status.unstaged.length + data!.status.conflicted.length
-  const modalOpen = !!(studio || conflict || rebaseFrom || dialog || settingsOpen || helpOpen)
+  const modalOpen = !!(studio || conflict || rebaseFrom || diffWindow || dialog || settingsOpen || helpOpen)
 
   return (
     <AppContext.Provider value={context}>
@@ -275,14 +325,7 @@ export function App() {
             }}
           />
           <main className="main">
-            <nav className="tabs">
-              {TABS.map((tab) => (
-                <button key={tab.id} className={view === tab.id ? 'active' : ''} onClick={() => setView(tab.id)}>
-                  {t(tab.label)}
-                  {tab.id === 'changes' && changeCount > 0 && <span className="badge">{changeCount}</span>}
-                </button>
-              ))}
-            </nav>
+            <Tabs view={view} onView={setView} changeCount={changeCount} />
             {view === 'history' && (
               <Split id="history" initial={0.55} min={[280, 280]}>
                 <CommitList
@@ -294,6 +337,7 @@ export function App() {
                     setSelected([sha])
                     setFileFocus((prev) => ({ sha, path, n: (prev?.n ?? 0) + 1 }))
                   }}
+                  onOpenFileWindow={(sha, path) => setDiffWindow({ sha, path })}
                 />
                 <CommitDetailsPanel selected={selected} focus={fileFocus} />
               </Split>
@@ -306,6 +350,7 @@ export function App() {
       </div>
       {studio && <CherryPickStudio request={studio} onClose={() => setStudio(null)} />}
       {conflict && <ConflictEditor path={conflict} onClose={() => setConflict(null)} />}
+      {diffWindow && <DiffWindow request={diffWindow} onClose={() => setDiffWindow(null)} />}
       {rebaseFrom && <RebaseEditor fromSha={rebaseFrom} onClose={() => setRebaseFrom(null)} />}
       {settingsDialogs}
       {dialog && <DialogHost dialog={dialog} onDone={() => setDialog(null)} />}

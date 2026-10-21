@@ -13,7 +13,7 @@ import { Split } from './Split'
 type Area = 'unstaged' | 'staged'
 
 export function ChangesView() {
-  const { data, run, confirm, toast, openConflict, openFileView } = useApp()
+  const { data, run, confirm, toast, openConflict, openFileView, openInEditor } = useApp()
   const { status } = data
   const [active, setActive] = useState<{ area: Area; path: string } | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
@@ -155,7 +155,7 @@ export function ChangesView() {
                     {t('changes.discardLines')}
                   </button>
                   <button onClick={() => run(t('busy.stage'), () => git.stageFiles([active.path]))}>{t('changes.stageFile')}</button>
-                  <button onClick={() => window.gittools.openFile(active.path)}>{t('common.open')}</button>
+                  <button onClick={() => openInEditor(active.path)}>{t('common.openInEditor')}</button>
                   <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
                 </>
               ) : (

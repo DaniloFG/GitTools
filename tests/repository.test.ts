@@ -233,3 +233,19 @@ describe('merge, rebase e stash', () => {
     expect(await t.repo.stashes()).toEqual([])
   })
 })
+
+describe('tags', () => {
+  it('cria tags simples e anotadas em qualquer commit e as exclui', async () => {
+    const t = await createRepo()
+    const first = await t.commit('primeiro', { 'a.txt': 'a\n' })
+    const second = await t.commit('segundo', { 'a.txt': 'b\n' })
+    await t.repo.createTag('v1', first)
+    await t.repo.createTag('v2', undefined, 'Versão 2')
+    expect(await t.repo.tags()).toEqual(expect.arrayContaining([{ name: 'v1', sha: first }, { name: 'v2', sha: second }]))
+    expect((await t.git('cat-file', '-t', 'v2')).trim()).toBe('tag')
+    expect((await t.git('cat-file', '-t', 'v1')).trim()).toBe('commit')
+    await expect(t.repo.createTag('-x')).rejects.toThrow('Nome de tag inválido')
+    await t.repo.deleteTag('v1')
+    expect((await t.repo.tags()).map((tag) => tag.name)).toEqual(['v2'])
+  })
+})

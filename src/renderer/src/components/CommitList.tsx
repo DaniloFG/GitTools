@@ -7,8 +7,9 @@ import type { MenuItem } from './ContextMenu'
 import { useApp } from '../context'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, relativeDate, shortSha, statusLabel } from '../format'
+import { startReorder, useOrder } from '../reorder'
 import { git } from '../git'
-import { t } from '../i18n'
+import { formatShortDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
 import { graphFor, laneColor, matchesCommit, refName, type GraphRow } from '../graph'
 import { useDrop } from '../useDrop'
 
@@ -16,6 +17,17 @@ const ROW = 30
 const LANE = 14
 /** Distância do início da linha até o grafo: margem + botão ▸ + espaçamento (ver .row-toggle). */
 const GRAPH_OFFSET = 30
+
+/** Colunas do histórico; o usuário as reordena arrastando o cabeçalho. */
+type Column = 'graph' | 'subject' | 'author' | 'date' | 'sha'
+const COLUMNS: readonly Column[] = ['graph', 'subject', 'author', 'date', 'sha']
+const COLUMN_LABELS: Record<Column, MessageKey> = {
+  graph: 'history.columns.graph',
+  subject: 'history.columns.subject',
+  author: 'history.columns.author',
+  date: 'history.columns.date',
+  sha: 'history.columns.sha'
+}
 
 /** Id do campo de pesquisa (o atalho de teclado leva o foco para ele). */
 export const HISTORY_SEARCH_ID = 'history-search'
@@ -27,17 +39,23 @@ interface Props {
   onSelect(shas: string[]): void
   /** Abre o diff de um arquivo do commit no painel de detalhes. */
   onOpenFile(sha: string, path: string): void
+  /** Abre só o diff do arquivo, numa janela própria (duplo clique). */
+  onOpenFileWindow(sha: string, path: string): void
 }
 
 type FilesState = ChangedFile[] | 'loading' | { error: string }
 
-export function CommitList({ scope, onScope, selected, onSelect, onOpenFile }: Props) {
+export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onOpenFileWindow }: Props) {
   const { data, showMenu, openStudio, openCompare, openRebase } = useApp()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [files, setFiles] = useState<Map<string, FilesState>>(new Map())
+  const [columns, moveColumn] = useOrder('history.columns', COLUMNS)
+  /** As trilhas do grafo só continuam ao lado dos arquivos expandidos quando o grafo é a primeira coluna. */
+  const graphFirst = columns[0] === 'graph'
+  const locale = getCurrentLocale()
   const commits = data.log
   const rows = graphFor(commits, data.status.headSha)
   const lanes = Math.max(1, ...rows.map((r) => Math.max(r.lanesIn.length, r.lanesOut.length, r.column + 1)))
@@ -46,8 +64,8 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile }: P
   const searching = query.trim() !== ''
   /** Índices (em `commits`) das linhas visíveis — todas, ou só as que batem com a pesquisa. */
   const visible = useMemo(
-    () => (searching ? commits.flatMap((c, i) => (matchesCommit(c, query) ? [i] : [])) : commits.map((_, i) => i)),
-    [commits, query, searching]
+    () => (searching ? commits.flatMap((c, i) => (matchesCommit(c, query, locale) ? [i] : [])) : commits.map((_, i) => i)),
+    [commits, query, searching, locale]
   )
 
   // Arquivos dos commits expandidos são carregados sob demanda (e recarregados se o histórico mudar).
@@ -151,6 +169,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile }: P
       { label: expanded.has(commit.sha) ? t('history.menu.hideFiles') : t('history.menu.showFiles'), onClick: () => toggle(commit.sha) },
       'separator',
       { label: t('history.menu.newBranch'), onClick: () => actions.createBranch(commit.sha) },
+      { label: t('history.menu.newTag'), onClick: () => actions.createTag(commit.sha) },
       'separator',
       { label: t('history.menu.revert'), onClick: () => actions.revert(commit) },
       { label: t('history.menu.reset', { branch: head ?? 'HEAD' }), onClick: () => actions.reset(commit) },
@@ -201,6 +220,21 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile }: P
         </span>
         <span className="muted hint">{t('history.hint')}</span>
       </div>
+      <div className="commit-columns" title={t('history.columns.help')}>
+        <span className="row-toggle" />
+        {columns.map((column) => (
+          <span
+            key={column}
+            className={`commit-column-head ${COLUMN_CLASS[column]}`}
+            style={column === 'graph' ? { width: searching ? x(0) + 8 : graphWidth, flex: 'none' } : undefined}
+            data-reorder="history-columns"
+            data-reorder-id={column}
+            onPointerDown={(e) => startReorder(e, 'history-columns', column, (a, b) => moveColumn(a as Column, b as Column))}
+          >
+            {t(COLUMN_LABELS[column])}
+          </span>
+        ))}
+      </div>
       <div className="list-body" tabIndex={0} onKeyDown={onKeyDown}>
         {commits.length === 0 && <p className="empty">{t('history.empty')}</p>}
         {searching && commits.length > 0 && visible.length === 0 && <p className="empty">{t('history.search.none', { query })}</p>}
@@ -238,18 +272,39 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile }: P
                 >
                   {open ? '▾' : '▸'}
                 </button>
-                <GraphCell row={row} commit={commit} width={graphWidth} dotOnly={searching} />
-                <div className="commit-main">
-                  <RefBadges refs={commit.refs} color={row.color} onScope={onScope} />
-                  <span className="commit-subject">
-                    <Highlight text={commit.subject} query={query} />
-                  </span>
-                </div>
-                <span className="commit-author">{commit.author}</span>
-                <span className="commit-date" title={fullDate(commit.date)}>
-                  {relativeDate(commit.date)}
-                </span>
-                <code className="commit-sha">{shortSha(commit.sha)}</code>
+                {columns.map((column) => {
+                  switch (column) {
+                    case 'graph':
+                      return <GraphCell key={column} row={row} commit={commit} width={graphWidth} dotOnly={searching} />
+                    case 'subject':
+                      return (
+                        <div key={column} className="commit-main">
+                          <RefBadges refs={commit.refs} color={row.color} onScope={onScope} />
+                          <span className="commit-subject">
+                            <Highlight text={commit.subject} query={query} />
+                          </span>
+                        </div>
+                      )
+                    case 'author':
+                      return (
+                        <span key={column} className="commit-author">
+                          <Highlight text={commit.author} query={query} />
+                        </span>
+                      )
+                    case 'date':
+                      return (
+                        <span key={column} className="commit-date" title={`${fullDate(commit.date)}\n${relativeDate(commit.date)}`}>
+                          <Highlight text={formatShortDateTime(commit.date)} query={query} />
+                        </span>
+                      )
+                    case 'sha':
+                      return (
+                        <code key={column} className="commit-sha">
+                          {shortSha(commit.sha)}
+                        </code>
+                      )
+                  }
+                })}
               </div>
               {open && (
                 <CommitFiles
@@ -257,8 +312,10 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile }: P
                   files={files.get(commit.sha) ?? 'loading'}
                   row={row}
                   graphWidth={graphWidth}
-                  showLanes={!searching}
+                  showLanes={!searching && graphFirst}
+                  indent={graphFirst}
                   onOpenFile={(path) => onOpenFile(commit.sha, path)}
+                  onOpenFileWindow={(path) => onOpenFileWindow(commit.sha, path)}
                 />
               )}
             </Fragment>
@@ -288,6 +345,14 @@ function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 const x = (lane: number) => LANE / 2 + lane * LANE + 4
+
+const COLUMN_CLASS: Record<Column, string> = {
+  graph: 'commit-graph-head',
+  subject: 'commit-main',
+  author: 'commit-author',
+  date: 'commit-date',
+  sha: 'commit-sha'
+}
 
 function curve(x1: number, y1: number, x2: number, y2: number) {
   if (x1 === x2) return `M${x1} ${y1}L${x2} ${y2}`
@@ -333,16 +398,21 @@ function CommitFiles({
   row,
   graphWidth,
   showLanes,
-  onOpenFile
+  indent,
+  onOpenFile,
+  onOpenFileWindow
 }: {
   sha: string
   files: FilesState
   row: GraphRow
   graphWidth: number
   showLanes: boolean
+  /** Recua a lista até depois do grafo (quando ele é a primeira coluna). */
+  indent: boolean
   onOpenFile(path: string): void
+  onOpenFileWindow(path: string): void
 }) {
-  const { showMenu, openFileView } = useApp()
+  const { showMenu, openFileView, openInEditor } = useApp()
   const actions = useActions()
   const head = actions.head
   const pathsOf = (f: ChangedFile) => (f.oldPath ? [f.path, f.oldPath] : [f.path])
@@ -350,8 +420,10 @@ function CommitFiles({
   const menu = (e: React.MouseEvent, file: ChangedFile) =>
     showMenu(e, [
       { label: t('history.files.openDiff'), onClick: () => onOpenFile(file.path) },
+      { label: t('history.files.openWindow'), onClick: () => onOpenFileWindow(file.path) },
       ...(head ? [{ label: t('history.files.take', { target: head }), onClick: () => actions.filesOntoBranch(sha, pathsOf(file), head) }] : []),
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
+      { label: t('common.openInEditor'), onClick: () => openInEditor(file.path) },
       'separator',
       { label: t('history.files.copyPath'), onClick: () => navigator.clipboard.writeText(file.path) }
     ])
@@ -364,7 +436,7 @@ function CommitFiles({
             v ? <line key={i} x1={x(i)} x2={x(i)} y1="0" y2="100%" stroke={laneColor(row.colorsOut[i])} strokeWidth={2} /> : null
           )}
       </svg>
-      <ul style={{ paddingInlineStart: GRAPH_OFFSET + graphWidth + 8 }}>
+      <ul style={{ paddingInlineStart: indent ? GRAPH_OFFSET + graphWidth + 8 : GRAPH_OFFSET }}>
         {files === 'loading' ? (
           <li className="muted">
             <span className="spinner" />
@@ -382,6 +454,7 @@ function CommitFiles({
                 className="commit-file"
                 title={`${file.oldPath ? `${file.oldPath} → ` : ''}${file.path}\n${t('history.files.help')}`}
                 onClick={() => onOpenFile(file.path)}
+                onDoubleClick={() => onOpenFileWindow(file.path)}
                 onContextMenu={(e) => menu(e, file)}
                 draggable
                 onDragStart={(e) => {

@@ -123,6 +123,24 @@ export interface SearchableCommit extends GraphCommit {
   subject: string
   author: string
   refs: string[]
+  /** Data do commit (ms); permite pesquisar por data ou hora. */
+  date?: number
+}
+
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/**
+ * Formas em que a data do commit pode ser pesquisada: "2026-10-21", "21/10/2026" (no formato do
+ * idioma), "14:32" e as combinações de data e hora.
+ */
+export function dateSearchText(ms: number, locale?: string): string {
+  const d = new Date(ms)
+  const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const local = d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
+  // O mesmo texto da coluna de data, para a pesquisa marcar exatamente o que aparece na tela.
+  const shown = d.toLocaleString(locale, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  return [`${iso} ${time}`, `${local} ${time}`, shown, d.toLocaleDateString(locale)].join('\n')
 }
 
 /** Nome de branch/tag de uma referência do `git log --decorate` ("HEAD -> main", "tag: v1"). */
@@ -134,12 +152,14 @@ export function refName(ref: string): string {
 
 /**
  * O commit corresponde à pesquisa? Procura (sem diferenciar maiúsculas) no nome das branches e tags,
- * na mensagem, no autor e no início do hash. Vários termos separados por espaço precisam aparecer todos.
+ * na mensagem, no autor, na data e hora e no início do hash. Vários termos separados por espaço
+ * precisam aparecer todos (ex.: "21/10/2026 14:").
  */
-export function matchesCommit(commit: SearchableCommit, query: string): boolean {
+export function matchesCommit(commit: SearchableCommit, query: string, locale?: string): boolean {
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean)
   if (!terms.length) return true
-  const text = [commit.subject, commit.author, ...commit.refs.map(refName)].join('\n').toLowerCase()
+  const date = commit.date === undefined ? [] : [dateSearchText(commit.date, locale)]
+  const text = [commit.subject, commit.author, ...commit.refs.map(refName), ...date].join('\n').toLowerCase()
   const sha = commit.sha.toLowerCase()
   return terms.every((term) => text.includes(term) || sha.startsWith(term))
 }

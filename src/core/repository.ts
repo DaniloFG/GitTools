@@ -48,7 +48,7 @@ const FS = '\x1f'
 const RS = '\x1e'
 const COMMIT_FORMAT = ['%H', '%P', '%an', '%ae', '%at', '%s', '%D'].join('%x1f') + '%x1e'
 
-type RefKind = 'ref' | 'commit' | 'branch' | 'branchName'
+type RefKind = 'ref' | 'commit' | 'branch' | 'branchName' | 'tagName'
 
 function assertRef(ref: string, kind: RefKind = 'ref'): void {
   if (!ref || ref.startsWith('-') || /[\s\0]/.test(ref)) throw new Error(t(`core.invalidRef.${kind}`, { ref }))
@@ -534,6 +534,19 @@ export class GitRepository implements RepoApi {
   async deleteBranch(name: string, force = false): Promise<void> {
     assertRef(name, 'branch')
     await this.git(['branch', force ? '-D' : '-d', name])
+  }
+
+  /** Cria uma tag; com mensagem, a tag é anotada. */
+  async createTag(name: string, ref = 'HEAD', message?: string): Promise<void> {
+    assertRef(name, 'tagName')
+    assertRef(ref)
+    const text = message?.trim()
+    await this.git(text ? ['tag', '-a', name, '-m', text, ref] : ['tag', name, ref])
+  }
+
+  async deleteTag(name: string): Promise<void> {
+    assertRef(name, 'tagName')
+    await this.git(['tag', '-d', name])
   }
 
   async renameBranch(oldName: string, newName: string): Promise<void> {

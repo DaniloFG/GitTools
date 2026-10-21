@@ -6,8 +6,8 @@ import { git } from '../git'
 import { t } from '../i18n'
 
 export function Toolbar({ onOpenRepository }: { onOpenRepository(path?: string, create?: boolean): void }) {
-  const { repo, data, run, showMenu, openStudio, openSettings } = useApp()
-  const { head, createBranch, stash } = useActions()
+  const { repo, data, run, showMenu, openStudio, openSettings, openInEditor } = useApp()
+  const { head, createBranch, createTag, stash } = useActions()
   const [recent, setRecent] = useState<RecentRepo[]>([])
   const { status } = data
 
@@ -47,8 +47,14 @@ export function Toolbar({ onOpenRepository }: { onOpenRepository(path?: string, 
       </div>
       <div className="toolbar-group">
         <button onClick={() => createBranch()}>＋ {t('toolbar.branch')}</button>
+        <button onClick={() => createTag()} title={t('toolbar.tagHelp')}>
+          ⌂ {t('toolbar.tag')}
+        </button>
         <button onClick={stash} title={t('toolbar.stashHelp')}>
           ⧉ {t('toolbar.stash')}
+        </button>
+        <button onClick={() => openInEditor()} title={t('toolbar.openInEditorHelp')}>
+          ✎ {t('common.openInEditor')}
         </button>
       </div>
       <div className="toolbar-spacer" />

@@ -4,6 +4,9 @@ import type { Messages } from '../types'
 // cherry-pick=拣选，stash=贮藏，fetch=获取，pull=拉取，push=推送，tag=标签，remote=远程。
 
 export const zhCN: Messages = {
+  editor: {
+    chooseFirst: '请先选择要使用的编辑器。'
+  },
   common: {
     ok: '确定',
     cancel: '取消',
@@ -29,6 +32,8 @@ export const zhCN: Messages = {
     compare: '比较'
   },
   busy: {
+    deletingTag: '正在删除标签 {name}',
+    creatingTag: '正在创建标签 {name}',
     aborting: '正在中止',
     amending: '正在修改上一次提交',
     applyingFiles: '正在应用文件',
@@ -72,6 +77,9 @@ export const zhCN: Messages = {
     untracked: '新文件'
   },
   toolbar: {
+    openInEditorHelp: '在设置中选择的编辑器中打开项目',
+    tagHelp: '在当前提交上创建标签',
+    tag: '标签',
     openRepository: '打开仓库…',
     createRepository: '创建仓库…',
     openFolder: '在文件管理器中打开',
@@ -103,6 +111,8 @@ export const zhCN: Messages = {
     dropHere: '放到这里',
     branchTooltip: '双击：检出 · 右键：更多操作',
     menu: {
+      deleteTag: '删除标签',
+      newTag: '在此创建标签…',
       checkoutBranch: '检出 {branch}',
       checkoutRemote: '检出 {branch}（跟踪远程的本地分支）',
       history: '查看此分支的历史',
@@ -123,6 +133,14 @@ export const zhCN: Messages = {
     }
   },
   history: {
+    columns: {
+      help: '将一个列标题拖到另一个上以交换列',
+      sha: '哈希',
+      date: '日期和时间',
+      author: '作者',
+      subject: '消息',
+      graph: '图形'
+    },
     count: { other: '{count} 个提交' },
     selected: { other: '已选 {count} 个' },
     hint: 'Ctrl/Shift+点击可多选 · ▸ 或双击显示文件 · 拖到分支上',
@@ -130,12 +148,13 @@ export const zhCN: Messages = {
     scope: { all: '所有分支', head: '当前分支', ref: '分支：{ref}' },
     badge: { remote: '远程分支', local: '本地分支 — 可拖动，也可把项目拖放到这里' },
     search: {
-      placeholder: '搜索分支、提交信息、作者或哈希…',
-      help: '按分支或标签名称、提交信息、作者或哈希开头筛选历史。Enter 跳到第一个结果；Esc 清除。',
+      placeholder: '搜索分支、消息、作者、日期、时间或哈希…',
+      help: '按分支或标签名、消息、作者、日期或时间（例如 2026/10/21、2026-10-21、14:30）或哈希开头筛选历史。Enter 跳到第一个结果；Esc 清除。',
       found: { other: '{count} / {total} 个提交' },
       none: '没有找到与“{query}”匹配的提交。'
     },
     files: {
+      openWindow: '仅在窗口中打开此差异',
       none: '没有更改的文件。',
       help: '点击查看差异 · 拖到分支上即可带走该文件',
       openDiff: '查看差异',
@@ -143,6 +162,7 @@ export const zhCN: Messages = {
       copyPath: '复制路径'
     },
     menu: {
+      newTag: '在此创建标签…',
       cherryPick: { one: '将此提交拣选到 {target}…', other: '将 {count} 个提交拣选到 {target}…' },
       openStudio: '在拣选工作台中打开…',
       compareTwo: '比较这 2 个提交',
@@ -218,6 +238,20 @@ export const zhCN: Messages = {
     commitInto: '提交到 {branch}'
   },
   actions: {
+    deleteTag: {
+      confirm: '删除',
+      message: '删除本地标签“{name}”？（远程上的标签不受影响。）',
+      title: '删除标签'
+    },
+    newTag: {
+      messagePlaceholder: '留空则创建轻量标签',
+      message: '说明（可选——将创建附注标签）',
+      confirm: '创建标签',
+      placeholder: '例如：v1.2.0',
+      labelAt: '{ref} 上的标签名称',
+      label: '标签名称（在当前提交上）',
+      title: '新建标签'
+    },
     stash: { title: '贮藏更改', label: '描述（可选）', confirm: '贮藏' },
     newBranch: {
       title: '新建分支',
@@ -417,6 +451,8 @@ export const zhCN: Messages = {
     }
   },
   compare: {
+    showCommitHelp: '单击在旁边查看提交（右键：在历史中打开）',
+    showCommit: '在此查看提交',
     from: '从',
     to: '到',
     refPlaceholder: '分支、标签或提交',
@@ -485,6 +521,16 @@ export const zhCN: Messages = {
     }
   },
   layout: {
+    tabsBottom: '将标签移到底部',
+    tabsTop: '将标签移到顶部',
+    reorderHelp: '拖动以调整顺序',
+    centerWindow: '移回中央',
+    moveWindow: '拖动以移动窗口。双击最大化。',
+    defaultArrangement: '默认布局（位置和大小）',
+    defaultSize: '默认大小',
+    sideBySide: '左右排列',
+    stackPanels: '上下排列',
+    swapPanels: '交换面板位置',
     resize: '拖动以调整大小。双击恢复默认大小。',
     hidePanel: '折叠此面板',
     showPanel: '显示已折叠的面板',
@@ -494,6 +540,19 @@ export const zhCN: Messages = {
     expand: '展开'
   },
   settings: {
+    editor: {
+      diffLayoutHelp: '所有差异都以此方式打开；差异标题中的按钮只在其打开期间切换方式。',
+      diffLayout: '默认差异显示方式',
+      clear: '不使用',
+      browse: '浏览可执行文件…',
+      custom: '手动选择',
+      noneFound: '未找到已知的编辑器。',
+      detecting: '正在查找已安装的编辑器…',
+      editorHelp: '在此电脑上找到的编辑器。如果没有列出你的编辑器，请浏览选择其可执行文件。',
+      editor: '编辑器',
+      description: '“在编辑器中打开”使用的编辑器，以及差异的默认显示方式。',
+      title: '编辑器和差异'
+    },
     title: '设置',
     unsaved: '有未保存的更改（已作为预览显示）。',
     general: {
@@ -596,6 +655,7 @@ export const zhCN: Messages = {
   },
   core: {
     invalidRef: {
+      tagName: '无效的标签名称：“{ref}”',
       ref: '无效的引用：“{ref}”',
       commit: '无效的提交：“{ref}”',
       branch: '无效的分支：“{ref}”',
@@ -650,6 +710,10 @@ export const zhCN: Messages = {
     gitFailed: 'git {command} 失败（代码 {code}）'
   },
   main: {
+    editorNotFound: '找不到编辑器“{editor}”。请在 设置 → 编辑器和差异 中选择其他编辑器。',
+    noEditor: '未选择编辑器。请在 设置 → 编辑器和差异 中选择。',
+    programs: '程序',
+    chooseEditorTitle: '选择编辑器可执行文件',
     openDialogTitle: '打开 Git 仓库',
     initDialogTitle: '在此文件夹中创建 Git 仓库',
     outsideRepository: '路径不在仓库内。',

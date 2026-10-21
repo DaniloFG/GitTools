@@ -7,6 +7,7 @@ import { matchLocale, setLocale, t } from '../shared/i18n'
 import { normalizeSettings, type Settings } from '../shared/settings'
 import { runGit } from '../core/exec'
 import { GitRepository } from '../core/repository'
+import { detectEditors, launchEditor, resolveEditor } from './editors'
 
 // Nome fixo: a pasta de dados (configurações, recentes) é a mesma em desenvolvimento e instalado.
 app.setName('GitTools')
@@ -139,6 +140,28 @@ function registerIpc() {
     if (!full.startsWith(repo.root + sep) && full !== repo.root) throw new Error(t('main.outsideRepository'))
     const error = await shell.openPath(full)
     if (error) throw new Error(error)
+  })
+
+  ipcMain.handle('app:detectEditors', () => detectEditors())
+
+  ipcMain.handle('app:chooseEditor', async () => {
+    const result = await dialog.showOpenDialog(window!, {
+      title: t('main.chooseEditorTitle'),
+      properties: ['openFile'],
+      ...(process.platform === 'win32' ? { filters: [{ name: t('main.programs'), extensions: ['exe', 'cmd', 'bat'] }] } : {})
+    })
+    return result.canceled || !result.filePaths[0] ? null : result.filePaths[0]
+  })
+
+  ipcMain.handle('app:openInEditor', async (_e, relativePath: string) => {
+    if (!repo) throw new Error(t('main.noRepository'))
+    const full = resolve(repo.root, relativePath)
+    if (!full.startsWith(repo.root + sep) && full !== repo.root) throw new Error(t('main.outsideRepository'))
+    const { editor } = await loadSettings()
+    if (!editor) throw new Error(t('main.noEditor'))
+    const command = resolveEditor(editor)
+    if (!command) throw new Error(t('main.editorNotFound', { editor }))
+    await launchEditor(command, full, repo.root)
   })
 
   const allowed = new Set<string>(REPO_METHODS)

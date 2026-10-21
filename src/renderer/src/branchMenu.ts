@@ -39,6 +39,7 @@ export function useBranchMenu(onScope: (scope: HistoryScope) => void) {
       { label: t('sidebar.menu.studio'), onClick: () => openStudio({ source: branch.name, target: head ?? undefined }) },
       'separator',
       { label: t('sidebar.menu.newBranch'), onClick: () => actions.createBranch(branch.name) },
+      { label: t('sidebar.menu.newTag'), onClick: () => actions.createTag(branch.name) },
       ...(isRemote
         ? []
         : [

@@ -11,7 +11,7 @@ const LABEL: Record<'merge' | 'cherry-pick' | 'revert' | 'rebase', MessageKey> =
 }
 
 export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
-  const { data, run, confirm, openConflict } = useApp()
+  const { data, run, confirm, openConflict, openInEditor } = useApp()
   const { operation, status } = data
   const conflicts = status.conflicted
   if (operation.kind === 'none' && conflicts.length === 0) return null
@@ -52,7 +52,7 @@ export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
               <button className="primary" onClick={() => openConflict(f.path)} title={t('operation.sideBySideHelp')}>
                 {t('operation.sideBySide')}
               </button>
-              <button onClick={() => window.gittools.openFile(f.path)}>{t('common.openInEditor')}</button>
+              <button onClick={() => openInEditor(f.path)}>{t('common.openInEditor')}</button>
               <button onClick={() => resolve(f.path, 'ours')} title={t('operation.useOursHelp')}>
                 {t('conflict.useOurs')}
               </button>

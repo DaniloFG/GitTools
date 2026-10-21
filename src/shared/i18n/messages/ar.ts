@@ -6,6 +6,9 @@ import type { Messages } from '../types'
 // صيغ الجمع العربية: zero و one و two و few (3–10) و many (11–99) و other (100 فأكثر).
 
 export const ar: Messages = {
+  editor: {
+    chooseFirst: 'اختر أولًا المحرر الذي تريد استخدامه.'
+  },
   common: {
     ok: 'موافق',
     cancel: 'إلغاء',
@@ -38,6 +41,8 @@ export const ar: Messages = {
     compare: 'مقارنة'
   },
   busy: {
+    deletingTag: 'جارٍ حذف الوسم {name}',
+    creatingTag: 'جارٍ إنشاء الوسم {name}',
     aborting: 'جارٍ الإلغاء',
     amending: 'جارٍ تعديل آخر إيداع',
     applyingFiles: 'جارٍ تطبيق الملفات',
@@ -81,6 +86,9 @@ export const ar: Messages = {
     untracked: 'جديد'
   },
   toolbar: {
+    openInEditorHelp: 'فتح المشروع في المحرر المختار في الإعدادات',
+    tagHelp: 'إنشاء وسم على الإيداع الحالي',
+    tag: 'وسم',
     openRepository: 'فتح مستودع…',
     createRepository: 'إنشاء مستودع…',
     openFolder: 'فتح المجلد في مدير الملفات',
@@ -112,6 +120,8 @@ export const ar: Messages = {
     dropHere: 'أفلت هنا',
     branchTooltip: 'نقر مزدوج: انتقال · نقر أيمن: إجراءات أخرى',
     menu: {
+      deleteTag: 'حذف الوسم',
+      newTag: 'إنشاء وسم هنا…',
       checkoutBranch: 'الانتقال إلى {branch}',
       checkoutRemote: 'الانتقال إلى {branch} (فرع محلي يتتبع الفرع البعيد)',
       history: 'عرض سجل هذا الفرع',
@@ -132,6 +142,14 @@ export const ar: Messages = {
     }
   },
   history: {
+    columns: {
+      help: 'اسحب عنوانًا فوق آخر لتبديل الأعمدة',
+      sha: 'المعرّف',
+      date: 'التاريخ والوقت',
+      author: 'المؤلف',
+      subject: 'الرسالة',
+      graph: 'المخطط'
+    },
     count: { one: 'إيداع واحد', two: 'إيداعان', few: '{count} إيداعات', many: '{count} إيداعًا', other: '{count} إيداع' },
     selected: { one: 'تم تحديد واحد', two: 'تم تحديد اثنين', other: 'المحدد: {count}' },
     hint: 'Ctrl/Shift+نقر لتحديد عدة عناصر · ▸ أو النقر المزدوج يعرض الملفات · اسحب إلى فرع',
@@ -139,12 +157,13 @@ export const ar: Messages = {
     scope: { all: 'كل الفروع', head: 'الفرع الحالي', ref: 'الفرع: {ref}' },
     badge: { remote: 'فرع بعيد', local: 'فرع محلي — اسحبه أو أفلت العناصر هنا' },
     search: {
-      placeholder: 'ابحث عن فرع أو رسالة أو مؤلف أو تجزئة…',
-      help: 'يصفّي السجل حسب اسم الفرع أو الوسم أو الرسالة أو المؤلف أو بداية التجزئة. Enter ينتقل إلى أول نتيجة؛ Esc يمسح.',
+      placeholder: 'ابحث عن فرع أو رسالة أو مؤلف أو تاريخ أو وقت أو معرّف…',
+      help: 'يرشّح السجل حسب اسم الفرع أو الوسم أو الرسالة أو المؤلف أو التاريخ أو الوقت (مثل 2026-10-21 أو 14:30) أو بداية المعرّف. Enter للانتقال إلى أول نتيجة؛ Esc للمسح.',
       found: { other: '{count} من {total}' },
       none: 'لم يُعثر على إيداعات لـ “{query}”.'
     },
     files: {
+      openWindow: 'فتح هذا الفرق فقط في نافذة',
       none: 'لا توجد ملفات معدّلة.',
       help: 'انقر لعرض الفروق · اسحب إلى فرع لنقل الملف',
       openDiff: 'عرض الفروق',
@@ -152,6 +171,7 @@ export const ar: Messages = {
       copyPath: 'نسخ المسار'
     },
     menu: {
+      newTag: 'إنشاء وسم هنا…',
       cherryPick: { one: 'انتقاء هذا الإيداع إلى {target}…', other: 'انتقاء الإيداعات المحددة ({count}) إلى {target}…' },
       openStudio: 'فتح في استوديو الانتقاء…',
       compareTwo: 'مقارنة هذين الإيداعين',
@@ -234,6 +254,20 @@ export const ar: Messages = {
     commitInto: 'إيداع في {branch}'
   },
   actions: {
+    deleteTag: {
+      confirm: 'حذف',
+      message: 'حذف الوسم المحلي "{name}"؟ (لا تتغير الوسوم على المستودعات البعيدة.)',
+      title: 'حذف الوسم'
+    },
+    newTag: {
+      messagePlaceholder: 'اتركها فارغة لوسم خفيف',
+      message: 'رسالة (اختيارية — تُنشئ وسمًا مشروحًا)',
+      confirm: 'إنشاء الوسم',
+      placeholder: 'مثال: v1.2.0',
+      labelAt: 'اسم الوسم على {ref}',
+      label: 'اسم الوسم (على الإيداع الحالي)',
+      title: 'وسم جديد'
+    },
     stash: { title: 'تخبئة التغييرات', label: 'الوصف (اختياري)', confirm: 'تخبئة' },
     newBranch: {
       title: 'فرع جديد',
@@ -451,6 +485,8 @@ export const ar: Messages = {
     }
   },
   compare: {
+    showCommitHelp: 'انقر لعرض الإيداع بجانبه (زر الفأرة الأيمن: فتح في السجل)',
+    showCommit: 'عرض الإيداع هنا',
     from: 'من',
     to: 'إلى',
     refPlaceholder: 'فرع أو وسم أو إيداع',
@@ -519,6 +555,16 @@ export const ar: Messages = {
     }
   },
   layout: {
+    tabsBottom: 'نقل الألسنة إلى الأسفل',
+    tabsTop: 'نقل الألسنة إلى الأعلى',
+    reorderHelp: 'اسحب لتغيير الترتيب',
+    centerWindow: 'إعادة إلى المنتصف',
+    moveWindow: 'اسحب لتحريك النافذة. انقر نقرًا مزدوجًا للتكبير.',
+    defaultArrangement: 'الترتيب الافتراضي (الموضع والحجم)',
+    defaultSize: 'الحجم الافتراضي',
+    sideBySide: 'ترتيب جنبًا إلى جنب',
+    stackPanels: 'ترتيب عمودي',
+    swapPanels: 'تبديل موضعي اللوحتين',
     resize: 'اسحب لتغيير الحجم. انقر نقرًا مزدوجًا للعودة إلى الحجم الافتراضي.',
     hidePanel: 'طيّ هذه اللوحة',
     showPanel: 'إظهار اللوحة المطوية',
@@ -528,6 +574,19 @@ export const ar: Messages = {
     expand: 'توسيع'
   },
   settings: {
+    editor: {
+      diffLayoutHelp: 'يُفتح كل فرق بهذه الطريقة؛ أزرار رأس الفرق تغيّرها فقط ما دام مفتوحًا.',
+      diffLayout: 'طريقة عرض الفروق الافتراضية',
+      clear: 'بدون محرر',
+      browse: 'استعراض الملف التنفيذي…',
+      custom: 'مُختار يدويًا',
+      noneFound: 'لم يُعثر على أي محرر معروف.',
+      detecting: 'جارٍ البحث عن المحررات المثبتة…',
+      editorHelp: 'المحررات الموجودة على هذا الحاسوب. إن لم يظهر محررك، فاختر ملفه التنفيذي.',
+      editor: 'المحرر',
+      description: 'المحرر المستخدم في «فتح في المحرر» وطريقة عرض الفروق.',
+      title: 'المحرر والفروق'
+    },
     title: 'الإعدادات',
     unsaved: 'تغييرات غير محفوظة (معروضة كمعاينة).',
     general: {
@@ -630,6 +689,7 @@ export const ar: Messages = {
   },
   core: {
     invalidRef: {
+      tagName: 'اسم وسم غير صالح: "{ref}"',
       ref: 'مرجع غير صالح: "{ref}"',
       commit: 'إيداع غير صالح: "{ref}"',
       branch: 'فرع غير صالح: "{ref}"',
@@ -684,6 +744,10 @@ export const ar: Messages = {
     gitFailed: 'فشل git {command} (الرمز {code})'
   },
   main: {
+    editorNotFound: 'لم يُعثر على المحرر "{editor}". اختر غيره من الإعدادات ← المحرر والفروق.',
+    noEditor: 'لم يتم اختيار محرر. اختر واحدًا من الإعدادات ← المحرر والفروق.',
+    programs: 'البرامج',
+    chooseEditorTitle: 'اختر الملف التنفيذي للمحرر',
     openDialogTitle: 'فتح مستودع git',
     initDialogTitle: 'إنشاء مستودع git في هذا المجلد',
     outsideRepository: 'المسار خارج المستودع.',

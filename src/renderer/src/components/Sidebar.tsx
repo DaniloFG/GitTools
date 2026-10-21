@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import type { BranchInfo, StashInfo } from '../../../shared/types'
 import type { HistoryScope } from '../App'
 import { useActions } from '../actions'
@@ -10,6 +10,7 @@ import { relativeDate } from '../format'
 import { commitColors, laneColor } from '../graph'
 import { useDrop } from '../useDrop'
 import { useLayout } from '../layout'
+import { moveItem, parseOrder, startReorder } from '../reorder'
 import { t } from '../i18n'
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
 
 export function Sidebar({ scope, onScope }: Props) {
   const { data } = useApp()
+  const actions = useActions()
   // Cada branch usa a cor da sua trilha no grafo do histórico.
   const colors = commitColors(data.log, data.status.headSha)
   const colorOf = (b: BranchInfo) => colors.get(b.sha)
@@ -28,31 +30,67 @@ export function Sidebar({ scope, onScope }: Props) {
     remotes.set(b.remote!, [...(remotes.get(b.remote!) ?? []), b])
   }
 
-  return (
-    <aside className="sidebar">
-      <p className="sidebar-hint">{t('sidebar.hint')}</p>
-      <Section id="branches" title={t('sidebar.branches')} count={local.length}>
-        {local.map((b) => (
-          <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
-        ))}
-      </Section>
-      {[...remotes.entries()].map(([remote, list]) => (
-        <Section key={remote} id={`remote.${remote}`} title={t('sidebar.remote', { remote })} count={list.length} collapsed>
+  const sections: { id: string; node: ReactNode }[] = [
+    {
+      id: 'branches',
+      node: (
+        <Section id="branches" title={t('sidebar.branches')} count={local.length} onReorder={move}>
+          {local.map((b) => (
+            <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
+          ))}
+        </Section>
+      )
+    },
+    ...[...remotes.entries()].map(([remote, list]) => ({
+      id: `remote.${remote}`,
+      node: (
+        <Section id={`remote.${remote}`} title={t('sidebar.remote', { remote })} count={list.length} collapsed onReorder={move}>
           {list.map((b) => (
             <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
           ))}
         </Section>
+      )
+    })),
+    {
+      id: 'tags',
+      node: (
+        <Section
+          id="tags"
+          title={t('sidebar.tags')}
+          count={data.tags.length}
+          collapsed
+          onReorder={move}
+          action={{ label: '＋', title: t('actions.newTag.title'), run: () => actions.createTag() }}
+        >
+          {data.tags.map((t) => (
+            <TagItem key={t.name} name={t.name} sha={t.sha} />
+          ))}
+        </Section>
+      )
+    },
+    {
+      id: 'stashes',
+      node: (
+        <Section id="stashes" title={t('sidebar.stashes')} count={data.stashes.length} onReorder={move}>
+          {data.stashes.map((s) => (
+            <StashItem key={s.ref} stash={s} />
+          ))}
+        </Section>
+      )
+    }
+  ]
+  const ids = sections.map((s) => s.id)
+  const [order, setOrder] = useLayout('order.sidebar', (value) => parseOrder(value, ids))
+  function move(id: string, target: string) {
+    setOrder((prev) => moveItem(prev, id, target))
+  }
+
+  return (
+    <aside className="sidebar">
+      <p className="sidebar-hint">{t('sidebar.hint')}</p>
+      {order.map((id) => (
+        <Fragment key={id}>{sections.find((s) => s.id === id)?.node}</Fragment>
       ))}
-      <Section id="tags" title={t('sidebar.tags')} count={data.tags.length} collapsed>
-        {data.tags.map((t) => (
-          <TagItem key={t.name} name={t.name} sha={t.sha} />
-        ))}
-      </Section>
-      <Section id="stashes" title={t('sidebar.stashes')} count={data.stashes.length}>
-        {data.stashes.map((s) => (
-          <StashItem key={s.ref} stash={s} />
-        ))}
-      </Section>
     </aside>
   )
 }
@@ -64,15 +102,31 @@ interface SectionProps {
   count: number
   children: ReactNode
   collapsed?: boolean
+  /** Arrastar o cabeçalho sobre outra seção troca a ordem delas. */
+  onReorder(id: string, target: string): void
+  /** Botão no cabeçalho (ex.: criar tag). */
+  action?: { label: string; title: string; run(): void }
 }
 
-function Section({ id, title, count, children, collapsed = false }: SectionProps) {
+function Section({ id, title, count, children, collapsed = false, onReorder, action }: SectionProps) {
   const [open, setOpen] = useLayout(`sidebar.${id}.open`, (value) => (typeof value === 'boolean' ? value : !collapsed))
   return (
-    <section className="sidebar-section">
-      <button className="section-header" onClick={() => setOpen(!open)}>
-        <span>{open ? '▾' : '▸'}</span> {title} <span className="count">{count}</span>
-      </button>
+    <section className="sidebar-section" data-reorder="sidebar" data-reorder-id={id}>
+      <div className="section-header-row">
+        <button
+          className="section-header"
+          title={t('layout.reorderHelp')}
+          onClick={() => setOpen(!open)}
+          onPointerDown={(e) => startReorder(e, 'sidebar', id, onReorder)}
+        >
+          <span>{open ? '▾' : '▸'}</span> {title} <span className="count">{count}</span>
+        </button>
+        {action && (
+          <button className="section-action" title={action.title} onClick={action.run}>
+            {action.label}
+          </button>
+        )}
+      </div>
       {open && <ul>{children}</ul>}
     </section>
   )
@@ -135,7 +189,9 @@ function TagItem({ name, sha }: { name: string; sha: string }) {
       onContextMenu={(e) =>
         showMenu(e, [
           { label: t('sidebar.menu.checkoutDetached'), onClick: () => actions.checkout(name) },
-          { label: t('sidebar.menu.newBranchFromTag'), onClick: () => actions.createBranch(name) }
+          { label: t('sidebar.menu.newBranchFromTag'), onClick: () => actions.createBranch(name) },
+          'separator',
+          { label: t('sidebar.menu.deleteTag'), onClick: () => actions.deleteTag(name) }
         ])
       }
     >

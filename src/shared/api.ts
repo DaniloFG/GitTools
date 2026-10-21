@@ -58,6 +58,8 @@ export interface RepoApi {
   createBranch(name: string, startPoint?: string, checkout?: boolean): Promise<void>
   deleteBranch(name: string, force?: boolean): Promise<void>
   renameBranch(oldName: string, newName: string): Promise<void>
+  createTag(name: string, ref?: string, message?: string): Promise<void>
+  deleteTag(name: string): Promise<void>
   merge(ref: string, target?: string, noFastForward?: boolean): Promise<OperationResult>
   rebase(branch: string, onto: string): Promise<OperationResult>
 
@@ -139,6 +141,8 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'createBranch',
   'deleteBranch',
   'renameBranch',
+  'createTag',
+  'deleteTag',
   'merge',
   'rebase',
   'branchCommits',
@@ -183,6 +187,14 @@ export interface AppInfo {
   systemLocales: string[]
 }
 
+/** Editor de código encontrado no computador. */
+export interface EditorInfo {
+  id: string
+  name: string
+  /** Executável que abre o editor. */
+  command: string
+}
+
 export interface RecentRepo {
   path: string
   name: string
@@ -197,6 +209,12 @@ export interface GitToolsBridge {
   initRepository(): Promise<RepoInfo | null>
   recentRepositories(): Promise<RecentRepo[]>
   openFile(relativePath: string): Promise<void>
+  /** Editores de código instalados neste computador. */
+  detectEditors(): Promise<EditorInfo[]>
+  /** Pede ao usuário o executável de um editor; null se cancelar. */
+  chooseEditor(): Promise<string | null>
+  /** Abre um arquivo (ou a pasta do repositório, com ".") no editor escolhido nas configurações. */
+  openInEditor(relativePath: string): Promise<void>
   getSettings(): Promise<Settings>
   saveSettings(settings: Settings): Promise<void>
   appInfo(): Promise<AppInfo>

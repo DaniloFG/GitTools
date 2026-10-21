@@ -51,6 +51,8 @@ export interface AppContextValue {
   openFileView(path: string): void
   /** Abre o rebase interativo a partir de um commit (inclusive). */
   openRebase(sha: string): void
+  /** Abre um arquivo (ou o repositório inteiro, sem caminho) no editor escolhido nas configurações. */
+  openInEditor(path?: string): void
   settings: Settings
   /** Abre a Central de Configurações, opcionalmente numa seção (ex.: "shortcuts"). */
   openSettings(section?: string): void

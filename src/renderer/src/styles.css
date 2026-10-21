@@ -478,6 +478,10 @@ code {
   background: var(--accent);
   outline: none;
 }
+.split-divider.crossing,
+.split-divider.crossing::before {
+  cursor: move;
+}
 .split-divider.collapsed {
   flex-basis: calc(10px + var(--divider-size, 2px));
   background: var(--bg-panel);
@@ -652,9 +656,52 @@ body.resizing * {
   white-space: nowrap;
 }
 .commit-date {
-  width: 80px;
+  width: 136px;
+  flex-shrink: 0;
   color: var(--text-muted);
   font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Cabeçalho das colunas do histórico: arraste um título sobre outro para trocar as colunas de lugar. */
+.commit-columns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  padding-inline-end: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+}
+.commit-columns .row-toggle {
+  display: block;
+}
+.commit-column-head {
+  cursor: grab;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-radius: 3px;
+  padding: 1px 0;
+}
+.commit-column-head:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+.commit-columns .commit-sha {
+  width: 7ch;
+  font-family: inherit;
+}
+.commit-row .commit-sha {
+  width: 7ch;
+  flex-shrink: 0;
+}
+.commit-author {
+  flex-shrink: 0;
 }
 .commit-sha {
   color: var(--text-muted);
@@ -2350,4 +2397,66 @@ kbd.duplicate {
 [dir='rtl'] .diff-table .code,
 [dir='rtl'] .file-path {
   text-align: left;
+}
+
+/* ---------------------------------------------- arranjo dos painéis e itens reordenáveis */
+
+body.reordering,
+body.reordering * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+.tabs-bottom {
+  border-bottom: none;
+  border-top: 1px solid var(--border);
+}
+.tabs-bottom button {
+  border-bottom: none;
+  border-top: 2px solid transparent;
+}
+.tabs-bottom button.active {
+  border-top-color: var(--accent);
+}
+.section-header-row {
+  display: flex;
+  align-items: center;
+}
+.section-header-row .section-header {
+  flex: 1;
+  min-width: 0;
+}
+.section-action {
+  flex: none;
+  padding: 0 6px;
+  margin-inline-end: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 18px;
+}
+.section-action:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+.modal-header {
+  cursor: move;
+  user-select: none;
+}
+.modal-maximized .modal-header {
+  cursor: default;
+}
+.modal-header button {
+  cursor: pointer;
+}
+.diff-window {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.editor-command {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }

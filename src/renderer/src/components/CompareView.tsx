@@ -5,6 +5,7 @@ import { currentBranch, useApp, type CompareRequest } from '../context'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
+import { CommitDetailsPanel } from './CommitDetails'
 import { DiffView } from './DiffView'
 import { Split } from './Split'
 
@@ -15,7 +16,7 @@ interface Props {
 
 /** Compara duas branches, tags ou commits quaisquer. */
 export function CompareView({ request, onRequest }: Props) {
-  const { data, run, toast, selectCommit, openFileView } = useApp()
+  const { data, run, toast, selectCommit, openFileView, showMenu } = useApp()
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''
@@ -25,6 +26,8 @@ export function CompareView({ request, onRequest }: Props) {
   const [comparison, setComparison] = useState<Comparison | null>(null)
   const [loading, setLoading] = useState(false)
   const [active, setActive] = useState<ChangedFile | null>(null)
+  /** Commit aberto no painel ao lado (clicado nas listas "Só em…"); a tela continua na comparação. */
+  const [commit, setCommit] = useState<string | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
 
@@ -44,6 +47,7 @@ export function CompareView({ request, onRequest }: Props) {
     if (!a.trim() || !b.trim()) return
     setLoading(true)
     setActive(null)
+    setCommit(null)
     try {
       const result = await git.compare(a.trim(), b.trim(), sinceBase)
       setComparison(result)
@@ -80,6 +84,15 @@ export function CompareView({ request, onRequest }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, comparison])
+
+  const openCommit = (sha: string) => setCommit(sha)
+  const commitMenu = (e: React.MouseEvent, sha: string) =>
+    showMenu(e, [
+      { label: t('compare.showCommit'), onClick: () => setCommit(sha) },
+      { label: t('compare.openInHistory'), onClick: () => selectCommit(sha) },
+      'separator',
+      { label: t('history.menu.copySha'), onClick: () => navigator.clipboard.writeText(sha) }
+    ])
 
   const swap = () => {
     setFrom(to)
@@ -143,14 +156,22 @@ export function CompareView({ request, onRequest }: Props) {
             <CommitGroup
               title={t('compare.onlyIn', { ref: comparison.to })}
               commits={comparison.onlyTo}
-              onOpen={selectCommit}
+              active={commit}
+              onOpen={openCommit}
+              onMenu={commitMenu}
               action={
                 head && comparison.onlyTo.length > 0 && head !== comparison.to
                   ? { label: `🍒 ${t('compare.takeTo', { target: head })}`, run: () => actions.cherryPickCommits(head, [...comparison.onlyTo].reverse().map((c) => c.sha)) }
                   : undefined
               }
             />
-            <CommitGroup title={t('compare.onlyIn', { ref: comparison.from })} commits={comparison.onlyFrom} onOpen={selectCommit} />
+            <CommitGroup
+              title={t('compare.onlyIn', { ref: comparison.from })}
+              commits={comparison.onlyFrom}
+              active={commit}
+              onOpen={openCommit}
+              onMenu={commitMenu}
+            />
             <div className="group-header">
               <strong>{t('compare.differentFiles')}</strong> <span className="count">{comparison.files.length}</span>
             </div>
@@ -159,7 +180,14 @@ export function CompareView({ request, onRequest }: Props) {
             ) : (
               <ul className="file-list">
                 {comparison.files.map((f) => (
-                  <li key={f.path} className={`file-item ${active?.path === f.path ? 'active' : ''}`} onClick={() => setActive(f)}>
+                  <li
+                    key={f.path}
+                    className={`file-item ${!commit && active?.path === f.path ? 'active' : ''}`}
+                    onClick={() => {
+                      setCommit(null)
+                      setActive(f)
+                    }}
+                  >
                     <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
                       {f.status}
                     </span>
@@ -169,6 +197,9 @@ export function CompareView({ request, onRequest }: Props) {
               </ul>
             )}
           </div>
+          {commit ? (
+            <CommitDetailsPanel selected={[commit]} />
+          ) : (
           <section className="details">
             {!active ? (
               <p className="empty">{t('compare.selectFile')}</p>
@@ -198,6 +229,7 @@ export function CompareView({ request, onRequest }: Props) {
               </div>
             )}
           </section>
+          )}
         </Split>
       )}
     </div>
@@ -207,12 +239,16 @@ export function CompareView({ request, onRequest }: Props) {
 function CommitGroup({
   title,
   commits,
+  active,
   onOpen,
+  onMenu,
   action
 }: {
   title: string
   commits: CommitInfo[]
+  active: string | null
   onOpen(sha: string): void
+  onMenu(e: React.MouseEvent, sha: string): void
   action?: { label: string; run(): void }
 }) {
   const [open, setOpen] = useState(commits.length <= 15)
@@ -232,7 +268,13 @@ function CommitGroup({
         ) : (
           <ul className="compare-commits">
             {commits.map((c) => (
-              <li key={c.sha} onClick={() => onOpen(c.sha)} title={t('compare.openInHistory')}>
+              <li
+                key={c.sha}
+                className={active === c.sha ? 'active' : ''}
+                onClick={() => onOpen(c.sha)}
+                onContextMenu={(e) => onMenu(e, c.sha)}
+                title={t('compare.showCommitHelp')}
+              >
                 <code>{shortSha(c.sha)}</code>
                 <span className="commit-subject">{c.subject}</span>
                 <small className="muted">

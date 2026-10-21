@@ -4,6 +4,9 @@ import type { Messages } from '../types'
 // अंग्रेज़ी में ही रखे गए हैं, जैसा कि हिंदी भाषी डेवलपर आम तौर पर इस्तेमाल करते हैं।
 
 export const hi: Messages = {
+  editor: {
+    chooseFirst: 'पहले चुनें कि कौन-सा एडिटर उपयोग करना है।'
+  },
   common: {
     ok: 'ठीक है',
     cancel: 'रद्द करें',
@@ -33,6 +36,8 @@ export const hi: Messages = {
     compare: 'तुलना'
   },
   busy: {
+    deletingTag: 'टैग {name} हटाया जा रहा है',
+    creatingTag: 'टैग {name} बनाया जा रहा है',
     aborting: 'रद्द किया जा रहा है',
     amending: 'पिछला commit सुधारा जा रहा है',
     applyingFiles: 'फ़ाइलें लागू की जा रही हैं',
@@ -76,6 +81,9 @@ export const hi: Messages = {
     untracked: 'नई'
   },
   toolbar: {
+    openInEditorHelp: 'सेटिंग्स में चुने गए एडिटर में प्रोजेक्ट खोलें',
+    tagHelp: 'वर्तमान कमिट पर टैग बनाएँ',
+    tag: 'टैग',
     openRepository: 'Repository खोलें…',
     createRepository: 'Repository बनाएँ…',
     openFolder: 'फ़ोल्डर सिस्टम में खोलें',
@@ -107,6 +115,8 @@ export const hi: Messages = {
     dropHere: 'यहाँ छोड़ें',
     branchTooltip: 'डबल क्लिक: checkout · राइट क्लिक: और विकल्प',
     menu: {
+      deleteTag: 'टैग हटाएँ',
+      newTag: 'यहाँ टैग बनाएँ…',
       checkoutBranch: '{branch} का checkout',
       checkoutRemote: '{branch} का checkout (remote को ट्रैक करने वाली लोकल branch)',
       history: 'इस branch का इतिहास देखें',
@@ -127,6 +137,14 @@ export const hi: Messages = {
     }
   },
   history: {
+    columns: {
+      help: 'कॉलम की जगह बदलने के लिए एक शीर्षक को दूसरे पर खींचें',
+      sha: 'हैश',
+      date: 'तारीख और समय',
+      author: 'लेखक',
+      subject: 'संदेश',
+      graph: 'ग्राफ़'
+    },
     count: { one: '{count} commit', other: '{count} commits' },
     selected: { one: '{count} चुना गया', other: '{count} चुने गए' },
     hint: 'कई चुनने के लिए Ctrl/Shift+क्लिक · ▸ या डबल क्लिक से फ़ाइलें दिखें · किसी branch पर खींचें',
@@ -134,12 +152,13 @@ export const hi: Messages = {
     scope: { all: 'सभी branches', head: 'मौजूदा branch', ref: 'Branch: {ref}' },
     badge: { remote: 'Remote branch', local: 'लोकल branch — इसे खींचें या यहाँ आइटम छोड़ें' },
     search: {
-      placeholder: 'branch, संदेश, लेखक या hash खोजें…',
-      help: 'branch या tag के नाम, संदेश, लेखक या hash की शुरुआत से इतिहास फ़िल्टर करता है। Enter पहले परिणाम पर ले जाता है; Esc साफ़ करता है।',
+      placeholder: 'ब्रांच, संदेश, लेखक, तारीख, समय या हैश खोजें…',
+      help: 'ब्रांच या टैग के नाम, संदेश, लेखक, तारीख या समय (जैसे 21/10/2026, 2026-10-21, 14:30) या हैश की शुरुआत से इतिहास छानें। Enter पहले परिणाम पर जाता है; Esc साफ़ करता है।',
       found: { one: '{total} में से {count} commit', other: '{total} में से {count} commits' },
       none: '“{query}” के लिए कोई commit नहीं मिला।'
     },
     files: {
+      openWindow: 'केवल यह diff एक विंडो में खोलें',
       none: 'कोई फ़ाइल नहीं बदली।',
       help: 'diff देखने के लिए क्लिक करें · फ़ाइल ले जाने के लिए किसी branch पर खींचें',
       openDiff: 'diff देखें',
@@ -147,6 +166,7 @@ export const hi: Messages = {
       copyPath: 'पथ कॉपी करें'
     },
     menu: {
+      newTag: 'यहाँ टैग बनाएँ…',
       cherryPick: { one: 'इस commit का {target} में cherry-pick…', other: '{count} commits का {target} में cherry-pick…' },
       openStudio: 'Cherry-pick Studio में खोलें…',
       compareTwo: 'इन 2 commits की तुलना करें',
@@ -228,6 +248,20 @@ export const hi: Messages = {
     commitInto: '{branch} में commit'
   },
   actions: {
+    deleteTag: {
+      confirm: 'हटाएँ',
+      message: 'स्थानीय टैग "{name}" हटाएँ? (रिमोट के टैग नहीं बदलते।)',
+      title: 'टैग हटाएँ'
+    },
+    newTag: {
+      messagePlaceholder: 'साधारण टैग के लिए खाली छोड़ें',
+      message: 'संदेश (वैकल्पिक — एनोटेटेड टैग बनाता है)',
+      confirm: 'टैग बनाएँ',
+      placeholder: 'जैसे: v1.2.0',
+      labelAt: '{ref} पर टैग का नाम',
+      label: 'टैग का नाम (वर्तमान कमिट पर)',
+      title: 'नया टैग'
+    },
     stash: { title: 'बदलाव अलग रखें (stash)', label: 'विवरण (वैकल्पिक)', confirm: 'Stash करें' },
     newBranch: {
       title: 'नई branch',
@@ -442,6 +476,8 @@ export const hi: Messages = {
     }
   },
   compare: {
+    showCommitHelp: 'कमिट बगल में देखने के लिए क्लिक करें (राइट-क्लिक: इतिहास में खोलें)',
+    showCommit: 'कमिट यहीं देखें',
     from: 'से',
     to: 'तक',
     refPlaceholder: 'branch, tag या commit',
@@ -510,6 +546,16 @@ export const hi: Messages = {
     }
   },
   layout: {
+    tabsBottom: 'टैब नीचे ले जाएँ',
+    tabsTop: 'टैब ऊपर ले जाएँ',
+    reorderHelp: 'क्रम बदलने के लिए खींचें',
+    centerWindow: 'वापस बीच में लाएँ',
+    moveWindow: 'विंडो खिसकाने के लिए खींचें। डबल क्लिक से बड़ा करें।',
+    defaultArrangement: 'डिफ़ॉल्ट व्यवस्था (स्थान और आकार)',
+    defaultSize: 'डिफ़ॉल्ट आकार',
+    sideBySide: 'अगल-बगल रखें',
+    stackPanels: 'ऊपर-नीचे रखें',
+    swapPanels: 'पैनलों की जगह बदलें',
     resize: 'आकार बदलने के लिए खींचें। डिफ़ॉल्ट आकार पर लौटने के लिए डबल-क्लिक करें।',
     hidePanel: 'यह पैनल समेटें',
     showPanel: 'समेटा हुआ पैनल दिखाएँ',
@@ -519,6 +565,19 @@ export const hi: Messages = {
     expand: 'फैलाएँ'
   },
   settings: {
+    editor: {
+      diffLayoutHelp: 'हर diff इसी दृश्य में खुलता है; diff के शीर्षक के बटन केवल उसके खुले रहने तक दृश्य बदलते हैं।',
+      diffLayout: 'डिफ़ॉल्ट diff दृश्य',
+      clear: 'कोई नहीं',
+      browse: 'Executable खोजें…',
+      custom: 'हाथ से चुना गया',
+      noneFound: 'कोई ज्ञात एडिटर नहीं मिला।',
+      detecting: 'इंस्टॉल किए गए एडिटर खोजे जा रहे हैं…',
+      editorHelp: 'इस कंप्यूटर पर मिले एडिटर। अगर आपका नहीं दिख रहा, तो उसकी executable फ़ाइल चुनें।',
+      editor: 'एडिटर',
+      description: '“एडिटर में खोलें” के लिए एडिटर और diff खुलने का तरीका।',
+      title: 'एडिटर और diff'
+    },
     title: 'सेटिंग्स',
     unsaved: 'बिना सहेजे बदलाव (पूर्वावलोकन के रूप में दिख रहे हैं)।',
     general: {
@@ -621,6 +680,7 @@ export const hi: Messages = {
   },
   core: {
     invalidRef: {
+      tagName: 'अमान्य टैग नाम: "{ref}"',
       ref: 'अमान्य संदर्भ: "{ref}"',
       commit: 'अमान्य commit: "{ref}"',
       branch: 'अमान्य branch: "{ref}"',
@@ -678,6 +738,10 @@ export const hi: Messages = {
     gitFailed: 'git {command} विफल रहा (कोड {code})'
   },
   main: {
+    editorNotFound: 'एडिटर "{editor}" नहीं मिला। सेटिंग्स → एडिटर और diff में दूसरा चुनें।',
+    noEditor: 'कोई एडिटर नहीं चुना गया। सेटिंग्स → एडिटर और diff में चुनें।',
+    programs: 'प्रोग्राम',
+    chooseEditorTitle: 'एडिटर की executable फ़ाइल चुनें',
     openDialogTitle: 'Git repository खोलें',
     initDialogTitle: 'इस फ़ोल्डर में git repository बनाएँ',
     outsideRepository: 'पथ repository के बाहर है।',

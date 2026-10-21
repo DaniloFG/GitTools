@@ -1,6 +1,9 @@
 import type { Messages } from '../types'
 
 export const en: Messages = {
+  editor: {
+    chooseFirst: 'First choose which editor to use.'
+  },
   common: {
     ok: 'OK',
     cancel: 'Cancel',
@@ -30,6 +33,8 @@ export const en: Messages = {
     compare: 'Compare'
   },
   busy: {
+    deletingTag: 'Deleting tag {name}',
+    creatingTag: 'Creating tag {name}',
     aborting: 'Aborting',
     amending: 'Amending the last commit',
     applyingFiles: 'Applying files',
@@ -73,6 +78,9 @@ export const en: Messages = {
     untracked: 'new'
   },
   toolbar: {
+    openInEditorHelp: 'Open the project in the editor chosen in Settings',
+    tagHelp: 'Create a tag at the current commit',
+    tag: 'Tag',
     openRepository: 'Open repository…',
     createRepository: 'Create repository…',
     openFolder: 'Open folder in file manager',
@@ -104,6 +112,8 @@ export const en: Messages = {
     dropHere: 'drop here',
     branchTooltip: 'Double-click: checkout · Right-click: more actions',
     menu: {
+      deleteTag: 'Delete tag',
+      newTag: 'Create tag here…',
       checkoutBranch: 'Checkout {branch}',
       checkoutRemote: 'Checkout {branch} (local branch tracking the remote)',
       history: 'Show this branch’s history',
@@ -124,6 +134,14 @@ export const en: Messages = {
     }
   },
   history: {
+    columns: {
+      help: 'Drag a heading onto another to swap the columns',
+      sha: 'Hash',
+      date: 'Date and time',
+      author: 'Author',
+      subject: 'Message',
+      graph: 'Graph'
+    },
     count: { one: '{count} commit', other: '{count} commits' },
     selected: { one: '{count} selected', other: '{count} selected' },
     hint: 'Ctrl/Shift+click to select several · ▸ or double-click shows the files · drag onto a branch',
@@ -131,12 +149,13 @@ export const en: Messages = {
     scope: { all: 'All branches', head: 'Current branch', ref: 'Branch: {ref}' },
     badge: { remote: 'Remote branch', local: 'Local branch — drag it or drop items here' },
     search: {
-      placeholder: 'Search branch, message, author or hash…',
-      help: 'Filters the history by branch or tag name, message, author or the start of the hash. Enter jumps to the first result; Esc clears.',
+      placeholder: 'Search branch, message, author, date, time or hash…',
+      help: 'Filters the history by branch or tag name, message, author, date or time (e.g. 10/21/2026, 2026-10-21, 14:30) or the start of the hash. Enter goes to the first result; Esc clears.',
       found: { one: '{count} of {total} commits', other: '{count} of {total} commits' },
       none: 'No commits found for “{query}”.'
     },
     files: {
+      openWindow: 'Open only this diff in a window',
       none: 'No files changed.',
       help: 'Click to see the diff · drag onto a branch to take the file',
       openDiff: 'Show diff',
@@ -144,6 +163,7 @@ export const en: Messages = {
       copyPath: 'Copy path'
     },
     menu: {
+      newTag: 'Create tag here…',
       cherryPick: { one: 'Cherry-pick this commit into {target}…', other: 'Cherry-pick {count} commits into {target}…' },
       openStudio: 'Open in Cherry-pick Studio…',
       compareTwo: 'Compare these 2 commits',
@@ -225,6 +245,20 @@ export const en: Messages = {
     commitInto: 'Commit to {branch}'
   },
   actions: {
+    deleteTag: {
+      confirm: 'Delete',
+      message: 'Delete the local tag "{name}"? (Tags on remotes are not changed.)',
+      title: 'Delete tag'
+    },
+    newTag: {
+      messagePlaceholder: 'Leave empty for a lightweight tag',
+      message: 'Message (optional — creates an annotated tag)',
+      confirm: 'Create tag',
+      placeholder: 'e.g. v1.2.0',
+      labelAt: 'Tag name at {ref}',
+      label: 'Tag name (at the current commit)',
+      title: 'New tag'
+    },
     stash: { title: 'Stash changes', label: 'Description (optional)', confirm: 'Stash' },
     newBranch: {
       title: 'New branch',
@@ -439,6 +473,8 @@ export const en: Messages = {
     }
   },
   compare: {
+    showCommitHelp: 'Click to show the commit alongside (right-click: open in history)',
+    showCommit: 'Show commit here',
     from: 'From',
     to: 'To',
     refPlaceholder: 'branch, tag or commit',
@@ -507,6 +543,16 @@ export const en: Messages = {
     }
   },
   layout: {
+    tabsBottom: 'Move tabs to the bottom',
+    tabsTop: 'Move tabs to the top',
+    reorderHelp: 'Drag to reorder',
+    centerWindow: 'Move back to center',
+    moveWindow: 'Drag to move the window. Double-click to maximize.',
+    defaultArrangement: 'Default arrangement (position and size)',
+    defaultSize: 'Default size',
+    sideBySide: 'Place side by side',
+    stackPanels: 'Stack vertically',
+    swapPanels: 'Swap panels',
     resize: 'Drag to resize. Double-click to restore the default size.',
     hidePanel: 'Collapse this panel',
     showPanel: 'Show the collapsed panel',
@@ -516,6 +562,19 @@ export const en: Messages = {
     expand: 'Expand'
   },
   settings: {
+    editor: {
+      diffLayoutHelp: 'Every diff opens in this layout; the buttons in the diff header switch it only while that diff is open.',
+      diffLayout: 'Default diff layout',
+      clear: 'Use none',
+      browse: 'Browse for executable…',
+      custom: 'Chosen manually',
+      noneFound: 'No known editor was found.',
+      detecting: 'Looking for installed editors…',
+      editorHelp: 'Editors found on this computer. If yours is not listed, browse for its executable.',
+      editor: 'Editor',
+      description: 'Editor used by “Open in editor” and how diffs open.',
+      title: 'Editor and diff'
+    },
     title: 'Settings',
     unsaved: 'Unsaved changes (already shown as a preview).',
     general: {
@@ -618,6 +677,7 @@ export const en: Messages = {
   },
   core: {
     invalidRef: {
+      tagName: 'Invalid tag name: "{ref}"',
       ref: 'Invalid reference: "{ref}"',
       commit: 'Invalid commit: "{ref}"',
       branch: 'Invalid branch: "{ref}"',
@@ -675,6 +735,10 @@ export const en: Messages = {
     gitFailed: 'git {command} failed (code {code})'
   },
   main: {
+    editorNotFound: 'The editor "{editor}" was not found. Choose another in Settings → Editor and diff.',
+    noEditor: 'No editor chosen. Choose one in Settings → Editor and diff.',
+    programs: 'Programs',
+    chooseEditorTitle: 'Choose the editor executable',
     openDialogTitle: 'Open git repository',
     initDialogTitle: 'Create a git repository in this folder',
     outsideRepository: 'Path is outside the repository.',

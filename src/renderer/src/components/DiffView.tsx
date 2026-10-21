@@ -1,16 +1,20 @@
-import { useEffect, useRef } from 'react'
+import { useContext, useEffect, useRef, useState } from 'react'
 import type { DiffLine, FileDiff, LineKey } from '../../../shared/types'
 import { changeKeys, hunkKeys, lineKey, splitRows } from '../../../shared/diffKeys'
+import { DEFAULT_SETTINGS, type DiffLayout } from '../../../shared/settings'
+import { AppContext } from '../context'
 import { t, type MessageKey } from '../i18n'
-import { useLayout } from '../layout'
 
-/** Como o diff é exibido: linhas antigas e novas uma embaixo da outra, ou lado a lado. */
-export type DiffLayout = 'inline' | 'split'
-const parseDiffLayout = (value: unknown): DiffLayout => (value === 'split' ? 'split' : 'inline')
-
-/** Escolha entre "cima e baixo" e "lado a lado", lembrada para todos os diffs. */
-export function useDiffLayout() {
-  return useLayout('diff.layout', parseDiffLayout)
+/**
+ * Escolha entre "cima e baixo" e "lado a lado": todo diff abre no modo padrão das configurações;
+ * os botões do cabeçalho trocam o modo só enquanto o diff está aberto.
+ */
+export function useDiffLayout(): [DiffLayout, (layout: DiffLayout) => void] {
+  const preferred = useContext(AppContext)?.settings.diffLayout ?? DEFAULT_SETTINGS.diffLayout
+  const [override, setOverride] = useState<{ preferred: DiffLayout; layout: DiffLayout } | null>(null)
+  // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
+  const layout = override && override.preferred === preferred ? override.layout : preferred
+  return [layout, (next) => setOverride({ preferred, layout: next })]
 }
 
 interface Props {

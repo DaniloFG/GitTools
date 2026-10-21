@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "isolatedModules": true
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "src/core/**/*", "src/shared/**/*", "src/renderer/src/graph.ts", "src/renderer/src/shortcuts.ts", "src/renderer/src/layout.ts", "src/renderer/src/panes.ts", "src/renderer/src/mergeLayout.ts", "tests/**/*", "*.config.ts"]
+  "include": ["src/main/**/*", "src/preload/**/*", "src/core/**/*", "src/shared/**/*", "src/renderer/src/graph.ts", "src/renderer/src/shortcuts.ts", "src/renderer/src/layout.ts", "src/renderer/src/panes.ts", "src/renderer/src/order.ts", "src/renderer/src/mergeLayout.ts", "tests/**/*", "*.config.ts"]
 }

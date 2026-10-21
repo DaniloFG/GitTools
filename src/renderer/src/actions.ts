@@ -35,6 +35,29 @@ export function useActions() {
     if (name) await run(t('busy.creatingBranch', { name }), () => git.createBranch(name, startPoint, true))
   }
 
+  /** Cria uma tag no commit indicado (ou no HEAD); com mensagem, a tag é anotada. */
+  async function createTag(ref?: string) {
+    let message = ''
+    const name = await prompt({
+      title: t('actions.newTag.title'),
+      label: ref ? t('actions.newTag.labelAt', { ref: ref.length === 40 ? shortSha(ref) : ref }) : t('actions.newTag.label'),
+      placeholder: t('actions.newTag.placeholder'),
+      confirmLabel: t('actions.newTag.confirm'),
+      detail: { label: t('actions.newTag.message'), placeholder: t('actions.newTag.messagePlaceholder'), onDetail: (v) => (message = v) }
+    })
+    if (name) await run(t('busy.creatingTag', { name }), () => git.createTag(name, ref, message))
+  }
+
+  async function deleteTag(name: string) {
+    const ok = await confirm({
+      title: t('actions.deleteTag.title'),
+      message: t('actions.deleteTag.message', { name }),
+      confirmLabel: t('actions.deleteTag.confirm'),
+      danger: true
+    })
+    if (ok) await run(t('busy.deletingTag', { name }), () => git.deleteTag(name))
+  }
+
   async function deleteBranch(branch: BranchInfo) {
     const ok = await confirm({
       title: t('actions.deleteBranch.title'),
@@ -180,6 +203,8 @@ export function useActions() {
     stash,
     checkout,
     createBranch,
+    createTag,
+    deleteTag,
     deleteBranch,
     renameBranch,
     cherryPickCommits,

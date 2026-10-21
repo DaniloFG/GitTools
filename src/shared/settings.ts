@@ -6,6 +6,8 @@ import { isLocaleId, type LocaleId } from './i18n/locales'
 
 export type ThemeSetting = 'system' | 'dark' | 'light'
 export type LanguageSetting = 'system' | LocaleId
+/** Como o diff é exibido: linhas antigas e novas uma embaixo da outra, ou lado a lado. */
+export type DiffLayout = 'inline' | 'split'
 
 export interface Settings {
   /** Idioma da interface; "system" segue o idioma do sistema operacional. */
@@ -17,11 +19,18 @@ export interface Settings {
   dividerWidth: number
   /** Escala dos botões de recolher/expandir painéis nas divisórias (1 = normal). */
   paneButtonScale: number
+  /** Modo em que todo diff abre: cima e baixo ou lado a lado. */
+  diffLayout: DiffLayout
+  /**
+   * Editor usado por "Abrir no editor": id de um editor detectado (ex.: "vscode") ou o caminho de um
+   * executável escolhido pelo usuário. Vazio = ainda não escolhido.
+   */
+  editor: string
   /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
   shortcuts: Record<string, string>
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, shortcuts: {} }
+export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', editor: '', shortcuts: {} }
 
 export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6]
 export const DIVIDER_WIDTHS = [1, 2, 3, 4, 6, 8]
@@ -42,6 +51,8 @@ export function normalizeSettings(value: unknown): Settings {
     zoom: typeof raw.zoom === 'number' && raw.zoom >= 0.5 && raw.zoom <= 2 ? raw.zoom : DEFAULT_SETTINGS.zoom,
     dividerWidth: oneOf(raw.dividerWidth, DIVIDER_WIDTHS, DEFAULT_SETTINGS.dividerWidth),
     paneButtonScale: oneOf(raw.paneButtonScale, PANE_BUTTON_SCALES, DEFAULT_SETTINGS.paneButtonScale),
+    diffLayout: raw.diffLayout === 'split' ? 'split' : 'inline',
+    editor: typeof raw.editor === 'string' ? raw.editor.trim() : DEFAULT_SETTINGS.editor,
     shortcuts: shortcuts as Record<string, string>
   }
 }

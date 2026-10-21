@@ -19,7 +19,7 @@ const parseGutter = (value: unknown) => (typeof value === 'number' && value >= G
 
 /** Explorador de arquivos com blame por linha e histórico de cada arquivo. */
 export function FilesView({ path, onPath }: { path: string | null; onPath(path: string): void }) {
-  const { data, toast } = useApp()
+  const { data, toast, openInEditor } = useApp()
   const [files, setFiles] = useState<string[]>([])
   const [filter, setFilter] = useState('')
   const [tab, setTab] = useState<'blame' | 'history'>('blame')
@@ -57,7 +57,7 @@ export function FilesView({ path, onPath }: { path: string | null; onPath(path: 
             <div className="file-header">
               <code className="diff-path">{path}</code>
               <span className="toolbar-spacer" />
-              <button onClick={() => window.gittools.openFile(path)}>{t('common.openInEditor')}</button>
+              <button onClick={() => openInEditor(path)}>{t('common.openInEditor')}</button>
             </div>
             <nav className="tabs">
               <button className={tab === 'blame' ? 'active' : ''} onClick={() => setTab('blame')}>

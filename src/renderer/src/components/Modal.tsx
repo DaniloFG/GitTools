@@ -18,6 +18,9 @@ interface ModalLayout {
   width?: number
   height?: number
   maximized?: boolean
+  /** Deslocamento a partir do centro da tela, quando o usuário arrastou o diálogo. */
+  x?: number
+  y?: number
 }
 
 const MIN_WIDTH = 320
@@ -40,13 +43,16 @@ function parseModalLayout(value: unknown): ModalLayout {
   if (!value || typeof value !== 'object') return {}
   const raw = value as Record<string, unknown>
   const size = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined)
-  return { width: size(raw.width), height: size(raw.height), maximized: raw.maximized === true }
+  const offset = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
+  return { width: size(raw.width), height: size(raw.height), maximized: raw.maximized === true, x: offset(raw.x), y: offset(raw.y) }
 }
 
 export function Modal({ title, onClose, children, footer, size = 'small', id }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [layout, setLayout] = useLayout(`modal.${id ?? size}`, parseModalLayout)
   const { width, height, maximized } = layout
+  const x = maximized ? 0 : (layout.x ?? 0)
+  const y = maximized ? 0 : (layout.y ?? 0)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -70,20 +76,41 @@ export function Modal({ title, onClose, children, footer, size = 'small', id }: 
     })
   }
 
+  /** Arrasta o diálogo pelo cabeçalho; a posição fica guardada (o cabeçalho nunca sai da tela). */
+  const move = (e: React.PointerEvent) => {
+    const el = ref.current
+    if (maximized || !el || (e.target as HTMLElement).closest('button')) return
+    const rect = el.getBoundingClientRect()
+    const x0 = x
+    const y0 = y
+    startResize(e, 'move', (_event, dx, dy) => {
+      const keep = 48
+      const nx = Math.min(Math.max(x0 + dx, x0 - rect.left - rect.width + keep), x0 + window.innerWidth - rect.left - keep)
+      const ny = Math.min(Math.max(y0 + dy, y0 - rect.top), y0 + window.innerHeight - rect.top - keep)
+      setLayout((prev) => ({ ...prev, x: Math.round(nx), y: Math.round(ny) }))
+    })
+  }
+
   const custom = !maximized && (width || height)
+  const style: React.CSSProperties | undefined = maximized ? undefined : { width, height, ...(x || y ? { transform: `translate(${x}px, ${y}px)` } : {}) }
 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
         ref={ref}
         className={`modal modal-${size} ${maximized ? 'modal-maximized' : ''} ${custom ? 'modal-custom' : ''}`}
-        style={maximized ? undefined : { width, height }}
+        style={style}
         role="dialog"
         aria-modal="true"
       >
-        <header className="modal-header" onDoubleClick={(e) => !(e.target as HTMLElement).closest('button') && toggleMaximized()}>
+        <header className="modal-header" title={maximized ? undefined : t('layout.moveWindow')} onPointerDown={move} onDoubleClick={(e) => !(e.target as HTMLElement).closest('button') && toggleMaximized()}>
           <h2>{title}</h2>
           <div className="modal-header-actions">
+            {(x !== 0 || y !== 0) && (
+              <button className="icon-button" onClick={() => setLayout((prev) => ({ ...prev, x: undefined, y: undefined }))} title={t('layout.centerWindow')} aria-label={t('layout.centerWindow')}>
+                ⌖
+              </button>
+            )}
             <button
               className="icon-button"
               onClick={toggleMaximized}
@@ -105,7 +132,7 @@ export function Modal({ title, onClose, children, footer, size = 'small', id }: 
               key={handle.name}
               className={`modal-resize modal-resize-${handle.name}`}
               onPointerDown={(e) => resize(e, handle)}
-              onDoubleClick={() => setLayout(undefined)}
+              onDoubleClick={() => setLayout((prev) => ({ x: prev.x, y: prev.y }))}
               title={t('layout.resize')}
             />
           ))}

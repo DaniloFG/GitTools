@@ -350,16 +350,16 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   const [p0, p1, p2] = layout.order
   const panes =
     layout.mode === 'columns' ? (
-      <Split id="merge-columns" initial={1 / 3} min={[160, 320]} collapsible={[false, false]}>
+      <Split id="merge-columns" initial={1 / 3} min={[160, 320]} collapsible={[false, false]} arrangeable={false}>
         {renderPane(p0)}
-        <Split id="merge-columns-right" initial={0.5} min={[160, 160]} collapsible={[false, false]}>
+        <Split id="merge-columns-right" initial={0.5} min={[160, 160]} collapsible={[false, false]} arrangeable={false}>
           {renderPane(p1)}
           {renderPane(p2)}
         </Split>
       </Split>
     ) : (
-      <Split id="merge-classic" direction="column" initial={0.5} min={[120, 120]} collapsible={[false, false]}>
-        <Split id="merge-classic-top" initial={0.5} min={[160, 160]} collapsible={[false, false]}>
+      <Split id="merge-classic" direction="column" initial={0.5} min={[120, 120]} collapsible={[false, false]} arrangeable={false}>
+        <Split id="merge-classic-top" initial={0.5} min={[160, 160]} collapsible={[false, false]} arrangeable={false}>
           {renderPane(p0)}
           {renderPane(p1)}
         </Split>

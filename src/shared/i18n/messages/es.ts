@@ -1,6 +1,9 @@
 import type { Messages } from '../types'
 
 export const es: Messages = {
+  editor: {
+    chooseFirst: 'Primero elige qué editor usar.'
+  },
   common: {
     ok: 'Aceptar',
     cancel: 'Cancelar',
@@ -30,6 +33,8 @@ export const es: Messages = {
     compare: 'Comparar'
   },
   busy: {
+    deletingTag: 'Eliminando la etiqueta {name}',
+    creatingTag: 'Creando la etiqueta {name}',
     aborting: 'Abortando',
     amending: 'Corrigiendo el último commit',
     applyingFiles: 'Aplicando archivos',
@@ -73,6 +78,9 @@ export const es: Messages = {
     untracked: 'nuevo'
   },
   toolbar: {
+    openInEditorHelp: 'Abrir el proyecto en el editor elegido en la configuración',
+    tagHelp: 'Crear una etiqueta en el commit actual',
+    tag: 'Etiqueta',
     openRepository: 'Abrir repositorio…',
     createRepository: 'Crear repositorio…',
     openFolder: 'Abrir carpeta en el sistema',
@@ -104,6 +112,8 @@ export const es: Messages = {
     dropHere: 'soltar aquí',
     branchTooltip: 'Doble clic: checkout · Clic derecho: más acciones',
     menu: {
+      deleteTag: 'Eliminar etiqueta',
+      newTag: 'Crear etiqueta aquí…',
       checkoutBranch: 'Checkout de {branch}',
       checkoutRemote: 'Checkout de {branch} (rama local que sigue a la remota)',
       history: 'Ver el historial de esta rama',
@@ -124,6 +134,14 @@ export const es: Messages = {
     }
   },
   history: {
+    columns: {
+      help: 'Arrastra un título sobre otro para intercambiar las columnas',
+      sha: 'Hash',
+      date: 'Fecha y hora',
+      author: 'Autor',
+      subject: 'Mensaje',
+      graph: 'Grafo'
+    },
     count: { one: '{count} commit', other: '{count} commits' },
     selected: { one: '{count} seleccionado', other: '{count} seleccionados' },
     hint: 'Ctrl/Shift+clic para seleccionar varios · ▸ o doble clic muestra los archivos · arrastra a una rama',
@@ -131,12 +149,13 @@ export const es: Messages = {
     scope: { all: 'Todas las ramas', head: 'Rama actual', ref: 'Rama: {ref}' },
     badge: { remote: 'Rama remota', local: 'Rama local — arrástrala o suelta elementos aquí' },
     search: {
-      placeholder: 'Buscar rama, mensaje, autor o hash…',
-      help: 'Filtra el historial por nombre de rama o etiqueta, mensaje, autor o el inicio del hash. Enter va al primer resultado; Esc limpia.',
+      placeholder: 'Buscar rama, mensaje, autor, fecha, hora o hash…',
+      help: 'Filtra el historial por nombre de rama o etiqueta, mensaje, autor, fecha u hora (p. ej.: 21/10/2026, 2026-10-21, 14:30) o el inicio del hash. Enter va al primer resultado; Esc limpia.',
       found: { one: '{count} de {total} commits', other: '{count} de {total} commits' },
       none: 'No se encontraron commits para “{query}”.'
     },
     files: {
+      openWindow: 'Abrir solo este diff en una ventana',
       none: 'Ningún archivo modificado.',
       help: 'Haz clic para ver el diff · arrastra a una rama para llevar el archivo',
       openDiff: 'Ver diff',
@@ -144,6 +163,7 @@ export const es: Messages = {
       copyPath: 'Copiar ruta'
     },
     menu: {
+      newTag: 'Crear etiqueta aquí…',
       cherryPick: { one: 'Cherry-pick de este commit en {target}…', other: 'Cherry-pick de {count} commits en {target}…' },
       openStudio: 'Abrir en Cherry-pick Studio…',
       compareTwo: 'Comparar estos 2 commits',
@@ -225,6 +245,20 @@ export const es: Messages = {
     commitInto: 'Commit en {branch}'
   },
   actions: {
+    deleteTag: {
+      confirm: 'Eliminar',
+      message: '¿Eliminar la etiqueta local "{name}"? (Las etiquetas en remotos no cambian.)',
+      title: 'Eliminar etiqueta'
+    },
+    newTag: {
+      messagePlaceholder: 'Déjalo vacío para una etiqueta ligera',
+      message: 'Mensaje (opcional: crea una etiqueta anotada)',
+      confirm: 'Crear etiqueta',
+      placeholder: 'p. ej.: v1.2.0',
+      labelAt: 'Nombre de la etiqueta en {ref}',
+      label: 'Nombre de la etiqueta (en el commit actual)',
+      title: 'Nueva etiqueta'
+    },
     stash: { title: 'Guardar cambios (stash)', label: 'Descripción (opcional)', confirm: 'Guardar' },
     newBranch: {
       title: 'Nueva rama',
@@ -439,6 +473,8 @@ export const es: Messages = {
     }
   },
   compare: {
+    showCommitHelp: 'Haz clic para ver el commit al lado (clic derecho: abrir en el historial)',
+    showCommit: 'Ver el commit aquí',
     from: 'De',
     to: 'A',
     refPlaceholder: 'rama, etiqueta o commit',
@@ -507,6 +543,16 @@ export const es: Messages = {
     }
   },
   layout: {
+    tabsBottom: 'Mover las pestañas abajo',
+    tabsTop: 'Mover las pestañas arriba',
+    reorderHelp: 'Arrastra para cambiar el orden',
+    centerWindow: 'Volver al centro',
+    moveWindow: 'Arrastra para mover la ventana. Doble clic para maximizar.',
+    defaultArrangement: 'Disposición predeterminada (posición y tamaño)',
+    defaultSize: 'Tamaño predeterminado',
+    sideBySide: 'Colocar lado a lado',
+    stackPanels: 'Apilar verticalmente',
+    swapPanels: 'Intercambiar los paneles',
     resize: 'Arrastra para cambiar el tamaño. Doble clic vuelve al tamaño predeterminado.',
     hidePanel: 'Contraer este panel',
     showPanel: 'Mostrar el panel contraído',
@@ -516,6 +562,19 @@ export const es: Messages = {
     expand: 'Expandir'
   },
   settings: {
+    editor: {
+      diffLayoutHelp: 'Todo diff se abre en este modo; los botones de la cabecera lo cambian solo mientras está abierto.',
+      diffLayout: 'Modo predeterminado del diff',
+      clear: 'No usar ninguno',
+      browse: 'Buscar ejecutable…',
+      custom: 'Elegido manualmente',
+      noneFound: 'No se encontró ningún editor conocido.',
+      detecting: 'Buscando editores instalados…',
+      editorHelp: 'Editores encontrados en este equipo. Si el tuyo no aparece, busca su ejecutable.',
+      editor: 'Editor',
+      description: 'Editor usado por «Abrir en el editor» y modo en que se abren los diffs.',
+      title: 'Editor y diff'
+    },
     title: 'Configuración',
     unsaved: 'Cambios sin guardar (ya visibles como vista previa).',
     general: {
@@ -618,6 +677,7 @@ export const es: Messages = {
   },
   core: {
     invalidRef: {
+      tagName: 'Nombre de etiqueta no válido: "{ref}"',
       ref: 'Referencia no válida: "{ref}"',
       commit: 'Commit no válido: "{ref}"',
       branch: 'Rama no válida: "{ref}"',
@@ -675,6 +735,10 @@ export const es: Messages = {
     gitFailed: 'git {command} falló (código {code})'
   },
   main: {
+    editorNotFound: 'No se encontró el editor "{editor}". Elige otro en Configuración → Editor y diff.',
+    noEditor: 'No se eligió ningún editor. Elige uno en Configuración → Editor y diff.',
+    programs: 'Programas',
+    chooseEditorTitle: 'Elegir el ejecutable del editor',
     openDialogTitle: 'Abrir repositorio git',
     initDialogTitle: 'Crear un repositorio git en esta carpeta',
     outsideRepository: 'La ruta está fuera del repositorio.',

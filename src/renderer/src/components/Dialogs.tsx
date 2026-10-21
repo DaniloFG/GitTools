@@ -15,6 +15,8 @@ export interface PromptRequest {
   initial?: string
   placeholder?: string
   confirmLabel?: string
+  /** Segundo campo, opcional (ex.: mensagem da tag); o valor é entregue a `onDetail` ao confirmar. */
+  detail?: { label: string; placeholder?: string; onDetail(value: string): void }
 }
 
 export interface ChoiceOption {
@@ -78,7 +80,9 @@ function ConfirmDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind
 
 function PromptDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind: 'prompt' }>; onDone(): void }) {
   const [value, setValue] = useState(dialog.initial ?? '')
+  const [detail, setDetail] = useState('')
   const close = (v: string | null) => {
+    if (v !== null) dialog.detail?.onDetail(detail)
     dialog.resolve(v)
     onDone()
   }
@@ -105,6 +109,12 @@ function PromptDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind:
           onKeyDown={(e) => e.key === 'Enter' && value.trim() && close(value.trim())}
         />
       </label>
+      {dialog.detail && (
+        <label className="field">
+          <span>{dialog.detail.label}</span>
+          <textarea rows={3} value={detail} placeholder={dialog.detail.placeholder} onChange={(e) => setDetail(e.target.value)} />
+        </label>
+      )}
     </Modal>
   )
 }

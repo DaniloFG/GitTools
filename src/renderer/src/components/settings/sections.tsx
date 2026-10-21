@@ -7,6 +7,7 @@ import type { Settings } from '../../../../shared/settings'
 import type { MessageKey } from '../../i18n'
 import { AboutSection } from './AboutSection'
 import { AppearanceSection } from './AppearanceSection'
+import { EditorSection } from './EditorSection'
 import { GeneralSection } from './GeneralSection'
 import { ShortcutsSection, duplicateShortcuts } from './ShortcutsSection'
 
@@ -41,6 +42,13 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     title: 'settings.appearance.title',
     description: 'settings.appearance.description',
     component: AppearanceSection
+  },
+  {
+    id: 'editor',
+    icon: '✎',
+    title: 'settings.editor.title',
+    description: 'settings.editor.description',
+    component: EditorSection
   },
   {
     id: 'shortcuts',

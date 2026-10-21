@@ -2,6 +2,9 @@
 // Textos podem ter parâmetros {nome} e formas de plural ({ one, other, ... }).
 
 export const ptBR = {
+  editor: {
+    chooseFirst: 'Escolha primeiro qual editor usar.'
+  },
   common: {
     ok: 'OK',
     cancel: 'Cancelar',
@@ -31,6 +34,8 @@ export const ptBR = {
     compare: 'Comparar'
   },
   busy: {
+    deletingTag: 'Excluindo a tag {name}',
+    creatingTag: 'Criando a tag {name}',
     aborting: 'Abortando',
     amending: 'Corrigindo o último commit',
     applyingFiles: 'Aplicando arquivos',
@@ -74,6 +79,9 @@ export const ptBR = {
     untracked: 'novo'
   },
   toolbar: {
+    openInEditorHelp: 'Abrir o projeto no editor escolhido nas configurações',
+    tagHelp: 'Criar uma tag no commit atual',
+    tag: 'Tag',
     openRepository: 'Abrir repositório…',
     createRepository: 'Criar repositório…',
     openFolder: 'Abrir pasta no sistema',
@@ -105,6 +113,8 @@ export const ptBR = {
     dropHere: 'soltar aqui',
     branchTooltip: 'Duplo clique: checkout · Botão direito: mais ações',
     menu: {
+      deleteTag: 'Excluir tag',
+      newTag: 'Criar tag aqui…',
       checkoutBranch: 'Checkout de {branch}',
       checkoutRemote: 'Checkout de {branch} (branch local que acompanha a remota)',
       history: 'Ver histórico desta branch',
@@ -125,6 +135,14 @@ export const ptBR = {
     }
   },
   history: {
+    columns: {
+      help: 'Arraste um título sobre outro para trocar as colunas de lugar',
+      sha: 'Hash',
+      date: 'Data e hora',
+      author: 'Autor',
+      subject: 'Mensagem',
+      graph: 'Grafo'
+    },
     count: { one: '{count} commit', other: '{count} commits' },
     selected: { one: '{count} selecionado', other: '{count} selecionados' },
     hint: 'Ctrl/Shift+clique para selecionar vários · ▸ ou duplo clique mostra os arquivos · arraste para uma branch',
@@ -132,12 +150,13 @@ export const ptBR = {
     scope: { all: 'Todas as branches', head: 'Branch atual', ref: 'Branch: {ref}' },
     badge: { remote: 'Branch remota', local: 'Branch local — arraste ou solte itens aqui' },
     search: {
-      placeholder: 'Pesquisar branch, mensagem, autor ou hash…',
-      help: 'Filtra o histórico pelo nome da branch ou tag, pela mensagem, pelo autor ou pelo início do hash. Enter vai para o primeiro resultado; Esc limpa.',
+      placeholder: 'Pesquisar branch, mensagem, autor, data, hora ou hash…',
+      help: 'Filtra o histórico pelo nome da branch ou tag, pela mensagem, pelo autor, pela data ou hora (ex.: 21/10/2026, 2026-10-21, 14:30) ou pelo início do hash. Enter vai para o primeiro resultado; Esc limpa.',
       found: { one: '{count} de {total} commits', other: '{count} de {total} commits' },
       none: 'Nenhum commit encontrado para “{query}”.'
     },
     files: {
+      openWindow: 'Abrir só este diff numa janela',
       none: 'Nenhum arquivo alterado.',
       help: 'Clique para ver o diff · arraste para uma branch para levar o arquivo',
       openDiff: 'Ver diff',
@@ -145,6 +164,7 @@ export const ptBR = {
       copyPath: 'Copiar caminho'
     },
     menu: {
+      newTag: 'Criar tag aqui…',
       cherryPick: { one: 'Cherry-pick deste commit em {target}…', other: 'Cherry-pick de {count} commits em {target}…' },
       openStudio: 'Abrir no Cherry-pick Studio…',
       compareTwo: 'Comparar estes 2 commits',
@@ -226,6 +246,20 @@ export const ptBR = {
     commitInto: 'Commit em {branch}'
   },
   actions: {
+    deleteTag: {
+      confirm: 'Excluir',
+      message: 'Excluir a tag local "{name}"? (A tag em remotos não é alterada.)',
+      title: 'Excluir tag'
+    },
+    newTag: {
+      messagePlaceholder: 'Deixe vazio para uma tag simples',
+      message: 'Mensagem (opcional — cria uma tag anotada)',
+      confirm: 'Criar tag',
+      placeholder: 'ex.: v1.2.0',
+      labelAt: 'Nome da tag em {ref}',
+      label: 'Nome da tag (no commit atual)',
+      title: 'Nova tag'
+    },
     stash: { title: 'Guardar alterações (stash)', label: 'Descrição (opcional)', confirm: 'Guardar' },
     newBranch: {
       title: 'Nova branch',
@@ -440,6 +474,8 @@ export const ptBR = {
     }
   },
   compare: {
+    showCommitHelp: 'Clique para ver o commit ao lado (botão direito: abrir no histórico)',
+    showCommit: 'Ver o commit aqui',
     from: 'De',
     to: 'Para',
     refPlaceholder: 'branch, tag ou commit',
@@ -508,6 +544,16 @@ export const ptBR = {
     }
   },
   layout: {
+    tabsBottom: 'Mover as abas para baixo',
+    tabsTop: 'Mover as abas para cima',
+    reorderHelp: 'Arraste para mudar a ordem',
+    centerWindow: 'Voltar ao centro',
+    moveWindow: 'Arraste para mover a janela. Duplo clique maximiza.',
+    defaultArrangement: 'Arranjo padrão (posição e tamanho)',
+    defaultSize: 'Tamanho padrão',
+    sideBySide: 'Colocar lado a lado',
+    stackPanels: 'Colocar um em cima do outro',
+    swapPanels: 'Trocar os painéis de lugar',
     resize: 'Arraste para redimensionar. Duplo clique volta ao tamanho padrão.',
     hidePanel: 'Recolher este painel',
     showPanel: 'Mostrar o painel recolhido',
@@ -517,6 +563,19 @@ export const ptBR = {
     expand: 'Expandir'
   },
   settings: {
+    editor: {
+      diffLayoutHelp: 'Todo diff abre neste modo; os botões no cabeçalho do diff trocam o modo só enquanto ele está aberto.',
+      diffLayout: 'Modo padrão do diff',
+      clear: 'Não usar nenhum',
+      browse: 'Procurar executável…',
+      custom: 'Escolhido manualmente',
+      noneFound: 'Nenhum editor conhecido foi encontrado.',
+      detecting: 'Procurando editores instalados…',
+      editorHelp: 'Editores encontrados neste computador. Se o seu não aparecer, procure o executável dele.',
+      editor: 'Editor',
+      description: 'Editor usado por “Abrir no editor” e modo em que os diffs abrem.',
+      title: 'Editor e diff'
+    },
     title: 'Configurações',
     unsaved: 'Alterações não salvas (já visíveis como prévia).',
     general: {
@@ -619,6 +678,7 @@ export const ptBR = {
   },
   core: {
     invalidRef: {
+      tagName: 'Nome de tag inválido: "{ref}"',
       ref: 'Referência inválida: "{ref}"',
       commit: 'Commit inválido: "{ref}"',
       branch: 'Branch inválida: "{ref}"',
@@ -676,6 +736,10 @@ export const ptBR = {
     gitFailed: 'git {command} falhou (código {code})'
   },
   main: {
+    editorNotFound: 'O editor "{editor}" não foi encontrado. Escolha outro em Configurações → Editor e diff.',
+    noEditor: 'Nenhum editor escolhido. Escolha um em Configurações → Editor e diff.',
+    programs: 'Programas',
+    chooseEditorTitle: 'Escolher o executável do editor',
     openDialogTitle: 'Abrir repositório git',
     initDialogTitle: 'Criar repositório git nesta pasta',
     outsideRepository: 'Caminho fora do repositório.',

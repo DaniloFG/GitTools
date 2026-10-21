@@ -51,12 +51,21 @@ se mesmo assim houver conflito, ele aparece no painel de conflitos como em qualq
 - **Botão direito numa branch** (etiqueta no histórico ou barra lateral): o primeiro item é o checkout
   *daquela* branch. No menu de um commit, os checkouts das branches que apontam para ele vêm primeiro;
   o checkout do commit em si (HEAD destacado) fica por último entre eles.
-- **Pesquisa** (`Ctrl+F`): filtra por branch, tag, mensagem, autor ou início do hash; Enter vai para o
-  primeiro resultado e Esc limpa.
+- **Colunas**: grafo, mensagem, autor, data e hora e hash — arraste um título sobre outro para trocar
+  as colunas de lugar. A coluna de data mostra também a hora.
+- **Pesquisa** (`Ctrl+F`): filtra por branch, tag, mensagem, autor, data ou hora (ex.: `21/10/2026`,
+  `2026-10-21`, `14:30`) ou início do hash; Enter vai para o primeiro resultado e Esc limpa.
 - **Arquivos do commit na própria lista**: ▸ (ou duplo clique, ou `→`/`←`) abre e fecha os arquivos
-  logo abaixo da linha do commit. Clique num arquivo para ver o diff; arraste-o para uma branch.
-- **Diff "cima e baixo" ou "lado a lado"**: escolha no cabeçalho de qualquer diff; a escolha vale para
-  todos e a seleção de linhas funciona nos dois modos.
+  logo abaixo da linha do commit. Clique num arquivo para ver o diff; **duplo clique** abre só o diff
+  daquele arquivo numa janela própria; arraste-o para uma branch.
+- **Tags**: crie uma tag no commit atual (botão *Tag* na barra), em qualquer commit ou branch (botão
+  direito) ou pelo ＋ da seção Tags; com mensagem, a tag é anotada.
+- **Diff "cima e baixo" ou "lado a lado"**: todo diff abre no modo escolhido em ⚙ Configurações →
+  Editor e diff; os botões no cabeçalho trocam o modo do diff aberto. A seleção de linhas funciona nos
+  dois modos.
+- **Abrir no editor**: escolha em ⚙ Configurações → Editor e diff um dos editores encontrados no
+  computador (VS Code, Cursor, Sublime, Notepad++, JetBrains…) ou o executável de qualquer outro. O
+  botão *Abrir no editor* da barra abre o projeto inteiro nele.
 
 ### Editor de conflitos
 
@@ -120,7 +129,17 @@ A mudança é aplicada na hora, como prévia, e só é gravada ao clicar em *Sal
 
 ### Layout ajustável
 
-Nenhuma área tem tamanho fixo: cada tela se adapta ao que você quer ler.
+Nenhuma área tem tamanho nem lugar fixo (como no VS Code): cada tela se adapta ao que você quer ler.
+
+- **Mudar painéis de lugar**: na divisória entre dois painéis, ⇄ troca os dois de lugar e ⟲ alterna
+  entre lado a lado e um em cima do outro (também pelo botão direito na divisória). Vale para a barra
+  lateral, a lista e os detalhes do histórico, arquivos e diff, Alterações, Comparar, Arquivos, Studio
+  e Configurações.
+- **Cruzamento de divisórias**: onde duas divisórias se encontram, o cursor vira ✥ e arrastar ali
+  redimensiona as duas de uma vez.
+- **Abas e seções reordenáveis**: arraste as abas (Histórico, Alterações…) e as seções da barra
+  lateral para mudar a ordem; botão direito nas abas as leva para baixo ou para cima.
+- **Janelas móveis**: arraste o título de qualquer diálogo para movê-lo; ⌖ volta ao centro.
 
 - **Divisórias arrastáveis** entre a barra lateral, a lista e os detalhes — também entre os arquivos
   e o diff de um commit, a lista e o diff do histórico do arquivo, a lista de commits e as opções do

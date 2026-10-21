@@ -42,6 +42,15 @@ export function formatDateTime(ms: number): string {
   return new Date(ms).toLocaleString(currentLocale)
 }
 
+/** Data e hora sem segundos (ex.: "21/10/2026 14:32"). */
+export function formatShortDateTime(ms: number): string {
+  return new Date(ms).toLocaleString(currentLocale, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+export function getCurrentLocale(): string {
+  return currentLocale
+}
+
 export function formatDate(ms: number): string {
   return new Date(ms).toLocaleDateString(currentLocale)
 }
