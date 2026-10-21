@@ -2965,7 +2965,18 @@ body.docking .pane-grip {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 10px;
+  padding: 0 10px 10px;
+}
+/* Na janela de diff a barra com as setas de alteração/arquivo e os botões fica fixa no topo ao rolar. */
+.diff-window-app .diff-file {
+  margin-top: 10px;
+  overflow: visible;
+}
+.diff-window-app .diff-file-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 .diff-window-title {
   overflow: hidden;
