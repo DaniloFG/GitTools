@@ -31,6 +31,8 @@ export async function createRepo(): Promise<TestRepo> {
   await git('config', 'user.name', 'Test')
   await git('config', 'user.email', 'test@example.com')
   await git('config', 'commit.gpgsign', 'false')
+  // No Windows o git costuma vir com autocrlf=true, que trocaria \n por \r\n nos arquivos e nos patches.
+  await git('config', 'core.autocrlf', 'false')
   const write = (path: string, content: string) => {
     mkdirSync(dirname(join(dir, path)), { recursive: true })
     writeFileSync(join(dir, path), content)
