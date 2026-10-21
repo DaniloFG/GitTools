@@ -4,6 +4,7 @@ import { useApp } from '../context'
 import { git } from '../git'
 import { t } from '../i18n'
 import { comboFromEvent, resolveBindings, worksInInputs } from '../shortcuts'
+import { HISTORY_SEARCH_ID } from './CommitList'
 import { togglePane } from './Split'
 
 /** Escuta o teclado e executa as ações conforme os atalhos configurados. */
@@ -34,6 +35,15 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         'view.files': () => app.setView('files'),
         'view.compare': () => app.setView('compare'),
         'layout.sidebar': () => togglePane('workspace', 'first'),
+        'history.search': () => {
+          app.setView('history')
+          // Espera o histórico aparecer (se outra aba estava aberta) para focar a pesquisa.
+          requestAnimationFrame(() => {
+            const input = document.getElementById(HISTORY_SEARCH_ID) as HTMLInputElement | null
+            input?.focus()
+            input?.select()
+          })
+        },
         studio: () => app.openStudio({ target: actions.head ?? undefined }),
         'branch.new': () => actions.createBranch(),
         stash: () => actions.stash(),

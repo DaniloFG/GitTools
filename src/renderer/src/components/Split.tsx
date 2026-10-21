@@ -35,21 +35,29 @@ export function togglePane(id: string, pane: CollapsedPane) {
 export function Split({ id, direction = 'row', initial, fixed = false, min = [160, 160], collapsible = [true, true], className = '', children }: Props) {
   const row = direction === 'row'
   const ref = useRef<HTMLDivElement>(null)
+  const dividerRef = useRef<HTMLDivElement>(null)
   const [state, setState] = useLayout<SplitState>(layoutKey(id), parseSplitState)
   const [total, setTotal] = useState(0)
+  /** Espessura da divisória (configurável), descontada do espaço dos painéis. */
+  const [dividerSize, setDividerSize] = useState(1)
   const [dragging, setDragging] = useState(false)
 
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    const measure = () => setTotal(row ? el.clientWidth : el.clientHeight)
+    const measure = () => {
+      setTotal(row ? el.clientWidth : el.clientHeight)
+      const divider = dividerRef.current
+      if (divider) setDividerSize(row ? divider.offsetWidth : divider.offsetHeight)
+    }
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)
+    if (dividerRef.current) observer.observe(dividerRef.current)
     return () => observer.disconnect()
   }, [row])
 
-  const available = Math.max(0, total - 1)
+  const available = Math.max(0, total - dividerSize)
   const size = state.size ?? initial
   const collapsed = state.collapsed
   const px = clampSize(fixed ? size : size * available, available, min[0], min[1])
@@ -69,7 +77,7 @@ export function Split({ id, direction = 'row', initial, fixed = false, min = [16
     if (!el) return
     const rect = el.getBoundingClientRect()
     const rtl = row && getComputedStyle(el).direction === 'rtl'
-    const space = Math.max(0, (row ? rect.width : rect.height) - 1)
+    const space = Math.max(0, (row ? rect.width : rect.height) - dividerSize)
     setDragging(true)
     startResize(
       e,
@@ -110,6 +118,7 @@ export function Split({ id, direction = 'row', initial, fixed = false, min = [16
         {children[0]}
       </div>
       <div
+        ref={dividerRef}
         className={`split-divider ${collapsed ? 'collapsed' : ''} ${dragging ? 'dragging' : ''}`}
         role="separator"
         aria-orientation={row ? 'vertical' : 'horizontal'}

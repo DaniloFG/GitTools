@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildPartialPatch, changeKeys, parseDiff, quotePath, unquotePath } from '../src/core/diff'
+import { splitRows } from '../src/shared/diffKeys'
 
 const SAMPLE = `diff --git a/src/app.ts b/src/app.ts
 index 1111111..2222222 100644
@@ -105,5 +106,30 @@ describe('quotePath/unquotePath', () => {
       expect(unquotePath(quotePath(p))).toBe(p)
     }
     expect(unquotePath('"\\303\\241.txt"')).toBe('á.txt')
+  })
+})
+
+describe('splitRows (diff lado a lado)', () => {
+  const line = (kind: 'context' | 'add' | 'del') => ({ kind, content: kind, oldLine: null, newLine: null })
+  const hunk = (kinds: ('context' | 'add' | 'del')[]) => ({ oldStart: 1, oldCount: 0, newStart: 1, newCount: 0, section: '', lines: kinds.map(line) })
+
+  it('emparelha remoções com as adições seguintes e repete o contexto dos dois lados', () => {
+    expect(splitRows(hunk(['context', 'del', 'del', 'add', 'context']))).toEqual([
+      { left: 0, right: 0 },
+      { left: 1, right: 3 },
+      { left: 2, right: null },
+      { left: 4, right: 4 }
+    ])
+  })
+
+  it('deixa o outro lado vazio quando só há adições ou só remoções', () => {
+    expect(splitRows(hunk(['add', 'add']))).toEqual([
+      { left: null, right: 0 },
+      { left: null, right: 1 }
+    ])
+    expect(splitRows(hunk(['del', 'add', 'del']))).toEqual([
+      { left: 0, right: 1 },
+      { left: 2, right: null }
+    ])
   })
 })

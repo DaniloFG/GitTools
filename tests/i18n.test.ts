@@ -89,5 +89,10 @@ describe('configurações', () => {
       shortcuts: { b: 'Ctrl+B' }
     })
     expect(normalizeSettings({ language: 'ar', theme: 'dark', zoom: 1.25 })).toMatchObject({ language: 'ar', theme: 'dark', zoom: 1.25 })
+    expect(normalizeSettings({ dividerWidth: 4, paneButtonScale: 2 })).toMatchObject({ dividerWidth: 4, paneButtonScale: 2 })
+    expect(normalizeSettings({ dividerWidth: 99, paneButtonScale: '2' })).toMatchObject({
+      dividerWidth: DEFAULT_SETTINGS.dividerWidth,
+      paneButtonScale: DEFAULT_SETTINGS.paneButtonScale
+    })
   })
 })

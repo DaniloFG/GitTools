@@ -104,7 +104,8 @@ export const en: Messages = {
     dropHere: 'drop here',
     branchTooltip: 'Double-click: checkout · Right-click: more actions',
     menu: {
-      checkout: 'Checkout',
+      checkoutBranch: 'Checkout {branch}',
+      checkoutRemote: 'Checkout {branch} (local branch tracking the remote)',
       history: 'Show this branch’s history',
       cherryAll: 'Cherry-pick all commits into {target}…',
       studio: 'Cherry-pick Studio (source = this branch)…',
@@ -112,7 +113,8 @@ export const en: Messages = {
       rename: 'Rename…',
       delete: 'Delete…',
       checkoutDetached: 'Checkout (detached HEAD)',
-      newBranchFromTag: 'New branch from this tag…'
+      newBranchFromTag: 'New branch from this tag…',
+      copyName: 'Copy branch name'
     },
     stash: {
       dropTitle: 'Drop stash',
@@ -124,10 +126,23 @@ export const en: Messages = {
   history: {
     count: { one: '{count} commit', other: '{count} commits' },
     selected: { one: '{count} selected', other: '{count} selected' },
-    hint: 'Ctrl/Shift+click to select several · drag onto a branch',
+    hint: 'Ctrl/Shift+click to select several · ▸ or double-click shows the files · drag onto a branch',
     empty: 'No commits yet.',
     scope: { all: 'All branches', head: 'Current branch', ref: 'Branch: {ref}' },
     badge: { remote: 'Remote branch', local: 'Local branch — drag it or drop items here' },
+    search: {
+      placeholder: 'Search branch, message, author or hash…',
+      help: 'Filters the history by branch or tag name, message, author or the start of the hash. Enter jumps to the first result; Esc clears.',
+      found: { one: '{count} of {total} commits', other: '{count} of {total} commits' },
+      none: 'No commits found for “{query}”.'
+    },
+    files: {
+      none: 'No files changed.',
+      help: 'Click to see the diff · drag onto a branch to take the file',
+      openDiff: 'Show diff',
+      take: 'Take this file to {target}…',
+      copyPath: 'Copy path'
+    },
     menu: {
       cherryPick: { one: 'Cherry-pick this commit into {target}…', other: 'Cherry-pick {count} commits into {target}…' },
       openStudio: 'Open in Cherry-pick Studio…',
@@ -137,7 +152,9 @@ export const en: Messages = {
       checkout: 'Checkout this commit (detached HEAD)',
       revert: 'Revert commit…',
       reset: 'Move {branch} here (reset)…',
-      copySha: 'Copy SHA'
+      copySha: 'Copy SHA',
+      showFiles: 'Show the files below the commit',
+      hideFiles: 'Collapse the commit files'
     }
   },
   details: {
@@ -165,7 +182,12 @@ export const en: Messages = {
     binary: 'Binary file — lines cannot be shown.',
     noContent: 'No content changes (name or permissions only).',
     selectHunk: 'Select this block',
-    noNewline: 'No newline at end of file'
+    noNewline: 'No newline at end of file',
+    layout: 'Diff layout',
+    inline: 'Top and bottom',
+    inlineHelp: 'Removed and added lines one below the other',
+    split: 'Side by side',
+    splitHelp: 'Old version on the left, new version on the right'
   },
   changes: {
     discardTitle: 'Discard changes',
@@ -386,7 +408,35 @@ export const en: Messages = {
     baseHelp: 'Version from the common ancestor',
     neither: 'Neither',
     clear: 'clear',
-    resultPlaceholder: 'Choose one of the versions above or type the result here'
+    resultPlaceholder: 'Choose one of the versions above or type the result here',
+    takeThis: 'Use this',
+    more: 'Both / other',
+    edited: 'edited by hand',
+    nav: {
+      prev: 'Previous',
+      prevHelp: 'Previous conflict (Alt+↑)',
+      next: 'Next',
+      nextHelp: 'Next conflict (Alt+↓)',
+      nextPending: 'Next unresolved',
+      nextPendingHelp: 'Next conflict not resolved yet (Alt+Shift+↓)',
+      takeLeftHelp: 'Uses the left pane version for the current conflict and moves to the next unresolved one (Alt+←)',
+      takeRightHelp: 'Uses the right pane version for the current conflict and moves to the next unresolved one (Alt+→)',
+      keys: 'Alt+↑/↓ navigate · Alt+←/→ use the left/right pane'
+    },
+    layout: {
+      title: 'View:',
+      classic: 'Classic',
+      classicHelp: 'Both versions side by side on top and the result below',
+      columns: 'Columns',
+      columnsHelp: 'Three side-by-side columns, like SmartGit',
+      swapSides: 'Swap versions',
+      swapSidesHelp: 'Swaps the places of the current and incoming panes',
+      reset: 'default arrangement',
+      dragHelp: 'Drag this header onto another pane to swap them (right-click: more options)',
+      dropToSwap: 'drop to swap',
+      flowsTo: 'Direction the text goes to the {pane} pane',
+      swapWith: 'Swap places with “{pane}”'
+    }
   },
   compare: {
     from: 'From',
@@ -489,7 +539,10 @@ export const en: Messages = {
       layoutHelp: 'Drag the dividers between panels and the edges of windows to adjust their size; use ◂ ▸ on a divider to collapse a panel and □ to maximize a window. GitTools remembers the layout you choose.',
       resetLayoutHelp: 'Returns all panels and windows to their original size.',
       resetLayout: 'Reset layout',
-      layoutRestored: 'Layout reset.'
+      layoutRestored: 'Layout reset.',
+      dividerWidth: 'Divider thickness',
+      paneButtons: 'Collapse/expand buttons',
+      dividerPreview: 'Hover the divider above to see the buttons; they grow when the mouse is over them.'
     },
     shortcuts: {
       title: 'Keyboard shortcuts',
@@ -521,6 +574,7 @@ export const en: Messages = {
       viewFiles: 'Go to Files (blame and history)',
       viewCompare: 'Go to Compare',
       toggleSidebar: 'Show/hide the sidebar',
+      searchHistory: 'Search the history',
       studio: 'Open Cherry-pick Studio',
       newBranch: 'New branch',
       stash: 'Stash changes',
@@ -543,7 +597,15 @@ export const en: Messages = {
       close: 'Close dialog or menu'
     },
     helpTitle: 'Keyboard shortcuts',
-    helpFooter: 'Shortcuts can be changed in Settings → Keyboard shortcuts.'
+    helpFooter: 'Shortcuts can be changed in Settings → Keyboard shortcuts.',
+    search: {
+      placeholder: 'Search by name or keys (e.g. “branch” or “ctrl+b”)',
+      record: 'Record keys',
+      recording: 'Press the shortcut…',
+      recordHelp: 'Click and press a combination to find the action that uses it (Esc cancels)',
+      clearKeys: 'Clear keys',
+      none: 'No shortcuts found.'
+    }
   },
   messages: {
     filesFrom: '(files {files} taken from commit {sha})',

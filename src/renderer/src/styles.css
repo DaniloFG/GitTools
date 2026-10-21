@@ -344,18 +344,29 @@ code {
 }
 .branch-item.active {
   background: var(--bg-active);
+  border-inline-start: 3px solid var(--branch-color, var(--accent));
 }
-.branch-item.current .branch-name {
-  font-weight: 600;
-  color: var(--accent);
-}
+/* O ícone da branch usa a cor da trilha dela no grafo. */
 .branch-icon {
   width: 12px;
-  color: var(--text-muted);
+  color: var(--branch-color, var(--text-muted));
   font-size: 11px;
 }
+/* Branch atual: borda destacada na cor da trilha. */
+.branch-item.current {
+  margin: 1px 6px;
+  padding-inline-start: 13px;
+  border: 2px solid var(--branch-color, var(--accent));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--branch-color, var(--accent)) 14%, transparent);
+}
+.branch-item.current .branch-name {
+  font-weight: 700;
+  color: var(--branch-color, var(--accent));
+}
 .branch-item.current .branch-icon {
-  color: var(--accent);
+  color: var(--branch-color, var(--accent));
+  font-weight: 700;
 }
 .branch-name {
   flex: 1;
@@ -438,11 +449,11 @@ code {
   min-height: 0;
 }
 
-/* Divisória: linha fina com uma área de arrasto mais larga e botões para recolher painéis. */
+/* Divisória: linha (espessura configurável) com uma área de arrasto mais larga e botões para recolher painéis. */
 .split-divider {
   position: relative;
   z-index: 3;
-  flex: 0 0 1px;
+  flex: 0 0 var(--divider-size, 2px);
   background: var(--border);
   touch-action: none;
   transition: background-color 0.12s;
@@ -456,10 +467,10 @@ code {
 .split-divider::before {
   content: '';
   position: absolute;
-  inset: 0 -4px;
+  inset: 0 -5px;
 }
 .split-column > .split-divider::before {
-  inset: -4px 0;
+  inset: -5px 0;
 }
 .split-divider:hover,
 .split-divider.dragging,
@@ -468,7 +479,7 @@ code {
   outline: none;
 }
 .split-divider.collapsed {
-  flex-basis: 10px;
+  flex-basis: calc(10px + var(--divider-size, 2px));
   background: var(--bg-panel);
 }
 .split-row > .split-divider.collapsed {
@@ -487,7 +498,7 @@ code {
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s;
@@ -501,28 +512,50 @@ code {
   opacity: 1;
   pointer-events: auto;
 }
+/* Os botões têm tamanho configurável e crescem com o mouse em cima, para ficarem fáceis de ver e clicar. */
 .split-divider-buttons button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 24px;
+  width: calc(16px * var(--pane-button-scale, 1.25));
+  height: calc(28px * var(--pane-button-scale, 1.25));
   padding: 0;
-  font-size: 9px;
+  font-size: calc(11px * var(--pane-button-scale, 1.25));
   line-height: 1;
-  border-radius: 4px;
+  border-radius: 5px;
   color: var(--text-muted);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: transform 0.12s, color 0.12s, background-color 0.12s;
 }
 .split-column > .split-divider .split-divider-buttons button {
-  width: 24px;
-  height: 14px;
+  width: calc(28px * var(--pane-button-scale, 1.25));
+  height: calc(16px * var(--pane-button-scale, 1.25));
 }
 .split-divider-buttons button:hover:not(:disabled) {
-  color: var(--text);
+  color: #fff;
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  transform: scale(1.35);
 }
 [dir='rtl'] .split-row > .split-divider .split-divider-buttons button {
   transform: scaleX(-1);
+}
+[dir='rtl'] .split-row > .split-divider .split-divider-buttons button:hover:not(:disabled) {
+  transform: scaleX(-1) scale(1.35);
+}
+
+/* Amostra da divisória nas configurações de aparência. */
+.divider-preview {
+  flex: none;
+  height: 90px;
+  margin: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.divider-preview-pane {
+  flex: 1;
+  background: var(--bg-panel);
 }
 
 /* Alça para redimensionar uma coluna (blame, editor de conflitos). */
@@ -541,7 +574,7 @@ code {
   top: 0;
   bottom: 0;
   left: 50%;
-  width: 2px;
+  width: max(2px, var(--divider-size, 2px));
   transform: translateX(-50%);
   background: transparent;
   transition: background-color 0.12s;
@@ -627,7 +660,10 @@ body.resizing * {
   color: var(--text-muted);
 }
 /* Com a lista estreita, as colunas secundárias saem para o assunto continuar legível. */
-@container (max-width: 640px) {
+.list-header > .muted {
+  white-space: nowrap;
+}
+@container (max-width: 980px) {
   .list-header .hint {
     display: none;
   }
@@ -650,17 +686,29 @@ body.resizing * {
   border: 1px solid var(--border);
   white-space: nowrap;
 }
+/* Etiquetas de branch na cor da trilha delas no grafo. */
 .ref-branch {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  --ref-color: var(--accent);
+  color: var(--ref-color);
+  border-color: color-mix(in srgb, var(--ref-color) 60%, transparent);
+  background: color-mix(in srgb, var(--ref-color) 8%, transparent);
   cursor: grab;
 }
+/* Branch atual: borda grossa, fundo preenchido e ✓ — fácil de achar no meio das outras. */
 .ref-current {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  font-weight: 600;
+  border-width: 2px;
+  border-color: var(--ref-color);
+  background: color-mix(in srgb, var(--ref-color) 24%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ref-color) 25%, transparent);
+  font-weight: 700;
+  padding: 0 7px;
+  line-height: 15px;
 }
 .ref-remote {
+  --ref-color: var(--text-muted);
   color: var(--text-muted);
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--ref-color) 70%, transparent);
   cursor: grab;
 }
 .ref-tag {
@@ -670,6 +718,103 @@ body.resizing * {
 .ref-head {
   color: var(--danger);
   border-color: var(--danger);
+}
+
+/* Pesquisa do histórico (branch, mensagem, autor ou hash). */
+.search-box {
+  position: relative;
+  flex: 1 1 220px;
+  max-width: 340px;
+  min-width: 120px;
+}
+.search-box input {
+  width: 100%;
+  padding-inline-start: 24px;
+}
+.search-icon {
+  position: absolute;
+  inset-inline-start: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+mark {
+  background: color-mix(in srgb, var(--warning) 45%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
+
+/* Arquivos do commit, abertos logo abaixo da linha dele. */
+.row-toggle {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin-inline-start: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1;
+}
+.row-toggle:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+[dir='rtl'] .row-toggle[aria-expanded='false'] {
+  transform: scaleX(-1);
+}
+.commit-row.expanded {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.commit-row.expanded.selected {
+  background: var(--bg-active);
+}
+.commit-files {
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 4%, var(--bg));
+}
+.graph-continue {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+}
+.commit-files ul {
+  list-style: none;
+  margin: 0;
+  padding-block: 2px;
+}
+.commit-files li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  padding-inline-end: 10px;
+}
+.commit-file {
+  cursor: pointer;
+  border-radius: 4px;
+}
+.commit-file:hover {
+  background: var(--bg-hover);
+}
+.commit-file .status {
+  width: 14px;
+  text-align: center;
+}
+.commit-file-name {
+  white-space: nowrap;
+}
+.commit-file-dir {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 /* -------------------------------------------------------------- detalhes */
@@ -845,6 +990,7 @@ body.resizing * {
 }
 .diff-file-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 6px 8px;
@@ -852,6 +998,8 @@ body.resizing * {
   border-bottom: 1px solid var(--border);
 }
 .diff-path {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 600;
@@ -927,6 +1075,65 @@ body.resizing * {
 [dir='rtl'] .line-selected {
   box-shadow: inset -3px 0 0 var(--accent);
   background-image: linear-gradient(var(--selected-line), var(--selected-line));
+}
+/* Diff lado a lado: antes à esquerda, depois à direita, cada metade com a mesma largura. */
+.diff-layout {
+  margin-inline-start: auto;
+}
+.diff-layout button {
+  padding: 1px 8px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.diff-split {
+  table-layout: fixed;
+}
+.diff-split col.sel {
+  width: 22px;
+}
+.diff-split col.ln {
+  width: 46px;
+}
+.diff-split .ln {
+  width: auto;
+  min-width: 0;
+}
+.diff-split td.code {
+  overflow-wrap: anywhere;
+}
+.diff-split td.half {
+  border-inline-start: 1px solid var(--border);
+}
+.cell-add {
+  background: var(--add-bg);
+  color: var(--add-text);
+}
+.cell-del {
+  background: var(--del-bg);
+  color: var(--del-text);
+}
+.cell-add.ln,
+.cell-del.ln,
+.cell-context.ln {
+  color: var(--text-muted);
+}
+.cell-empty {
+  background: repeating-linear-gradient(-45deg, transparent 0 6px, color-mix(in srgb, var(--border) 45%, transparent) 6px 7px);
+}
+.selectable td.cell-add,
+.selectable td.cell-del {
+  cursor: pointer;
+}
+.selectable tr:hover td.cell-add,
+.selectable tr:hover td.cell-del {
+  filter: brightness(1.2);
+}
+.diff-split td.line-selected {
+  box-shadow: none;
+  background-image: linear-gradient(var(--selected-line), var(--selected-line));
+}
+.diff-split td.sel.line-selected {
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .tick {
   display: inline-block;
@@ -1499,7 +1706,8 @@ body.resizing * {
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 .segmented button.active,
-.merge-block-bar button.active {
+.merge-block-bar button.active,
+.shortcut-search button.active {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
   color: #fff;
@@ -1531,6 +1739,25 @@ kbd {
   border-radius: 4px;
   background: var(--bg);
 }
+.shortcut-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.shortcut-search .search-box {
+  max-width: none;
+}
+.shortcut-search .recording-button {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.combo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
 kbd.recording {
   border-color: var(--accent);
   color: var(--accent);
@@ -1542,87 +1769,195 @@ kbd.duplicate {
 
 /* ------------------------------------------------- editor de conflitos */
 
+.modal-body:has(> .merge-editor) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.merge-editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .merge-toolbar {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 10px;
   flex-wrap: wrap;
 }
-.merge-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0 8px;
-  font-family: var(--mono);
+.merge-toolbar button {
+  padding: 3px 10px;
+}
+.merge-toolbar.secondary {
   font-size: 12px;
 }
-.merge-head {
-  position: sticky;
+.merge-toolbar.secondary button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.toolbar-separator {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 4px;
+  background: var(--border);
+}
+.merge-current {
+  font-weight: 600;
+  color: var(--warning);
+}
+.merge-keys {
+  font-size: 11px;
+}
+.merge-panes {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.merge-pane {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  overflow-wrap: anywhere;
-  top: -14px;
-  z-index: 1;
+  min-height: 0;
+  height: 100%;
+  background: var(--bg);
+}
+.merge-pane.drop-over {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+}
+.merge-pane.dragging {
+  opacity: 0.6;
+}
+/* Cabeçalho do painel: arraste-o sobre outro painel para trocá-los de lugar. */
+.merge-pane-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 8px;
-  font-family: system-ui, sans-serif;
   font-weight: 600;
   background: var(--bg-elevated);
   border-bottom: 2px solid var(--border);
+  cursor: grab;
+  white-space: nowrap;
+  overflow: hidden;
 }
-.merge-head.ours {
+.merge-pane-head:active {
+  cursor: grabbing;
+}
+.merge-pane-head.ours {
   border-bottom-color: var(--accent);
 }
-.merge-head.theirs {
+.merge-pane-head.theirs {
   border-bottom-color: #b48cff;
 }
-.merge-head.result {
+.merge-pane-head.result {
   border-bottom-color: var(--success);
 }
-/* Fica no vão entre as colunas (o espaçamento da grade é de 8px). */
-.merge-column-resize {
-  inset-inline-end: -8px;
+.merge-grip {
+  color: var(--text-muted);
+  font-size: 12px;
 }
-.merge-common,
-.merge-fold {
-  grid-column: 1 / -1;
+.merge-pane-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.merge-pane-arrow {
+  margin-inline-start: auto;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+}
+.merge-scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+/* Sem quebra de linha: cada linha ocupa exatamente a mesma altura nos três painéis. */
+.merge-content {
+  width: max-content;
+  min-width: 100%;
+  padding-bottom: 40px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 18px;
 }
 .merge-common {
   margin: 0;
-  padding: 2px 8px;
+  padding: 0 8px;
   color: var(--text-muted);
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
+  line-height: 18px;
 }
 .merge-fold {
+  display: block;
+  width: 100%;
+  height: 22px;
+  padding: 0 8px;
   border: none;
   border-radius: 0;
   background: var(--bg-hover);
   color: var(--text-muted);
   text-align: start;
   font-size: 11px;
+  white-space: nowrap;
+}
+.merge-block {
+  margin: 8px 0;
+  border-radius: var(--radius);
+}
+.merge-block.current {
+  outline: 2px solid var(--warning);
+  outline-offset: -1px;
 }
 .merge-block-bar {
-  grid-column: 1 / -1;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  margin-top: 10px;
-  padding: 6px 8px;
+  /* Não alarga o painel: a barra acompanha a largura visível, mesmo com linhas longas. */
+  width: 0;
+  min-width: 100%;
+  height: 30px;
+  padding: 0 8px;
   font-family: system-ui, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
   background: color-mix(in srgb, var(--danger) 10%, var(--bg-elevated));
   border-radius: var(--radius) var(--radius) 0 0;
 }
+.merge-block.resolved .merge-block-bar {
+  background: color-mix(in srgb, var(--success) 10%, var(--bg-elevated));
+}
+.merge-block-bar > strong {
+  flex: none;
+}
+/* Numa coluna estreita os botões encolhem (com reticências); o texto completo fica na dica. */
 .merge-block-bar button {
-  padding: 2px 8px;
+  flex: 0 1 auto;
+  min-width: 3em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 8px;
   font-size: 12px;
 }
 .merge-side {
   margin: 0;
   padding: 6px 8px;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
+  line-height: 18px;
+  border: 1px solid transparent;
   border-radius: 0 0 var(--radius) var(--radius);
   opacity: 0.85;
+  overflow: hidden;
 }
 .merge-side.ours {
   background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -1632,13 +1967,21 @@ kbd.duplicate {
 }
 .merge-side.chosen {
   opacity: 1;
-  box-shadow: inset 0 0 0 2px var(--success);
+  border-color: var(--success);
+  box-shadow: inset 0 0 0 1px var(--success);
 }
 .merge-result {
+  display: block;
+  margin: 0;
+  padding: 6px 8px;
   font-family: var(--mono);
   font-size: 12px;
+  line-height: 18px;
+  white-space: pre;
+  overflow: hidden;
+  resize: none;
+  border: 1px solid var(--border);
   border-radius: 0 0 var(--radius) var(--radius);
-  resize: vertical;
 }
 .merge-result.pending {
   border: 1px dashed var(--danger);
@@ -1994,8 +2337,8 @@ kbd.duplicate {
 /* Código, diffs, SHAs e caminhos continuam da esquerda para a direita mesmo em idiomas RTL. */
 [dir='rtl'] .diff-table,
 [dir='rtl'] .blame-table .code,
-[dir='rtl'] .merge-grid pre,
-[dir='rtl'] .merge-grid textarea,
+[dir='rtl'] .merge-content pre,
+[dir='rtl'] .merge-content textarea,
 [dir='rtl'] .merge-final,
 [dir='rtl'] .file-path,
 [dir='rtl'] .conflict-path,

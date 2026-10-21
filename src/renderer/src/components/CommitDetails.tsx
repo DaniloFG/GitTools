@@ -9,7 +9,14 @@ import { t } from '../i18n'
 import { DiffView } from './DiffView'
 import { Split } from './Split'
 
-export function CommitDetailsPanel({ selected }: { selected: string[] }) {
+/** Arquivo a abrir no diff (ex.: clicado nos arquivos expandidos do histórico). `n` muda a cada pedido. */
+export interface FileFocus {
+  sha: string
+  path: string
+  n: number
+}
+
+export function CommitDetailsPanel({ selected, focus }: { selected: string[]; focus?: FileFocus | null }) {
   if (selected.length === 0) {
     return (
       <section className="details empty-details">
@@ -24,7 +31,7 @@ export function CommitDetailsPanel({ selected }: { selected: string[] }) {
     )
   }
   if (selected.length > 1) return <MultiSelection shas={selected} />
-  return <SingleCommit key={selected[0]} sha={selected[0]} />
+  return <SingleCommit key={selected[0]} sha={selected[0]} focus={focus?.sha === selected[0] ? focus : null} />
 }
 
 function MultiSelection({ shas }: { shas: string[] }) {
@@ -48,7 +55,7 @@ function MultiSelection({ shas }: { shas: string[] }) {
   )
 }
 
-function SingleCommit({ sha }: { sha: string }) {
+function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) {
   const { toast, openFileView } = useApp()
   const actions = useActions()
   const head = actions.head
@@ -67,6 +74,16 @@ function SingleCommit({ sha }: { sha: string }) {
       (e) => toast('error', errorMessage(e))
     )
   }, [sha, toast])
+
+  // Abre o arquivo pedido de fora (lista de arquivos expandida no histórico).
+  useEffect(() => {
+    if (!details || !focus) return
+    const file = details.files.find((f) => f.path === focus.path)
+    if (file) {
+      setActive(file)
+      document.querySelector(`.file-list [data-path="${CSS.escape(file.path)}"]`)?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [details, focus])
 
   useEffect(() => {
     setSelection(new Set())
@@ -132,6 +149,7 @@ function SingleCommit({ sha }: { sha: string }) {
           {details.files.map((file) => (
             <li
               key={file.path}
+              data-path={file.path}
               className={`file-item ${active?.path === file.path ? 'active' : ''}`}
               onClick={() => setActive(file)}
               draggable

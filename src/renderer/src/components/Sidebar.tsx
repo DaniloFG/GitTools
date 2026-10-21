@@ -2,10 +2,12 @@ import type { ReactNode } from 'react'
 import type { BranchInfo, StashInfo } from '../../../shared/types'
 import type { HistoryScope } from '../App'
 import { useActions } from '../actions'
+import { useBranchMenu } from '../branchMenu'
 import { useApp } from '../context'
 import { endDrag, startDrag } from '../dnd'
 import { git } from '../git'
 import { relativeDate } from '../format'
+import { commitColors, laneColor } from '../graph'
 import { useDrop } from '../useDrop'
 import { useLayout } from '../layout'
 import { t } from '../i18n'
@@ -17,6 +19,9 @@ interface Props {
 
 export function Sidebar({ scope, onScope }: Props) {
   const { data } = useApp()
+  // Cada branch usa a cor da sua trilha no grafo do histórico.
+  const colors = commitColors(data.log, data.status.headSha)
+  const colorOf = (b: BranchInfo) => colors.get(b.sha)
   const local = data.branches.filter((b) => !b.remote)
   const remotes = new Map<string, BranchInfo[]>()
   for (const b of data.branches.filter((b) => b.remote)) {
@@ -28,13 +33,13 @@ export function Sidebar({ scope, onScope }: Props) {
       <p className="sidebar-hint">{t('sidebar.hint')}</p>
       <Section id="branches" title={t('sidebar.branches')} count={local.length}>
         {local.map((b) => (
-          <BranchItem key={b.fullRef} branch={b} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
+          <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
         ))}
       </Section>
       {[...remotes.entries()].map(([remote, list]) => (
         <Section key={remote} id={`remote.${remote}`} title={t('sidebar.remote', { remote })} count={list.length} collapsed>
           {list.map((b) => (
-            <BranchItem key={b.fullRef} branch={b} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
+            <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
           ))}
         </Section>
       ))}
@@ -73,42 +78,25 @@ function Section({ id, title, count, children, collapsed = false }: SectionProps
   )
 }
 
-function BranchItem({ branch, active, onScope }: { branch: BranchInfo; active: boolean; onScope(s: HistoryScope): void }) {
-  const { showMenu, run, openStudio, openCompare } = useApp()
+interface BranchItemProps {
+  branch: BranchInfo
+  /** Cor da trilha da branch no grafo (ausente quando o commit não está no histórico carregado). */
+  color: number | undefined
+  active: boolean
+  onScope(s: HistoryScope): void
+}
+
+function BranchItem({ branch, color, active, onScope }: BranchItemProps) {
+  const { showMenu } = useApp()
   const actions = useActions()
+  const branchMenu = useBranchMenu(onScope)
   const isRemote = !!branch.remote
   const drop = useDrop(
     (p) => !isRemote && !(p.type === 'branch' && p.name === branch.name) && p.type !== 'files',
     (p) => void actions.dropOnBranch(p, branch.name)
   )
-  const head = actions.head
 
-  const menu = (e: React.MouseEvent) =>
-    showMenu(e, [
-      { label: t('sidebar.menu.checkout'), onClick: () => actions.checkout(branch.name), disabled: branch.current },
-      { label: t('sidebar.menu.history'), onClick: () => onScope({ kind: 'ref', ref: branch.name }) },
-      'separator',
-      ...(head && !branch.current
-        ? [
-            { label: t('actions.branchDrop.merge', { source: branch.name, target: head }), onClick: () => run(t('busy.merge', { ref: branch.name }), () => git.merge(branch.name, head)) },
-            ...(isRemote ? [] : [{ label: t('actions.branchDrop.rebase', { source: head, target: branch.name }), onClick: () => run(t('busy.rebase', { ref: head }), () => git.rebase(head, branch.name)) }]),
-            {
-              label: t('sidebar.menu.cherryAll', { target: head }),
-              onClick: () => actions.branchOntoBranch(branch.name, head, isRemote)
-            }
-          ]
-        : []),
-      ...(head && !branch.current ? [{ label: t('common.compareWith', { ref: head }), onClick: () => openCompare({ from: head, to: branch.name }) }] : []),
-      { label: t('sidebar.menu.studio'), onClick: () => openStudio({ source: branch.name, target: head ?? undefined }) },
-      'separator',
-      { label: t('sidebar.menu.newBranch'), onClick: () => actions.createBranch(branch.name) },
-      ...(isRemote
-        ? []
-        : [
-            { label: t('sidebar.menu.rename'), onClick: () => actions.renameBranch(branch) },
-            { label: t('sidebar.menu.delete'), onClick: () => actions.deleteBranch(branch), danger: true, disabled: branch.current }
-          ])
-    ])
+  const menu = (e: React.MouseEvent) => showMenu(e, branchMenu(branch))
 
   const label = isRemote ? branch.name.slice(branch.remote!.length + 1) : branch.name
   return (
@@ -120,10 +108,11 @@ function BranchItem({ branch, active, onScope }: { branch: BranchInfo; active: b
       onClick={() => onScope({ kind: 'ref', ref: branch.name })}
       onDoubleClick={() => !branch.current && actions.checkout(branch.name)}
       onContextMenu={menu}
-      title={`${branch.name}\n${branch.subject}\n${relativeDate(branch.date)}\n\n${t('sidebar.branchTooltip')}`}
+      title={`${branch.name}${branch.current ? ` (${t('toolbar.currentBranch')})` : ''}\n${branch.subject}\n${relativeDate(branch.date)}\n\n${t('sidebar.branchTooltip')}`}
+      style={color === undefined ? undefined : ({ '--branch-color': laneColor(color) } as React.CSSProperties)}
       {...drop.props}
     >
-      <span className="branch-icon">{branch.current ? '●' : '⎇'}</span>
+      <span className="branch-icon">{branch.current ? '✓' : '⎇'}</span>
       <span className="branch-name">{label}</span>
       {(branch.ahead > 0 || branch.behind > 0) && (
         <span className="track">

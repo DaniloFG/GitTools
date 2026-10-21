@@ -16,6 +16,7 @@ export const SHORTCUT_ACTIONS: ShortcutAction[] = [
   { id: 'view.files', group: 'navigation', defaultKeys: 'Ctrl+3' },
   { id: 'view.compare', group: 'navigation', defaultKeys: 'Ctrl+4' },
   { id: 'layout.sidebar', group: 'navigation', defaultKeys: 'Ctrl+B' },
+  { id: 'history.search', group: 'navigation', defaultKeys: 'Ctrl+F' },
   { id: 'studio', group: 'git', defaultKeys: 'Ctrl+Shift+P' },
   { id: 'branch.new', group: 'git', defaultKeys: 'Ctrl+Shift+N' },
   { id: 'stash', group: 'git', defaultKeys: 'Ctrl+Shift+S' },
@@ -35,6 +36,7 @@ export const SHORTCUT_LABELS: Record<string, MessageKey> = {
   'view.files': 'shortcuts.actions.viewFiles',
   'view.compare': 'shortcuts.actions.viewCompare',
   'layout.sidebar': 'shortcuts.actions.toggleSidebar',
+  'history.search': 'shortcuts.actions.searchHistory',
   studio: 'shortcuts.actions.studio',
   'branch.new': 'shortcuts.actions.newBranch',
   stash: 'shortcuts.actions.stash',
@@ -103,4 +105,26 @@ export function resolveBindings(overrides: Record<string, string>): Record<strin
 /** Teclas que funcionam mesmo com o foco num campo de texto. */
 export function worksInInputs(combo: string): boolean {
   return /(^|\+)(Ctrl|Alt)\+/.test(combo) || /^F\d+$/.test(combo)
+}
+
+/** Pesquisa na lista de atalhos: por texto (nome da ação ou teclas) e/ou por uma combinação gravada. */
+export interface ShortcutQuery {
+  text: string
+  /** Combinação pressionada no modo "gravar teclas" (ex.: "Ctrl+B"). */
+  combo?: string | null
+}
+
+/** Minúsculas e sem acentos, para "atualizar" achar "Atualizar". */
+const fold = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+/** Teclas sem separadores: "ctrl + shift+p" e "Ctrl+Shift+P" ficam iguais. */
+const keysOf = (text: string) => fold(text).replace(/[\s+]+/g, '')
+
+/** O atalho (nome traduzido da ação + combinação) aparece na pesquisa? */
+export function matchesShortcut(label: string, combo: string, query: ShortcutQuery): boolean {
+  if (query.combo && combo !== query.combo) return false
+  const text = query.text.trim()
+  if (!text) return true
+  if (fold(label).includes(fold(text))) return true
+  const keys = keysOf(text)
+  return !!keys && (keysOf(combo).includes(keys) || keysOf(displayCombo(combo)).includes(keys))
 }

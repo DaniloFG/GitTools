@@ -112,7 +112,8 @@ export const ar: Messages = {
     dropHere: 'أفلت هنا',
     branchTooltip: 'نقر مزدوج: انتقال · نقر أيمن: إجراءات أخرى',
     menu: {
-      checkout: 'الانتقال (checkout)',
+      checkoutBranch: 'الانتقال إلى {branch}',
+      checkoutRemote: 'الانتقال إلى {branch} (فرع محلي يتتبع الفرع البعيد)',
       history: 'عرض سجل هذا الفرع',
       cherryAll: 'انتقاء كل الإيداعات إلى {target}…',
       studio: 'استوديو الانتقاء (المصدر = هذا الفرع)…',
@@ -120,7 +121,8 @@ export const ar: Messages = {
       rename: 'إعادة تسمية…',
       delete: 'حذف…',
       checkoutDetached: 'الانتقال (HEAD منفصل)',
-      newBranchFromTag: 'فرع جديد من هذا الوسم…'
+      newBranchFromTag: 'فرع جديد من هذا الوسم…',
+      copyName: 'نسخ اسم الفرع'
     },
     stash: {
       dropTitle: 'حذف التخبئة',
@@ -132,10 +134,23 @@ export const ar: Messages = {
   history: {
     count: { one: 'إيداع واحد', two: 'إيداعان', few: '{count} إيداعات', many: '{count} إيداعًا', other: '{count} إيداع' },
     selected: { one: 'تم تحديد واحد', two: 'تم تحديد اثنين', other: 'المحدد: {count}' },
-    hint: 'Ctrl/Shift+نقر لتحديد عدة عناصر · اسحب إلى فرع',
+    hint: 'Ctrl/Shift+نقر لتحديد عدة عناصر · ▸ أو النقر المزدوج يعرض الملفات · اسحب إلى فرع',
     empty: 'لا توجد إيداعات بعد.',
     scope: { all: 'كل الفروع', head: 'الفرع الحالي', ref: 'الفرع: {ref}' },
     badge: { remote: 'فرع بعيد', local: 'فرع محلي — اسحبه أو أفلت العناصر هنا' },
+    search: {
+      placeholder: 'ابحث عن فرع أو رسالة أو مؤلف أو تجزئة…',
+      help: 'يصفّي السجل حسب اسم الفرع أو الوسم أو الرسالة أو المؤلف أو بداية التجزئة. Enter ينتقل إلى أول نتيجة؛ Esc يمسح.',
+      found: { other: '{count} من {total}' },
+      none: 'لم يُعثر على إيداعات لـ “{query}”.'
+    },
+    files: {
+      none: 'لا توجد ملفات معدّلة.',
+      help: 'انقر لعرض الفروق · اسحب إلى فرع لنقل الملف',
+      openDiff: 'عرض الفروق',
+      take: 'نقل هذا الملف إلى {target}…',
+      copyPath: 'نسخ المسار'
+    },
     menu: {
       cherryPick: { one: 'انتقاء هذا الإيداع إلى {target}…', other: 'انتقاء الإيداعات المحددة ({count}) إلى {target}…' },
       openStudio: 'فتح في استوديو الانتقاء…',
@@ -145,7 +160,9 @@ export const ar: Messages = {
       checkout: 'الانتقال إلى هذا الإيداع (HEAD منفصل)',
       revert: 'التراجع عن الإيداع…',
       reset: 'نقل {branch} إلى هنا (reset)…',
-      copySha: 'نسخ SHA'
+      copySha: 'نسخ SHA',
+      showFiles: 'عرض الملفات أسفل الإيداع',
+      hideFiles: 'طي ملفات الإيداع'
     }
   },
   details: {
@@ -173,7 +190,12 @@ export const ar: Messages = {
     binary: 'ملف ثنائي — لا يمكن عرض الأسطر.',
     noContent: 'لا تغييرات في المحتوى (الاسم أو الأذونات فقط).',
     selectHunk: 'تحديد هذه الكتلة',
-    noNewline: 'لا يوجد سطر جديد في نهاية الملف'
+    noNewline: 'لا يوجد سطر جديد في نهاية الملف',
+    layout: 'طريقة عرض الفروق',
+    inline: 'أعلى وأسفل',
+    inlineHelp: 'الأسطر المحذوفة والمضافة واحدًا تحت الآخر',
+    split: 'جنبًا إلى جنب',
+    splitHelp: 'النسخة القديمة على اليسار والجديدة على اليمين'
   },
   changes: {
     discardTitle: 'تجاهل التغييرات',
@@ -398,7 +420,35 @@ export const ar: Messages = {
     baseHelp: 'النسخة من السلف المشترك',
     neither: 'ولا واحدة',
     clear: 'مسح',
-    resultPlaceholder: 'اختر إحدى النسخ أعلاه أو اكتب النتيجة هنا'
+    resultPlaceholder: 'اختر إحدى النسخ أعلاه أو اكتب النتيجة هنا',
+    takeThis: 'استخدم هذه',
+    more: 'كلتاهما / غير ذلك',
+    edited: 'مُعدّل يدويًا',
+    nav: {
+      prev: 'السابق',
+      prevHelp: 'التعارض السابق (Alt+↑)',
+      next: 'التالي',
+      nextHelp: 'التعارض التالي (Alt+↓)',
+      nextPending: 'التالي غير المحلول',
+      nextPendingHelp: 'التعارض التالي الذي لم يُحل بعد (Alt+Shift+↓)',
+      takeLeftHelp: 'يستخدم نسخة اللوحة اليسرى في التعارض الحالي وينتقل إلى التالي غير المحلول (Alt+←)',
+      takeRightHelp: 'يستخدم نسخة اللوحة اليمنى في التعارض الحالي وينتقل إلى التالي غير المحلول (Alt+→)',
+      keys: 'Alt+↑/↓ للتنقل · Alt+←/→ لاستخدام اللوحة اليسرى/اليمنى'
+    },
+    layout: {
+      title: 'العرض:',
+      classic: 'كلاسيكي',
+      classicHelp: 'النسختان جنبًا إلى جنب في الأعلى والنتيجة في الأسفل',
+      columns: 'أعمدة',
+      columnsHelp: 'ثلاثة أعمدة متجاورة، كما في SmartGit',
+      swapSides: 'تبديل النسختين',
+      swapSidesHelp: 'يبدّل مكاني لوحتي النسخة الحالية والواردة',
+      reset: 'الترتيب الافتراضي',
+      dragHelp: 'اسحب هذا العنوان فوق لوحة أخرى لتبديل مكانيهما (زر الفأرة الأيمن: خيارات أخرى)',
+      dropToSwap: 'أفلت للتبديل',
+      flowsTo: 'اتجاه انتقال النص إلى لوحة {pane}',
+      swapWith: 'تبديل المكان مع “{pane}”'
+    }
   },
   compare: {
     from: 'من',
@@ -501,7 +551,10 @@ export const ar: Messages = {
       layoutHelp: 'اسحب الفواصل بين اللوحات وحواف النوافذ لضبط حجمها؛ استخدم ◂ ▸ على الفاصل لطيّ لوحة و□ لتكبير نافذة. يتذكر GitTools التخطيط الذي تختاره.',
       resetLayoutHelp: 'يعيد جميع اللوحات والنوافذ إلى حجمها الأصلي.',
       resetLayout: 'إعادة تعيين التخطيط',
-      layoutRestored: 'تمت إعادة تعيين التخطيط.'
+      layoutRestored: 'تمت إعادة تعيين التخطيط.',
+      dividerWidth: 'سُمك الفواصل',
+      paneButtons: 'أزرار الطي/التوسيع',
+      dividerPreview: 'مرّر الفأرة فوق الفاصل أعلاه لرؤية الأزرار؛ تكبر الأزرار عندما تكون الفأرة فوقها.'
     },
     shortcuts: {
       title: 'اختصارات لوحة المفاتيح',
@@ -533,6 +586,7 @@ export const ar: Messages = {
       viewFiles: 'الانتقال إلى الملفات (المسؤولية والسجل)',
       viewCompare: 'الانتقال إلى المقارنة',
       toggleSidebar: 'إظهار/إخفاء الشريط الجانبي',
+      searchHistory: 'البحث في السجل',
       studio: 'فتح استوديو الانتقاء',
       newBranch: 'فرع جديد',
       stash: 'تخبئة التغييرات',
@@ -555,7 +609,15 @@ export const ar: Messages = {
       close: 'إغلاق مربع الحوار أو القائمة'
     },
     helpTitle: 'اختصارات لوحة المفاتيح',
-    helpFooter: 'يمكن تغيير الاختصارات من الإعدادات ← اختصارات لوحة المفاتيح.'
+    helpFooter: 'يمكن تغيير الاختصارات من الإعدادات ← اختصارات لوحة المفاتيح.',
+    search: {
+      placeholder: 'ابحث بالاسم أو بالمفاتيح (مثل “فرع” أو “ctrl+b”)',
+      record: 'تسجيل المفاتيح',
+      recording: 'اضغط الاختصار…',
+      recordHelp: 'انقر ثم اضغط مجموعة مفاتيح للعثور على الإجراء الذي يستخدمها (Esc للإلغاء)',
+      clearKeys: 'مسح المفاتيح',
+      none: 'لم يُعثر على اختصارات.'
+    }
   },
   messages: {
     filesFrom: '(الملفات {files} مأخوذة من الإيداع {sha})',

@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react'
 import type { Settings } from '../../../../shared/settings'
 import { t } from '../../i18n'
-import { comboFromEvent, displayCombo, resolveBindings, SHORTCUT_ACTIONS, SHORTCUT_GROUP_LABELS, SHORTCUT_LABELS } from '../../shortcuts'
+import {
+  comboFromEvent,
+  displayCombo,
+  matchesShortcut,
+  resolveBindings,
+  SHORTCUT_ACTIONS,
+  SHORTCUT_GROUP_LABELS,
+  SHORTCUT_LABELS,
+  type ShortcutQuery
+} from '../../shortcuts'
 import type { SettingsSectionProps } from './sections'
+import { ShortcutSearch } from './ShortcutSearch'
 
 /** Combinações usadas por mais de uma ação. */
 export function duplicateShortcuts(settings: Settings): Set<string> {
@@ -12,9 +22,11 @@ export function duplicateShortcuts(settings: Settings): Set<string> {
 
 export function ShortcutsSection({ draft, update }: SettingsSectionProps) {
   const [recording, setRecording] = useState<string | null>(null)
+  const [query, setQuery] = useState<ShortcutQuery>({ text: '' })
   const bindings = resolveBindings(draft.shortcuts)
   const duplicates = duplicateShortcuts(draft)
-  const groups = [...new Set(SHORTCUT_ACTIONS.map((a) => a.group))]
+  const shown = SHORTCUT_ACTIONS.filter((a) => matchesShortcut(t(SHORTCUT_LABELS[a.id]), bindings[a.id], query))
+  const groups = [...new Set(shown.map((a) => a.group))]
 
   // Grava a próxima combinação de teclas para a ação escolhida.
   useEffect(() => {
@@ -49,12 +61,14 @@ export function ShortcutsSection({ draft, update }: SettingsSectionProps) {
           {t('settings.shortcuts.resetAll')}
         </button>
       </div>
+      <ShortcutSearch query={query} onChange={setQuery} />
+      {shown.length === 0 && <p className="empty">{t('shortcuts.search.none')}</p>}
       {groups.map((group) => (
         <div key={group}>
           <h4>{t(SHORTCUT_GROUP_LABELS[group])}</h4>
           <table className="shortcut-table">
             <tbody>
-              {SHORTCUT_ACTIONS.filter((a) => a.group === group).map((a) => (
+              {shown.filter((a) => a.group === group).map((a) => (
                 <tr key={a.id}>
                   <td>{t(SHORTCUT_LABELS[a.id])}</td>
                   <td>

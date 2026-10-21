@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comboFromEvent, resolveBindings, worksInInputs, type KeyInput } from '../src/renderer/src/shortcuts'
+import { comboFromEvent, matchesShortcut, resolveBindings, worksInInputs, type KeyInput } from '../src/renderer/src/shortcuts'
 
 const key = (init: Partial<KeyInput>): KeyInput => ({ key: '', code: '', ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...init })
 
@@ -22,5 +22,21 @@ describe('atalhos', () => {
     expect(worksInInputs('Ctrl+1')).toBe(true)
     expect(worksInInputs('F1')).toBe(true)
     expect(worksInInputs('Shift+A')).toBe(false)
+  })
+})
+
+describe('pesquisa de atalhos', () => {
+  it('acha pelo nome da ação, sem diferenciar acentos e maiúsculas', () => {
+    expect(matchesShortcut('Atualizar', 'F5', { text: 'atualiz' })).toBe(true)
+    expect(matchesShortcut('Configurações', 'Ctrl+,', { text: 'configuracoes' })).toBe(true)
+    expect(matchesShortcut('Push', 'Ctrl+Shift+K', { text: 'pull' })).toBe(false)
+  })
+
+  it('acha pelas teclas digitadas ou gravadas', () => {
+    expect(matchesShortcut('Barra lateral', 'Ctrl+B', { text: 'ctrl+b' })).toBe(true)
+    expect(matchesShortcut('Studio', 'Ctrl+Shift+P', { text: 'ctrl shift p' })).toBe(true)
+    expect(matchesShortcut('Studio', 'Ctrl+Shift+P', { text: '', combo: 'Ctrl+Shift+P' })).toBe(true)
+    expect(matchesShortcut('Barra lateral', 'Ctrl+B', { text: '', combo: 'Ctrl+Shift+P' })).toBe(false)
+    expect(matchesShortcut('Barra lateral', 'Ctrl+B', { text: 'studio', combo: 'Ctrl+B' })).toBe(false)
   })
 })

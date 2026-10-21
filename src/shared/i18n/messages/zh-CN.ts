@@ -103,7 +103,8 @@ export const zhCN: Messages = {
     dropHere: '放到这里',
     branchTooltip: '双击：检出 · 右键：更多操作',
     menu: {
-      checkout: '检出',
+      checkoutBranch: '检出 {branch}',
+      checkoutRemote: '检出 {branch}（跟踪远程的本地分支）',
       history: '查看此分支的历史',
       cherryAll: '将所有提交拣选到 {target}…',
       studio: '拣选工作台（来源 = 此分支）…',
@@ -111,7 +112,8 @@ export const zhCN: Messages = {
       rename: '重命名…',
       delete: '删除…',
       checkoutDetached: '检出（分离的 HEAD）',
-      newBranchFromTag: '从此标签新建分支…'
+      newBranchFromTag: '从此标签新建分支…',
+      copyName: '复制分支名称'
     },
     stash: {
       dropTitle: '丢弃贮藏',
@@ -123,10 +125,23 @@ export const zhCN: Messages = {
   history: {
     count: { other: '{count} 个提交' },
     selected: { other: '已选 {count} 个' },
-    hint: 'Ctrl/Shift+点击可多选 · 拖到分支上',
+    hint: 'Ctrl/Shift+点击可多选 · ▸ 或双击显示文件 · 拖到分支上',
     empty: '还没有提交。',
     scope: { all: '所有分支', head: '当前分支', ref: '分支：{ref}' },
     badge: { remote: '远程分支', local: '本地分支 — 可拖动，也可把项目拖放到这里' },
+    search: {
+      placeholder: '搜索分支、提交信息、作者或哈希…',
+      help: '按分支或标签名称、提交信息、作者或哈希开头筛选历史。Enter 跳到第一个结果；Esc 清除。',
+      found: { other: '{count} / {total} 个提交' },
+      none: '没有找到与“{query}”匹配的提交。'
+    },
+    files: {
+      none: '没有更改的文件。',
+      help: '点击查看差异 · 拖到分支上即可带走该文件',
+      openDiff: '查看差异',
+      take: '将此文件带到 {target}…',
+      copyPath: '复制路径'
+    },
     menu: {
       cherryPick: { one: '将此提交拣选到 {target}…', other: '将 {count} 个提交拣选到 {target}…' },
       openStudio: '在拣选工作台中打开…',
@@ -136,7 +151,9 @@ export const zhCN: Messages = {
       checkout: '检出此提交（分离的 HEAD）',
       revert: '还原提交…',
       reset: '将 {branch} 移到这里（重置）…',
-      copySha: '复制 SHA'
+      copySha: '复制 SHA',
+      showFiles: '在提交下方显示文件',
+      hideFiles: '收起提交的文件'
     }
   },
   details: {
@@ -164,7 +181,12 @@ export const zhCN: Messages = {
     binary: '二进制文件 — 无法显示行。',
     noContent: '内容没有变化（仅名称或权限）。',
     selectHunk: '选择此块',
-    noNewline: '文件末尾没有换行符'
+    noNewline: '文件末尾没有换行符',
+    layout: '差异显示方式',
+    inline: '上下',
+    inlineHelp: '删除和新增的行上下排列',
+    split: '左右对比',
+    splitHelp: '旧版本在左，新版本在右'
   },
   changes: {
     discardTitle: '丢弃更改',
@@ -364,7 +386,35 @@ export const zhCN: Messages = {
     baseHelp: '共同祖先中的版本',
     neither: '都不要',
     clear: '清除',
-    resultPlaceholder: '选择上面的某个版本，或在此输入结果'
+    resultPlaceholder: '选择上面的某个版本，或在此输入结果',
+    takeThis: '使用此版本',
+    more: '两者 / 其他',
+    edited: '已手动编辑',
+    nav: {
+      prev: '上一个',
+      prevHelp: '上一个冲突（Alt+↑）',
+      next: '下一个',
+      nextHelp: '下一个冲突（Alt+↓）',
+      nextPending: '下一个未解决',
+      nextPendingHelp: '下一个尚未解决的冲突（Alt+Shift+↓）',
+      takeLeftHelp: '当前冲突使用左侧面板的版本，并跳到下一个未解决的冲突（Alt+←）',
+      takeRightHelp: '当前冲突使用右侧面板的版本，并跳到下一个未解决的冲突（Alt+→）',
+      keys: 'Alt+↑/↓ 切换冲突 · Alt+←/→ 使用左/右侧面板'
+    },
+    layout: {
+      title: '视图：',
+      classic: '经典',
+      classicHelp: '两个版本在上方并排，结果在下方',
+      columns: '三栏',
+      columnsHelp: '三栏并排，类似 SmartGit',
+      swapSides: '交换版本',
+      swapSidesHelp: '交换当前版本和传入版本面板的位置',
+      reset: '默认布局',
+      dragHelp: '将此标题拖到另一个面板上即可交换位置（右键：更多选项）',
+      dropToSwap: '松开以交换',
+      flowsTo: '文本流向 {pane} 面板的方向',
+      swapWith: '与“{pane}”交换位置'
+    }
   },
   compare: {
     from: '从',
@@ -467,7 +517,10 @@ export const zhCN: Messages = {
       layoutHelp: '拖动面板之间的分隔条和窗口边缘即可调整大小；点击分隔条上的 ◂ ▸ 可折叠面板，点击 □ 可最大化窗口。GitTools 会记住你选择的布局。',
       resetLayoutHelp: '将所有面板和窗口恢复为原始大小。',
       resetLayout: '重置布局',
-      layoutRestored: '布局已重置。'
+      layoutRestored: '布局已重置。',
+      dividerWidth: '分隔条粗细',
+      paneButtons: '折叠/展开按钮',
+      dividerPreview: '将鼠标悬停在上方的分隔条上即可看到按钮；鼠标移到按钮上时按钮会变大。'
     },
     shortcuts: {
       title: '键盘快捷键',
@@ -499,6 +552,7 @@ export const zhCN: Messages = {
       viewFiles: '转到“文件”（追溯和历史）',
       viewCompare: '转到“比较”',
       toggleSidebar: '显示/隐藏侧边栏',
+      searchHistory: '搜索历史',
       studio: '打开拣选工作台',
       newBranch: '新建分支',
       stash: '贮藏更改',
@@ -521,7 +575,15 @@ export const zhCN: Messages = {
       close: '关闭对话框或菜单'
     },
     helpTitle: '键盘快捷键',
-    helpFooter: '可以在 设置 → 键盘快捷键 中更改快捷键。'
+    helpFooter: '可以在 设置 → 键盘快捷键 中更改快捷键。',
+    search: {
+      placeholder: '按名称或按键搜索（例如“分支”或“ctrl+b”）',
+      record: '录制按键',
+      recording: '请按下快捷键…',
+      recordHelp: '点击后按下组合键，查找使用它的操作（Esc 取消）',
+      clearKeys: '清除按键',
+      none: '没有找到快捷键。'
+    }
   },
   messages: {
     filesFrom: '（文件 {files} 来自提交 {sha}）',

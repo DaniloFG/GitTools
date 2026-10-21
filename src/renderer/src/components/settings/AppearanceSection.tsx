@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ZOOM_LEVELS, type ThemeSetting } from '../../../../shared/settings'
+import { DIVIDER_WIDTHS, PANE_BUTTON_SCALES, ZOOM_LEVELS, type ThemeSetting } from '../../../../shared/settings'
 import { t, type MessageKey } from '../../i18n'
 import { resetLayout } from '../../layout'
 import type { SettingsSectionProps } from './sections'
@@ -36,6 +36,38 @@ export function AppearanceSection({ draft, update }: SettingsSectionProps) {
       </div>
       <h4>{t('settings.appearance.layout')}</h4>
       <p className="muted small">{t('settings.appearance.layoutHelp')}</p>
+      <div className="settings-row">
+        <span>{t('settings.appearance.dividerWidth')}</span>
+        <div className="segmented">
+          {DIVIDER_WIDTHS.map((n) => (
+            <button key={n} className={draft.dividerWidth === n ? 'active' : ''} onClick={() => update({ dividerWidth: n })}>
+              {n}px
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="settings-row">
+        <span>{t('settings.appearance.paneButtons')}</span>
+        <div className="segmented">
+          {PANE_BUTTON_SCALES.map((n) => (
+            <button key={n} className={draft.paneButtonScale === n ? 'active' : ''} onClick={() => update({ paneButtonScale: n })}>
+              {Math.round(n * 100)}%
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Amostra: a divisória e os botões como ficam nos painéis (os botões crescem com o mouse em cima). */}
+      <div className="split split-row divider-preview" aria-hidden>
+        <div className="divider-preview-pane" />
+        <div className="split-divider divider-preview-line">
+          <div className="split-divider-buttons">
+            <button tabIndex={-1}>◂</button>
+            <button tabIndex={-1}>▸</button>
+          </div>
+        </div>
+        <div className="divider-preview-pane" />
+      </div>
+      <p className="muted small">{t('settings.appearance.dividerPreview')}</p>
       <div className="settings-row">
         <span>{layoutReset ? `✓ ${t('settings.appearance.layoutRestored')}` : t('settings.appearance.resetLayoutHelp')}</span>
         <button

@@ -107,7 +107,8 @@ export const hi: Messages = {
     dropHere: 'यहाँ छोड़ें',
     branchTooltip: 'डबल क्लिक: checkout · राइट क्लिक: और विकल्प',
     menu: {
-      checkout: 'Checkout',
+      checkoutBranch: '{branch} का checkout',
+      checkoutRemote: '{branch} का checkout (remote को ट्रैक करने वाली लोकल branch)',
       history: 'इस branch का इतिहास देखें',
       cherryAll: 'सभी commits का {target} में cherry-pick करें…',
       studio: 'Cherry-pick Studio (स्रोत = यह branch)…',
@@ -115,7 +116,8 @@ export const hi: Messages = {
       rename: 'नाम बदलें…',
       delete: 'हटाएँ…',
       checkoutDetached: 'Checkout (अलग HEAD)',
-      newBranchFromTag: 'इस tag से नई branch…'
+      newBranchFromTag: 'इस tag से नई branch…',
+      copyName: 'branch का नाम कॉपी करें'
     },
     stash: {
       dropTitle: 'Stash हटाएँ',
@@ -127,10 +129,23 @@ export const hi: Messages = {
   history: {
     count: { one: '{count} commit', other: '{count} commits' },
     selected: { one: '{count} चुना गया', other: '{count} चुने गए' },
-    hint: 'कई चुनने के लिए Ctrl/Shift+क्लिक · किसी branch पर खींचें',
+    hint: 'कई चुनने के लिए Ctrl/Shift+क्लिक · ▸ या डबल क्लिक से फ़ाइलें दिखें · किसी branch पर खींचें',
     empty: 'अभी तक कोई commit नहीं।',
     scope: { all: 'सभी branches', head: 'मौजूदा branch', ref: 'Branch: {ref}' },
     badge: { remote: 'Remote branch', local: 'लोकल branch — इसे खींचें या यहाँ आइटम छोड़ें' },
+    search: {
+      placeholder: 'branch, संदेश, लेखक या hash खोजें…',
+      help: 'branch या tag के नाम, संदेश, लेखक या hash की शुरुआत से इतिहास फ़िल्टर करता है। Enter पहले परिणाम पर ले जाता है; Esc साफ़ करता है।',
+      found: { one: '{total} में से {count} commit', other: '{total} में से {count} commits' },
+      none: '“{query}” के लिए कोई commit नहीं मिला।'
+    },
+    files: {
+      none: 'कोई फ़ाइल नहीं बदली।',
+      help: 'diff देखने के लिए क्लिक करें · फ़ाइल ले जाने के लिए किसी branch पर खींचें',
+      openDiff: 'diff देखें',
+      take: 'यह फ़ाइल {target} में ले जाएँ…',
+      copyPath: 'पथ कॉपी करें'
+    },
     menu: {
       cherryPick: { one: 'इस commit का {target} में cherry-pick…', other: '{count} commits का {target} में cherry-pick…' },
       openStudio: 'Cherry-pick Studio में खोलें…',
@@ -140,7 +155,9 @@ export const hi: Messages = {
       checkout: 'इस commit का checkout (अलग HEAD)',
       revert: 'Commit revert करें…',
       reset: '{branch} को यहाँ ले जाएँ (reset)…',
-      copySha: 'SHA कॉपी करें'
+      copySha: 'SHA कॉपी करें',
+      showFiles: 'commit के नीचे फ़ाइलें दिखाएँ',
+      hideFiles: 'commit की फ़ाइलें छिपाएँ'
     }
   },
   details: {
@@ -168,7 +185,12 @@ export const hi: Messages = {
     binary: 'बाइनरी फ़ाइल — लाइनें नहीं दिखाई जा सकतीं।',
     noContent: 'सामग्री में कोई बदलाव नहीं (सिर्फ़ नाम या अनुमतियाँ)।',
     selectHunk: 'यह ब्लॉक चुनें',
-    noNewline: 'फ़ाइल के अंत में नई लाइन नहीं है'
+    noNewline: 'फ़ाइल के अंत में नई लाइन नहीं है',
+    layout: 'diff का प्रदर्शन',
+    inline: 'ऊपर और नीचे',
+    inlineHelp: 'हटाई और जोड़ी गई लाइनें एक के नीचे एक',
+    split: 'अगल-बगल',
+    splitHelp: 'पुराना संस्करण बाईं ओर, नया दाईं ओर'
   },
   changes: {
     discardTitle: 'बदलाव हटाएँ',
@@ -389,7 +411,35 @@ export const hi: Messages = {
     baseHelp: 'साझा पूर्वज का संस्करण',
     neither: 'कोई नहीं',
     clear: 'साफ़ करें',
-    resultPlaceholder: 'ऊपर से कोई संस्करण चुनें या यहाँ परिणाम लिखें'
+    resultPlaceholder: 'ऊपर से कोई संस्करण चुनें या यहाँ परिणाम लिखें',
+    takeThis: 'यह इस्तेमाल करें',
+    more: 'दोनों / अन्य',
+    edited: 'हाथ से संपादित',
+    nav: {
+      prev: 'पिछला',
+      prevHelp: 'पिछला conflict (Alt+↑)',
+      next: 'अगला',
+      nextHelp: 'अगला conflict (Alt+↓)',
+      nextPending: 'अगला अनसुलझा',
+      nextPendingHelp: 'अगला conflict जो अभी हल नहीं हुआ (Alt+Shift+↓)',
+      takeLeftHelp: 'मौजूदा conflict में बाएँ पैनल का संस्करण इस्तेमाल करता है और अगले अनसुलझे पर जाता है (Alt+←)',
+      takeRightHelp: 'मौजूदा conflict में दाएँ पैनल का संस्करण इस्तेमाल करता है और अगले अनसुलझे पर जाता है (Alt+→)',
+      keys: 'Alt+↑/↓ से आगे-पीछे · Alt+←/→ से बायाँ/दायाँ पैनल'
+    },
+    layout: {
+      title: 'दृश्य:',
+      classic: 'क्लासिक',
+      classicHelp: 'दोनों संस्करण ऊपर अगल-बगल और परिणाम नीचे',
+      columns: 'कॉलम',
+      columnsHelp: 'तीन कॉलम अगल-बगल, SmartGit की तरह',
+      swapSides: 'संस्करण बदलें',
+      swapSidesHelp: 'मौजूदा और आने वाले संस्करण के पैनल की जगह बदलता है',
+      reset: 'डिफ़ॉल्ट व्यवस्था',
+      dragHelp: 'जगह बदलने के लिए इस शीर्षक को दूसरे पैनल पर खींचें (राइट-क्लिक: और विकल्प)',
+      dropToSwap: 'बदलने के लिए छोड़ें',
+      flowsTo: '{pane} पैनल की ओर टेक्स्ट की दिशा',
+      swapWith: '“{pane}” से जगह बदलें'
+    }
   },
   compare: {
     from: 'से',
@@ -492,7 +542,10 @@ export const hi: Messages = {
       layoutHelp: 'आकार बदलने के लिए पैनलों के बीच के विभाजक और विंडो के किनारों को खींचें; किसी पैनल को समेटने के लिए विभाजक पर ◂ ▸ और विंडो को बड़ा करने के लिए □ का उपयोग करें। GitTools आपका चुना हुआ लेआउट याद रखता है।',
       resetLayoutHelp: 'सभी पैनलों और विंडो को उनके मूल आकार पर लौटाता है।',
       resetLayout: 'लेआउट रीसेट करें',
-      layoutRestored: 'लेआउट रीसेट हो गया।'
+      layoutRestored: 'लेआउट रीसेट हो गया।',
+      dividerWidth: 'डिवाइडर की मोटाई',
+      paneButtons: 'समेटें/फैलाएँ बटन',
+      dividerPreview: 'बटन देखने के लिए ऊपर के डिवाइडर पर माउस ले जाएँ; माउस ऊपर होने पर बटन बड़े हो जाते हैं।'
     },
     shortcuts: {
       title: 'कीबोर्ड शॉर्टकट',
@@ -524,6 +577,7 @@ export const hi: Messages = {
       viewFiles: 'फ़ाइलें पर जाएँ (blame और इतिहास)',
       viewCompare: 'तुलना पर जाएँ',
       toggleSidebar: 'साइडबार दिखाएँ/छिपाएँ',
+      searchHistory: 'इतिहास में खोजें',
       studio: 'Cherry-pick Studio खोलें',
       newBranch: 'नई branch',
       stash: 'बदलाव अलग रखें (stash)',
@@ -546,7 +600,15 @@ export const hi: Messages = {
       close: 'डायलॉग या मेनू बंद करें'
     },
     helpTitle: 'कीबोर्ड शॉर्टकट',
-    helpFooter: 'शॉर्टकट सेटिंग्स → कीबोर्ड शॉर्टकट में बदले जा सकते हैं।'
+    helpFooter: 'शॉर्टकट सेटिंग्स → कीबोर्ड शॉर्टकट में बदले जा सकते हैं।',
+    search: {
+      placeholder: 'नाम या कुंजियों से खोजें (जैसे “branch” या “ctrl+b”)',
+      record: 'कुंजियाँ रिकॉर्ड करें',
+      recording: 'शॉर्टकट दबाएँ…',
+      recordHelp: 'क्लिक करें और कोई संयोजन दबाएँ ताकि उसे इस्तेमाल करने वाली क्रिया मिल जाए (Esc रद्द करता है)',
+      clearKeys: 'कुंजियाँ साफ़ करें',
+      none: 'कोई शॉर्टकट नहीं मिला।'
+    }
   },
   messages: {
     filesFrom: '(फ़ाइलें {files} commit {sha} से लाई गईं)',

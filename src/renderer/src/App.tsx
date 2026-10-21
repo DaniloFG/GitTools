@@ -12,7 +12,7 @@ import {
 } from './context'
 import { CherryPickStudio } from './components/CherryPickStudio'
 import { ChangesView } from './components/ChangesView'
-import { CommitDetailsPanel } from './components/CommitDetails'
+import { CommitDetailsPanel, type FileFocus } from './components/CommitDetails'
 import { CommitList } from './components/CommitList'
 import { CompareView } from './components/CompareView'
 import { ConflictEditor } from './components/ConflictEditor'
@@ -49,6 +49,8 @@ function applySettings(settings: Settings, locale: LocaleId) {
   root.dataset.theme = settings.theme
   root.lang = locale
   root.dir = textDirection()
+  root.style.setProperty('--divider-size', `${settings.dividerWidth}px`)
+  root.style.setProperty('--pane-button-scale', String(settings.paneButtonScale))
   document.title = 'GitTools'
   window.gittools.setZoom(settings.zoom)
 }
@@ -66,6 +68,7 @@ export function App() {
   const [view, setView] = useState<View>('history')
   const [scope, setScope] = useState<HistoryScope>({ kind: 'all' })
   const [selected, setSelected] = useState<string[]>([])
+  const [fileFocus, setFileFocus] = useState<FileFocus | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [dialog, setDialog] = useState<DialogState | null>(null)
@@ -282,8 +285,17 @@ export function App() {
             </nav>
             {view === 'history' && (
               <Split id="history" initial={0.55} min={[280, 280]}>
-                <CommitList scope={scope} onScope={setScope} selected={selected} onSelect={setSelected} />
-                <CommitDetailsPanel selected={selected} />
+                <CommitList
+                  scope={scope}
+                  onScope={setScope}
+                  selected={selected}
+                  onSelect={setSelected}
+                  onOpenFile={(sha, path) => {
+                    setSelected([sha])
+                    setFileFocus((prev) => ({ sha, path, n: (prev?.n ?? 0) + 1 }))
+                  }}
+                />
+                <CommitDetailsPanel selected={selected} focus={fileFocus} />
               </Split>
             )}
             {view === 'changes' && <ChangesView />}

@@ -13,13 +13,21 @@ export interface Settings {
   theme: ThemeSetting
   /** Escala da interface (1 = 100%). */
   zoom: number
+  /** Espessura, em pixels, da linha das divisórias entre painéis (e das alças de colunas). */
+  dividerWidth: number
+  /** Escala dos botões de recolher/expandir painéis nas divisórias (1 = normal). */
+  paneButtonScale: number
   /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
   shortcuts: Record<string, string>
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, shortcuts: {} }
+export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, shortcuts: {} }
 
 export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6]
+export const DIVIDER_WIDTHS = [1, 2, 3, 4, 6, 8]
+export const PANE_BUTTON_SCALES = [1, 1.25, 1.5, 2]
+
+const oneOf = (value: unknown, options: number[], fallback: number) => (typeof value === 'number' && options.includes(value) ? value : fallback)
 
 /** Aceita qualquer valor lido do disco e devolve configurações válidas. */
 export function normalizeSettings(value: unknown): Settings {
@@ -32,6 +40,8 @@ export function normalizeSettings(value: unknown): Settings {
     language: raw.language === 'system' || isLocaleId(raw.language) ? raw.language : DEFAULT_SETTINGS.language,
     theme: raw.theme === 'dark' || raw.theme === 'light' || raw.theme === 'system' ? raw.theme : DEFAULT_SETTINGS.theme,
     zoom: typeof raw.zoom === 'number' && raw.zoom >= 0.5 && raw.zoom <= 2 ? raw.zoom : DEFAULT_SETTINGS.zoom,
+    dividerWidth: oneOf(raw.dividerWidth, DIVIDER_WIDTHS, DEFAULT_SETTINGS.dividerWidth),
+    paneButtonScale: oneOf(raw.paneButtonScale, PANE_BUTTON_SCALES, DEFAULT_SETTINGS.paneButtonScale),
     shortcuts: shortcuts as Record<string, string>
   }
 }

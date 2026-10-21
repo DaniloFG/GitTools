@@ -1,7 +1,17 @@
 import { useEffect, useRef } from 'react'
-import type { FileDiff, LineKey } from '../../../shared/types'
-import { changeKeys, hunkKeys, lineKey } from '../../../shared/diffKeys'
+import type { DiffLine, FileDiff, LineKey } from '../../../shared/types'
+import { changeKeys, hunkKeys, lineKey, splitRows } from '../../../shared/diffKeys'
 import { t, type MessageKey } from '../i18n'
+import { useLayout } from '../layout'
+
+/** Como o diff é exibido: linhas antigas e novas uma embaixo da outra, ou lado a lado. */
+export type DiffLayout = 'inline' | 'split'
+const parseDiffLayout = (value: unknown): DiffLayout => (value === 'split' ? 'split' : 'inline')
+
+/** Escolha entre "cima e baixo" e "lado a lado", lembrada para todos os diffs. */
+export function useDiffLayout() {
+  return useLayout('diff.layout', parseDiffLayout)
+}
 
 interface Props {
   file: FileDiff
@@ -25,6 +35,7 @@ const TYPE_LABEL: Record<FileDiff['changeType'], MessageKey> = {
  */
 export function DiffView({ file, selection, onSelectionChange }: Props) {
   const selectable = !!selection && !!onSelectionChange && !file.binary
+  const [layout, setLayout] = useDiffLayout()
   const dragMode = useRef<'add' | 'remove' | null>(null)
   const lastClicked = useRef<LineKey | null>(null)
   const all = changeKeys(file)
@@ -90,11 +101,88 @@ export function DiffView({ file, selection, onSelectionChange }: Props) {
           <span className="add">+{file.additions}</span> <span className="del">−{file.deletions}</span>
         </span>
         {selectable && <span className="muted small">{selection!.size ? t('diff.selectedOf', { selected: all.filter((k) => selection!.has(k)).length, count: all.length }) : t('diff.selectHint')}</span>}
+        {!file.binary && file.hunks.length > 0 && (
+          <div className="segmented diff-layout" role="group" aria-label={t('diff.layout')}>
+            <button className={layout === 'inline' ? 'active' : ''} onClick={() => setLayout('inline')} title={t('diff.inlineHelp')}>
+              ☰ {t('diff.inline')}
+            </button>
+            <button className={layout === 'split' ? 'active' : ''} onClick={() => setLayout('split')} title={t('diff.splitHelp')}>
+              ◫ {t('diff.split')}
+            </button>
+          </div>
+        )}
       </div>
       {file.binary ? (
         <p className="empty">{t('diff.binary')}</p>
       ) : file.hunks.length === 0 ? (
         <p className="empty">{t('diff.noContent')}</p>
+      ) : layout === 'split' ? (
+        <table className={`diff-table diff-split ${selectable ? 'selectable' : ''}`}>
+          <colgroup>
+            <col className="sel" />
+            <col className="ln" />
+            <col />
+            <col className="sel" />
+            <col className="ln" />
+            <col />
+          </colgroup>
+          <tbody>
+            {file.hunks.map((hunk, h) => {
+              const keys = hunkKeys(file, h)
+              const hunkAll = selectable && keys.every((k) => selection!.has(k))
+              const side = (index: number | null, which: 'old' | 'new') => {
+                const half = which === 'new' ? 'half' : ''
+                if (index === null) return <td colSpan={3} className={`cell-empty ${half}`} />
+                const line: DiffLine = hunk.lines[index]
+                const key = lineKey(h, index)
+                const change = line.kind !== 'context'
+                const isSelected = change && selection?.has(key)
+                const cls = `cell-${line.kind} ${isSelected ? 'line-selected' : ''}`
+                const handlers = change ? { onMouseDown: (e: React.MouseEvent) => onLineDown(e, key), onMouseEnter: () => onLineEnter(key) } : {}
+                return (
+                  <>
+                    <td className={`sel ${half} ${cls}`} {...handlers}>
+                      {selectable && change && <span className={`tick ${isSelected ? 'on' : ''}`} />}
+                    </td>
+                    <td className={`ln ${cls}`} {...handlers}>
+                      {(which === 'old' ? line.oldLine : line.newLine) ?? ''}
+                    </td>
+                    <td className={`code ${cls}`} {...handlers}>
+                      {line.content || ' '}
+                      {line.noNewline && <span className="no-newline" title={t('diff.noNewline')}>⏎̸</span>}
+                    </td>
+                  </>
+                )
+              }
+              return [
+                <tr key={`h${h}`} className="hunk-header">
+                  <td className="sel">
+                    {selectable && (
+                      <input
+                        type="checkbox"
+                        checked={hunkAll}
+                        ref={(el) => {
+                          if (el) el.indeterminate = !hunkAll && keys.some((k) => selection!.has(k))
+                        }}
+                        onChange={(e) => update(keys, e.target.checked)}
+                        title={t('diff.selectHunk')}
+                      />
+                    )}
+                  </td>
+                  <td colSpan={5}>
+                    @@ −{hunk.oldStart},{hunk.oldCount} +{hunk.newStart},{hunk.newCount} @@ <span className="muted">{hunk.section}</span>
+                  </td>
+                </tr>,
+                ...splitRows(hunk).map((row) => (
+                  <tr key={`${h}:${row.left ?? '-'}:${row.right ?? '-'}`} className="line">
+                    {side(row.left, 'old')}
+                    {side(row.right, 'new')}
+                  </tr>
+                ))
+              ]
+            })}
+          </tbody>
+        </table>
       ) : (
         <table className={`diff-table ${selectable ? 'selectable' : ''}`}>
           <tbody>

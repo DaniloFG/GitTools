@@ -104,7 +104,8 @@ export const es: Messages = {
     dropHere: 'soltar aquí',
     branchTooltip: 'Doble clic: checkout · Clic derecho: más acciones',
     menu: {
-      checkout: 'Checkout',
+      checkoutBranch: 'Checkout de {branch}',
+      checkoutRemote: 'Checkout de {branch} (rama local que sigue a la remota)',
       history: 'Ver el historial de esta rama',
       cherryAll: 'Cherry-pick de todos los commits en {target}…',
       studio: 'Cherry-pick Studio (origen = esta rama)…',
@@ -112,7 +113,8 @@ export const es: Messages = {
       rename: 'Renombrar…',
       delete: 'Eliminar…',
       checkoutDetached: 'Checkout (HEAD desacoplado)',
-      newBranchFromTag: 'Nueva rama desde esta etiqueta…'
+      newBranchFromTag: 'Nueva rama desde esta etiqueta…',
+      copyName: 'Copiar nombre de la rama'
     },
     stash: {
       dropTitle: 'Descartar stash',
@@ -124,10 +126,23 @@ export const es: Messages = {
   history: {
     count: { one: '{count} commit', other: '{count} commits' },
     selected: { one: '{count} seleccionado', other: '{count} seleccionados' },
-    hint: 'Ctrl/Shift+clic para seleccionar varios · arrastra a una rama',
+    hint: 'Ctrl/Shift+clic para seleccionar varios · ▸ o doble clic muestra los archivos · arrastra a una rama',
     empty: 'Todavía no hay commits.',
     scope: { all: 'Todas las ramas', head: 'Rama actual', ref: 'Rama: {ref}' },
     badge: { remote: 'Rama remota', local: 'Rama local — arrástrala o suelta elementos aquí' },
+    search: {
+      placeholder: 'Buscar rama, mensaje, autor o hash…',
+      help: 'Filtra el historial por nombre de rama o etiqueta, mensaje, autor o el inicio del hash. Enter va al primer resultado; Esc limpia.',
+      found: { one: '{count} de {total} commits', other: '{count} de {total} commits' },
+      none: 'No se encontraron commits para “{query}”.'
+    },
+    files: {
+      none: 'Ningún archivo modificado.',
+      help: 'Haz clic para ver el diff · arrastra a una rama para llevar el archivo',
+      openDiff: 'Ver diff',
+      take: 'Llevar este archivo a {target}…',
+      copyPath: 'Copiar ruta'
+    },
     menu: {
       cherryPick: { one: 'Cherry-pick de este commit en {target}…', other: 'Cherry-pick de {count} commits en {target}…' },
       openStudio: 'Abrir en Cherry-pick Studio…',
@@ -137,7 +152,9 @@ export const es: Messages = {
       checkout: 'Checkout de este commit (HEAD desacoplado)',
       revert: 'Revertir commit…',
       reset: 'Mover {branch} aquí (reset)…',
-      copySha: 'Copiar SHA'
+      copySha: 'Copiar SHA',
+      showFiles: 'Mostrar los archivos debajo del commit',
+      hideFiles: 'Contraer los archivos del commit'
     }
   },
   details: {
@@ -165,7 +182,12 @@ export const es: Messages = {
     binary: 'Archivo binario: no se pueden mostrar las líneas.',
     noContent: 'Sin cambios de contenido (solo nombre o permisos).',
     selectHunk: 'Seleccionar este bloque',
-    noNewline: 'Sin salto de línea al final del archivo'
+    noNewline: 'Sin salto de línea al final del archivo',
+    layout: 'Vista del diff',
+    inline: 'Arriba y abajo',
+    inlineHelp: 'Líneas eliminadas y añadidas una debajo de la otra',
+    split: 'Lado a lado',
+    splitHelp: 'Versión anterior a la izquierda y nueva a la derecha'
   },
   changes: {
     discardTitle: 'Descartar cambios',
@@ -386,7 +408,35 @@ export const es: Messages = {
     baseHelp: 'Versión del ancestro común',
     neither: 'Ninguna',
     clear: 'limpiar',
-    resultPlaceholder: 'Elige una de las versiones de arriba o escribe aquí el resultado'
+    resultPlaceholder: 'Elige una de las versiones de arriba o escribe aquí el resultado',
+    takeThis: 'Usar esta',
+    more: 'Ambas / otras',
+    edited: 'editado a mano',
+    nav: {
+      prev: 'Anterior',
+      prevHelp: 'Conflicto anterior (Alt+↑)',
+      next: 'Siguiente',
+      nextHelp: 'Siguiente conflicto (Alt+↓)',
+      nextPending: 'Siguiente pendiente',
+      nextPendingHelp: 'Siguiente conflicto aún sin resolver (Alt+Shift+↓)',
+      takeLeftHelp: 'Usa la versión del panel izquierdo en el conflicto actual y pasa al siguiente pendiente (Alt+←)',
+      takeRightHelp: 'Usa la versión del panel derecho en el conflicto actual y pasa al siguiente pendiente (Alt+→)',
+      keys: 'Alt+↑/↓ navega · Alt+←/→ usa el panel izquierdo/derecho'
+    },
+    layout: {
+      title: 'Vista:',
+      classic: 'Clásica',
+      classicHelp: 'Las dos versiones lado a lado arriba y el resultado abajo',
+      columns: 'Columnas',
+      columnsHelp: 'Tres columnas lado a lado, como en SmartGit',
+      swapSides: 'Invertir versiones',
+      swapSidesHelp: 'Intercambia los paneles de la versión actual y la entrante',
+      reset: 'disposición predeterminada',
+      dragHelp: 'Arrastra este encabezado sobre otro panel para intercambiarlos (clic derecho: más opciones)',
+      dropToSwap: 'soltar para intercambiar',
+      flowsTo: 'Dirección en la que el texto va al panel {pane}',
+      swapWith: 'Intercambiar con “{pane}”'
+    }
   },
   compare: {
     from: 'De',
@@ -489,7 +539,10 @@ export const es: Messages = {
       layoutHelp: 'Arrastra los divisores entre paneles y los bordes de las ventanas para ajustar su tamaño; usa ◂ ▸ en un divisor para contraer un panel y □ para maximizar una ventana. GitTools recuerda el diseño que elijas.',
       resetLayoutHelp: 'Devuelve todos los paneles y ventanas a su tamaño original.',
       resetLayout: 'Restablecer diseño',
-      layoutRestored: 'Diseño restablecido.'
+      layoutRestored: 'Diseño restablecido.',
+      dividerWidth: 'Grosor de los divisores',
+      paneButtons: 'Botones de contraer/expandir',
+      dividerPreview: 'Pasa el ratón sobre el divisor de arriba para ver los botones; crecen cuando el ratón está sobre ellos.'
     },
     shortcuts: {
       title: 'Atajos de teclado',
@@ -521,6 +574,7 @@ export const es: Messages = {
       viewFiles: 'Ir a Archivos (blame e historial)',
       viewCompare: 'Ir a Comparar',
       toggleSidebar: 'Mostrar/ocultar la barra lateral',
+      searchHistory: 'Buscar en el historial',
       studio: 'Abrir Cherry-pick Studio',
       newBranch: 'Nueva rama',
       stash: 'Guardar cambios (stash)',
@@ -543,7 +597,15 @@ export const es: Messages = {
       close: 'Cerrar diálogo o menú'
     },
     helpTitle: 'Atajos de teclado',
-    helpFooter: 'Los atajos se pueden cambiar en Configuración → Atajos de teclado.'
+    helpFooter: 'Los atajos se pueden cambiar en Configuración → Atajos de teclado.',
+    search: {
+      placeholder: 'Buscar por nombre o teclas (p. ej. “rama” o “ctrl+b”)',
+      record: 'Grabar teclas',
+      recording: 'Pulsa el atajo…',
+      recordHelp: 'Haz clic y pulsa una combinación para encontrar la acción que la usa (Esc cancela)',
+      clearKeys: 'Borrar teclas',
+      none: 'No se encontraron atajos.'
+    }
   },
   messages: {
     filesFrom: '(archivos {files} traídos del commit {sha})',

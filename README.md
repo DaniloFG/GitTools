@@ -19,12 +19,14 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Stage/unstage de arquivos                     | Aba *Alterações*: arraste entre “não staged” e “staged”, ou use os botões ＋ / －.                              |
 | Stage/unstage/descartar **linhas**            | Selecione as linhas no diff e use *Stage linhas*, *Unstage linhas* ou *Descartar linhas*.                       |
 | Descartar alterações de arquivos              | Arraste-os para a lixeira (com confirmação).                                                                   |
-| Resolver conflitos                            | **Resolver lado a lado**: atual × resultado × que entra, bloco a bloco (ou o arquivo todo de uma vez). Depois *Continuar*, *Pular* ou *Abortar*. |
+| Resolver conflitos                            | **Resolver lado a lado**: atual × resultado × que entra, bloco a bloco (ou o arquivo todo de uma vez), na visão clássica ou em colunas (como no SmartGit), com os painéis na ordem que você quiser. Depois *Continuar*, *Pular* ou *Abortar*. |
+| Achar um commit                               | Campo **Pesquisar** do histórico (`Ctrl+F`): por nome de branch ou tag, mensagem, autor ou hash.                |
+| Ver os arquivos de um commit sem sair da lista | ▸ ao lado do commit (ou duplo clique, ou `→`): os arquivos abrem logo abaixo da linha, como no VS Code.        |
 | Comparar duas branches, tags ou commits       | Aba **Comparar** (ou botão direito numa branch/commit): commits exclusivos de cada lado e diff dos arquivos, com opção de trazer linhas ou a versão do arquivo. |
 | Saber quem mudou cada linha                   | Aba **Arquivos** → *Blame*. Clique no commit ao lado da linha para abri-lo.                                      |
 | Ver o histórico de um arquivo                 | Aba **Arquivos** → *Histórico do arquivo* (segue renomeações). Restaure uma versão antiga ou traga só algumas linhas dela. |
 | Reordenar, juntar, renomear ou remover commits | Botão direito num commit → **Rebase interativo**: arraste para reordenar e escolha a ação de cada commit.        |
-| Outras operações                              | Checkout (duplo clique), criar/renomear/excluir branch, revert, reset, stash, fetch, pull e push (botão direito / barra superior). |
+| Outras operações                              | Checkout (duplo clique ou botão direito na branch — o primeiro item do menu), criar/renomear/excluir branch, revert, reset, stash, fetch, pull e push (botão direito / barra superior). |
 | Idioma, tema e atalhos                        | ⚙ **Configurações** (canto superior direito): idioma, tema claro/escuro/do sistema, tamanho da interface e atalhos de teclado personalizáveis (F1 lista todos). |
 
 ### Cherry-pick de linhas
@@ -39,13 +41,47 @@ se mesmo assim houver conflito, ele aparece no painel de conflitos como em qualq
 | --- | --- |
 | ![Menu ao soltar uma branch](docs/screenshots/arrastar-branch.png) | ![Painel de conflitos](docs/screenshots/conflito.png) |
 
-### Editor de conflitos lado a lado
+### Histórico
 
-![Editor de conflitos](docs/screenshots/editor-de-conflitos.png)
+![Histórico com grafo, arquivos do commit e diff lado a lado](docs/screenshots/historico.png)
 
-Para cada bloco em conflito: *Usar a atual*, *Usar a que entra*, *Ambas* (em qualquer ordem), *Original*
-(versão do ancestral comum) ou *Nenhuma* — e o resultado no centro pode ser editado à mão. Arquivos
-binários ou removidos de um dos lados oferecem a escolha da versão inteira.
+- **Cores das trilhas**: cada linha do grafo mantém a mesma cor do começo ao fim (a linha da branch
+  atual não muda de cor quando outra converge nela), e as etiquetas das branches — no histórico e na
+  barra lateral — usam a cor da sua trilha. A branch atual tem borda destacada e ✓.
+- **Botão direito numa branch** (etiqueta no histórico ou barra lateral): o primeiro item é o checkout
+  *daquela* branch. No menu de um commit, os checkouts das branches que apontam para ele vêm primeiro;
+  o checkout do commit em si (HEAD destacado) fica por último entre eles.
+- **Pesquisa** (`Ctrl+F`): filtra por branch, tag, mensagem, autor ou início do hash; Enter vai para o
+  primeiro resultado e Esc limpa.
+- **Arquivos do commit na própria lista**: ▸ (ou duplo clique, ou `→`/`←`) abre e fecha os arquivos
+  logo abaixo da linha do commit. Clique num arquivo para ver o diff; arraste-o para uma branch.
+- **Diff "cima e baixo" ou "lado a lado"**: escolha no cabeçalho de qualquer diff; a escolha vale para
+  todos e a seleção de linhas funciona nos dois modos.
+
+### Editor de conflitos
+
+| Colunas (como no SmartGit) | Clássica (versões em cima, resultado embaixo) |
+| --- | --- |
+| ![Editor de conflitos em colunas](docs/screenshots/editor-de-conflitos.png) | ![Editor de conflitos clássico](docs/screenshots/editor-de-conflitos-classico.png) |
+
+Três painéis — **Atual (HEAD)**, **Resultado** e **Que entra** — que rolam juntos e mostram cada bloco em
+conflito na mesma altura. Escolha a visão em *Visão*: **Clássica** (as duas versões lado a lado em cima e
+o resultado embaixo) ou **Colunas**. **Arraste o cabeçalho de um painel sobre outro** para trocá-los de
+lugar (ou use o botão direito no cabeçalho, ou *Inverter versões*); o GitTools lembra do arranjo.
+
+As setas acompanham a posição real dos painéis: o "Usar esta →" de cada versão aponta para onde está o
+resultado, e "Usar a atual"/"Usar a que entra" apontam para onde está cada versão — em qualquer arranjo,
+inclusive em idiomas escritos da direita para a esquerda. A navegação segue sempre a ordem do arquivo:
+
+| Teclas | Ação |
+| --- | --- |
+| `Alt+↓` / `Alt+↑` | Próximo / anterior conflito |
+| `Alt+Shift+↓` | Próximo conflito ainda não resolvido |
+| `Alt+←` / `Alt+→` | Usar a versão do painel da **esquerda** / **direita** no conflito atual e ir ao próximo pendente |
+
+Para cada bloco: *Usar a atual*, *Usar a que entra* e, no menu *Ambas / outras*, *Ambas* (em qualquer
+ordem), *Original* (versão do ancestral comum) ou *Nenhuma* — e o resultado pode ser editado à mão.
+Arquivos binários ou removidos de um dos lados oferecem a escolha da versão inteira.
 
 ### Comparar, blame e histórico de arquivo
 
@@ -91,11 +127,14 @@ Nenhuma área tem tamanho fixo: cada tela se adapta ao que você quer ler.
   Cherry-pick Studio e a navegação das Configurações. Duplo clique (ou `Enter`) volta ao tamanho
   padrão; com o foco na divisória, as setas ajustam o tamanho pelo teclado.
 - **Recolher painéis**: os botões ◂ ▸ na divisória escondem um dos lados para o outro ocupar todo o
-  espaço (ou arraste a divisória até a borda). `Ctrl+B` mostra/oculta a barra lateral.
+  espaço (ou arraste a divisória até a borda). `Ctrl+B` mostra/oculta a barra lateral. Os botões
+  crescem com o mouse em cima; o tamanho deles e a espessura das divisórias são escolhidos em
+  ⚙ Configurações → Aparência.
 - **Janelas redimensionáveis**: diálogos (Studio, editor de conflitos, rebase, configurações…) podem
   ser redimensionados pelas bordas e maximizados pelo botão □ ou com duplo clique no título.
-- **Colunas ajustáveis** no editor de conflitos (atual × resultado × que entra) e na coluna do blame;
-  grupos de arquivos em Alterações e seções da barra lateral podem ser recolhidos.
+- **Painéis ajustáveis** no editor de conflitos (atual × resultado × que entra, em colunas ou na visão
+  clássica) e coluna do blame ajustável; grupos de arquivos em Alterações e seções da barra lateral
+  podem ser recolhidos.
 - O GitTools **lembra** do layout escolhido; ⚙ Configurações → Aparência → "Restaurar layout" volta
   tudo ao padrão. Em janelas estreitas, as barras quebram linha e colunas secundárias saem da lista.
 
@@ -104,7 +143,9 @@ Nenhuma área tem tamanho fixo: cada tela se adapta ao que você quer ler.
 ![Central de Configurações](docs/screenshots/configuracoes.png)
 
 Todas as opções gerais ficam num único lugar, separadas em seções: **Geral** (idioma),
-**Aparência** (tema, tamanho e restaurar o layout dos painéis), **Atalhos de teclado** e **Sobre** (versões do GitTools, do git e
+**Aparência** (tema, tamanho, espessura das divisórias, tamanho dos botões de recolher/expandir e
+restaurar o layout dos painéis), **Atalhos de teclado** (com pesquisa pelo nome da ação ou pelas
+próprias teclas: clique em *Gravar teclas* e pressione a combinação) e **Sobre** (versões do GitTools, do git e
 do sistema, local do arquivo de configurações e "Restaurar padrões").
 
 ### Atalhos de teclado
@@ -113,12 +154,15 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 | --- | --- |
 | Histórico / Alterações / Arquivos / Comparar | `Ctrl+1` … `Ctrl+4` |
 | Mostrar/ocultar a barra lateral | `Ctrl+B` |
+| Pesquisar no histórico | `Ctrl+F` |
 | Cherry-pick Studio | `Ctrl+Shift+P` |
 | Nova branch / Stash | `Ctrl+Shift+N` / `Ctrl+Shift+S` |
 | Fetch / Pull / Push | `Ctrl+Shift+F` / `Ctrl+Shift+L` / `Ctrl+Shift+K` |
 | Atualizar / Abrir repositório | `F5` / `Ctrl+O` |
 | Configurações / Lista de atalhos | `Ctrl+,` / `F1` |
 | Mover / estender a seleção no histórico | `↑` `↓` / `Shift+↑` `Shift+↓` |
+| Abrir / fechar os arquivos do commit no histórico | `→` / `←` |
+| Editor de conflitos: navegar / usar o painel da esquerda ou direita | `Alt+↑` `Alt+↓` / `Alt+←` `Alt+→` |
 
 No macOS, `Ctrl` corresponde a `⌘`. Todos podem ser trocados em ⚙ Configurações.
 

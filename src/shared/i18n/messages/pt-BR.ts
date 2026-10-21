@@ -105,7 +105,8 @@ export const ptBR = {
     dropHere: 'soltar aqui',
     branchTooltip: 'Duplo clique: checkout · Botão direito: mais ações',
     menu: {
-      checkout: 'Checkout',
+      checkoutBranch: 'Checkout de {branch}',
+      checkoutRemote: 'Checkout de {branch} (branch local que acompanha a remota)',
       history: 'Ver histórico desta branch',
       cherryAll: 'Cherry-pick de todos os commits em {target}…',
       studio: 'Cherry-pick Studio (origem = esta branch)…',
@@ -113,7 +114,8 @@ export const ptBR = {
       rename: 'Renomear…',
       delete: 'Excluir…',
       checkoutDetached: 'Checkout (HEAD destacado)',
-      newBranchFromTag: 'Nova branch a partir desta tag…'
+      newBranchFromTag: 'Nova branch a partir desta tag…',
+      copyName: 'Copiar nome da branch'
     },
     stash: {
       dropTitle: 'Descartar stash',
@@ -125,10 +127,23 @@ export const ptBR = {
   history: {
     count: { one: '{count} commit', other: '{count} commits' },
     selected: { one: '{count} selecionado', other: '{count} selecionados' },
-    hint: 'Ctrl/Shift+clique para selecionar vários · arraste para uma branch',
+    hint: 'Ctrl/Shift+clique para selecionar vários · ▸ ou duplo clique mostra os arquivos · arraste para uma branch',
     empty: 'Nenhum commit ainda.',
     scope: { all: 'Todas as branches', head: 'Branch atual', ref: 'Branch: {ref}' },
     badge: { remote: 'Branch remota', local: 'Branch local — arraste ou solte itens aqui' },
+    search: {
+      placeholder: 'Pesquisar branch, mensagem, autor ou hash…',
+      help: 'Filtra o histórico pelo nome da branch ou tag, pela mensagem, pelo autor ou pelo início do hash. Enter vai para o primeiro resultado; Esc limpa.',
+      found: { one: '{count} de {total} commits', other: '{count} de {total} commits' },
+      none: 'Nenhum commit encontrado para “{query}”.'
+    },
+    files: {
+      none: 'Nenhum arquivo alterado.',
+      help: 'Clique para ver o diff · arraste para uma branch para levar o arquivo',
+      openDiff: 'Ver diff',
+      take: 'Levar este arquivo para {target}…',
+      copyPath: 'Copiar caminho'
+    },
     menu: {
       cherryPick: { one: 'Cherry-pick deste commit em {target}…', other: 'Cherry-pick de {count} commits em {target}…' },
       openStudio: 'Abrir no Cherry-pick Studio…',
@@ -138,7 +153,9 @@ export const ptBR = {
       checkout: 'Checkout deste commit (HEAD destacado)',
       revert: 'Reverter commit…',
       reset: 'Mover {branch} para cá (reset)…',
-      copySha: 'Copiar SHA'
+      copySha: 'Copiar SHA',
+      showFiles: 'Mostrar os arquivos abaixo do commit',
+      hideFiles: 'Recolher os arquivos do commit'
     }
   },
   details: {
@@ -166,7 +183,12 @@ export const ptBR = {
     binary: 'Arquivo binário — não é possível mostrar as linhas.',
     noContent: 'Sem alterações de conteúdo (apenas nome ou permissões).',
     selectHunk: 'Selecionar este bloco',
-    noNewline: 'Sem quebra de linha no fim do arquivo'
+    noNewline: 'Sem quebra de linha no fim do arquivo',
+    layout: 'Exibição do diff',
+    inline: 'Cima e baixo',
+    inlineHelp: 'Linhas removidas e adicionadas uma embaixo da outra',
+    split: 'Lado a lado',
+    splitHelp: 'Versão anterior à esquerda e nova à direita'
   },
   changes: {
     discardTitle: 'Descartar alterações',
@@ -387,7 +409,35 @@ export const ptBR = {
     baseHelp: 'Versão do ancestral comum',
     neither: 'Nenhuma',
     clear: 'limpar',
-    resultPlaceholder: 'Escolha uma das versões acima ou digite o resultado aqui'
+    resultPlaceholder: 'Escolha uma das versões acima ou digite o resultado aqui',
+    takeThis: 'Usar esta',
+    more: 'Ambas / outras',
+    edited: 'editado à mão',
+    nav: {
+      prev: 'Anterior',
+      prevHelp: 'Conflito anterior (Alt+↑)',
+      next: 'Próximo',
+      nextHelp: 'Próximo conflito (Alt+↓)',
+      nextPending: 'Próximo pendente',
+      nextPendingHelp: 'Próximo conflito ainda não resolvido (Alt+Shift+↓)',
+      takeLeftHelp: 'Usa no conflito atual a versão do painel da esquerda e vai para o próximo pendente (Alt+←)',
+      takeRightHelp: 'Usa no conflito atual a versão do painel da direita e vai para o próximo pendente (Alt+→)',
+      keys: 'Alt+↑/↓ navega · Alt+←/→ usa o painel da esquerda/direita'
+    },
+    layout: {
+      title: 'Visão:',
+      classic: 'Clássica',
+      classicHelp: 'As duas versões lado a lado em cima e o resultado embaixo',
+      columns: 'Colunas',
+      columnsHelp: 'Três colunas lado a lado, como no SmartGit',
+      swapSides: 'Inverter versões',
+      swapSidesHelp: 'Troca de lugar os painéis da versão atual e da que entra',
+      reset: 'arranjo padrão',
+      dragHelp: 'Arraste este cabeçalho sobre outro painel para trocá-los de lugar (botão direito: mais opções)',
+      dropToSwap: 'soltar para trocar',
+      flowsTo: 'Direção em que o texto vai para o painel {pane}',
+      swapWith: 'Trocar de lugar com “{pane}”'
+    }
   },
   compare: {
     from: 'De',
@@ -490,7 +540,10 @@ export const ptBR = {
       layoutHelp: 'Arraste as divisórias entre os painéis e as bordas das janelas para ajustar o tamanho; use ◂ ▸ na divisória para recolher um painel e □ para maximizar uma janela. O GitTools lembra do layout escolhido.',
       resetLayoutHelp: 'Volta todos os painéis e janelas ao tamanho original.',
       resetLayout: 'Restaurar layout',
-      layoutRestored: 'Layout restaurado.'
+      layoutRestored: 'Layout restaurado.',
+      dividerWidth: 'Espessura das divisórias',
+      paneButtons: 'Botões de recolher/expandir',
+      dividerPreview: 'Passe o mouse sobre a divisória acima para ver os botões; eles crescem quando o mouse fica sobre eles.'
     },
     shortcuts: {
       title: 'Atalhos de teclado',
@@ -522,6 +575,7 @@ export const ptBR = {
       viewFiles: 'Ir para Arquivos (blame e histórico)',
       viewCompare: 'Ir para Comparar',
       toggleSidebar: 'Mostrar/ocultar a barra lateral',
+      searchHistory: 'Pesquisar no histórico',
       studio: 'Abrir Cherry-pick Studio',
       newBranch: 'Nova branch',
       stash: 'Guardar alterações (stash)',
@@ -544,7 +598,15 @@ export const ptBR = {
       close: 'Fechar diálogo ou menu'
     },
     helpTitle: 'Atalhos de teclado',
-    helpFooter: 'Os atalhos podem ser alterados em Configurações → Atalhos de teclado.'
+    helpFooter: 'Os atalhos podem ser alterados em Configurações → Atalhos de teclado.',
+    search: {
+      placeholder: 'Pesquisar pelo nome ou pelas teclas (ex.: “branch” ou “ctrl+b”)',
+      record: 'Gravar teclas',
+      recording: 'Pressione o atalho…',
+      recordHelp: 'Clique e pressione uma combinação para achar a ação que a usa (Esc cancela)',
+      clearKeys: 'Limpar teclas',
+      none: 'Nenhum atalho encontrado.'
+    }
   },
   messages: {
     filesFrom: '(arquivos {files} trazidos do commit {sha})',
