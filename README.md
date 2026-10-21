@@ -82,12 +82,29 @@ A mudança é aplicada na hora, como prévia, e só é gravada ao clicar em *Sal
 | --- | --- |
 | ![Interface em árabe](docs/screenshots/idioma-arabe-rtl.png) | ![Interface em chinês](docs/screenshots/idioma-chines.png) |
 
+### Layout ajustável
+
+Nenhuma área tem tamanho fixo: cada tela se adapta ao que você quer ler.
+
+- **Divisórias arrastáveis** entre a barra lateral, a lista e os detalhes — também entre os arquivos
+  e o diff de um commit, a lista e o diff do histórico do arquivo, a lista de commits e as opções do
+  Cherry-pick Studio e a navegação das Configurações. Duplo clique (ou `Enter`) volta ao tamanho
+  padrão; com o foco na divisória, as setas ajustam o tamanho pelo teclado.
+- **Recolher painéis**: os botões ◂ ▸ na divisória escondem um dos lados para o outro ocupar todo o
+  espaço (ou arraste a divisória até a borda). `Ctrl+B` mostra/oculta a barra lateral.
+- **Janelas redimensionáveis**: diálogos (Studio, editor de conflitos, rebase, configurações…) podem
+  ser redimensionados pelas bordas e maximizados pelo botão □ ou com duplo clique no título.
+- **Colunas ajustáveis** no editor de conflitos (atual × resultado × que entra) e na coluna do blame;
+  grupos de arquivos em Alterações e seções da barra lateral podem ser recolhidos.
+- O GitTools **lembra** do layout escolhido; ⚙ Configurações → Aparência → "Restaurar layout" volta
+  tudo ao padrão. Em janelas estreitas, as barras quebram linha e colunas secundárias saem da lista.
+
 ### Configurações
 
 ![Central de Configurações](docs/screenshots/configuracoes.png)
 
 Todas as opções gerais ficam num único lugar, separadas em seções: **Geral** (idioma),
-**Aparência** (tema e tamanho), **Atalhos de teclado** e **Sobre** (versões do GitTools, do git e
+**Aparência** (tema, tamanho e restaurar o layout dos painéis), **Atalhos de teclado** e **Sobre** (versões do GitTools, do git e
 do sistema, local do arquivo de configurações e "Restaurar padrões").
 
 ### Atalhos de teclado
@@ -95,6 +112,7 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 | Ação | Padrão |
 | --- | --- |
 | Histórico / Alterações / Arquivos / Comparar | `Ctrl+1` … `Ctrl+4` |
+| Mostrar/ocultar a barra lateral | `Ctrl+B` |
 | Cherry-pick Studio | `Ctrl+Shift+P` |
 | Nova branch / Stash | `Ctrl+Shift+N` / `Ctrl+Shift+S` |
 | Fetch / Pull / Push | `Ctrl+Shift+F` / `Ctrl+Shift+L` / `Ctrl+Shift+K` |

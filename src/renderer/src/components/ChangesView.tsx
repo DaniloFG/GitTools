@@ -4,9 +4,11 @@ import { useApp } from '../context'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, statusLabel } from '../format'
 import { git } from '../git'
+import { useLayout } from '../layout'
 import { useDrop } from '../useDrop'
 import { t } from '../i18n'
 import { DiffView } from './DiffView'
+import { Split } from './Split'
 
 type Area = 'unstaged' | 'staged'
 
@@ -73,10 +75,11 @@ export function ChangesView() {
   }
 
   return (
-    <div className="split">
+    <Split id="changes" initial={0.45} min={[240, 280]}>
       <div className="changes">
         {status.conflicted.length > 0 && (
           <FileGroup
+            id="conflicted"
             title={t('changes.conflicted')}
             area="unstaged"
             files={status.conflicted}
@@ -86,6 +89,7 @@ export function ChangesView() {
           />
         )}
         <FileGroup
+          id="unstaged"
           title={t('changes.unstaged')}
           area="unstaged"
           files={status.unstaged}
@@ -114,6 +118,7 @@ export function ChangesView() {
           )}
         />
         <FileGroup
+          id="staged"
           title={t('changes.staged')}
           area="staged"
           files={status.staged}
@@ -166,11 +171,13 @@ export function ChangesView() {
           </div>
         )}
       </section>
-    </div>
+    </Split>
   )
 }
 
 interface GroupProps {
+  /** Nome sob o qual fica guardado se o grupo está recolhido. */
+  id: string
   title: string
   area: Area
   files: FileStatus[]
@@ -182,8 +189,11 @@ interface GroupProps {
   hint?: string
 }
 
-function FileGroup({ title, area, files, active, onActivate, onDropFiles, actions, fileActions, hint }: GroupProps) {
+const parseCollapsed = (value: unknown) => value === true
+
+function FileGroup({ id, title, area, files, active, onActivate, onDropFiles, actions, fileActions, hint }: GroupProps) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [collapsed, setCollapsed] = useLayout(`changes.${id}.collapsed`, parseCollapsed)
   const drop = useDrop(
     (p) => !!onDropFiles && p.type === 'files' && p.area !== area,
     (p) => p.type === 'files' && onDropFiles?.(p.paths)
@@ -192,12 +202,19 @@ function FileGroup({ title, area, files, active, onActivate, onDropFiles, action
   return (
     <div className={`file-group ${drop.over ? 'drop-over' : ''}`} {...drop.props}>
       <div className="group-header">
-        <strong>{title}</strong> <span className="count">{files.length}</span>
+        <button
+          className="group-toggle"
+          onClick={() => setCollapsed(collapsed ? undefined : true)}
+          title={collapsed ? t('layout.expand') : t('layout.collapse')}
+          aria-expanded={!collapsed}
+        >
+          <span>{collapsed ? '▸' : '▾'}</span> <strong>{title}</strong> <span className="count">{files.length}</span>
+        </button>
         <span className="toolbar-spacer" />
         {actions}
       </div>
-      {hint && <p className="muted small">{hint}</p>}
-      {files.length === 0 ? (
+      {!collapsed && hint && <p className="muted small">{hint}</p>}
+      {collapsed ? null : files.length === 0 ? (
         <p className="empty small">{onDropFiles ? t('changes.emptyDrop') : t('changes.empty')}</p>
       ) : (
         <ul className="file-list">

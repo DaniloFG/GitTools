@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { ZOOM_LEVELS, type ThemeSetting } from '../../../../shared/settings'
 import { t, type MessageKey } from '../../i18n'
+import { resetLayout } from '../../layout'
 import type { SettingsSectionProps } from './sections'
 
 const THEMES: { id: ThemeSetting; label: MessageKey }[] = [
@@ -9,6 +11,7 @@ const THEMES: { id: ThemeSetting; label: MessageKey }[] = [
 ]
 
 export function AppearanceSection({ draft, update }: SettingsSectionProps) {
+  const [layoutReset, setLayoutReset] = useState(false)
   return (
     <div className="settings-group">
       <div className="settings-row">
@@ -30,6 +33,19 @@ export function AppearanceSection({ draft, update }: SettingsSectionProps) {
             </option>
           ))}
         </select>
+      </div>
+      <h4>{t('settings.appearance.layout')}</h4>
+      <p className="muted small">{t('settings.appearance.layoutHelp')}</p>
+      <div className="settings-row">
+        <span>{layoutReset ? `✓ ${t('settings.appearance.layoutRestored')}` : t('settings.appearance.resetLayoutHelp')}</span>
+        <button
+          onClick={() => {
+            resetLayout()
+            setLayoutReset(true)
+          }}
+        >
+          {t('settings.appearance.resetLayout')}
+        </button>
       </div>
     </div>
   )

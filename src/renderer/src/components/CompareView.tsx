@@ -6,6 +6,7 @@ import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
 import { DiffView } from './DiffView'
+import { Split } from './Split'
 
 interface Props {
   request: CompareRequest
@@ -137,7 +138,7 @@ export function CompareView({ request, onRequest }: Props) {
       {!comparison ? (
         <p className="empty">{t('compare.empty')}</p>
       ) : (
-        <div className="split">
+        <Split id="compare" initial={0.4} min={[240, 280]}>
           <div className="compare-side">
             <CommitGroup
               title={t('compare.onlyIn', { ref: comparison.to })}
@@ -197,7 +198,7 @@ export function CompareView({ request, onRequest }: Props) {
               </div>
             )}
           </section>
-        </div>
+        </Split>
       )}
     </div>
   )

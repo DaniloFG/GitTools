@@ -457,6 +457,15 @@ export const ptBR = {
       dropHelp: 'Remove o commit do histórico.'
     }
   },
+  layout: {
+    resize: 'Arraste para redimensionar. Duplo clique volta ao tamanho padrão.',
+    hidePanel: 'Recolher este painel',
+    showPanel: 'Mostrar o painel recolhido',
+    maximize: 'Maximizar',
+    restoreWindow: 'Restaurar tamanho',
+    collapse: 'Recolher',
+    expand: 'Expandir'
+  },
   settings: {
     title: 'Configurações',
     unsaved: 'Alterações não salvas (já visíveis como prévia).',
@@ -476,7 +485,12 @@ export const ptBR = {
       themeDark: 'Escuro',
       themeLight: 'Claro',
       zoom: 'Tamanho da interface',
-      default: '(padrão)'
+      default: '(padrão)',
+      layout: 'Painéis e janelas',
+      layoutHelp: 'Arraste as divisórias entre os painéis e as bordas das janelas para ajustar o tamanho; use ◂ ▸ na divisória para recolher um painel e □ para maximizar uma janela. O GitTools lembra do layout escolhido.',
+      resetLayoutHelp: 'Volta todos os painéis e janelas ao tamanho original.',
+      resetLayout: 'Restaurar layout',
+      layoutRestored: 'Layout restaurado.'
     },
     shortcuts: {
       title: 'Atalhos de teclado',
@@ -507,6 +521,7 @@ export const ptBR = {
       viewChanges: 'Ir para Alterações',
       viewFiles: 'Ir para Arquivos (blame e histórico)',
       viewCompare: 'Ir para Comparar',
+      toggleSidebar: 'Mostrar/ocultar a barra lateral',
       studio: 'Abrir Cherry-pick Studio',
       newBranch: 'Nova branch',
       stash: 'Guardar alterações (stash)',

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { BranchInfo, StashInfo } from '../../../shared/types'
 import type { HistoryScope } from '../App'
 import { useActions } from '../actions'
@@ -7,6 +7,7 @@ import { endDrag, startDrag } from '../dnd'
 import { git } from '../git'
 import { relativeDate } from '../format'
 import { useDrop } from '../useDrop'
+import { useLayout } from '../layout'
 import { t } from '../i18n'
 
 interface Props {
@@ -25,24 +26,24 @@ export function Sidebar({ scope, onScope }: Props) {
   return (
     <aside className="sidebar">
       <p className="sidebar-hint">{t('sidebar.hint')}</p>
-      <Section title={t('sidebar.branches')} count={local.length}>
+      <Section id="branches" title={t('sidebar.branches')} count={local.length}>
         {local.map((b) => (
           <BranchItem key={b.fullRef} branch={b} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
         ))}
       </Section>
       {[...remotes.entries()].map(([remote, list]) => (
-        <Section key={remote} title={t('sidebar.remote', { remote })} count={list.length} collapsed>
+        <Section key={remote} id={`remote.${remote}`} title={t('sidebar.remote', { remote })} count={list.length} collapsed>
           {list.map((b) => (
             <BranchItem key={b.fullRef} branch={b} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
           ))}
         </Section>
       ))}
-      <Section title={t('sidebar.tags')} count={data.tags.length} collapsed>
+      <Section id="tags" title={t('sidebar.tags')} count={data.tags.length} collapsed>
         {data.tags.map((t) => (
           <TagItem key={t.name} name={t.name} sha={t.sha} />
         ))}
       </Section>
-      <Section title={t('sidebar.stashes')} count={data.stashes.length}>
+      <Section id="stashes" title={t('sidebar.stashes')} count={data.stashes.length}>
         {data.stashes.map((s) => (
           <StashItem key={s.ref} stash={s} />
         ))}
@@ -51,8 +52,17 @@ export function Sidebar({ scope, onScope }: Props) {
   )
 }
 
-function Section({ title, count, children, collapsed = false }: { title: string; count: number; children: ReactNode; collapsed?: boolean }) {
-  const [open, setOpen] = useState(!collapsed)
+interface SectionProps {
+  /** Nome sob o qual fica guardado se a seção está aberta. */
+  id: string
+  title: string
+  count: number
+  children: ReactNode
+  collapsed?: boolean
+}
+
+function Section({ id, title, count, children, collapsed = false }: SectionProps) {
+  const [open, setOpen] = useLayout(`sidebar.${id}.open`, (value) => (typeof value === 'boolean' ? value : !collapsed))
   return (
     <section className="sidebar-section">
       <button className="section-header" onClick={() => setOpen(!open)}>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Settings } from '../../../../shared/settings'
 import { t } from '../../i18n'
 import { Modal } from '../Modal'
+import { Split } from '../Split'
 import { SETTINGS_SECTIONS } from './sections'
 
 interface Props {
@@ -59,7 +60,7 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
         </>
       }
     >
-      <div className="settings-layout">
+      <Split id="settings" className="settings-layout" fixed initial={210} min={[140, 320]} collapsible={[false, false]}>
         <nav className="settings-nav" aria-label={t('settings.title')}>
           {SETTINGS_SECTIONS.map((s) => (
             <button key={s.id} className={s.id === sectionId ? 'active' : ''} onClick={() => setSectionId(s.id)}>
@@ -85,7 +86,7 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
             </button>
           )}
         </section>
-      </div>
+      </Split>
     </Modal>
   )
 }

@@ -459,6 +459,15 @@ export const hi: Messages = {
       dropHelp: 'Commit को इतिहास से हटा देता है।'
     }
   },
+  layout: {
+    resize: 'आकार बदलने के लिए खींचें। डिफ़ॉल्ट आकार पर लौटने के लिए डबल-क्लिक करें।',
+    hidePanel: 'यह पैनल समेटें',
+    showPanel: 'समेटा हुआ पैनल दिखाएँ',
+    maximize: 'बड़ा करें',
+    restoreWindow: 'आकार पुनर्स्थापित करें',
+    collapse: 'समेटें',
+    expand: 'फैलाएँ'
+  },
   settings: {
     title: 'सेटिंग्स',
     unsaved: 'बिना सहेजे बदलाव (पूर्वावलोकन के रूप में दिख रहे हैं)।',
@@ -478,7 +487,12 @@ export const hi: Messages = {
       themeDark: 'गहरी',
       themeLight: 'हल्की',
       zoom: 'इंटरफ़ेस का आकार',
-      default: '(डिफ़ॉल्ट)'
+      default: '(डिफ़ॉल्ट)',
+      layout: 'पैनल और विंडो',
+      layoutHelp: 'आकार बदलने के लिए पैनलों के बीच के विभाजक और विंडो के किनारों को खींचें; किसी पैनल को समेटने के लिए विभाजक पर ◂ ▸ और विंडो को बड़ा करने के लिए □ का उपयोग करें। GitTools आपका चुना हुआ लेआउट याद रखता है।',
+      resetLayoutHelp: 'सभी पैनलों और विंडो को उनके मूल आकार पर लौटाता है।',
+      resetLayout: 'लेआउट रीसेट करें',
+      layoutRestored: 'लेआउट रीसेट हो गया।'
     },
     shortcuts: {
       title: 'कीबोर्ड शॉर्टकट',
@@ -509,6 +523,7 @@ export const hi: Messages = {
       viewChanges: 'बदलाव पर जाएँ',
       viewFiles: 'फ़ाइलें पर जाएँ (blame और इतिहास)',
       viewCompare: 'तुलना पर जाएँ',
+      toggleSidebar: 'साइडबार दिखाएँ/छिपाएँ',
       studio: 'Cherry-pick Studio खोलें',
       newBranch: 'नई branch',
       stash: 'बदलाव अलग रखें (stash)',

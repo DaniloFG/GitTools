@@ -434,6 +434,15 @@ export const zhCN: Messages = {
       dropHelp: '从历史中删除该提交。'
     }
   },
+  layout: {
+    resize: '拖动以调整大小。双击恢复默认大小。',
+    hidePanel: '折叠此面板',
+    showPanel: '显示已折叠的面板',
+    maximize: '最大化',
+    restoreWindow: '还原大小',
+    collapse: '折叠',
+    expand: '展开'
+  },
   settings: {
     title: '设置',
     unsaved: '有未保存的更改（已作为预览显示）。',
@@ -453,7 +462,12 @@ export const zhCN: Messages = {
       themeDark: '深色',
       themeLight: '浅色',
       zoom: '界面大小',
-      default: '（默认）'
+      default: '（默认）',
+      layout: '面板和窗口',
+      layoutHelp: '拖动面板之间的分隔条和窗口边缘即可调整大小；点击分隔条上的 ◂ ▸ 可折叠面板，点击 □ 可最大化窗口。GitTools 会记住你选择的布局。',
+      resetLayoutHelp: '将所有面板和窗口恢复为原始大小。',
+      resetLayout: '重置布局',
+      layoutRestored: '布局已重置。'
     },
     shortcuts: {
       title: '键盘快捷键',
@@ -484,6 +498,7 @@ export const zhCN: Messages = {
       viewChanges: '转到“更改”',
       viewFiles: '转到“文件”（追溯和历史）',
       viewCompare: '转到“比较”',
+      toggleSidebar: '显示/隐藏侧边栏',
       studio: '打开拣选工作台',
       newBranch: '新建分支',
       stash: '贮藏更改',

@@ -154,8 +154,9 @@ function createWindow() {
   window = new BrowserWindow({
     width: 1440,
     height: 900,
-    minWidth: 1000,
-    minHeight: 640,
+    // Mínimo pequeno: os painéis se ajustam (ou podem ser recolhidos) em janelas estreitas.
+    minWidth: 640,
+    minHeight: 420,
     title: 'GitTools',
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1b1d23' : '#f6f7f9',
     autoHideMenuBar: true,

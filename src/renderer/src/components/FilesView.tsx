@@ -1,14 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BlameResult, FileDiff, FileHistoryEntry, LineKey } from '../../../shared/types'
 import { currentBranch, useApp } from '../context'
 import { useActions } from '../actions'
 import { errorMessage, fullDate, relativeDate, shortSha } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
+import { useLayout } from '../layout'
+import { startResize } from '../resize'
 import { DiffView } from './DiffView'
+import { Split } from './Split'
 
 const MAX_LISTED = 500
 const UNCOMMITTED = /^0+$/
+const GUTTER_DEFAULT = 260
+const GUTTER_MIN = 120
+const GUTTER_MAX = 640
+const parseGutter = (value: unknown) => (typeof value === 'number' && value >= GUTTER_MIN && value <= GUTTER_MAX ? value : GUTTER_DEFAULT)
 
 /** Explorador de arquivos com blame por linha e histórico de cada arquivo. */
 export function FilesView({ path, onPath }: { path: string | null; onPath(path: string): void }) {
@@ -30,7 +37,7 @@ export function FilesView({ path, onPath }: { path: string | null; onPath(path: 
   }, [files, filter])
 
   return (
-    <div className="split">
+    <Split id="files" initial={0.34} min={[200, 320]}>
       <div className="files-list">
         <input className="files-filter" placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
         <ul className="file-list">
@@ -61,7 +68,9 @@ export function FilesView({ path, onPath }: { path: string | null; onPath(path: 
               </button>
             </nav>
             {tab === 'blame' ? (
-              <BlameView path={path} rev={blameRev} onClearRev={() => setBlameRev(undefined)} />
+              <div className="file-details-body">
+                <BlameView path={path} rev={blameRev} onClearRev={() => setBlameRev(undefined)} />
+              </div>
             ) : (
               <FileHistory
                 path={path}
@@ -74,7 +83,7 @@ export function FilesView({ path, onPath }: { path: string | null; onPath(path: 
           </>
         )}
       </section>
-    </div>
+    </Split>
   )
 }
 
@@ -82,6 +91,8 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
   const { selectCommit, data } = useApp()
   const [blame, setBlame] = useState<BlameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [gutter, setGutter] = useLayout('blame.gutter', parseGutter)
+  const wrapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setBlame(null)
@@ -110,6 +121,12 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
   if (error) return <p className="empty">{error}</p>
   if (!blame) return <p className="empty"><span className="spinner" /></p>
 
+  const resizeGutter = (e: React.PointerEvent) => {
+    const start = gutter
+    const rtl = !!wrapRef.current && getComputedStyle(wrapRef.current).direction === 'rtl'
+    startResize(e, 'col-resize', (_event, dx) => setGutter(Math.round(Math.min(Math.max(start + (rtl ? -dx : dx), GUTTER_MIN), GUTTER_MAX))))
+  }
+
   const heat = (date: number) => (range.max > range.min ? (date - range.min) / (range.max - range.min) : 1)
 
   return (
@@ -122,41 +139,44 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
           </button>
         </p>
       )}
-      <table className="blame-table">
-        <tbody>
-          {blame.lines.map((line, i) => {
-            const commit = blame.commits[line.sha]
-            const first = i === 0 || blame.lines[i - 1].sha !== line.sha
-            // A segunda linha de cada bloco mostra o resumo do commit.
-            const second = !first && (i === 1 || blame.lines[i - 2].sha !== line.sha)
-            const uncommitted = UNCOMMITTED.test(line.sha)
-            const h = uncommitted ? 1 : heat(commit.date)
-            return (
-              <tr key={line.line} className={first ? 'blame-first' : ''}>
-                <td
-                  className="blame-gutter"
-                  style={{ borderInlineStartColor: `color-mix(in srgb, var(--accent) ${Math.round(15 + h * 85)}%, transparent)` }}
-                  title={uncommitted ? t('files.uncommittedHelp') : `${commit.summary}\n${commit.author} · ${fullDate(commit.date)}\n${commit.sha}\n\n${t('files.clickToOpen')}`}
-                  onClick={() => !uncommitted && selectCommit(line.sha)}
-                >
-                  {first &&
-                    (uncommitted ? (
-                      <span className="muted">{t('files.uncommitted')}</span>
-                    ) : (
-                      <div className="blame-info">
-                        <code>{shortSha(line.sha)}</code> <span className="blame-author">{commit.author}</span>{' '}
-                        <span className="muted">{relativeDate(commit.date)}</span>
-                      </div>
-                    ))}
-                  {second && !uncommitted && <div className="blame-summary">{commit.summary}</div>}
-                </td>
-                <td className="ln">{line.line}</td>
-                <td className="code">{line.content || ' '}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      <div className="blame-wrap" ref={wrapRef} style={{ '--blame-gutter': `${gutter}px` } as React.CSSProperties}>
+        <div className="column-resize blame-resize" title={t('layout.resize')} onPointerDown={resizeGutter} onDoubleClick={() => setGutter(undefined)} />
+        <table className="blame-table">
+          <tbody>
+            {blame.lines.map((line, i) => {
+              const commit = blame.commits[line.sha]
+              const first = i === 0 || blame.lines[i - 1].sha !== line.sha
+              // A segunda linha de cada bloco mostra o resumo do commit.
+              const second = !first && (i === 1 || blame.lines[i - 2].sha !== line.sha)
+              const uncommitted = UNCOMMITTED.test(line.sha)
+              const h = uncommitted ? 1 : heat(commit.date)
+              return (
+                <tr key={line.line} className={first ? 'blame-first' : ''}>
+                  <td
+                    className="blame-gutter"
+                    style={{ borderInlineStartColor: `color-mix(in srgb, var(--accent) ${Math.round(15 + h * 85)}%, transparent)` }}
+                    title={uncommitted ? t('files.uncommittedHelp') : `${commit.summary}\n${commit.author} · ${fullDate(commit.date)}\n${commit.sha}\n\n${t('files.clickToOpen')}`}
+                    onClick={() => !uncommitted && selectCommit(line.sha)}
+                  >
+                    {first &&
+                      (uncommitted ? (
+                        <span className="muted">{t('files.uncommitted')}</span>
+                      ) : (
+                        <div className="blame-info">
+                          <code>{shortSha(line.sha)}</code> <span className="blame-author">{commit.author}</span>{' '}
+                          <span className="muted">{relativeDate(commit.date)}</span>
+                        </div>
+                      ))}
+                    {second && !uncommitted && <div className="blame-summary">{commit.summary}</div>}
+                  </td>
+                  <td className="ln">{line.line}</td>
+                  <td className="code">{line.content || ' '}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </>
   )
 }
@@ -217,7 +237,7 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
   }
 
   return (
-    <div className="file-history">
+    <Split id="file-history" className="file-history" direction="column" fixed initial={220} min={[60, 120]}>
       <ul className="compare-commits history-list">
         {entries.map((e) => (
           <li key={e.sha} className={active?.sha === e.sha ? 'active' : ''} onClick={() => setActive(e)}>
@@ -230,8 +250,8 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
           </li>
         ))}
       </ul>
-      {active && (
-        <div className="diff-panel">
+      {active ? (
+        <div className="diff-panel file-history-diff">
           <div className="selection-bar">
             <button onClick={() => selectCommit(active.sha)}>{t('files.viewCommit')}</button>
             <button onClick={() => onBlameAt(active.sha)}>{t('files.blameThisVersion')}</button>
@@ -244,7 +264,9 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
           </div>
           {diff ? <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} /> : <p className="empty"><span className="spinner" /></p>}
         </div>
+      ) : (
+        <div />
       )}
-    </div>
+    </Split>
   )
 }

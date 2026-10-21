@@ -456,6 +456,15 @@ export const es: Messages = {
       dropHelp: 'Elimina el commit del historial.'
     }
   },
+  layout: {
+    resize: 'Arrastra para cambiar el tamaño. Doble clic vuelve al tamaño predeterminado.',
+    hidePanel: 'Contraer este panel',
+    showPanel: 'Mostrar el panel contraído',
+    maximize: 'Maximizar',
+    restoreWindow: 'Restaurar tamaño',
+    collapse: 'Contraer',
+    expand: 'Expandir'
+  },
   settings: {
     title: 'Configuración',
     unsaved: 'Cambios sin guardar (ya visibles como vista previa).',
@@ -475,7 +484,12 @@ export const es: Messages = {
       themeDark: 'Oscuro',
       themeLight: 'Claro',
       zoom: 'Tamaño de la interfaz',
-      default: '(predeterminado)'
+      default: '(predeterminado)',
+      layout: 'Paneles y ventanas',
+      layoutHelp: 'Arrastra los divisores entre paneles y los bordes de las ventanas para ajustar su tamaño; usa ◂ ▸ en un divisor para contraer un panel y □ para maximizar una ventana. GitTools recuerda el diseño que elijas.',
+      resetLayoutHelp: 'Devuelve todos los paneles y ventanas a su tamaño original.',
+      resetLayout: 'Restablecer diseño',
+      layoutRestored: 'Diseño restablecido.'
     },
     shortcuts: {
       title: 'Atajos de teclado',
@@ -506,6 +520,7 @@ export const es: Messages = {
       viewChanges: 'Ir a Cambios',
       viewFiles: 'Ir a Archivos (blame e historial)',
       viewCompare: 'Ir a Comparar',
+      toggleSidebar: 'Mostrar/ocultar la barra lateral',
       studio: 'Abrir Cherry-pick Studio',
       newBranch: 'Nueva rama',
       stash: 'Guardar cambios (stash)',

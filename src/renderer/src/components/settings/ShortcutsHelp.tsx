@@ -8,7 +8,7 @@ export function ShortcutsHelp({ settings, onClose }: { settings: Settings; onClo
   const bindings = resolveBindings(settings.shortcuts)
   const groups = [...new Set(SHORTCUT_ACTIONS.map((a) => a.group))]
   return (
-    <Modal title={`⌨ ${t('shortcuts.helpTitle')}`} size="medium" onClose={onClose}>
+    <Modal title={`⌨ ${t('shortcuts.helpTitle')}`} size="medium" id="shortcuts" onClose={onClose}>
       {groups.map((group) => (
         <section key={group}>
           <h3 className="settings-title">{t(SHORTCUT_GROUP_LABELS[group])}</h3>

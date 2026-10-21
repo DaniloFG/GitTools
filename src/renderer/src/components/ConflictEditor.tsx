@@ -1,14 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ConflictDetails } from '../../../shared/types'
 import { buildResult, parseConflicts, resolveChunk, type ChunkResolution, type MergeChunk } from '../../../shared/conflicts'
 import { useApp } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { t, textDirection } from '../i18n'
+import { useLayout } from '../layout'
+import { startResize } from '../resize'
+import { parseColumns, resizeColumns } from '../panes'
 import { Modal } from './Modal'
 
 type Conflict = Extract<MergeChunk, { kind: 'conflict' }>
 const CONTEXT = 3
+const COLUMNS = [1, 1, 1]
+const MIN_COLUMN = 0.25
+const parseMergeColumns = (value: unknown) => parseColumns(value, COLUMNS.length) ?? COLUMNS
 
 /** Setas apontando para a coluna da versão atual / da que entra (invertidas em idiomas RTL). */
 const arrows = () => (textDirection() === 'rtl' ? { ours: '→', theirs: '←' } : { ours: '←', theirs: '→' })
@@ -22,6 +28,8 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   const [details, setDetails] = useState<ConflictDetails | null>(null)
   const [resolutions, setResolutions] = useState<(ChunkResolution | undefined)[]>([])
   const [showFinal, setShowFinal] = useState(false)
+  const [columns, setColumns] = useLayout('conflict.columns', parseMergeColumns)
+  const gridRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     git.conflictDetails(path).then(setDetails, (e) => {
@@ -95,12 +103,32 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
     )
   }
 
+  /** Arrasta a borda entre a coluna `index` e a seguinte. */
+  const resizeColumn = (e: React.PointerEvent, index: number) => {
+    const grid = gridRef.current
+    if (!grid) return
+    const start = columns
+    const width = grid.clientWidth
+    const rtl = getComputedStyle(grid).direction === 'rtl'
+    const sum = start.reduce((a, b) => a + b, 0)
+    startResize(e, 'col-resize', (_event, dx) => setColumns(resizeColumns(start, index, ((rtl ? -dx : dx) / width) * sum, MIN_COLUMN)))
+  }
+  const columnHandle = (index: number) => (
+    <span
+      className="column-resize merge-column-resize"
+      title={t('layout.resize')}
+      onPointerDown={(e) => resizeColumn(e, index)}
+      onDoubleClick={() => setColumns(undefined)}
+    />
+  )
+
   let conflictIndex = -1
   return (
     <Modal
       title={t('conflict.title', { path })}
       onClose={onClose}
       size="large"
+      id="conflict"
       footer={
         <>
           <span className="footer-summary">
@@ -138,9 +166,15 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
       {showFinal ? (
         <pre className="merge-final">{result}</pre>
       ) : (
-        <div className="merge-grid">
-          <div className="merge-head ours">{t('conflict.oursColumn', { label: conflicts[0]?.oursLabel ?? 'HEAD' })}</div>
-          <div className="merge-head result">{t('conflict.resultColumn')}</div>
+        <div className="merge-grid" ref={gridRef} style={{ gridTemplateColumns: columns.map((c) => `minmax(0, ${c}fr)`).join(' ') }}>
+          <div className="merge-head ours">
+            {t('conflict.oursColumn', { label: conflicts[0]?.oursLabel ?? 'HEAD' })}
+            {columnHandle(0)}
+          </div>
+          <div className="merge-head result">
+            {t('conflict.resultColumn')}
+            {columnHandle(1)}
+          </div>
           <div className="merge-head theirs">{t('conflict.theirsColumn', { label: conflicts[0]?.theirsLabel ?? '' })}</div>
           {parsed.chunks.map((chunk, c) => {
             if (chunk.kind === 'common') {

@@ -80,6 +80,7 @@ export function RebaseEditor({ fromSha, onClose }: { fromSha: string; onClose():
       title={`✎ ${t('rebase.title', { branch: data.status.branch ?? '' })}`}
       onClose={onClose}
       size="large"
+      id="rebase"
       footer={
         <>
           <span className="footer-summary">

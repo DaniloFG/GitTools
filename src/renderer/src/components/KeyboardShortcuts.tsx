@@ -4,6 +4,7 @@ import { useApp } from '../context'
 import { git } from '../git'
 import { t } from '../i18n'
 import { comboFromEvent, resolveBindings, worksInInputs } from '../shortcuts'
+import { togglePane } from './Split'
 
 /** Escuta o teclado e executa as ações conforme os atalhos configurados. */
 export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: boolean; onOpenRepository(): void }) {
@@ -32,6 +33,7 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         'view.changes': () => app.setView('changes'),
         'view.files': () => app.setView('files'),
         'view.compare': () => app.setView('compare'),
+        'layout.sidebar': () => togglePane('workspace', 'first'),
         studio: () => app.openStudio({ target: actions.head ?? undefined }),
         'branch.new': () => actions.createBranch(),
         stash: () => actions.stash(),

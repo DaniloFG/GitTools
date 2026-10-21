@@ -6,6 +6,8 @@ import { t, type MessageKey } from '../i18n'
 import { git } from '../git'
 import { DiffView } from './DiffView'
 import { Modal } from './Modal'
+import { ResizableBox } from './ResizableBox'
+import { Split } from './Split'
 
 type Mode = 'branch' | 'commits' | 'files' | 'lines'
 
@@ -203,6 +205,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
       title={`🍒 ${t('studio.name')}`}
       onClose={onClose}
       size="large"
+      id="studio"
       footer={
         <>
           <span className="muted footer-summary">
@@ -265,7 +268,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
           </label>
         </div>
 
-        <div className="studio-body">
+        <Split id="studio" className="studio-body" initial={0.38} min={[220, 320]}>
           <div className="studio-commits">
             <div className="group-header">
               <strong>{t('studio.commitsOf', { source: sourceLabel })}</strong>
@@ -365,28 +368,30 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                         {t('common.none')}
                       </button>
                     </div>
-                    <ul className="file-list bordered">
-                      {files.map((f) => (
-                        <li key={f.path} className="file-item">
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={checkedFiles.has(f.path)}
-                              onChange={(e) => {
-                                const next = new Set(checkedFiles)
-                                if (e.target.checked) next.add(f.path)
-                                else next.delete(f.path)
-                                setCheckedFiles(next)
-                              }}
-                            />
-                            <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
-                              {f.status}
-                            </span>
-                            <span className="file-path">{f.oldPath ? `${f.oldPath} → ${f.path}` : f.path}</span>
-                          </label>
-                        </li>
-                      ))}
-                    </ul>
+                    <ResizableBox id="studio-files" className="bordered-box">
+                      <ul className="file-list">
+                        {files.map((f) => (
+                          <li key={f.path} className="file-item">
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={checkedFiles.has(f.path)}
+                                onChange={(e) => {
+                                  const next = new Set(checkedFiles)
+                                  if (e.target.checked) next.add(f.path)
+                                  else next.delete(f.path)
+                                  setCheckedFiles(next)
+                                }}
+                              />
+                              <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
+                                {f.status}
+                              </span>
+                              <span className="file-path">{f.oldPath ? `${f.oldPath} → ${f.path}` : f.path}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </ResizableBox>
                     <div className="radio-row">
                       <label className="checkbox">
                         <input type="radio" checked={fileMode === 'changes'} onChange={() => setFileMode('changes')} />
@@ -461,7 +466,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
               </div>
             )}
           </div>
-        </div>
+        </Split>
       </div>
     </Modal>
   )

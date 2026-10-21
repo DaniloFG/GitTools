@@ -468,6 +468,15 @@ export const ar: Messages = {
       dropHelp: 'يحذف الإيداع من السجل.'
     }
   },
+  layout: {
+    resize: 'اسحب لتغيير الحجم. انقر نقرًا مزدوجًا للعودة إلى الحجم الافتراضي.',
+    hidePanel: 'طيّ هذه اللوحة',
+    showPanel: 'إظهار اللوحة المطوية',
+    maximize: 'تكبير',
+    restoreWindow: 'استعادة الحجم',
+    collapse: 'طيّ',
+    expand: 'توسيع'
+  },
   settings: {
     title: 'الإعدادات',
     unsaved: 'تغييرات غير محفوظة (معروضة كمعاينة).',
@@ -487,7 +496,12 @@ export const ar: Messages = {
       themeDark: 'داكنة',
       themeLight: 'فاتحة',
       zoom: 'حجم الواجهة',
-      default: '(افتراضي)'
+      default: '(افتراضي)',
+      layout: 'اللوحات والنوافذ',
+      layoutHelp: 'اسحب الفواصل بين اللوحات وحواف النوافذ لضبط حجمها؛ استخدم ◂ ▸ على الفاصل لطيّ لوحة و□ لتكبير نافذة. يتذكر GitTools التخطيط الذي تختاره.',
+      resetLayoutHelp: 'يعيد جميع اللوحات والنوافذ إلى حجمها الأصلي.',
+      resetLayout: 'إعادة تعيين التخطيط',
+      layoutRestored: 'تمت إعادة تعيين التخطيط.'
     },
     shortcuts: {
       title: 'اختصارات لوحة المفاتيح',
@@ -518,6 +532,7 @@ export const ar: Messages = {
       viewChanges: 'الانتقال إلى التغييرات',
       viewFiles: 'الانتقال إلى الملفات (المسؤولية والسجل)',
       viewCompare: 'الانتقال إلى المقارنة',
+      toggleSidebar: 'إظهار/إخفاء الشريط الجانبي',
       studio: 'فتح استوديو الانتقاء',
       newBranch: 'فرع جديد',
       stash: 'تخبئة التغييرات',

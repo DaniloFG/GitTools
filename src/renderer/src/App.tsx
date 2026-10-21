@@ -25,6 +25,7 @@ import { RebaseEditor } from './components/RebaseEditor'
 import { SettingsCenter } from './components/settings/SettingsCenter'
 import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
 import { Sidebar } from './components/Sidebar'
+import { Split } from './components/Split'
 import { Toasts, type Toast } from './components/Toasts'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
@@ -262,7 +263,7 @@ export function App() {
       <div className="app">
         <Toolbar onOpenRepository={openRepository} />
         <OperationBanner onShowChanges={() => setView('changes')} />
-        <div className="workspace">
+        <Split id="workspace" className="workspace" fixed initial={260} min={[160, 360]} collapsible={[true, false]}>
           <Sidebar
             scope={scope}
             onScope={(s) => {
@@ -280,16 +281,16 @@ export function App() {
               ))}
             </nav>
             {view === 'history' && (
-              <div className="split">
+              <Split id="history" initial={0.55} min={[280, 280]}>
                 <CommitList scope={scope} onScope={setScope} selected={selected} onSelect={setSelected} />
                 <CommitDetailsPanel selected={selected} />
-              </div>
+              </Split>
             )}
             {view === 'changes' && <ChangesView />}
             {view === 'files' && <FilesView path={filePath} onPath={setFilePath} />}
             {view === 'compare' && <CompareView request={compare} onRequest={setCompare} />}
           </main>
-        </div>
+        </Split>
       </div>
       {studio && <CherryPickStudio request={studio} onClose={() => setStudio(null)} />}
       {conflict && <ConflictEditor path={conflict} onClose={() => setConflict(null)} />}

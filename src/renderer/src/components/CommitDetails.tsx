@@ -7,6 +7,7 @@ import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
 import { t } from '../i18n'
 import { DiffView } from './DiffView'
+import { Split } from './Split'
 
 export function CommitDetailsPanel({ selected }: { selected: string[] }) {
   if (selected.length === 0) {
@@ -97,86 +98,96 @@ function SingleCommit({ sha }: { sha: string }) {
   }
 
   return (
-    <section className="details">
-      <div className="commit-header">
-        <h3>{details.subject}</h3>
-        {details.body && <p className="commit-body pre-line">{details.body}</p>}
-        <div className="commit-meta">
-          <span>
-            {details.author} &lt;{details.email}&gt;
-          </span>
-          <span>{fullDate(details.date)}</span>
-          <code title={t('common.clickToCopy')} onClick={() => navigator.clipboard.writeText(details.sha)}>
-            {shortSha(details.sha)}
-          </code>
-          {details.parents.length > 1 && <span className="tag">merge</span>}
-        </div>
-        {head && (
-          <div className="button-row">
-            <button className="primary" onClick={() => actions.cherryPickCommits(head, [sha], details.subject)}>
-              🍒 {t('details.cherryPickInto', { target: head })}
-            </button>
-            {checked.size > 0 && (
-              <button onClick={() => actions.filesOntoBranch(sha, pathsOf(details.files.filter((f) => checked.has(f.path))), head)}>
-                {t('details.takeChecked', { count: checked.size, target: head })}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      <ul className="file-list">
-        {details.files.map((file) => (
-          <li
-            key={file.path}
-            className={`file-item ${active?.path === file.path ? 'active' : ''}`}
-            onClick={() => setActive(file)}
-            draggable
-            onDragStart={(e) => {
-              const files = dragFiles(file)
-              startDrag(
-                e,
-                { type: 'commit-files', sha, paths: pathsOf(files) },
-                files.length > 1 ? `📄 ${t('common.files', { count: files.length })}` : `📄 ${file.path}`
-              )
-            }}
-            onDragEnd={endDrag}
-            title={t('details.dragFile')}
-          >
-            <input
-              type="checkbox"
-              checked={checked.has(file.path)}
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => {
-                const next = new Set(checked)
-                if (e.target.checked) next.add(file.path)
-                else next.delete(file.path)
-                setChecked(next)
-              }}
-            />
-            <span className={`status status-${file.status}`} title={statusLabel(file.status)}>
-              {file.status}
+    // Em cima, a mensagem e os arquivos; embaixo, o diff — a divisória entre eles pode ser arrastada.
+    <Split id="commit-details" direction="column" initial={0.4} min={[80, 120]}>
+      <section className="details">
+        <div className="commit-header">
+          <h3>{details.subject}</h3>
+          {details.body && <p className="commit-body pre-line">{details.body}</p>}
+          <div className="commit-meta">
+            <span>
+              {details.author} &lt;{details.email}&gt;
             </span>
-            <span className="file-path">{file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}</span>
-          </li>
-        ))}
-      </ul>
-
-      {diff && (
-        <div className="diff-panel">
+            <span>{fullDate(details.date)}</span>
+            <code title={t('common.clickToCopy')} onClick={() => navigator.clipboard.writeText(details.sha)}>
+              {shortSha(details.sha)}
+            </code>
+            {details.parents.length > 1 && <span className="tag">merge</span>}
+          </div>
           {head && (
-            <div className="selection-bar">
-              <span className="muted">{t('details.selectLinesHelp')}</span>
-              <button className="primary" disabled={!selection.size} onClick={applyLines}>
-                {t('common.applyLinesInto', { count: selection.size, target: head })}
+            <div className="button-row">
+              <button className="primary" onClick={() => actions.cherryPickCommits(head, [sha], details.subject)}>
+                🍒 {t('details.cherryPickInto', { target: head })}
               </button>
-              <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>{t('details.takeWholeFile')}</button>
-              <button onClick={() => openFileView(diff.path)}>{t('common.blameHistory')}</button>
+              {checked.size > 0 && (
+                <button onClick={() => actions.filesOntoBranch(sha, pathsOf(details.files.filter((f) => checked.has(f.path))), head)}>
+                  {t('details.takeChecked', { count: checked.size, target: head })}
+                </button>
+              )}
             </div>
           )}
-          <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} />
         </div>
-      )}
-    </section>
+
+        <ul className="file-list">
+          {details.files.map((file) => (
+            <li
+              key={file.path}
+              className={`file-item ${active?.path === file.path ? 'active' : ''}`}
+              onClick={() => setActive(file)}
+              draggable
+              onDragStart={(e) => {
+                const files = dragFiles(file)
+                startDrag(
+                  e,
+                  { type: 'commit-files', sha, paths: pathsOf(files) },
+                  files.length > 1 ? `📄 ${t('common.files', { count: files.length })}` : `📄 ${file.path}`
+                )
+              }}
+              onDragEnd={endDrag}
+              title={t('details.dragFile')}
+            >
+              <input
+                type="checkbox"
+                checked={checked.has(file.path)}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => {
+                  const next = new Set(checked)
+                  if (e.target.checked) next.add(file.path)
+                  else next.delete(file.path)
+                  setChecked(next)
+                }}
+              />
+              <span className={`status status-${file.status}`} title={statusLabel(file.status)}>
+                {file.status}
+              </span>
+              <span className="file-path">{file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="details">
+        {diff ? (
+          <div className="diff-panel">
+            {head && (
+              <div className="selection-bar">
+                <span className="muted">{t('details.selectLinesHelp')}</span>
+                <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                  {t('common.applyLinesInto', { count: selection.size, target: head })}
+                </button>
+                <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>{t('details.takeWholeFile')}</button>
+                <button onClick={() => openFileView(diff.path)}>{t('common.blameHistory')}</button>
+              </div>
+            )}
+            <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} />
+          </div>
+        ) : (
+          active && (
+            <p className="empty">
+              <span className="spinner" />
+            </p>
+          )
+        )}
+      </section>
+    </Split>
   )
 }
