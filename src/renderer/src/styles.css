@@ -1027,6 +1027,8 @@ mark {
   border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 10px;
+  /* Em contêiner flex (janela de diff) o overflow:hidden deixaria o diff encolher em vez de rolar. */
+  flex-shrink: 0;
 }
 .diff-file-header {
   display: flex;
@@ -2961,6 +2963,7 @@ body.docking .pane-grip {
 }
 .diff-window-app .diff-window {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 10px;
 }
