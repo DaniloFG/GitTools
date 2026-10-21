@@ -4,10 +4,11 @@ import { currentBranch, useApp, type StudioRequest } from '../context'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t, type MessageKey } from '../i18n'
 import { git } from '../git'
-import { DiffView } from './DiffView'
+import { DiffView, useFullFile } from './DiffView'
 import { Modal } from './Modal'
 import { ResizableBox } from './ResizableBox'
 import { Split } from './Split'
+import { LineStats } from './LineStats'
 
 type Mode = 'branch' | 'commits' | 'files' | 'lines'
 
@@ -103,14 +104,15 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
   }, [mode, chosen, toast])
 
   // Diferença usada no modo "Linhas": um commit, ou do pai do mais antigo até o mais novo marcado.
+  const [fullFile] = useFullFile()
   const lineSource = useMemo<DiffSource | null>(() => {
     if (!chosen.length) return null
-    if (chosen.length === 1) return { kind: 'commit', sha: chosen[0].sha }
+    if (chosen.length === 1) return { kind: 'commit', sha: chosen[0].sha, fullFile }
     const newest = chosen[0]
     const oldest = chosen[chosen.length - 1]
     if (!oldest.parents[0]) return null
-    return { kind: 'range', from: oldest.parents[0], to: newest.sha }
-  }, [chosen])
+    return { kind: 'range', from: oldest.parents[0], to: newest.sha, fullFile }
+  }, [chosen, fullFile])
 
   useEffect(() => {
     setLineDiff(null)
@@ -387,6 +389,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                                 {f.status}
                               </span>
                               <span className="file-path">{f.oldPath ? `${f.oldPath} → ${f.path}` : f.path}</span>
+                              <LineStats stats={f} />
                             </label>
                           </li>
                         ))}

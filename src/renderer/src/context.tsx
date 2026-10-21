@@ -3,6 +3,8 @@ import type { Settings } from '../../shared/settings'
 import type { BranchInfo, CommitInfo, OperationState, RepoInfo, RepoStatus, StashInfo, TagInfo } from '../../shared/types'
 import type { ChoiceRequest, ChoiceResult, ConfirmRequest, PromptRequest } from './components/Dialogs'
 import type { MenuItem } from './components/ContextMenu'
+import type { DiffWindowRequest } from '../../shared/api'
+import type { ViewId } from './workbench'
 
 export interface RepoData {
   status: RepoStatus
@@ -22,7 +24,8 @@ export interface StudioRequest {
   mode?: 'branch' | 'commits' | 'files' | 'lines'
 }
 
-export type View = 'history' | 'changes' | 'files' | 'compare'
+/** Telas que podem ser mostradas (cada uma é uma aba numa das áreas da janela). */
+export type View = ViewId
 
 export interface CompareRequest {
   from?: string
@@ -43,7 +46,12 @@ export interface AppContextValue {
   showMenu(event: React.MouseEvent, items: MenuItem[]): void
   openStudio(request: StudioRequest): void
   selectCommit(sha: string): void
+  /** Mostra a tela (na área onde ela estiver), expandindo a área se estiver recolhida. */
   setView(view: View): void
+  /** Abre o diff de um arquivo numa janela própria do sistema. */
+  openDiffWindow(request: DiffWindowRequest): void
+  /** Volta todos os painéis, abas e colunas às posições e tamanhos padrão. */
+  resetLayout(): void
   /** Abre o editor de conflitos lado a lado para um arquivo. */
   openConflict(path: string): void
   openCompare(request: CompareRequest): void

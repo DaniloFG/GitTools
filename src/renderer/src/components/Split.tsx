@@ -1,15 +1,18 @@
-import { useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createContext, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { AppContext } from '../context'
 import { readLayout, useLayout, writeLayout } from '../layout'
 import { startResize } from '../resize'
 import {
   clampSize,
   crossingAt,
+  dockSplit,
   parseSplitState,
   rotateSplit,
+  sideAt,
   stateFromPosition,
   swapSplit,
   type CollapsedPane,
+  type DockSide,
   type SplitDirection,
   type SplitState
 } from '../panes'
@@ -35,6 +38,8 @@ interface Props {
    * Desligado só onde o próprio componente cuida do arranjo (ex.: editor de conflitos).
    */
   arrangeable?: boolean
+  /** Nome de cada painel, mostrado na alça de arrasto. */
+  labels?: [string, string]
   className?: string
   children: [ReactNode, ReactNode]
 }
@@ -61,6 +66,19 @@ function crossingDividers(el: HTMLElement, vertical: boolean, x: number, y: numb
 
 const layoutKey = (id: string) => `split.${id}`
 
+/** Garante que um painel esteja visível (ex.: ao pedir para ver um diff num painel recolhido). */
+export function revealPane(id: string, pane: CollapsedPane) {
+  const state = parseSplitState(readLayout(layoutKey(id)))
+  if (state.collapsed === pane) writeLayout(layoutKey(id), { ...state, collapsed: undefined })
+}
+
+/**
+ * Quantas divisórias arrumáveis envolvem um painel. As alças de painéis aninhados ficam deslocadas
+ * para não caírem uma em cima da outra quando os painéis começam no mesmo ponto.
+ */
+const DepthContext = createContext(0)
+const GRIP_OFFSET = 56
+
 /** Mostra ou esconde um painel de fora da divisória (ex.: atalho para a barra lateral). */
 export function togglePane(id: string, pane: CollapsedPane) {
   const state = parseSplitState(readLayout(layoutKey(id)))
@@ -83,14 +101,21 @@ export function Split({
   min = [160, 160],
   collapsible = [true, true],
   arrangeable = true,
+  labels,
   className = '',
   children
 }: Props) {
   const app = useContext(AppContext)
+  const depth = useContext(DepthContext)
+  /** Painel sendo arrastado e lado onde ele seria solto. */
+  const [docking, setDocking] = useState<{ pane: CollapsedPane; side: DockSide | null } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const dividerRef = useRef<HTMLDivElement>(null)
   const [state, setState] = useLayout<SplitState>(layoutKey(id), parseSplitState)
-  const direction = arrangeable ? (state.direction ?? defaultDirection) : defaultDirection
+  /** Largura disponível: lado a lado sem espaço (ex.: a aba levada para uma área estreita) vira um em cima do outro. */
+  const [width, setWidth] = useState(Infinity)
+  const narrow = arrangeable && defaultDirection === 'row' && !state.direction && width < min[0] + min[1] + 40
+  const direction = arrangeable ? (state.direction ?? (narrow ? 'column' : defaultDirection)) : defaultDirection
   const row = direction === 'row'
   const swapped = arrangeable && !!state.swapped
   const [total, setTotal] = useState(0)
@@ -103,6 +128,7 @@ export function Split({
     const el = ref.current
     if (!el) return
     const measure = () => {
+      setWidth(el.clientWidth)
       setTotal(row ? el.clientWidth : el.clientHeight)
       const divider = dividerRef.current
       if (divider) setDividerSize(row ? divider.offsetWidth : divider.offsetHeight)
@@ -228,10 +254,65 @@ export function Split({
 
   const percent = available ? Math.round(((swapped ? available - px : px) / available) * 100) : 50
 
+  /**
+   * Arrastar a alça de um painel: um destaque mostra em que lado ele vai ficar (esquerda, direita,
+   * em cima ou embaixo do outro painel); ao soltar, o arranjo muda.
+   */
+  const startDock = (e: React.PointerEvent, pane: CollapsedPane) => {
+    const el = ref.current
+    if (!el || e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    const rtl = getComputedStyle(el).direction === 'rtl'
+    const x0 = e.clientX
+    const y0 = e.clientY
+    let side: DockSide | null = null
+    setDocking({ pane, side: null })
+    document.body.classList.add('docking')
+    const move = (event: PointerEvent) => {
+      if (Math.hypot(event.clientX - x0, event.clientY - y0) < 6) return
+      side = sideAt(event.clientX, event.clientY, el.getBoundingClientRect())
+      setDocking({ pane, side })
+    }
+    const end = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', cancel)
+      document.body.classList.remove('docking')
+      setDocking(null)
+      if (side) {
+        const chosen = side
+        setState((prev) => dockSplit(prev, pane, chosen, defaultDirection, rtl))
+      }
+    }
+    const cancel = () => {
+      side = null
+      end()
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', cancel)
+  }
+
+  const grip = (pane: CollapsedPane) =>
+    arrangeable && collapsed !== pane ? (
+      <button
+        className="pane-grip"
+        style={{ insetInlineStart: `calc(50% - 22px + ${depth * GRIP_OFFSET}px)` }}
+        title={`${labels ? `${labels[pane === 'first' ? 0 : 1]} — ` : ''}${t('workbench.dragPanel')}`}
+        aria-label={t('workbench.dragPanel')}
+        onPointerDown={(e) => startDock(e, pane)}
+        onContextMenu={onContextMenu}
+      >
+        ⠿
+      </button>
+    ) : null
+
   return (
     <div ref={ref} className={`split split-${direction} ${className}`}>
       <div className="split-pane" style={firstStyle}>
-        {children[0]}
+        {grip('first')}
+        <DepthContext.Provider value={arrangeable ? depth + 1 : depth}>{children[0]}</DepthContext.Provider>
       </div>
       <div
         ref={dividerRef}
@@ -261,16 +342,6 @@ export function Split({
               {row ? '◂' : '▴'}
             </button>
           )}
-          {arrangeable && !collapsed && (
-            <>
-              <button tabIndex={-1} className="arrange" title={t('layout.swapPanels')} onClick={swap}>
-                {row ? '⇄' : '⇅'}
-              </button>
-              <button tabIndex={-1} className="arrange" title={row ? t('layout.stackPanels') : t('layout.sideBySide')} onClick={rotate}>
-                ⟲
-              </button>
-            </>
-          )}
           {toEnd && (
             <button
               tabIndex={-1}
@@ -283,8 +354,14 @@ export function Split({
         </div>
       </div>
       <div className="split-pane" style={secondStyle}>
-        {children[1]}
+        {grip('second')}
+        <DepthContext.Provider value={arrangeable ? depth + 1 : depth}>{children[1]}</DepthContext.Provider>
       </div>
+      {docking?.side && (
+        <div className={`dock-preview dock-${docking.side}`} aria-hidden>
+          <span>{t(`workbench.side.${docking.side}`)}</span>
+        </div>
+      )}
     </div>
   )
 }

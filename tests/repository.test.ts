@@ -37,7 +37,7 @@ describe('status, branches e log', () => {
     expect(log[1].sha).toBe(first)
     expect(log[0].refs).toContain('HEAD -> feature')
     const details = await t.repo.commitDetails(log[0].sha)
-    expect(details.files).toEqual([{ status: 'M', path: 'a.txt' }])
+    expect(details.files).toEqual([{ status: 'M', path: 'a.txt', additions: 1, deletions: 1 }])
   })
 })
 

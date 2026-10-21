@@ -715,16 +715,7 @@ body.resizing * {
     display: none;
   }
 }
-@container (max-width: 520px) {
-  .commit-author {
-    display: none;
-  }
-}
-@container (max-width: 400px) {
-  .commit-date {
-    display: none;
-  }
-}
+
 .ref {
   flex-shrink: 0;
   font-size: 11px;
@@ -2459,4 +2450,503 @@ body.reordering * {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+}
+
+/* ---------------------------------------------- áreas e abas (estilo VS Code) */
+
+.workbench {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+.workbench > .workspace {
+  flex: 1;
+}
+.area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+.area-left,
+.area-right {
+  background: var(--bg-panel);
+}
+.area-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  background: var(--bg-elevated);
+}
+.area-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 6px 12px;
+  color: var(--text-muted);
+  cursor: grab;
+  white-space: nowrap;
+  touch-action: none;
+}
+.area-left .area-tab,
+.area-right .area-tab,
+.area-bottom .area-tab {
+  padding: 4px 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.area-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.area-tab.dragging {
+  opacity: 0.45;
+}
+.area-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.area-body > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.area-empty {
+  margin: auto;
+}
+body.docking,
+body.docking * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+/* Destaque de onde a aba arrastada vai ficar. */
+.dock-indicator {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  transition: all 0.08s ease-out;
+}
+.dock-indicator.line {
+  border: none;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.dock-indicator span,
+.dock-preview span {
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: var(--accent-strong);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Faixas nas bordas da janela, visíveis só enquanto uma aba é arrastada. */
+.dock-edges {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+}
+.dock-edge {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.dock-edge.active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.dock-edge-left {
+  inset-block: 4px 60px;
+  inset-inline-start: 4px;
+  width: 48px;
+}
+.dock-edge-right {
+  inset-block: 4px 60px;
+  inset-inline-end: 4px;
+  width: 48px;
+}
+/* Só o texto fica na vertical: no contêiner, as propriedades lógicas continuam no eixo horizontal. */
+.dock-edge-left span,
+.dock-edge-right span {
+  writing-mode: vertical-rl;
+}
+.dock-edge-bottom {
+  inset-inline: 60px;
+  bottom: 4px;
+  height: 48px;
+}
+
+/* -------------------------------------- arrastar painéis internos para um lado */
+
+.split {
+  position: relative;
+}
+.split-pane {
+  position: relative;
+}
+/* Alça no topo de cada painel: arraste para pôr o painel à esquerda, à direita, em cima ou embaixo. */
+.pane-grip {
+  position: absolute;
+  top: 0;
+  z-index: 6;
+  width: 44px;
+  height: 12px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 10px;
+  letter-spacing: 2px;
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 0.12s, height 0.12s;
+}
+.split-pane:hover > .pane-grip,
+.pane-grip:focus-visible {
+  opacity: 0.75;
+}
+.pane-grip:hover {
+  opacity: 1 !important;
+  height: 16px;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+body.docking .pane-grip {
+  opacity: 0;
+}
+.dock-preview {
+  position: absolute;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.dock-left {
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 50%;
+}
+[dir='rtl'] .dock-left {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}
+.dock-right {
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 50%;
+}
+[dir='rtl'] .dock-right {
+  inset-inline-end: auto;
+  inset-inline-start: 0;
+}
+.dock-top {
+  inset-inline: 0;
+  top: 0;
+  height: 50%;
+}
+.dock-bottom {
+  inset-inline: 0;
+  bottom: 0;
+  height: 50%;
+}
+
+/* ------------------------------------------------- log de comandos git */
+
+.gitlog {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg);
+}
+.gitlog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.gitlog-filter {
+  width: 180px;
+  padding: 2px 6px;
+}
+.gitlog-toolbar button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.gitlog-body {
+  flex: 1;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+  user-select: text;
+}
+.gitlog-row {
+  display: grid;
+  grid-template-columns: 96px 44px minmax(0, 1fr) 64px;
+  column-gap: 8px;
+  align-items: baseline;
+  padding: 1px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+.gitlog-row:hover {
+  background: var(--bg-hover);
+}
+.gitlog-row.read {
+  color: var(--text-muted);
+}
+.gitlog-time,
+.gitlog-duration {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.gitlog-duration {
+  text-align: end;
+}
+.gitlog-state {
+  white-space: nowrap;
+}
+.gitlog-ok .gitlog-state {
+  color: var(--success);
+}
+.gitlog-error .gitlog-state,
+.gitlog-error-text,
+.gitlog-error .gitlog-error {
+  color: var(--danger);
+}
+.gitlog-command {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: inherit;
+}
+.gitlog-row.write .gitlog-command {
+  color: var(--text);
+  font-weight: 600;
+}
+.gitlog-error {
+  grid-column: 3 / -1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ------------------------------------------ linhas adicionadas/removidas */
+
+.line-stats {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 4px;
+  margin-inline-start: auto;
+  padding-inline-start: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.line-stats .add {
+  color: var(--success);
+}
+.line-stats .del {
+  color: var(--danger);
+}
+.line-stats.binary {
+  color: var(--text-muted);
+}
+.file-item .line-stats + .file-actions {
+  margin-inline-start: 0;
+}
+
+/* ------------------------------------------------ colunas do histórico */
+
+.commit-list {
+  --toggle-width: 22px;
+}
+.commit-row,
+.commit-columns {
+  display: grid;
+  column-gap: 8px;
+  align-items: center;
+  --w-author: var(--user-author);
+  --w-date: var(--user-date);
+  --w-sha: var(--user-sha);
+}
+.commit-row > *,
+.commit-columns > * {
+  min-width: 0;
+}
+.commit-row .commit-author,
+.commit-row .commit-date,
+.commit-row .commit-sha,
+.commit-columns .commit-author,
+.commit-columns .commit-date,
+.commit-columns .commit-sha {
+  width: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.commit-row .commit-sha {
+  font-size: 12px;
+}
+.commit-row .row-toggle {
+  margin-inline-start: 4px;
+}
+.commit-column-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.commit-column-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Alça para ajustar a largura (na borda virada para o assunto). */
+.column-resize {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 9px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.resize-start > .column-resize {
+  inset-inline-start: -8px;
+}
+.resize-end > .column-resize {
+  inset-inline-end: -8px;
+}
+.column-resize::after {
+  content: '';
+  position: absolute;
+  inset-block: 3px;
+  inset-inline-start: 4px;
+  width: 1px;
+  background: var(--border);
+}
+.column-resize:hover::after {
+  width: 2px;
+  background: var(--accent);
+}
+@container (max-width: 520px) {
+  .commit-row,
+  .commit-columns {
+    --w-author: 0px;
+  }
+}
+@container (max-width: 400px) {
+  .commit-row,
+  .commit-columns {
+    --w-date: 0px;
+  }
+}
+
+/* ------------------------------------------------- formulários diversos */
+
+.success-text {
+  color: var(--success);
+}
+.editor-manual {
+  margin-top: 12px;
+}
+.editor-manual input {
+  font-family: var(--mono);
+}
+.clone-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.clone-form input {
+  width: 100%;
+}
+.field-row {
+  display: flex;
+  gap: 6px;
+}
+.field-row input {
+  flex: 1;
+  min-width: 0;
+}
+.identity-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.identity-fields input {
+  width: 100%;
+}
+.language-option.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.identity-effective {
+  margin-top: 10px;
+}
+.diff-full {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.diff-full.active,
+.diff-full.active:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #fff;
+}
+
+/* ------------------------------------------------- janela própria de diff */
+
+.diff-window-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.diff-window-app .diff-window {
+  flex: 1;
+  overflow: auto;
+  padding: 10px;
+}
+.diff-window-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
 }

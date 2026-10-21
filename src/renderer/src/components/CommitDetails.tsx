@@ -6,8 +6,9 @@ import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
 import { t } from '../i18n'
-import { DiffView } from './DiffView'
-import { Split } from './Split'
+import { DiffView, useFullFile } from './DiffView'
+import { revealPane, Split } from './Split'
+import { LineStats } from './LineStats'
 
 /** Arquivo a abrir no diff (ex.: clicado nos arquivos expandidos do histórico). `n` muda a cada pedido. */
 export interface FileFocus {
@@ -56,7 +57,7 @@ function MultiSelection({ shas }: { shas: string[] }) {
 }
 
 function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) {
-  const { toast, openFileView } = useApp()
+  const { toast, openFileView, openDiffWindow, openInEditor, showMenu } = useApp()
   const actions = useActions()
   const head = actions.head
   const [details, setDetails] = useState<CommitDetails | null>(null)
@@ -64,6 +65,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   const [active, setActive] = useState<ChangedFile | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
+  const [fullFile] = useFullFile()
 
   useEffect(() => {
     git.commitDetails(sha).then(
@@ -74,6 +76,26 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       (e) => toast('error', errorMessage(e))
     )
   }, [sha, toast])
+
+  /** Mostra o diff do arquivo no painel de baixo (expandindo-o, se estiver recolhido). */
+  const showDiff = (file: ChangedFile) => {
+    setActive(file)
+    revealPane('commit-details', 'second')
+  }
+
+  const openWindow = (file: ChangedFile) =>
+    openDiffWindow({ source: { kind: 'commit', sha }, path: file.path, title: `${file.path} · ${shortSha(sha)}` })
+
+  const fileMenu = (e: React.MouseEvent, file: ChangedFile) =>
+    showMenu(e, [
+      { label: t('history.files.openDiff'), onClick: () => showDiff(file) },
+      { label: `⧉ ${t('diffExtra.openWindow')}`, onClick: () => openWindow(file) },
+      ...(head ? [{ label: t('history.files.take', { target: head }), onClick: () => actions.filesOntoBranch(sha, pathsOf([file]), head) }] : []),
+      { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
+      { label: t('common.openInEditor'), onClick: () => openInEditor(file.path) },
+      'separator',
+      { label: t('history.files.copyPath'), onClick: () => navigator.clipboard.writeText(file.path) }
+    ])
 
   // Abre o arquivo pedido de fora (lista de arquivos expandida no histórico).
   useEffect(() => {
@@ -89,11 +111,11 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     setSelection(new Set())
     setDiff(null)
     if (!active) return
-    git.diff({ kind: 'commit', sha, path: active.path }).then(
+    git.diff({ kind: 'commit', sha, path: active.path, fullFile }).then(
       (files) => setDiff(files.find((f) => f.path === active.path) ?? files[0] ?? null),
       (e) => toast('error', errorMessage(e))
     )
-  }, [sha, active, toast])
+  }, [sha, active, toast, fullFile])
 
   if (!details) return <section className="details"><span className="spinner" /></section>
 
@@ -105,7 +127,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     if (!head || !diff) return
     const done = await actions.applyLines(
       head,
-      { kind: 'commit', sha },
+      { kind: 'commit', sha, fullFile },
       diff.path,
       [...selection],
       t('details.linesContext', { path: diff.path, sha: shortSha(sha), subject: details.subject }),
@@ -151,7 +173,9 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
               key={file.path}
               data-path={file.path}
               className={`file-item ${active?.path === file.path ? 'active' : ''}`}
-              onClick={() => setActive(file)}
+              onClick={() => showDiff(file)}
+              onDoubleClick={() => openWindow(file)}
+              onContextMenu={(e) => fileMenu(e, file)}
               draggable
               onDragStart={(e) => {
                 const files = dragFiles(file)
@@ -179,6 +203,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
                 {file.status}
               </span>
               <span className="file-path">{file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}</span>
+              <LineStats stats={file} />
             </li>
           ))}
         </ul>
@@ -186,9 +211,19 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       <section className="details">
         {diff ? (
           <div className="diff-panel">
+            {!head && (
+              <div className="selection-bar">
+                <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
+                  ⧉ {t('diffExtra.openWindow')}
+                </button>
+              </div>
+            )}
             {head && (
               <div className="selection-bar">
                 <span className="muted">{t('details.selectLinesHelp')}</span>
+                <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
+                  ⧉ {t('diffExtra.openWindow')}
+                </button>
                 <button className="primary" disabled={!selection.size} onClick={applyLines}>
                   {t('common.applyLinesInto', { count: selection.size, target: head })}
                 </button>

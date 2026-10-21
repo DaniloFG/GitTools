@@ -7,8 +7,9 @@ import { t } from '../i18n'
 import { git } from '../git'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
-import { DiffView } from './DiffView'
-import { Split } from './Split'
+import { DiffView, useFullFile } from './DiffView'
+import { revealPane, Split } from './Split'
+import { LineStats } from './LineStats'
 
 const MAX_LISTED = 500
 const UNCOMMITTED = /^0+$/
@@ -42,7 +43,10 @@ export function FilesView({ path, onPath }: { path: string | null; onPath(path: 
         <input className="files-filter" placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
         <ul className="file-list">
           {filtered.slice(0, MAX_LISTED).map((f) => (
-            <li key={f} className={`file-item ${f === path ? 'active' : ''}`} onClick={() => onPath(f)} title={f}>
+            <li key={f} className={`file-item ${f === path ? 'active' : ''}`} onClick={() => {
+              onPath(f)
+              revealPane('files', 'second')
+            }} title={f}>
               <span className="file-path">{f}</span>
             </li>
           ))}
@@ -182,13 +186,14 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
 }
 
 function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string): void }) {
-  const { data, run, confirm, toast, selectCommit } = useApp()
+  const { data, run, confirm, toast, selectCommit, openDiffWindow } = useApp()
   const actions = useActions()
   const head = currentBranch(data)
   const [entries, setEntries] = useState<FileHistoryEntry[] | null>(null)
   const [active, setActive] = useState<FileHistoryEntry | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
+  const [fullFile] = useFullFile()
 
   useEffect(() => {
     setEntries(null)
@@ -205,11 +210,11 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
     setDiff(null)
     setSelection(new Set())
     if (!active) return
-    git.diff({ kind: 'commit', sha: active.sha, path: active.path }).then(
+    git.diff({ kind: 'commit', sha: active.sha, path: active.path, fullFile }).then(
       (files) => setDiff(files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null),
       (e) => toast('error', errorMessage(e))
     )
-  }, [active, toast])
+  }, [active, toast, fullFile])
 
   if (!entries) return <p className="empty"><span className="spinner" /></p>
   if (entries.length === 0) return <p className="empty">{t('files.noCommits')}</p>
@@ -227,7 +232,7 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
     if (!head || !active || !diff) return
     const done = await actions.applyLines(
       head,
-      { kind: 'commit', sha: active.sha },
+      { kind: 'commit', sha: active.sha, fullFile },
       diff.path,
       [...selection],
       t('details.linesContext', { path: diff.path, sha: shortSha(active.sha), subject: active.subject }),
@@ -240,10 +245,18 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
     <Split id="file-history" className="file-history" direction="column" fixed initial={220} min={[60, 120]}>
       <ul className="compare-commits history-list">
         {entries.map((e) => (
-          <li key={e.sha} className={active?.sha === e.sha ? 'active' : ''} onClick={() => setActive(e)}>
+          <li
+            key={e.sha}
+            className={active?.sha === e.sha ? 'active' : ''}
+            onClick={() => {
+              setActive(e)
+              revealPane('file-history', 'second')
+            }}
+          >
             <code>{shortSha(e.sha)}</code>
             <span className="commit-subject">{e.subject}</span>
             {e.path !== path && <span className="tag" title={t('files.nameAtCommit')}>{e.path}</span>}
+            <LineStats stats={e} />
             <small className="muted">
               {e.author} · {relativeDate(e.date)}
             </small>
@@ -253,6 +266,12 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
       {active ? (
         <div className="diff-panel file-history-diff">
           <div className="selection-bar">
+            <button
+              onClick={() => openDiffWindow({ source: { kind: 'commit', sha: active.sha }, path: active.path, title: `${active.path} · ${shortSha(active.sha)}` })}
+              title={t('diffExtra.openWindowHelp')}
+            >
+              ⧉ {t('diffExtra.openWindow')}
+            </button>
             <button onClick={() => selectCommit(active.sha)}>{t('files.viewCommit')}</button>
             <button onClick={() => onBlameAt(active.sha)}>{t('files.blameThisVersion')}</button>
             <button onClick={() => restore(active)}>{t('files.restoreThisVersion')}</button>

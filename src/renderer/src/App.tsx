@@ -1,6 +1,7 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import type { RepoInfo } from '../../shared/types'
+import { applySettings, resolveLocale } from './appearance'
 import {
   AppContext,
   type AppContextValue,
@@ -12,29 +13,31 @@ import {
 } from './context'
 import { CherryPickStudio } from './components/CherryPickStudio'
 import { ChangesView } from './components/ChangesView'
+import { CloneDialog } from './components/CloneDialog'
 import { CommitDetailsPanel, type FileFocus } from './components/CommitDetails'
 import { CommitList } from './components/CommitList'
 import { CompareView } from './components/CompareView'
 import { ConflictEditor } from './components/ConflictEditor'
 import { ContextMenu, type MenuItem, type MenuState } from './components/ContextMenu'
 import { DialogHost, type DialogState } from './components/Dialogs'
-import { DiffWindow, type DiffWindowRequest } from './components/DiffWindow'
 import { FilesView } from './components/FilesView'
+import { GitLogView } from './components/GitLogView'
 import { KeyboardShortcuts } from './components/KeyboardShortcuts'
 import { OperationBanner } from './components/OperationBanner'
 import { RebaseEditor } from './components/RebaseEditor'
 import { SettingsCenter } from './components/settings/SettingsCenter'
 import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
 import { Sidebar } from './components/Sidebar'
-import { Split } from './components/Split'
+import { revealPane, Split } from './components/Split'
 import { Toasts, type Toast } from './components/Toasts'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
-import { errorMessage } from './format'
+import { useWorkbench, Workbench, type ViewDef } from './components/Workbench'
+import { errorMessage, shortSha } from './format'
 import { git } from './git'
-import { useLayout } from './layout'
-import { startReorder, useOrder } from './reorder'
-import { getLocale, matchLocale, setLocale, textDirection, t, type LocaleId, type MessageKey } from './i18n'
+import { getLocale, setLocale, t } from './i18n'
+import { resetLayout as clearLayout } from './layout'
+import { activate, areaOf, type AreaId, type WorkbenchState } from './workbench'
 
 export type HistoryScope = { kind: 'all' } | { kind: 'head' } | { kind: 'ref'; ref: string }
 
@@ -42,71 +45,17 @@ function isOperationResult(value: unknown): value is { ok: boolean; message: str
   return typeof value === 'object' && value !== null && 'ok' in value && 'conflicts' in value
 }
 
-function resolveLocale(settings: Settings, systemLocales: readonly string[]): LocaleId {
-  return settings.language === 'system' ? matchLocale(systemLocales) : settings.language
-}
-
-/** Aplica tema, escala, idioma e direção do texto (o árabe é escrito da direita para a esquerda). */
-function applySettings(settings: Settings, locale: LocaleId) {
-  const root = document.documentElement
-  root.dataset.theme = settings.theme
-  root.lang = locale
-  root.dir = textDirection()
-  root.style.setProperty('--divider-size', `${settings.dividerWidth}px`)
-  root.style.setProperty('--pane-button-scale', String(settings.paneButtonScale))
-  document.title = 'GitTools'
-  window.gittools.setZoom(settings.zoom)
-}
-
-const TAB_LABELS: Record<View, MessageKey> = {
-  history: 'tabs.history',
-  changes: 'tabs.changes',
-  files: 'tabs.files',
-  compare: 'tabs.compare'
-}
-const TAB_IDS = Object.keys(TAB_LABELS) as View[]
-const parseTabsPosition = (value: unknown): 'top' | 'bottom' => (value === 'bottom' ? 'bottom' : 'top')
-
-/** Abas da área central: podem ser reordenadas arrastando e ficar em cima ou embaixo (botão direito). */
-function Tabs({ view, onView, changeCount }: { view: View; onView(view: View): void; changeCount: number }) {
-  const { showMenu } = useContext(AppContext)!
-  const [order, move] = useOrder('tabs', TAB_IDS)
-  const [position, setPosition] = useLayout('tabs.position', parseTabsPosition)
-  return (
-    <nav
-      className={`tabs tabs-${position}`}
-      style={{ order: position === 'bottom' ? 2 : 0 }}
-      title={t('layout.reorderHelp')}
-      onContextMenu={(e) =>
-        showMenu(e, [
-          {
-            label: position === 'bottom' ? t('layout.tabsTop') : t('layout.tabsBottom'),
-            onClick: () => setPosition(position === 'bottom' ? undefined : 'bottom')
-          }
-        ])
-      }
-    >
-      {order.map((id) => (
-        <button
-          key={id}
-          className={view === id ? 'active' : ''}
-          data-reorder="tabs"
-          data-reorder-id={id}
-          onPointerDown={(e) => startReorder(e, 'tabs', id, (a, b) => move(a as View, b as View))}
-          onClick={() => onView(id)}
-        >
-          {t(TAB_LABELS[id])}
-          {id === 'changes' && changeCount > 0 && <span className="badge">{changeCount}</span>}
-        </button>
-      ))}
-    </nav>
-  )
+/** Divisória e painel de cada área lateral (para mostrar a área se estiver recolhida). */
+const AREA_PANES: Partial<Record<AreaId, [string, 'first' | 'second']>> = {
+  left: ['wb-left', 'first'],
+  right: ['wb-right', 'second'],
+  bottom: ['wb-bottom', 'second']
 }
 
 export function App() {
   const [repo, setRepo] = useState<RepoInfo | null>(null)
   const [data, setData] = useState<RepoData | null>(null)
-  const [view, setView] = useState<View>('history')
+  const [workbench, setWorkbench] = useWorkbench()
   const [scope, setScope] = useState<HistoryScope>({ kind: 'all' })
   const [selected, setSelected] = useState<string[]>([])
   const [fileFocus, setFileFocus] = useState<FileFocus | null>(null)
@@ -119,7 +68,7 @@ export function App() {
   const [compare, setCompare] = useState<CompareRequest>({})
   const [filePath, setFilePath] = useState<string | null>(null)
   const [rebaseFrom, setRebaseFrom] = useState<string | null>(null)
-  const [diffWindow, setDiffWindow] = useState<DiffWindowRequest | null>(null)
+  const [cloneOpen, setCloneOpen] = useState(false)
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   /** Configurações em edição, aplicadas na hora para pré-visualização. */
   const [preview, setPreview] = useState<Settings | null>(null)
@@ -156,11 +105,28 @@ export function App() {
     setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), kind === 'error' ? 9000 : 5000)
   }, [])
 
+  /** Mostra uma tela: ativa a aba dela e expande a área, se estiver recolhida. */
+  const setView = useCallback(
+    (view: View) => {
+      setWorkbench((prev: WorkbenchState) => {
+        const pane = AREA_PANES[areaOf(prev, view)]
+        if (pane) revealPane(pane[0], pane[1])
+        return activate(prev, view)
+      })
+    },
+    [setWorkbench]
+  )
+
+  const resetLayout = useCallback(() => {
+    clearLayout()
+    toast('success', t('workbench.layoutRestored'))
+  }, [toast])
+
   const refresh = useCallback(async () => {
     try {
       const s = scopeRef.current
       const [status, branches, tags, stashes, operation] = await Promise.all([
-        git.status(),
+        git.status(true),
         git.branches(),
         git.tags(),
         git.stashes(),
@@ -207,24 +173,38 @@ export function App() {
         await refresh()
       }
     },
-    [refresh, toast]
+    [refresh, toast, setView]
+  )
+
+  /** Passa a mostrar outro repositório (aberto, criado ou clonado). */
+  const showRepository = useCallback(
+    (info: RepoInfo) => {
+      setData(null)
+      setSelected([])
+      setScope({ kind: 'all' })
+      setFilePath(null)
+      setCompare({})
+      setView('history')
+      setRepo(info)
+    },
+    [setView]
   )
 
   const openRepository = useCallback(
     async (path?: string, create = false) => {
       try {
         const info = create ? await window.gittools.initRepository() : await window.gittools.openRepository(path)
-        if (!info) return
-        setData(null)
-        setSelected([])
-        setScope({ kind: 'all' })
-        setFilePath(null)
-        setCompare({})
-        setView('history')
-        setRepo(info)
+        if (info) showRepository(info)
       } catch (error) {
         toast('error', errorMessage(error))
       }
+    },
+    [toast, showRepository]
+  )
+
+  const openDiffWindow = useCallback(
+    (request: Parameters<AppContextValue['openDiffWindow']>[0]) => {
+      window.gittools.openDiffWindow(request).catch((error) => toast('error', errorMessage(error)))
     },
     [toast]
   )
@@ -252,6 +232,8 @@ export function App() {
         setSelected([sha])
       },
       setView,
+      openDiffWindow,
+      resetLayout,
       openConflict: (path) => setConflict(path),
       openCompare: (request) => {
         setCompare(request)
@@ -276,7 +258,7 @@ export function App() {
     }
     // locale: força novos textos nos componentes quando o idioma muda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repo, data, busy, refresh, run, toast, settings, locale])
+  }, [repo, data, busy, refresh, run, toast, settings, locale, setView, openDiffWindow, resetLayout])
 
   const settingsDialogs = (
     <>
@@ -294,13 +276,22 @@ export function App() {
         />
       )}
       {helpOpen && <ShortcutsHelp settings={settings} onClose={() => setHelpOpen(false)} />}
+      {cloneOpen && (
+        <CloneDialog
+          onClose={() => setCloneOpen(false)}
+          onCloned={(info) => {
+            setCloneOpen(false)
+            showRepository(info)
+          }}
+        />
+      )}
     </>
   )
 
   if (!repo || !context) {
     return (
       <>
-        <Welcome loading={!!repo} onOpen={openRepository} onSettings={() => setSettingsOpen('general')} />
+        <Welcome loading={!!repo} onOpen={openRepository} onClone={() => setCloneOpen(true)} onSettings={() => setSettingsOpen('general')} />
         {settingsDialogs}
         <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />
       </>
@@ -308,49 +299,62 @@ export function App() {
   }
 
   const changeCount = data!.status.staged.length + data!.status.unstaged.length + data!.status.conflicted.length
-  const modalOpen = !!(studio || conflict || rebaseFrom || diffWindow || dialog || settingsOpen || helpOpen)
+  const modalOpen = !!(studio || conflict || rebaseFrom || dialog || settingsOpen || helpOpen || cloneOpen)
+
+  /** Abre o diff de um arquivo no painel de detalhes, mostrando os painéis se estiverem recolhidos. */
+  const openFileInDetails = (sha: string, path: string) => {
+    setSelected([sha])
+    setFileFocus((prev) => ({ sha, path, n: (prev?.n ?? 0) + 1 }))
+    revealPane('history', 'second')
+    revealPane('commit-details', 'second')
+    setView('history')
+  }
+
+  const views: Record<View, ViewDef> = {
+    branches: {
+      label: t('workbench.views.branches'),
+      render: () => (
+        <Sidebar
+          scope={scope}
+          onScope={(s) => {
+            setScope(s)
+            setView('history')
+          }}
+        />
+      )
+    },
+    history: {
+      label: t('tabs.history'),
+      render: () => (
+        <Split id="history" initial={0.55} min={[280, 280]} labels={[t('workbench.panes.commits'), t('workbench.panes.details')]}>
+          <CommitList
+            scope={scope}
+            onScope={setScope}
+            selected={selected}
+            onSelect={setSelected}
+            onOpenFile={openFileInDetails}
+            onOpenFileWindow={(sha, path) => openDiffWindow({ source: { kind: 'commit', sha }, path, title: `${path} · ${shortSha(sha)}` })}
+          />
+          <CommitDetailsPanel selected={selected} focus={fileFocus} />
+        </Split>
+      )
+    },
+    changes: { label: t('tabs.changes'), badge: changeCount, render: () => <ChangesView /> },
+    files: { label: t('tabs.files'), render: () => <FilesView path={filePath} onPath={setFilePath} /> },
+    compare: { label: t('tabs.compare'), render: () => <CompareView request={compare} onRequest={setCompare} /> },
+    gitlog: { label: t('gitlog.title'), render: () => <GitLogView /> }
+  }
 
   return (
     <AppContext.Provider value={context}>
       <KeyboardShortcuts disabled={modalOpen} onOpenRepository={() => openRepository()} />
       <div className="app">
-        <Toolbar onOpenRepository={openRepository} />
+        <Toolbar onOpenRepository={openRepository} onClone={() => setCloneOpen(true)} />
         <OperationBanner onShowChanges={() => setView('changes')} />
-        <Split id="workspace" className="workspace" fixed initial={260} min={[160, 360]} collapsible={[true, false]}>
-          <Sidebar
-            scope={scope}
-            onScope={(s) => {
-              setScope(s)
-              setView('history')
-            }}
-          />
-          <main className="main">
-            <Tabs view={view} onView={setView} changeCount={changeCount} />
-            {view === 'history' && (
-              <Split id="history" initial={0.55} min={[280, 280]}>
-                <CommitList
-                  scope={scope}
-                  onScope={setScope}
-                  selected={selected}
-                  onSelect={setSelected}
-                  onOpenFile={(sha, path) => {
-                    setSelected([sha])
-                    setFileFocus((prev) => ({ sha, path, n: (prev?.n ?? 0) + 1 }))
-                  }}
-                  onOpenFileWindow={(sha, path) => setDiffWindow({ sha, path })}
-                />
-                <CommitDetailsPanel selected={selected} focus={fileFocus} />
-              </Split>
-            )}
-            {view === 'changes' && <ChangesView />}
-            {view === 'files' && <FilesView path={filePath} onPath={setFilePath} />}
-            {view === 'compare' && <CompareView request={compare} onRequest={setCompare} />}
-          </main>
-        </Split>
+        <Workbench state={workbench} onChange={setWorkbench} views={views} />
       </div>
       {studio && <CherryPickStudio request={studio} onClose={() => setStudio(null)} />}
       {conflict && <ConflictEditor path={conflict} onClose={() => setConflict(null)} />}
-      {diffWindow && <DiffWindow request={diffWindow} onClose={() => setDiffWindow(null)} />}
       {rebaseFrom && <RebaseEditor fromSha={rebaseFrom} onClose={() => setRebaseFrom(null)} />}
       {settingsDialogs}
       {dialog && <DialogHost dialog={dialog} onDone={() => setDialog(null)} />}

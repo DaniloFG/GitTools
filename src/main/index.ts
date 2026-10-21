@@ -2,10 +2,12 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'e
 import { existsSync, statSync, watch, type FSWatcher } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join, resolve, sep } from 'node:path'
-import { REPO_METHODS, type AppInfo, type RecentRepo, type RepoMethod } from '../shared/api'
+import { REPO_METHODS, type AppInfo, type DiffWindowRequest, type RecentRepo, type RepoMethod } from '../shared/api'
+import type { GitCommandEntry, GitConfigScope, GitIdentity } from '../shared/types'
 import { matchLocale, setLocale, t } from '../shared/i18n'
 import { normalizeSettings, type Settings } from '../shared/settings'
-import { runGit } from '../core/exec'
+import { cloneRepository, getIdentities, setIdentity } from '../core/config'
+import { onGitCommand, runGit } from '../core/exec'
 import { GitRepository } from '../core/repository'
 import { detectEditors, launchEditor, resolveEditor } from './editors'
 
@@ -15,6 +17,24 @@ app.setName('GitTools')
 let window: BrowserWindow | null = null
 let repo: GitRepository | null = null
 let watcher: FSWatcher | null = null
+
+/** Envia uma mensagem para todas as janelas (principal e de diff). */
+function broadcast(channel: string, payload?: unknown) {
+  for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send(channel, payload)
+}
+
+// Log de comandos git em tempo real: guarda os últimos e repassa cada início/fim para a interface.
+const GIT_LOG_LIMIT = 500
+const gitLog: GitCommandEntry[] = []
+onGitCommand((entry) => {
+  const index = gitLog.findIndex((e) => e.id === entry.id)
+  if (index >= 0) gitLog[index] = entry
+  else {
+    gitLog.push(entry)
+    if (gitLog.length > GIT_LOG_LIMIT) gitLog.splice(0, gitLog.length - GIT_LOG_LIMIT)
+  }
+  broadcast('git:command', entry)
+})
 
 const recentFile = () => join(app.getPath('userData'), 'recent-repositories.json')
 const settingsFile = () => join(app.getPath('userData'), 'settings.json')
@@ -164,6 +184,48 @@ function registerIpc() {
     await launchEditor(command, full, repo.root)
   })
 
+  ipcMain.handle('app:gitLog', () => gitLog)
+
+  ipcMain.handle('app:openDiffWindow', (_e, request: DiffWindowRequest) => {
+    if (!request || typeof request.path !== 'string' || !request.source) throw new Error(t('main.unknownOperation', { method: 'openDiffWindow' }))
+    openDiffWindow(request)
+  })
+
+  ipcMain.handle('app:chooseFolder', async (_e, title?: string) => {
+    const result = await dialog.showOpenDialog(window!, { title: title ?? t('clone.folder'), properties: ['openDirectory', 'createDirectory'] })
+    return result.canceled || !result.filePaths[0] ? null : result.filePaths[0]
+  })
+
+  ipcMain.handle('app:defaultCloneFolder', () => {
+    try {
+      return app.getPath('documents')
+    } catch {
+      return app.getPath('home')
+    }
+  })
+
+  ipcMain.handle('app:cloneRepository', async (_e, url: string, parent: string, name: string) => {
+    const path = await cloneRepository(String(url ?? ''), String(parent ?? ''), String(name ?? ''))
+    return setRepository(await GitRepository.open(path))
+  })
+
+  ipcMain.handle('app:gitIdentity', () => getIdentities(app.getPath('home'), repo?.root ?? null))
+
+  ipcMain.handle('app:setGitIdentity', (_e, scope: GitConfigScope, identity: GitIdentity) =>
+    setIdentity(app.getPath('home'), repo?.root ?? null, scope === 'local' ? 'local' : 'global', {
+      name: String(identity?.name ?? ''),
+      email: String(identity?.email ?? '')
+    })
+  )
+
+  // Testa um editor antes de salvar a configuração: abre a pasta do repositório (ou a pasta pessoal).
+  ipcMain.handle('app:testEditor', async (_e, setting: string) => {
+    const command = resolveEditor(String(setting ?? ''))
+    if (!command) throw new Error(t('main.editorNotFound', { editor: setting }))
+    const folder = repo?.root ?? app.getPath('home')
+    await launchEditor(command, folder, folder)
+  })
+
   const allowed = new Set<string>(REPO_METHODS)
   ipcMain.handle('repo:invoke', async (_e, method: RepoMethod, args: unknown[]) => {
     if (!allowed.has(method)) throw new Error(t('main.unknownOperation', { method }))
@@ -171,6 +233,38 @@ function registerIpc() {
     const fn = repo[method] as (...a: unknown[]) => Promise<unknown>
     return fn.apply(repo, args)
   })
+}
+
+/** Carrega a interface numa janela; `query` escolhe o que ela mostra (ex.: só um diff). */
+function loadRenderer(target: BrowserWindow, query?: Record<string, string>) {
+  if (process.env.ELECTRON_RENDERER_URL) {
+    const url = new URL(process.env.ELECTRON_RENDERER_URL)
+    for (const [key, value] of Object.entries(query ?? {})) url.searchParams.set(key, value)
+    void target.loadURL(url.toString())
+  } else void target.loadFile(join(__dirname, '../renderer/index.html'), { query })
+}
+
+const webPreferences = () => ({
+  preload: join(__dirname, '../preload/index.js'),
+  contextIsolation: true,
+  nodeIntegration: false,
+  sandbox: false
+})
+
+/** Janela própria com o diff de um arquivo (pode ir para outro monitor; várias ao mesmo tempo). */
+function openDiffWindow(request: DiffWindowRequest) {
+  const diff = new BrowserWindow({
+    width: 1100,
+    height: 760,
+    minWidth: 480,
+    minHeight: 320,
+    title: `${request.title ?? request.path} — GitTools`,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1b1d23' : '#f6f7f9',
+    autoHideMenuBar: true,
+    webPreferences: webPreferences()
+  })
+  diff.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  loadRenderer(diff, { window: 'diff', request: JSON.stringify(request) })
 }
 
 function createWindow() {
@@ -183,12 +277,7 @@ function createWindow() {
     title: 'GitTools',
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1b1d23' : '#f6f7f9',
     autoHideMenuBar: true,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
+    webPreferences: webPreferences()
   })
   window.on('focus', () => window?.webContents.send('repo:changed'))
   window.on('closed', () => (window = null))
@@ -198,8 +287,7 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  if (process.env.ELECTRON_RENDERER_URL) void window.loadURL(process.env.ELECTRON_RENDERER_URL)
-  else void window.loadFile(join(__dirname, '../renderer/index.html'))
+  loadRenderer(window)
 }
 
 app.whenReady().then(async () => {

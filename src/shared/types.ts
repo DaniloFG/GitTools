@@ -45,13 +45,28 @@ export interface FileDiff {
 export type LineKey = string
 
 /** De onde vem um diff exibido na interface. */
-export type DiffSource =
-  | { kind: 'unstaged'; path?: string }
-  | { kind: 'staged'; path?: string }
-  | { kind: 'commit'; sha: string; path?: string }
-  | { kind: 'range'; from: string; to: string; path?: string }
+/** Opções comuns a qualquer diff. */
+interface DiffSourceOptions {
+  path?: string
+  /** Mostra o arquivo inteiro (todo o contexto), não só as linhas em volta das alterações. */
+  fullFile?: boolean
+}
 
-export interface FileStatus {
+export type DiffSource =
+  | ({ kind: 'unstaged' } & DiffSourceOptions)
+  | ({ kind: 'staged' } & DiffSourceOptions)
+  | ({ kind: 'commit'; sha: string } & DiffSourceOptions)
+  | ({ kind: 'range'; from: string; to: string } & DiffSourceOptions)
+
+/** Quantas linhas um arquivo ganhou e perdeu (git diff --numstat). Ausente quando não foi calculado. */
+export interface LineStats {
+  additions?: number
+  deletions?: number
+  /** Arquivo binário: o git não conta linhas. */
+  binary?: boolean
+}
+
+export interface FileStatus extends LineStats {
   path: string
   origPath?: string
   /** Código do índice (X) no formato porcelain: '.', 'M', 'A', 'D', 'R', 'C', 'U', '?'. */
@@ -110,7 +125,7 @@ export interface CommitInfo {
   refs: string[]
 }
 
-export interface ChangedFile {
+export interface ChangedFile extends LineStats {
   status: string
   path: string
   oldPath?: string
@@ -214,7 +229,7 @@ export interface BlameResult {
   commits: Record<string, BlameCommit>
 }
 
-export interface FileHistoryEntry extends CommitInfo {
+export interface FileHistoryEntry extends CommitInfo, LineStats {
   /** Caminho do arquivo neste commit (muda quando o arquivo foi renomeado). */
   path: string
 }
@@ -238,3 +253,39 @@ export interface RebasePlan {
   /** O intervalo contém commits de merge (eles serão achatados pelo rebase). */
   hasMerges: boolean
 }
+
+// ------------------------------------------------------- log de comandos
+
+/** Um comando git executado pelo GitTools (para o log em tempo real). */
+export interface GitCommandEntry {
+  id: number
+  /** Argumentos passados ao git (sem as opções internas "-c ..."). */
+  args: string[]
+  cwd: string
+  startedAt: number
+  /** Ausente enquanto o comando está rodando. */
+  durationMs?: number
+  exitCode?: number
+  /** O comando falhou (códigos esperados, como o 1 de "config --get" sem valor, não contam). */
+  failed?: boolean
+  /** Primeira linha do erro, quando o comando falhou. */
+  error?: string
+}
+
+// --------------------------------------------------------- identidade git
+
+export interface GitIdentity {
+  name: string
+  email: string
+}
+
+/** user.name / user.email globais (~/.gitconfig) e do repositório aberto. */
+export interface GitIdentities {
+  global: GitIdentity
+  /** null quando não há repositório aberto. */
+  local: GitIdentity | null
+  /** O que o git realmente usa no repositório (local se houver, senão global). */
+  effective: GitIdentity | null
+}
+
+export type GitConfigScope = 'global' | 'local'

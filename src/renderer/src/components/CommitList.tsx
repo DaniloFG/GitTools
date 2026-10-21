@@ -8,10 +8,13 @@ import { useApp } from '../context'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, relativeDate, shortSha, statusLabel } from '../format'
 import { startReorder, useOrder } from '../reorder'
+import { useLayout } from '../layout'
+import { startResize } from '../resize'
 import { git } from '../git'
 import { formatShortDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
 import { graphFor, laneColor, matchesCommit, refName, type GraphRow } from '../graph'
 import { useDrop } from '../useDrop'
+import { LineStats } from './LineStats'
 
 const ROW = 30
 const LANE = 14
@@ -27,6 +30,21 @@ const COLUMN_LABELS: Record<Column, MessageKey> = {
   author: 'history.columns.author',
   date: 'history.columns.date',
   sha: 'history.columns.sha'
+}
+
+/** Colunas de largura fixa (a do assunto ocupa o resto); o usuário ajusta arrastando a borda do título. */
+type SizedColumn = 'author' | 'date' | 'sha'
+type ColumnWidths = Record<SizedColumn, number>
+const DEFAULT_WIDTHS: ColumnWidths = { author: 140, date: 136, sha: 76 }
+const MIN_WIDTH = 44
+const MAX_WIDTH = 480
+const isSized = (c: Column): c is SizedColumn => c === 'author' || c === 'date' || c === 'sha'
+
+function parseWidths(value: unknown): ColumnWidths {
+  const raw = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
+  const pick = (key: SizedColumn) =>
+    typeof raw[key] === 'number' && Number.isFinite(raw[key]) ? Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, raw[key] as number)) : DEFAULT_WIDTHS[key]
+  return { author: pick('author'), date: pick('date'), sha: pick('sha') }
 }
 
 /** Id do campo de pesquisa (o atalho de teclado leva o foco para ele). */
@@ -53,6 +71,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [files, setFiles] = useState<Map<string, FilesState>>(new Map())
   const [columns, moveColumn] = useOrder('history.columns', COLUMNS)
+  const [widths, setWidths] = useLayout<ColumnWidths>('history.columnWidths', parseWidths)
   /** As trilhas do grafo só continuam ao lado dos arquivos expandidos quando o grafo é a primeira coluna. */
   const graphFirst = columns[0] === 'graph'
   const locale = getCurrentLocale()
@@ -60,8 +79,32 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   const rows = graphFor(commits, data.status.headSha)
   const lanes = Math.max(1, ...rows.map((r) => Math.max(r.lanesIn.length, r.lanesOut.length, r.column + 1)))
   const graphWidth = Math.min(lanes, 12) * LANE + 8
-  const selectedSet = new Set(selected)
   const searching = query.trim() !== ''
+  /**
+   * Mesmas colunas no cabeçalho e em cada linha (grid): nenhuma invade a outra; o assunto ocupa o que
+   * sobra e os textos longos terminam em "…". Larguras zeradas (lista estreita) escondem a coluna.
+   */
+  const template = [
+    'var(--toggle-width)',
+    ...columns.map((c) => (c === 'graph' ? `${searching ? x(0) + 8 : graphWidth}px` : c === 'subject' ? 'minmax(80px, 1fr)' : `var(--w-${c})`))
+  ].join(' ')
+  const listStyle = {
+    '--user-author': `${widths.author}px`,
+    '--user-date': `${widths.date}px`,
+    '--user-sha': `${widths.sha}px`
+  } as React.CSSProperties
+
+  /** Arrastar a borda de uma coluna: a borda virada para o assunto é a que se move. */
+  const resizeColumn = (e: React.PointerEvent, column: SizedColumn) => {
+    const rtl = getComputedStyle(e.currentTarget).direction === 'rtl'
+    const afterSubject = columns.indexOf(column) > columns.indexOf('subject')
+    const start = widths[column]
+    startResize(e, 'col-resize', (_event, dx) => {
+      const delta = (rtl ? -dx : dx) * (afterSubject ? -1 : 1)
+      setWidths((prev) => ({ ...prev, [column]: Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, start + delta))) }))
+    })
+  }
+  const selectedSet = new Set(selected)
   /** Índices (em `commits`) das linhas visíveis — todas, ou só as que batem com a pesquisa. */
   const visible = useMemo(
     () => (searching ? commits.flatMap((c, i) => (matchesCommit(c, query, locale) ? [i] : [])) : commits.map((_, i) => i)),
@@ -179,7 +222,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   }
 
   return (
-    <div className="commit-list">
+    <div className="commit-list" style={listStyle}>
       <div className="list-header">
         <select
           value={scope.kind === 'ref' ? `ref:${scope.ref}` : scope.kind}
@@ -220,18 +263,27 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
         </span>
         <span className="muted hint">{t('history.hint')}</span>
       </div>
-      <div className="commit-columns" title={t('history.columns.help')}>
+      <div className="commit-columns" title={t('history.columns.help')} style={{ gridTemplateColumns: template }}>
         <span className="row-toggle" />
         {columns.map((column) => (
           <span
             key={column}
-            className={`commit-column-head ${COLUMN_CLASS[column]}`}
-            style={column === 'graph' ? { width: searching ? x(0) + 8 : graphWidth, flex: 'none' } : undefined}
+            className={`commit-column-head ${COLUMN_CLASS[column]} ${isSized(column) ? (columns.indexOf(column) > columns.indexOf('subject') ? 'resize-start' : 'resize-end') : ''}`}
             data-reorder="history-columns"
             data-reorder-id={column}
             onPointerDown={(e) => startReorder(e, 'history-columns', column, (a, b) => moveColumn(a as Column, b as Column))}
           >
-            {t(COLUMN_LABELS[column])}
+            <span className="commit-column-label">{t(COLUMN_LABELS[column])}</span>
+            {isSized(column) && (
+              <span
+                className="column-resize"
+                role="separator"
+                aria-orientation="vertical"
+                title={t('workbench.resizeColumn')}
+                onPointerDown={(e) => resizeColumn(e, column)}
+                onDoubleClick={() => setWidths((prev) => ({ ...prev, [column]: DEFAULT_WIDTHS[column] }))}
+              />
+            )}
           </span>
         ))}
       </div>
@@ -246,6 +298,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
             <Fragment key={commit.sha}>
               <div
                 className={`commit-row ${selectedSet.has(commit.sha) ? 'selected' : ''} ${open ? 'expanded' : ''}`}
+                style={{ gridTemplateColumns: template }}
                 onClick={(e) => click(e, pos)}
                 onDoubleClick={() => toggle(commit.sha)}
                 onContextMenu={(e) => menu(e, commit)}
@@ -468,6 +521,7 @@ function CommitFiles({
                 </span>
                 <span className="commit-file-name">{file.path.slice(slash + 1)}</span>
                 {slash > 0 && <span className="commit-file-dir">{file.path.slice(0, slash)}</span>}
+                <LineStats stats={file} />
               </li>
             )
           })

@@ -4,6 +4,7 @@ import { changeKeys, hunkKeys, lineKey, splitRows } from '../../../shared/diffKe
 import { DEFAULT_SETTINGS, type DiffLayout } from '../../../shared/settings'
 import { AppContext } from '../context'
 import { t, type MessageKey } from '../i18n'
+import { useLayout } from '../layout'
 
 /**
  * Escolha entre "cima e baixo" e "lado a lado": todo diff abre no modo padrão das configurações;
@@ -15,6 +16,15 @@ export function useDiffLayout(): [DiffLayout, (layout: DiffLayout) => void] {
   // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
   const layout = override && override.preferred === preferred ? override.layout : preferred
   return [layout, (next) => setOverride({ preferred, layout: next })]
+}
+
+/**
+ * Mostrar o arquivo inteiro (todo o contexto) em vez de só os trechos alterados. A escolha vale para
+ * todos os diffs e fica guardada; quem busca o diff a inclui no pedido (`fullFile`).
+ */
+export function useFullFile(): [boolean, (full: boolean) => void] {
+  const [full, setFull] = useLayout<boolean>('diff.fullFile', (v) => v === true)
+  return [full, (next) => setFull(next || undefined)]
 }
 
 interface Props {
@@ -40,6 +50,7 @@ const TYPE_LABEL: Record<FileDiff['changeType'], MessageKey> = {
 export function DiffView({ file, selection, onSelectionChange }: Props) {
   const selectable = !!selection && !!onSelectionChange && !file.binary
   const [layout, setLayout] = useDiffLayout()
+  const [fullFile, setFullFile] = useFullFile()
   const dragMode = useRef<'add' | 'remove' | null>(null)
   const lastClicked = useRef<LineKey | null>(null)
   const all = changeKeys(file)
@@ -105,6 +116,16 @@ export function DiffView({ file, selection, onSelectionChange }: Props) {
           <span className="add">+{file.additions}</span> <span className="del">−{file.deletions}</span>
         </span>
         {selectable && <span className="muted small">{selection!.size ? t('diff.selectedOf', { selected: all.filter((k) => selection!.has(k)).length, count: all.length }) : t('diff.selectHint')}</span>}
+        {!file.binary && file.hunks.length > 0 && (
+          <button
+            className={`diff-full ${fullFile ? 'active' : ''}`}
+            aria-pressed={fullFile}
+            onClick={() => setFullFile(!fullFile)}
+            title={fullFile ? t('diffExtra.changesOnlyHelp') : t('diffExtra.fullFileHelp')}
+          >
+            ⇕ {t('diffExtra.fullFile')}
+          </button>
+        )}
         {!file.binary && file.hunks.length > 0 && (
           <div className="segmented diff-layout" role="group" aria-label={t('diff.layout')}>
             <button className={layout === 'inline' ? 'active' : ''} onClick={() => setLayout('inline')} title={t('diff.inlineHelp')}>

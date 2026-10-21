@@ -1,6 +1,10 @@
 import type { Settings } from './settings'
 import type {
   BlameResult,
+  GitCommandEntry,
+  GitConfigScope,
+  GitIdentities,
+  GitIdentity,
   BranchCommit,
   BranchInfo,
   ChangedFile,
@@ -37,7 +41,8 @@ export interface LogOptions {
 /** Operações disponíveis sobre o repositório aberto (implementadas por GitRepository). */
 export interface RepoApi {
   info(): Promise<RepoInfo>
-  status(): Promise<RepoStatus>
+  /** Com `withStats`, inclui as linhas adicionadas/removidas de cada arquivo. */
+  status(withStats?: boolean): Promise<RepoStatus>
   branches(): Promise<BranchInfo[]>
   tags(): Promise<TagInfo[]>
   stashes(): Promise<StashInfo[]>
@@ -174,6 +179,14 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'interactiveRebase'
 ]
 
+/** Diff de um arquivo aberto numa janela própria. */
+export interface DiffWindowRequest {
+  source: DiffSource
+  path: string
+  /** Título da janela (padrão: o caminho do arquivo). */
+  title?: string
+}
+
 export interface AppInfo {
   version: string
   electron: string
@@ -215,8 +228,23 @@ export interface GitToolsBridge {
   chooseEditor(): Promise<string | null>
   /** Abre um arquivo (ou a pasta do repositório, com ".") no editor escolhido nas configurações. */
   openInEditor(relativePath: string): Promise<void>
+  /** Abre a pasta do repositório com o editor informado (sem precisar salvar), para testá-lo. */
+  testEditor(setting: string): Promise<void>
   getSettings(): Promise<Settings>
   saveSettings(settings: Settings): Promise<void>
+  /** Comandos git executados até agora (os mais recentes por último). */
+  gitLog(): Promise<GitCommandEntry[]>
+  /** Avisa quando um comando git começa ou termina. */
+  onGitCommand(listener: (entry: GitCommandEntry) => void): () => void
+  /** Abre o diff de um arquivo numa janela própria. */
+  openDiffWindow(request: DiffWindowRequest): Promise<void>
+  /** Pede uma pasta ao usuário; null se cancelar. */
+  chooseFolder(title?: string): Promise<string | null>
+  defaultCloneFolder(): Promise<string>
+  /** Clona e abre o repositório. */
+  cloneRepository(url: string, parent: string, name: string): Promise<RepoInfo>
+  gitIdentity(): Promise<GitIdentities>
+  setGitIdentity(scope: GitConfigScope, identity: GitIdentity): Promise<void>
   appInfo(): Promise<AppInfo>
   /** Aplica a escala da interface imediatamente. */
   setZoom(factor: number): void

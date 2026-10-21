@@ -60,7 +60,7 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
         </>
       }
     >
-      <Split id="settings" className="settings-layout" fixed initial={210} min={[140, 320]} collapsible={[false, false]}>
+      <Split id="settings" className="settings-layout" fixed initial={210} min={[140, 320]} collapsible={[false, false]} arrangeable={false}>
         <nav className="settings-nav" aria-label={t('settings.title')}>
           {SETTINGS_SECTIONS.map((s) => (
             <button key={s.id} className={s.id === sectionId ? 'active' : ''} onClick={() => setSectionId(s.id)}>

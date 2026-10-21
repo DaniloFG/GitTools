@@ -6,10 +6,11 @@ import { t } from '../i18n'
 interface Props {
   loading: boolean
   onOpen(path?: string, create?: boolean): void
+  onClone(): void
   onSettings(): void
 }
 
-export function Welcome({ loading, onOpen, onSettings }: Props) {
+export function Welcome({ loading, onOpen, onClone, onSettings }: Props) {
   const [recent, setRecent] = useState<RecentRepo[]>([])
   useEffect(() => {
     window.gittools.recentRepositories().then(setRecent, () => setRecent([]))
@@ -34,6 +35,9 @@ export function Welcome({ loading, onOpen, onSettings }: Props) {
               </button>
               <button className="large" onClick={() => onOpen(undefined, true)}>
                 {t('toolbar.createRepository')}
+              </button>
+              <button className="large" onClick={onClone}>
+                ⇣ {t('clone.menu')}
               </button>
               <button className="large" onClick={onSettings} title={t('toolbar.settings')}>
                 ⚙ {t('toolbar.settings')}

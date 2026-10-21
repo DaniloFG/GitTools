@@ -20,6 +20,7 @@ import type {
   FileStatus,
   LineAction,
   LineKey,
+  LineStats,
   OperationResult,
   OperationState,
   PartialApplyOptions,
@@ -44,6 +45,9 @@ const DIFF_ARGS = [
   '--dst-prefix=b/',
   '-U3'
 ]
+/** Contexto do diff "arquivo inteiro": maior que qualquer arquivo de texto razoável. */
+const FULL_CONTEXT = '-U1000000'
+const diffArgs = (fullFile = false) => (fullFile ? DIFF_ARGS.map((a) => (a === '-U3' ? FULL_CONTEXT : a)) : DIFF_ARGS)
 const FS = '\x1f'
 const RS = '\x1e'
 const COMMIT_FORMAT = ['%H', '%P', '%an', '%ae', '%at', '%s', '%D'].join('%x1f') + '%x1e'
@@ -81,6 +85,37 @@ function parseNameStatus(output: string): ChangedFile[] {
     }
   }
   return files
+}
+
+/**
+ * Lê a saída de `git diff --numstat -z`: linhas adicionadas/removidas por arquivo (pelo caminho novo).
+ * Renomeações vêm como "a\td\t" seguido dos caminhos antigo e novo; binários como "-\t-\tcaminho".
+ */
+export function parseNumstat(output: string): Map<string, LineStats> {
+  const stats = new Map<string, LineStats>()
+  const parts = output.split('\0')
+  for (let i = 0; i < parts.length; i++) {
+    const m = /^(-|\d+)\t(-|\d+)\t([\s\S]*)$/.exec(parts[i])
+    if (!m) continue
+    let path = m[3]
+    if (path === '') {
+      path = parts[i + 2] ?? ''
+      i += 2
+    }
+    stats.set(path, m[1] === '-' ? { binary: true } : { additions: Number(m[1]), deletions: Number(m[2]) })
+  }
+  return stats
+}
+
+/** Junta as contagens de linhas a cada arquivo da lista (pelo caminho atual). */
+function withStats<T extends { path: string }>(files: T[], stats: Map<string, LineStats>): T[] {
+  return files.map((f) => ({ ...f, ...stats.get(f.path) }))
+}
+
+/** Soma contagens (ex.: o mesmo arquivo em vários commits). */
+function addStats(a: LineStats, b: LineStats): LineStats {
+  if (a.binary || b.binary) return { binary: true }
+  return { additions: (a.additions ?? 0) + (b.additions ?? 0), deletions: (a.deletions ?? 0) + (b.deletions ?? 0) }
 }
 
 export function parseStatus(output: string): RepoStatus {
@@ -138,8 +173,9 @@ export function parseStatus(output: string): RepoStatus {
     if (entry.conflicted) status.conflicted.push(entry)
     else if (entry.untracked) status.unstaged.push(entry)
     else {
-      if (entry.index !== '.') status.staged.push(entry)
-      if (entry.worktree !== '.') status.unstaged.push(entry)
+      // Cópias: o mesmo arquivo pode ter contagens diferentes no stage e fora dele.
+      if (entry.index !== '.') status.staged.push({ ...entry })
+      if (entry.worktree !== '.') status.unstaged.push({ ...entry })
     }
   }
   return status
@@ -206,9 +242,36 @@ export class GitRepository implements RepoApi {
     return { root: this.root, name: basename(this.root) }
   }
 
-  async status(): Promise<RepoStatus> {
+  /** Situação da área de trabalho. Com `withStats`, inclui quantas linhas cada arquivo ganhou e perdeu. */
+  async status(includeStats = false): Promise<RepoStatus> {
     const { stdout } = await this.git(['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])
-    return parseStatus(stdout)
+    const status = parseStatus(stdout)
+    if (!includeStats) return status
+    const [unstaged, staged] = await Promise.all([
+      this.git(['diff', '--numstat', '-z', '--no-color', '--no-ext-diff', '--']).then((r) => parseNumstat(r.stdout)),
+      this.git(['diff', '--cached', '--numstat', '-z', '-M', '--no-color', '--no-ext-diff', '--']).then((r) => parseNumstat(r.stdout))
+    ])
+    status.staged = withStats(status.staged, staged)
+    status.unstaged = await Promise.all(
+      status.unstaged.map(async (f) => (f.untracked ? { ...f, ...(await this.untrackedStats(f.path)) } : { ...f, ...unstaged.get(f.path) }))
+    )
+    return status
+  }
+
+  /** Arquivo novo: todas as linhas são adições (arquivos muito grandes ou binários não são contados). */
+  private async untrackedStats(path: string): Promise<LineStats> {
+    try {
+      const full = join(this.root, path)
+      const stat = await lstat(full)
+      if (!stat.isFile() || stat.size > 5 * 1024 * 1024) return {}
+      const buffer = await readFile(full)
+      if (buffer.subarray(0, 8000).includes(0)) return { binary: true }
+      const text = buffer.toString('utf8')
+      const lines = text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0)
+      return { additions: lines, deletions: 0 }
+    } catch {
+      return {}
+    }
   }
 
   async branches(): Promise<BranchInfo[]> {
@@ -310,15 +373,27 @@ export class GitRepository implements RepoApi {
 
   private async changedFiles(sha: string, parents: string[]): Promise<ChangedFile[]> {
     const base = parents[0] ?? (await this.emptyTree())
-    const { stdout } = await this.git(['diff', '--name-status', '-z', '-M', '--no-color', base, sha, '--'])
-    return parseNameStatus(stdout)
+    return this.filesBetween(base, sha)
+  }
+
+  /** Arquivos diferentes entre duas versões, com as linhas adicionadas/removidas de cada um. */
+  private async filesBetween(from: string, to: string): Promise<ChangedFile[]> {
+    const [names, numstat] = await Promise.all([
+      this.git(['diff', '--name-status', '-z', '-M', '--no-color', from, to, '--']),
+      this.git(['diff', '--numstat', '-z', '-M', '--no-color', '--no-ext-diff', from, to, '--'])
+    ])
+    return withStats(parseNameStatus(names.stdout), parseNumstat(numstat.stdout))
   }
 
   async filesChangedBy(shas: string[]): Promise<ChangedFile[]> {
     const seen = new Map<string, ChangedFile>()
     for (const sha of shas) {
       const details = await this.commitDetails(sha)
-      for (const file of details.files) if (!seen.has(file.path)) seen.set(file.path, file)
+      for (const file of details.files) {
+        const previous = seen.get(file.path)
+        // O mesmo arquivo em vários commits: soma as linhas de todos.
+        seen.set(file.path, previous ? { ...previous, ...addStats(previous, file) } : file)
+      }
     }
     return [...seen.values()].sort((a, b) => a.path.localeCompare(b.path))
   }
@@ -339,22 +414,23 @@ export class GitRepository implements RepoApi {
 
   async diff(source: DiffSource): Promise<FileDiff[]> {
     const pathArgs = source.path ? ['--', source.path] : ['--']
+    const args = diffArgs(source.fullFile)
     switch (source.kind) {
       case 'unstaged': {
         if (source.path && (await this.isUntracked(source.path))) return [await this.untrackedDiff(source.path)]
-        return parseDiff((await this.git([...DIFF_ARGS, ...pathArgs])).stdout)
+        return parseDiff((await this.git([...args, ...pathArgs])).stdout)
       }
       case 'staged':
-        return parseDiff((await this.git([...DIFF_ARGS, '--cached', '-M', ...pathArgs])).stdout)
+        return parseDiff((await this.git([...args, '--cached', '-M', ...pathArgs])).stdout)
       case 'commit': {
         assertRef(source.sha, 'commit')
         const parent = await this.parentOf(source.sha)
-        return parseDiff((await this.git([...DIFF_ARGS, '-M', parent, source.sha, ...pathArgs])).stdout)
+        return parseDiff((await this.git([...args, '-M', parent, source.sha, ...pathArgs])).stdout)
       }
       case 'range':
         assertRef(source.from)
         assertRef(source.to)
-        return parseDiff((await this.git([...DIFF_ARGS, '-M', source.from, source.to, ...pathArgs])).stdout)
+        return parseDiff((await this.git([...args, '-M', source.from, source.to, ...pathArgs])).stdout)
     }
   }
 
@@ -898,9 +974,7 @@ export class GitRepository implements RepoApi {
     const [onlyFrom, onlyTo, files] = await Promise.all([
       this.log({ ref: `${to}..${from}`, limit: 300 }),
       this.log({ ref: `${from}..${to}`, limit: 300 }),
-      this.git(['diff', '--name-status', '-z', '-M', '--no-color', sinceMergeBase && mergeBase ? mergeBase : from, to, '--']).then((r) =>
-        parseNameStatus(r.stdout)
-      )
+      this.filesBetween(sinceMergeBase && mergeBase ? mergeBase : from, to)
     ])
     return { from, to, mergeBase, onlyFrom, onlyTo, files }
   }
@@ -928,6 +1002,14 @@ export class GitRepository implements RepoApi {
       '--',
       path
     ])
+    // Linhas adicionadas/removidas no arquivo em cada commit (o --follow acompanha renomeações).
+    const { stdout: numstat } = await this.git(['log', '--follow', `-n${limit}`, '--format=%x1e%H', '--numstat', '--', path])
+    const stats = new Map<string, LineStats>()
+    for (const record of numstat.split(RS)) {
+      const [sha, ...lines] = record.trim().split('\n')
+      const m = lines.map((l) => /^(-|\d+)\t(-|\d+)\t/.exec(l)).find(Boolean)
+      if (sha && m) stats.set(sha, m[1] === '-' ? { binary: true } : { additions: Number(m[1]), deletions: Number(m[2]) })
+    }
     const entries: FileHistoryEntry[] = []
     let currentPath = path
     for (const record of stdout.split(RS)) {
@@ -935,7 +1017,8 @@ export class GitRepository implements RepoApi {
       const [header, ...rest] = record.split('\n')
       const name = rest.map((l) => l.trim()).find(Boolean)
       if (name) currentPath = name
-      entries.push({ ...parseCommitFields(header.split(FS)), path: currentPath })
+      const commit = parseCommitFields(header.split(FS))
+      entries.push({ ...commit, ...stats.get(commit.sha), path: currentPath })
     }
     return entries
   }

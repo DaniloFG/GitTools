@@ -6,8 +6,9 @@ import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
 import { CommitDetailsPanel } from './CommitDetails'
-import { DiffView } from './DiffView'
-import { Split } from './Split'
+import { DiffView, useFullFile } from './DiffView'
+import { revealPane, Split } from './Split'
+import { LineStats } from './LineStats'
 
 interface Props {
   request: CompareRequest
@@ -16,7 +17,7 @@ interface Props {
 
 /** Compara duas branches, tags ou commits quaisquer. */
 export function CompareView({ request, onRequest }: Props) {
-  const { data, run, toast, selectCommit, openFileView, showMenu } = useApp()
+  const { data, run, toast, selectCommit, openFileView, showMenu, openDiffWindow } = useApp()
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''
@@ -68,7 +69,8 @@ export function CompareView({ request, onRequest }: Props) {
   }, [request, sinceBase])
 
   const base = comparison ? (sinceBase && comparison.mergeBase ? comparison.mergeBase : comparison.from) : null
-  const source: DiffSource | null = comparison && base ? { kind: 'range', from: base, to: comparison.to } : null
+  const [fullFile] = useFullFile()
+  const source: DiffSource | null = comparison && base ? { kind: 'range', from: base, to: comparison.to, fullFile } : null
 
   useEffect(() => {
     setDiff(null)
@@ -83,7 +85,7 @@ export function CompareView({ request, onRequest }: Props) {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, comparison])
+  }, [active, comparison, fullFile])
 
   const openCommit = (sha: string) => setCommit(sha)
   const commitMenu = (e: React.MouseEvent, sha: string) =>
@@ -186,12 +188,14 @@ export function CompareView({ request, onRequest }: Props) {
                     onClick={() => {
                       setCommit(null)
                       setActive(f)
+                      revealPane('compare', 'second')
                     }}
                   >
                     <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
                       {f.status}
                     </span>
                     <span className="file-path">{f.oldPath ? `${f.oldPath} → ${f.path}` : f.path}</span>
+                    <LineStats stats={f} />
                   </li>
                 ))}
               </ul>
@@ -213,6 +217,12 @@ export function CompareView({ request, onRequest }: Props) {
                   <span className="muted">
                     {shortSha(base!)} → {comparison.to}
                   </span>
+                  <button
+                    onClick={() => source && openDiffWindow({ source, path: active.path, title: `${active.path} · ${shortSha(base!)} → ${comparison.to}` })}
+                    title={t('diffExtra.openWindowHelp')}
+                  >
+                    ⧉ {t('diffExtra.openWindow')}
+                  </button>
                   {head && (
                     <>
                       <button className="primary" disabled={!selection.size} onClick={applyLines}>

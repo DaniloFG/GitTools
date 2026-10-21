@@ -147,27 +147,117 @@ export function detectEditors(): EditorInfo[] {
   return found
 }
 
-/** Resolve a configuração (id de editor detectado ou caminho de um executável) para o executável. */
-export function resolveEditor(setting: string): string | null {
-  if (!setting) return null
-  const detected = detectEditors().find((e) => e.id === setting)
-  if (detected) return detected.command
-  return which(setting)
+/** Como executar o editor: programa e argumentos que vêm antes do arquivo. */
+export interface EditorCommand {
+  command: string
+  args: string[]
 }
 
-/** Abre `target` (arquivo ou pasta) no editor, sem esperar o editor fechar. */
-export function launchEditor(command: string, target: string, cwd: string): Promise<void> {
+/** Separa uma linha de comando digitada pelo usuário (aspas simples ou duplas agrupam). */
+export function splitCommandLine(line: string): string[] {
+  const parts: string[] = []
+  let current = ''
+  let quote: string | null = null
+  let inToken = false
+  for (const ch of line.trim()) {
+    if (quote) {
+      if (ch === quote) quote = null
+      else current += ch
+    } else if (ch === '"' || ch === "'") {
+      quote = ch
+      inToken = true
+    } else if (/\s/.test(ch)) {
+      if (inToken) parts.push(current)
+      current = ''
+      inToken = false
+    } else {
+      current += ch
+      inToken = true
+    }
+  }
+  if (inToken) parts.push(current)
+  return parts
+}
+
+function isDirectory(path: string): boolean {
+  try {
+    return existsSync(path) && statSync(path).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Resolve a configuração para o comando do editor. Aceita:
+ *  - o id de um editor detectado (ex.: "vscode");
+ *  - o caminho de um executável (com espaços, sem precisar de aspas);
+ *  - um aplicativo do macOS (".app", que é uma pasta) — aberto com `open -a`;
+ *  - uma linha de comando digitada, com argumentos (ex.: `code --reuse-window`, `"C:\\Meu Editor\\ed.exe" -n`).
+ */
+export function resolveEditor(setting: string): EditorCommand | null {
+  const value = setting.trim()
+  if (!value) return null
+  const detected = detectEditors().find((e) => e.id === value)
+  if (detected) return { command: detected.command, args: [] }
+  const appBundle = (path: string) => process.platform === 'darwin' && /\.app\/?$/i.test(path) && isDirectory(path)
+  if (appBundle(value)) return { command: 'open', args: ['-a', value] }
+  const whole = which(value)
+  if (whole) return { command: whole, args: [] }
+  const [first, ...args] = splitCommandLine(value)
+  if (!first) return null
+  if (appBundle(first)) return { command: 'open', args: ['-a', first, ...(args.length ? ['--args', ...args] : [])] }
+  const command = which(first)
+  return command ? { command, args } : null
+}
+
+/**
+ * Variáveis que o GitTools (feito em Electron) herda e que fazem outros programas Electron — VS Code,
+ * Cursor, etc. — se comportarem como Node em vez de abrir a janela do editor.
+ */
+const INHERITED_ELECTRON_VARS = /^(ELECTRON_|CHROME_|GOOGLE_API_KEY|NODE_OPTIONS$|VSCODE_)/
+
+export function editorEnvironment(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return Object.fromEntries(Object.entries(env).filter(([key]) => !INHERITED_ELECTRON_VARS.test(key)))
+}
+
+/** Quanto tempo esperar por uma falha imediata do editor antes de considerá-lo aberto. */
+const STARTUP_WINDOW_MS = 1500
+
+/**
+ * Abre `target` (arquivo ou pasta) no editor. Não espera o editor fechar, mas se ele terminar com erro
+ * logo de início (comando inválido, argumento recusado), o erro é devolvido em vez de sumir.
+ */
+export function launchEditor(editor: EditorCommand | string, target: string, cwd: string): Promise<void> {
+  const { command, args } = typeof editor === 'string' ? { command: editor, args: [] } : editor
   // Scripts .cmd/.bat do Windows (ex.: code.cmd) só rodam pelo shell; aí os argumentos vão entre aspas.
   const viaShell = process.platform === 'win32' && /\.(cmd|bat)$/i.test(command)
   const quote = (s: string) => `"${s.replace(/"/g, '""')}"`
+  const env = editorEnvironment()
   return new Promise((resolve, reject) => {
     const child = viaShell
-      ? spawn(quote(command), [quote(target)], { cwd, detached: true, stdio: 'ignore', shell: true, windowsHide: true })
-      : spawn(command, [target], { cwd, detached: true, stdio: 'ignore' })
-    child.once('error', reject)
-    child.once('spawn', () => {
+      ? spawn(quote(command), [...args.map(quote), quote(target)], { cwd, env, detached: true, stdio: ['ignore', 'ignore', 'pipe'], shell: true, windowsHide: true })
+      : spawn(command, [...args, target], { cwd, env, detached: true, stdio: ['ignore', 'ignore', 'pipe'] })
+    let stderr = ''
+    let settled = false
+    const done = (error?: Error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      child.stderr?.removeAllListeners('data')
+      child.stderr?.destroy()
       child.unref()
-      resolve()
+      if (error) reject(error)
+      else resolve()
+    }
+    child.stderr?.on('data', (d: Buffer) => {
+      if (stderr.length < 2000) stderr += d.toString('utf8')
     })
+    child.once('error', (e) => done(e))
+    child.once('exit', (code) => {
+      // Lançadores (ex.: o comando "code") abrem a janela e saem com 0 — isso é sucesso.
+      if (code && code !== 0) done(new Error(stderr.trim() || `${command} (exit ${code})`))
+      else done()
+    })
+    const timer = setTimeout(() => done(), STARTUP_WINDOW_MS)
   })
 }

@@ -12,6 +12,7 @@ const DIFF_LAYOUTS: { id: DiffLayout; label: MessageKey; help: MessageKey }[] = 
 /** Editor usado por "Abrir no editor" (entre os instalados no computador) e modo padrão do diff. */
 export function EditorSection({ draft, update }: SettingsSectionProps) {
   const [editors, setEditors] = useState<EditorInfo[] | null>(null)
+  const [test, setTest] = useState<{ ok: boolean; message: string } | 'running' | null>(null)
 
   useEffect(() => {
     window.gittools.detectEditors().then(setEditors, () => setEditors([]))
@@ -22,6 +23,17 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
   const browse = async () => {
     const path = await window.gittools.chooseEditor()
     if (path) update({ editor: path })
+  }
+
+  /** Abre a pasta do repositório com o editor escolhido, sem precisar salvar antes. */
+  const runTest = async () => {
+    setTest('running')
+    try {
+      await window.gittools.testEditor(draft.editor)
+      setTest({ ok: true, message: t('editorSetup.testOk') })
+    } catch (error) {
+      setTest({ ok: false, message: error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(error) })
+    }
   }
 
   return (
@@ -55,10 +67,28 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
           )}
         </div>
       )}
+      <label className="field editor-manual">
+        <span>{t('editorSetup.manual')}</span>
+        <input
+          dir="ltr"
+          value={draft.editor}
+          placeholder={t('editorSetup.manualPlaceholder')}
+          onChange={(e) => {
+            setTest(null)
+            update({ editor: e.target.value })
+          }}
+          spellCheck={false}
+        />
+        <small className="muted">{t('editorSetup.manualHelp')}</small>
+      </label>
       <div className="button-row">
         <button onClick={browse}>{t('settings.editor.browse')}</button>
+        <button disabled={!draft.editor.trim() || test === 'running'} onClick={runTest}>
+          {test === 'running' ? <span className="spinner" /> : '▶'} {t('editorSetup.test')}
+        </button>
         {draft.editor && <button onClick={() => update({ editor: '' })}>{t('settings.editor.clear')}</button>}
       </div>
+      {test && test !== 'running' && <p className={test.ok ? 'success-text' : 'warning-text'}>{test.message}</p>}
 
       <h4>{t('settings.editor.diffLayout')}</h4>
       <p className="muted small">{t('settings.editor.diffLayoutHelp')}</p>

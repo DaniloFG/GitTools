@@ -34,7 +34,7 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         'view.changes': () => app.setView('changes'),
         'view.files': () => app.setView('files'),
         'view.compare': () => app.setView('compare'),
-        'layout.sidebar': () => togglePane('workspace', 'first'),
+        'layout.sidebar': () => togglePane('wb-left', 'first'),
         'history.search': () => {
           app.setView('history')
           // Espera o histórico aparecer (se outra aba estava aberta) para focar a pesquisa.

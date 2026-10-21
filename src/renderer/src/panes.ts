@@ -102,3 +102,33 @@ export function parseColumns(value: unknown, count: number): number[] | null {
     ? (value as number[])
     : null
 }
+
+/** Lado de um retângulo onde algo foi solto. */
+export type DockSide = 'left' | 'right' | 'top' | 'bottom'
+
+/** Lado mais próximo do ponto (x, y) dentro do retângulo (proporcional ao tamanho, para não favorecer o lado maior). */
+export function sideAt(x: number, y: number, rect: { left: number; top: number; width: number; height: number }): DockSide {
+  const fx = rect.width ? (x - rect.left) / rect.width : 0.5
+  const fy = rect.height ? (y - rect.top) / rect.height : 0.5
+  const distances: [DockSide, number][] = [
+    ['left', fx],
+    ['right', 1 - fx],
+    ['top', fy],
+    ['bottom', 1 - fy]
+  ]
+  return distances.reduce((best, d) => (d[1] < best[1] ? d : best))[0]
+}
+
+/**
+ * Novo arranjo ao soltar um painel arrastado num lado: esquerda/direita deixa os dois lado a lado,
+ * em cima/embaixo deixa um sobre o outro, com o painel arrastado do lado escolhido.
+ * Em idiomas da direita para a esquerda, "esquerda" na tela é o fim da linha.
+ */
+export function dockSplit(state: SplitState, dragged: CollapsedPane, side: DockSide, defaultDirection: SplitDirection, rtl = false): SplitState {
+  const direction: SplitDirection = side === 'left' || side === 'right' ? 'row' : 'column'
+  let draggedFirst = side === 'left' || side === 'top'
+  if (rtl && direction === 'row') draggedFirst = !draggedFirst
+  const swapped = dragged === 'first' ? !draggedFirst : draggedFirst
+  const { collapsed: _collapsed, swapped: _swapped, direction: _direction, ...rest } = state
+  return { ...rest, ...(swapped ? { swapped: true } : {}), ...(direction !== defaultDirection ? { direction } : {}) }
+}

@@ -7,17 +7,19 @@ import { git } from '../git'
 import { useLayout } from '../layout'
 import { useDrop } from '../useDrop'
 import { t } from '../i18n'
-import { DiffView } from './DiffView'
-import { Split } from './Split'
+import { DiffView, useFullFile } from './DiffView'
+import { revealPane, Split } from './Split'
+import { LineStats } from './LineStats'
 
 type Area = 'unstaged' | 'staged'
 
 export function ChangesView() {
-  const { data, run, confirm, toast, openConflict, openFileView, openInEditor } = useApp()
+  const { data, run, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow } = useApp()
   const { status } = data
   const [active, setActive] = useState<{ area: Area; path: string } | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
+  const [fullFile] = useFullFile()
 
   // Se o arquivo ativo saiu da lista (ex.: foi todo para o stage), acompanha-o na outra lista.
   useEffect(() => {
@@ -34,7 +36,7 @@ export function ChangesView() {
       return
     }
     let cancelled = false
-    git.diff({ kind: active.area, path: active.path }).then(
+    git.diff({ kind: active.area, path: active.path, fullFile }).then(
       (files) => {
         if (cancelled) return
         const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
@@ -46,7 +48,7 @@ export function ChangesView() {
     return () => {
       cancelled = true
     }
-  }, [active, status, toast])
+  }, [active, status, toast, fullFile])
 
   useEffect(() => setSelection(new Set()), [diff])
 
@@ -71,7 +73,7 @@ export function ChangesView() {
       })
       if (!ok) return
     }
-    await run(t('busy.applyingSelection'), () => git.applyLines({ kind: active.area }, active.path, [...selection], action))
+    await run(t('busy.applyingSelection'), () => git.applyLines({ kind: active.area, fullFile }, active.path, [...selection], action))
   }
 
   return (
@@ -94,7 +96,10 @@ export function ChangesView() {
           area="unstaged"
           files={status.unstaged}
           active={active}
-          onActivate={(f) => setActive({ area: 'unstaged', path: f.path })}
+          onActivate={(f) => {
+            setActive({ area: 'unstaged', path: f.path })
+            revealPane('changes', 'second')
+          }}
           onDropFiles={(paths) => run(t('busy.unstage'), () => git.unstageFiles(paths))}
           actions={
             status.unstaged.length > 0 && (
@@ -123,7 +128,10 @@ export function ChangesView() {
           area="staged"
           files={status.staged}
           active={active}
-          onActivate={(f) => setActive({ area: 'staged', path: f.path })}
+          onActivate={(f) => {
+            setActive({ area: 'staged', path: f.path })
+            revealPane('changes', 'second')
+          }}
           onDropFiles={(paths) => run(t('busy.stage'), () => git.stageFiles(paths))}
           actions={
             status.staged.length > 0 && (
@@ -146,6 +154,12 @@ export function ChangesView() {
         ) : (
           <div className="diff-panel">
             <div className="selection-bar">
+              <button
+                onClick={() => openDiffWindow({ source: { kind: active.area }, path: active.path, title: `${active.path} · ${t(active.area === 'staged' ? 'changes.staged' : 'changes.unstaged')}` })}
+                title={t('diffExtra.openWindowHelp')}
+              >
+                ⧉
+              </button>
               {active.area === 'unstaged' ? (
                 <>
                   <button className="primary" disabled={!selection.size} onClick={() => lineAction('stage')}>
@@ -246,6 +260,7 @@ function FileGroup({ id, title, area, files, active, onActivate, onDropFiles, ac
                   {code === '?' ? 'N' : code}
                 </span>
                 <span className="file-path">{f.origPath ? `${f.origPath} → ${f.path}` : f.path}</span>
+                <LineStats stats={f} />
                 <span className="file-actions" onClick={(e) => e.stopPropagation()}>
                   {fileActions?.(f)}
                 </span>
