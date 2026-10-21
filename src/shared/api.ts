@@ -201,6 +201,10 @@ export interface DiffWindowRequest {
 }
 
 export interface AppInfo {
+  /** Onde o GitTools está rodando: o aplicativo (Electron) ou a extensão do VS Code. */
+  host: 'electron' | 'vscode'
+  /** Versão do VS Code, quando o GitTools roda como extensão dele. */
+  vscode?: string
   version: string
   electron: string
   chrome: string

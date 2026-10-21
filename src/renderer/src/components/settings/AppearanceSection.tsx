@@ -3,6 +3,7 @@ import { DIVIDER_WIDTHS, PANE_BUTTON_SCALES, ZOOM_LEVELS, type ThemeSetting } fr
 import { t, type MessageKey } from '../../i18n'
 import { resetLayout } from '../../layout'
 import type { SettingsSectionProps } from './sections'
+import { useAppInfo } from './useAppInfo'
 
 const THEMES: { id: ThemeSetting; label: MessageKey }[] = [
   { id: 'system', label: 'settings.appearance.themeSystem' },
@@ -11,6 +12,7 @@ const THEMES: { id: ThemeSetting; label: MessageKey }[] = [
 ]
 
 export function AppearanceSection({ draft, update }: SettingsSectionProps) {
+  const info = useAppInfo()
   const [layoutReset, setLayoutReset] = useState(false)
   return (
     <div className="settings-group">
@@ -24,6 +26,7 @@ export function AppearanceSection({ draft, update }: SettingsSectionProps) {
           ))}
         </div>
       </div>
+      {info?.host !== 'vscode' && (
       <div className="settings-row">
         <span>{t('settings.appearance.zoom')}</span>
         <select value={draft.zoom} onChange={(e) => update({ zoom: Number(e.target.value) })}>
@@ -34,6 +37,7 @@ export function AppearanceSection({ draft, update }: SettingsSectionProps) {
           ))}
         </select>
       </div>
+      )}
       <h4>{t('settings.appearance.layout')}</h4>
       <p className="muted small">{t('settings.appearance.layoutHelp')}</p>
       <div className="settings-row">

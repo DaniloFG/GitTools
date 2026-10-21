@@ -573,6 +573,7 @@ export const hi: Messages = {
       diffLayout: 'डिफ़ॉल्ट diff दृश्य',
       clear: 'कोई नहीं',
       browse: 'Executable खोजें…',
+      vscodeNote: 'VS Code के अंदर फ़ाइलें VS Code के अपने एडिटर में खुलती हैं, इसलिए यहाँ एडिटर चुनने की ज़रूरत नहीं है। नीचे का diff मोड GitTools पर लागू होता है।',
       custom: 'हाथ से चुना गया',
       noneFound: 'कोई ज्ञात एडिटर नहीं मिला।',
       detecting: 'इंस्टॉल किए गए एडिटर खोजे जा रहे हैं…',

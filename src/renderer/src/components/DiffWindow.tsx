@@ -7,9 +7,15 @@ import { AppContext, type AppContextValue } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { getLocale, setLocale, t } from '../i18n'
+import { closeVsCodePanel } from '../vscodeBridge'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings } from '../shortcuts'
 import { DiffView, useFullFile } from './DiffView'
+
+/** Fecha a janela de diff (no VS Code, o painel). */
+const closeWindow = () => {
+  if (!closeVsCodePanel()) window.close()
+}
 
 /** Lê o pedido que a janela principal passou na URL desta janela. */
 export function diffWindowRequest(search: string): DiffWindowRequest | null {
@@ -63,7 +69,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return window.close()
+      if (e.key === 'Escape') return closeWindow()
       // F7/Shift+F7 (ou as teclas escolhidas nas configurações) pulam de alteração em alteração.
       const bindings = resolveBindings(settingsRef.current.shortcuts)
       const combo = comboFromEvent(e)
@@ -87,7 +93,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
           </strong>
           <span className="toolbar-spacer" />
           <button onClick={() => window.gittools.openInEditor(path).catch(() => undefined)}>{t('common.openInEditor')}</button>
-          <button onClick={() => window.close()}>{t('common.close')}</button>
+          <button onClick={() => closeWindow()}>{t('common.close')}</button>
         </header>
         <div className="diff-window">
           {diff === null ? (

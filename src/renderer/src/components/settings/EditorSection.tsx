@@ -3,6 +3,7 @@ import type { EditorInfo } from '../../../../shared/api'
 import type { DiffLayout } from '../../../../shared/settings'
 import { t, type MessageKey } from '../../i18n'
 import type { SettingsSectionProps } from './sections'
+import { useAppInfo } from './useAppInfo'
 
 const DIFF_LAYOUTS: { id: DiffLayout; label: MessageKey; help: MessageKey }[] = [
   { id: 'inline', label: 'diff.inline', help: 'diff.inlineHelp' },
@@ -36,8 +37,13 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
     }
   }
 
+  const info = useAppInfo()
+  // Dentro do VS Code os arquivos abrem no próprio editor dele: não há o que escolher.
+  const insideVsCode = info?.host === 'vscode'
+
   return (
     <div className="settings-group">
+      {insideVsCode ? <p className="muted">{t('settings.editor.vscodeNote')}</p> : (<>
       <h4>{t('settings.editor.editor')}</h4>
       <p className="muted small">{t('settings.editor.editorHelp')}</p>
       {!editors ? (
@@ -89,6 +95,7 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
         {draft.editor && <button onClick={() => update({ editor: '' })}>{t('settings.editor.clear')}</button>}
       </div>
       {test && test !== 'running' && <p className={test.ok ? 'success-text' : 'warning-text'}>{test.message}</p>}
+      </>)}
 
       <h4>{t('settings.editor.diffLayout')}</h4>
       <p className="muted small">{t('settings.editor.diffLayoutHelp')}</p>

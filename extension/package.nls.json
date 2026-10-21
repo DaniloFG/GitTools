@@ -1,0 +1,7 @@
+{
+  "gittools.description": "Git with a visual interface: drag and click to merge, rebase and cherry-pick whole branches, commits, files or even single lines.",
+  "gittools.cmd.open": "Open GitTools",
+  "gittools.cmd.openRepository": "Open a repository…",
+  "gittools.cmd.openFileDiff": "Show this file's changes in GitTools",
+  "gittools.cmd.openFolder": "Open this folder in GitTools"
+}

@@ -1,6 +1,7 @@
 // Aplica na página as configurações visuais e de idioma (usado pela janela principal e pelas de diff).
 
 import type { Settings } from '../../shared/settings'
+import { vsCodeTheme } from './vscodeBridge'
 import { matchLocale, textDirection, type LocaleId } from './i18n'
 
 export function resolveLocale(settings: Settings, systemLocales: readonly string[]): LocaleId {
@@ -10,7 +11,8 @@ export function resolveLocale(settings: Settings, systemLocales: readonly string
 /** Aplica tema, escala, idioma e direção do texto (o árabe é escrito da direita para a esquerda). */
 export function applySettings(settings: Settings, locale: LocaleId, title = 'GitTools') {
   const root = document.documentElement
-  root.dataset.theme = settings.theme
+  // No VS Code, "do sistema" segue o tema do próprio VS Code.
+  root.dataset.theme = settings.theme === 'system' ? (vsCodeTheme() ?? 'system') : settings.theme
   root.lang = locale
   root.dir = textDirection()
   root.style.setProperty('--divider-size', `${settings.dividerWidth}px`)

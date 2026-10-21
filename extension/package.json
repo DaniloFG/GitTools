@@ -1,0 +1,30 @@
+{
+  "name": "gittools-vscode",
+  "displayName": "GitTools",
+  "description": "%gittools.description%",
+  "version": "0.5.0",
+  "publisher": "danilofg",
+  "license": "MIT",
+  "author": "Danilo Gama",
+  "icon": "media/icon.png",
+  "repository": { "type": "git", "url": "https://github.com/DaniloFG/GitTools" },
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["SCM Providers", "Other"],
+  "keywords": ["git", "cherry-pick", "merge", "rebase", "diff", "history"],
+  "main": "./dist/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "gittools.open", "title": "%gittools.cmd.open%", "category": "GitTools", "icon": "$(git-branch)" },
+      { "command": "gittools.openRepository", "title": "%gittools.cmd.openRepository%", "category": "GitTools" },
+      { "command": "gittools.openFileDiff", "title": "%gittools.cmd.openFileDiff%", "category": "GitTools", "icon": "$(diff)" },
+      { "command": "gittools.openFolderInGitTools", "title": "%gittools.cmd.openFolder%", "category": "GitTools" }
+    ],
+    "menus": {
+      "scm/title": [{ "command": "gittools.open", "group": "navigation@9" }],
+      "editor/title": [{ "command": "gittools.openFileDiff", "when": "resourceScheme == file", "group": "navigation@9" }],
+      "explorer/context": [{ "command": "gittools.openFolderInGitTools", "when": "explorerResourceIsFolder", "group": "navigation@9" }]
+    },
+    "keybindings": [{ "command": "gittools.open", "key": "ctrl+alt+g", "mac": "cmd+alt+g" }]
+  }
+}
