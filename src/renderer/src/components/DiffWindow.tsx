@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DiffWindowRequest } from '../../../shared/api'
 import { DEFAULT_SETTINGS, type Settings } from '../../../shared/settings'
 import type { FileDiff } from '../../../shared/types'
@@ -7,6 +7,8 @@ import { AppContext, type AppContextValue } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { getLocale, setLocale, t } from '../i18n'
+import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
+import { comboFromEvent, resolveBindings } from '../shortcuts'
 import { DiffView, useFullFile } from './DiffView'
 
 /** Lê o pedido que a janela principal passou na URL desta janela. */
@@ -33,6 +35,8 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
   const { source, path } = request
   const title = request.title ?? path
 
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
   const locale = resolveLocale(settings, systemLocales)
   if (getLocale() !== locale) setLocale(locale)
 
@@ -58,7 +62,14 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
   }, [load])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && window.close()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return window.close()
+      // F7/Shift+F7 (ou as teclas escolhidas nas configurações) pulam de alteração em alteração.
+      const bindings = resolveBindings(settingsRef.current.shortcuts)
+      const combo = comboFromEvent(e)
+      const action = Object.keys(DIFF_NAV_ACTIONS).find((id) => bindings[id] === combo)
+      if (action && emitDiffNav(...DIFF_NAV_ACTIONS[action])) e.preventDefault()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])

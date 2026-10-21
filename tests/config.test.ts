@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cloneRepository, getIdentities, repoNameFromUrl, setIdentity } from '../src/core/config'
-import { onGitCommand } from '../src/core/exec'
+import { onGitCommand, runGit } from '../src/core/exec'
 import type { GitCommandEntry } from '../src/shared/types'
 import { createRepo } from './helpers'
 
@@ -90,5 +90,48 @@ describe('log de comandos', () => {
     expect(failed?.exitCode).not.toBe(0)
     expect(failed?.failed).toBe(true)
     expect(failed?.error).toBeTruthy()
+  })
+})
+
+describe('remotes', () => {
+  it('adiciona, lista, altera, renomeia e remove remotes', async () => {
+    const { repo } = await createRepo()
+    expect(await repo.remotes()).toEqual([])
+    expect(await repo.addRemote('origin', 'https://example.com/a.git')).toBe('origin')
+    await repo.addRemote('upstream', 'git@example.com:org/a.git')
+    expect(await repo.remotes()).toEqual([
+      { name: 'origin', fetchUrl: 'https://example.com/a.git', pushUrl: 'https://example.com/a.git' },
+      { name: 'upstream', fetchUrl: 'git@example.com:org/a.git', pushUrl: 'git@example.com:org/a.git' }
+    ])
+    await repo.setRemoteUrl('upstream', 'https://example.com/b.git')
+    await repo.renameRemote('upstream', 'fork')
+    expect((await repo.remotes()).map((r) => [r.name, r.fetchUrl])).toEqual([
+      ['fork', 'https://example.com/b.git'],
+      ['origin', 'https://example.com/a.git']
+    ])
+    await repo.removeRemote('fork')
+    expect((await repo.remotes()).map((r) => r.name)).toEqual(['origin'])
+  })
+
+  it('recusa nomes e URLs que o git leria como opção', async () => {
+    const { repo } = await createRepo()
+    await expect(repo.addRemote('--mirror', 'https://example.com/a.git')).rejects.toThrow()
+    await expect(repo.addRemote('bad name', 'https://example.com/a.git')).rejects.toThrow()
+    await expect(repo.addRemote('ok', '--upload-pack=touch /tmp/x')).rejects.toThrow()
+    await expect(repo.addRemote('ok', '   ')).rejects.toThrow()
+    expect(await repo.remotes()).toEqual([])
+  })
+
+  it('envia para o remote escolhido e baixa o novo remote quando pedido', async () => {
+    const t = await createRepo()
+    const bare = tempDir()
+    await runGit(bare, ['init', '-q', '--bare', '-b', 'main'])
+    await t.commit('primeiro', { 'a.txt': 'a\n' })
+    await t.repo.addRemote('backup', bare)
+    await t.repo.push('backup')
+    expect((await runGit(bare, ['log', '--format=%s', 'main'])).stdout.trim()).toBe('primeiro')
+    await t.repo.removeRemote('backup')
+    await t.repo.addRemote('backup', bare, true)
+    expect((await t.repo.branches()).some((b) => b.name === 'backup/main')).toBe(true)
   })
 })

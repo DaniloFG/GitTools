@@ -890,6 +890,7 @@ mark {
 }
 .button-row {
   display: flex;
+  justify-content: flex-end;
   gap: 6px;
   flex-wrap: wrap;
   margin-bottom: 10px;
@@ -1007,6 +1008,7 @@ mark {
   top: -12px;
   z-index: 1;
   display: flex;
+  justify-content: flex-end;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
@@ -1644,13 +1646,31 @@ mark {
 
 .toasts {
   position: fixed;
-  inset-inline-end: 16px;
+  right: 16px;
   bottom: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   z-index: 40;
-  max-width: 460px;
+  width: min(var(--toast-width, 380px), calc(100vw - 32px));
+  pointer-events: none;
+}
+.toasts > .toast {
+  pointer-events: auto;
+}
+/* Posição escolhida em Configurações → Notificações (esquerda/direita são as do monitor, mesmo em árabe). */
+:root[data-toast-x='left'] .toasts {
+  left: 16px;
+  right: auto;
+}
+:root[data-toast-x='center'] .toasts {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+:root[data-toast-y='top'] .toasts {
+  top: 16px;
+  bottom: auto;
 }
 .toast {
   display: flex;
@@ -1662,8 +1682,8 @@ mark {
   border-inline-start: 4px solid var(--accent);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   cursor: pointer;
-  max-height: 240px;
-  overflow: hidden;
+  max-height: var(--toast-height, 240px);
+  overflow-y: auto;
   user-select: text;
 }
 .toast-success {
@@ -2266,7 +2286,7 @@ kbd.duplicate {
 .list-body:focus {
   outline: none;
 }
-.modal-backdrop ~ .toasts {
+:root:not([data-toast-y='top']) .modal-backdrop ~ .toasts {
   bottom: 72px;
 }
 
@@ -2949,4 +2969,208 @@ body.docking .pane-grip {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--mono);
+}
+
+/* ------------------------------------------- listas de arquivos: lista ou árvore */
+
+.file-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+  font-size: 12.5px;
+}
+.file-name {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.file-dir,
+.file-from {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.file-from {
+  flex: none;
+  font-style: italic;
+}
+.commit-file .file-label {
+  align-items: center;
+}
+/* Caminhos continuam da esquerda para a direita, mas o rótulo encosta no lado do status (à direita em árabe). */
+[dir='rtl'] .file-name,
+[dir='rtl'] .file-dir,
+[dir='rtl'] .file-from {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+.tree-dir {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-block: 3px;
+  padding-inline-end: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+  user-select: none;
+}
+.commit-files li.tree-dir {
+  height: 22px;
+}
+.tree-dir:hover {
+  background: var(--bg-hover);
+}
+.tree-caret {
+  width: 10px;
+  font-size: 10px;
+  text-align: center;
+}
+.tree-dir-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-weight: 600;
+}
+.file-view-toggle {
+  flex: none;
+}
+.file-view-toggle button {
+  padding: 1px 7px;
+  font-size: 12px;
+}
+.files-list-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.files-list-header .files-filter {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ------------------------------------- ações sempre no lado final (direito) do componente */
+
+.group-header .toolbar-spacer,
+.diff-file-header .toolbar-spacer {
+  min-width: 0;
+}
+.operation-title {
+  margin-inline-end: auto;
+}
+.operation-actions {
+  justify-content: flex-end;
+}
+.diff-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.diff-nav button {
+  padding: 1px 7px;
+  font-size: 11px;
+}
+.diff-nav-count {
+  min-width: 34px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+tr.nav-flash > td {
+  animation: nav-flash 1.4s ease-out;
+}
+@keyframes nav-flash {
+  0%,
+  35% {
+    box-shadow: inset 0 0 0 2px var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  100% {
+    box-shadow: inset 0 0 0 2px transparent;
+  }
+}
+
+/* ------------------------------------------ configurações: notificações e remotes */
+
+.range-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.range-field input[type='range'] {
+  width: 200px;
+}
+.range-field output {
+  min-width: 54px;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.toast-preview {
+  position: relative;
+  margin-block: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+.toast-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 10px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+.toast-preview-toast {
+  position: absolute;
+  border-radius: 3px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-inline-start: 3px solid var(--accent);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.15s ease;
+}
+.remote-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.remote-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.remote-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.remote-head button {
+  padding: 1px 8px;
+  font-size: 12px;
+}
+.remote-url {
+  overflow-wrap: anywhere;
+  font-size: 12px;
 }

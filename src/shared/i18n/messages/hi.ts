@@ -20,6 +20,7 @@ export const hi: Messages = {
     none: 'कोई नहीं',
     file: 'फ़ाइल',
     files: { one: '{count} फ़ाइल', other: '{count} फ़ाइलें' },
+    fileList: 'फ़ाइलें',
     clickToCopy: 'कॉपी करने के लिए क्लिक करें',
     compareWith: '{ref} से तुलना करें',
     blameHistory: 'Blame / इतिहास',
@@ -96,6 +97,8 @@ export const hi: Messages = {
     pullHelp: 'Remote के बदलाव लाकर जोड़ें',
     push: 'Push',
     pushHelp: 'अपने commits remote पर भेजें',
+    pushTo: '{remote} पर Push करें',
+    manageRemotes: 'Remotes प्रबंधित करें…',
     branch: 'Branch',
     stash: 'Stash',
     stashHelp: 'लोकल बदलाव अलग रखें और वर्किंग फ़ोल्डर साफ़ करें',
@@ -617,6 +620,23 @@ export const hi: Messages = {
       duplicates: 'कुछ शॉर्टकट दोहराए गए हैं। हर क्रिया के लिए अलग संयोजन चाहिए।',
       showList: 'शॉर्टकट की पूरी सूची देखें (F1)'
     },
+    notifications: {
+      title: 'सूचनाएँ',
+      description: 'सफलता, त्रुटि और जानकारी के संदेश कहाँ और कितने बड़े दिखें।',
+      horizontal: 'क्षैतिज स्थिति',
+      vertical: 'ऊर्ध्वाधर स्थिति',
+      left: 'बाएँ',
+      center: 'बीच में',
+      right: 'दाएँ',
+      top: 'ऊपर',
+      bottom: 'नीचे',
+      width: 'चौड़ाई',
+      height: 'अधिकतम ऊँचाई',
+      heightHelp: 'अधिकतम ऊँचाई से लंबे संदेशों में स्क्रॉल बार आ जाता है।',
+      sample: 'सूचना ऐसी दिखती है।',
+      reset: 'डिफ़ॉल्ट बहाल करें',
+      show: 'उदाहरण दिखाएँ'
+    },
     about: {
       title: 'जानकारी',
       description: 'संस्करण और सिस्टम की जानकारी।',
@@ -637,6 +657,10 @@ export const hi: Messages = {
       viewCompare: 'तुलना पर जाएँ',
       toggleSidebar: 'साइडबार दिखाएँ/छिपाएँ',
       searchHistory: 'इतिहास में खोजें',
+      nextChange: 'Diff: अगला बदलाव',
+      prevChange: 'Diff: पिछला बदलाव',
+      nextFile: 'Diff: अगली फ़ाइल',
+      prevFile: 'Diff: पिछली फ़ाइल',
       studio: 'Cherry-pick Studio खोलें',
       newBranch: 'नई branch',
       stash: 'बदलाव अलग रखें (stash)',
@@ -648,7 +672,7 @@ export const hi: Messages = {
       settings: 'सेटिंग्स',
       help: 'शॉर्टकट सूची'
     },
-    groups: { navigation: 'नेविगेशन', git: 'Git', app: 'ऐप्लिकेशन' },
+    groups: { navigation: 'नेविगेशन', diff: 'Diff', git: 'Git', app: 'ऐप्लिकेशन' },
     fixed: {
       title: 'सूचियों और डायलॉग में',
       moveSelection: 'इतिहास में चयन खिसकाएँ',
@@ -745,6 +769,7 @@ export const hi: Messages = {
     openDialogTitle: 'Git repository खोलें',
     initDialogTitle: 'इस फ़ोल्डर में git repository बनाएँ',
     outsideRepository: 'पथ repository के बाहर है।',
+    fileNotFound: 'फ़ाइल "{path}" प्रोजेक्ट फ़ोल्डर में मौजूद नहीं है (शायद सिर्फ़ किसी दूसरे commit में है)।',
     unknownOperation: 'अज्ञात ऑपरेशन: {method}',
     noRepository: 'कोई repository खुली नहीं है।'
   },
@@ -794,8 +819,8 @@ export const hi: Messages = {
     help: 'Git आपके सहेजे गए क्रेडेंशियल (क्रेडेंशियल मैनेजर या SSH कुंजी) इस्तेमाल करता है। प्रगति git लॉग में देखें।'
   },
   identity: {
-    title: 'Git पहचान',
-    description: 'आपके commits में दर्ज होने वाला नाम और ईमेल।',
+    title: 'पहचान और remotes',
+    description: 'आपके commits में दर्ज नाम और ईमेल, और repository के remotes (सर्वर)।',
     scope: 'कहाँ लागू करें',
     global: 'ग्लोबल (सभी repositories)',
     globalHelp: '~/.gitconfig में सहेजा जाता है।',
@@ -828,6 +853,48 @@ export const hi: Messages = {
     manualPlaceholder: 'code   या   /path/to/editor --option',
     manualHelp: 'PATH का कोई कमांड, executable का पथ (या macOS पर .app) और आर्ग्युमेंट लिख सकते हैं। सहेजने से पहले “जाँचें” से परखें।',
     test: 'जाँचें',
-    testOk: 'एडिटर ने repository का फ़ोल्डर खोल दिया।'
+    testOk: 'एडिटर ने repository की एक फ़ाइल (पूरे पथ के साथ) खोल दी।'
+  },
+  fileList: {
+    viewMode: 'फ़ाइलें दिखाने का तरीका',
+    viewModeHelp: 'फ़ाइलें सूची (नाम और फ़ोल्डर) या फ़ोल्डर ट्री में दिखाएँ — सभी फ़ाइल सूचियों पर लागू होता है',
+    list: 'सूची',
+    tree: 'ट्री',
+    folderFiles: { one: '{count} फ़ाइल', other: '{count} फ़ाइलें' }
+  },
+  diffNav: {
+    group: 'फ़ाइल में बदलाव',
+    prevChange: 'पिछला बदलाव',
+    nextChange: 'अगला बदलाव',
+    count: 'मौजूदा बदलाव / कुल बदलाव',
+    fileGroup: 'सूची की फ़ाइलें',
+    prevFile: 'पिछली फ़ाइल',
+    nextFile: 'अगली फ़ाइल',
+    fileCount: 'मौजूदा फ़ाइल / कुल फ़ाइलें'
+  },
+  remotes: {
+    title: 'Remotes',
+    help: 'Remotes वे सर्वर हैं जहाँ repository commits भेजता है और जहाँ से लेता है (origin, upstream…)। कोई और जोड़ें — जैसे fork की मूल repository या mirror; किसे भेजना है यह चुनने के लिए ऊपरी बार में Push पर राइट-क्लिक करें।',
+    none: 'इस repository में अभी कोई remote नहीं है।',
+    editUrl: 'URL बदलें',
+    rename: 'नाम बदलें',
+    remove: 'हटाएँ',
+    removeTitle: 'Remote हटाएँ',
+    removeMessage: 'Remote "{name}" ({url}) हटाएँ? इसकी remote branches दिखना बंद हो जाएँगी; सर्वर पर कुछ नहीं मिटता।',
+    renameTitle: 'Remote का नाम बदलें',
+    name: 'नाम',
+    url: 'URL',
+    urlPlaceholder: 'https://github.com/user/project.git या git@github.com:user/project.git',
+    fetchNow: 'Remote की सामग्री अभी लाएँ (fetch)',
+    addTitle: 'एक और remote जोड़ें',
+    add: 'Remote जोड़ें',
+    added: 'Remote "{name}" जोड़ा गया।',
+    removed: 'Remote "{name}" हटाया गया।',
+    renamed: 'Remote का नाम बदलकर "{name}" किया गया।',
+    urlChanged: '"{name}" का URL बदला गया।',
+    fetchUrl: 'Fetch URL',
+    pushUrl: 'Push URL',
+    invalidName: 'Remote का नाम अमान्य है: अक्षर, अंक, बिंदु, हाइफ़न या अंडरस्कोर इस्तेमाल करें।',
+    invalidUrl: 'Remote का URL दें (यह "-" से शुरू नहीं हो सकता)।'
   }
 }

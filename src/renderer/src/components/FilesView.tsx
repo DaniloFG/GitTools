@@ -10,6 +10,7 @@ import { startResize } from '../resize'
 import { DiffView, useFullFile } from './DiffView'
 import { revealPane, Split } from './Split'
 import { LineStats } from './LineStats'
+import { FileEntries, FileViewToggle } from './FileList'
 
 const MAX_LISTED = 500
 const UNCOMMITTED = /^0+$/
@@ -36,20 +37,34 @@ export function FilesView({ path, onPath }: { path: string | null; onPath(path: 
     const terms = filter.toLowerCase().split(/\s+/).filter(Boolean)
     return files.filter((f) => terms.every((t) => f.toLowerCase().includes(t)))
   }, [files, filter])
+  const shown = useMemo(() => filtered.slice(0, MAX_LISTED), [filtered])
 
   return (
     <Split id="files" initial={0.34} min={[200, 320]}>
       <div className="files-list">
-        <input className="files-filter" placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
+        <div className="files-list-header">
+          <input className="files-filter" placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
+          <FileViewToggle />
+        </div>
         <ul className="file-list">
-          {filtered.slice(0, MAX_LISTED).map((f) => (
-            <li key={f} className={`file-item ${f === path ? 'active' : ''}`} onClick={() => {
-              onPath(f)
-              revealPane('files', 'second')
-            }} title={f}>
-              <span className="file-path">{f}</span>
-            </li>
-          ))}
+          <FileEntries
+            items={shown}
+            pathOf={(f) => f}
+            render={(f, { label, style }) => (
+              <li
+                key={f}
+                className={`file-item ${f === path ? 'active' : ''}`}
+                style={style}
+                onClick={() => {
+                  onPath(f)
+                  revealPane('files', 'second')
+                }}
+                title={f}
+              >
+                {label}
+              </li>
+            )}
+          />
         </ul>
         {filtered.length > MAX_LISTED && <p className="muted small">{t('files.truncated', { shown: MAX_LISTED, count: filtered.length })}</p>}
       </div>

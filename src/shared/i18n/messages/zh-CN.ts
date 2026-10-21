@@ -20,6 +20,7 @@ export const zhCN: Messages = {
     none: '全不选',
     file: '文件',
     files: { other: '{count} 个文件' },
+    fileList: '文件',
     clickToCopy: '点击复制',
     compareWith: '与 {ref} 比较',
     blameHistory: '追溯 / 历史',
@@ -92,6 +93,8 @@ export const zhCN: Messages = {
     pullHelp: '获取并整合远程仓库的更改',
     push: '推送',
     pushHelp: '将你的提交发送到远程仓库',
+    pushTo: '推送到 {remote}',
+    manageRemotes: '管理远程仓库…',
     branch: '分支',
     stash: '贮藏',
     stashHelp: '暂时收起本地更改并清理工作区',
@@ -592,6 +595,23 @@ export const zhCN: Messages = {
       duplicates: '有重复的快捷键。每个操作需要不同的组合键。',
       showList: '查看完整的快捷键列表（F1）'
     },
+    notifications: {
+      title: '通知',
+      description: '成功、错误和提示消息出现的位置和大小。',
+      horizontal: '水平位置',
+      vertical: '垂直位置',
+      left: '左',
+      center: '居中',
+      right: '右',
+      top: '顶部',
+      bottom: '底部',
+      width: '宽度',
+      height: '最大高度',
+      heightHelp: '文字超过最大高度的消息会出现滚动条。',
+      sample: '通知就是这样显示的。',
+      reset: '恢复默认',
+      show: '显示示例'
+    },
     about: {
       title: '关于',
       description: '版本和系统信息。',
@@ -612,6 +632,10 @@ export const zhCN: Messages = {
       viewCompare: '转到“比较”',
       toggleSidebar: '显示/隐藏侧边栏',
       searchHistory: '搜索历史',
+      nextChange: '差异：下一处更改',
+      prevChange: '差异：上一处更改',
+      nextFile: '差异：下一个文件',
+      prevFile: '差异：上一个文件',
       studio: '打开拣选工作台',
       newBranch: '新建分支',
       stash: '贮藏更改',
@@ -623,7 +647,7 @@ export const zhCN: Messages = {
       settings: '设置',
       help: '快捷键列表'
     },
-    groups: { navigation: '导航', git: 'Git', app: '应用' },
+    groups: { navigation: '导航', diff: '差异', git: 'Git', app: '应用' },
     fixed: {
       title: '在列表和对话框中',
       moveSelection: '在历史中移动选择',
@@ -717,6 +741,7 @@ export const zhCN: Messages = {
     openDialogTitle: '打开 Git 仓库',
     initDialogTitle: '在此文件夹中创建 Git 仓库',
     outsideRepository: '路径不在仓库内。',
+    fileNotFound: '文件“{path}”在工作目录中不存在（可能只存在于其他提交中）。',
     unknownOperation: '未知操作：{method}',
     noRepository: '没有打开的仓库。'
   },
@@ -766,8 +791,8 @@ export const zhCN: Messages = {
     help: 'Git 会使用你保存的凭据（凭据管理器或 SSH 密钥）。可在 Git 日志中查看进度。'
   },
   identity: {
-    title: 'Git 身份',
-    description: '记录在提交中的姓名和邮箱。',
+    title: '身份与远程仓库',
+    description: '提交中记录的姓名和邮箱，以及仓库的远程仓库（服务器）。',
     scope: '应用范围',
     global: '全局（所有仓库）',
     globalHelp: '保存在 ~/.gitconfig 中。',
@@ -800,6 +825,48 @@ export const zhCN: Messages = {
     manualPlaceholder: 'code   或   /path/to/editor --option',
     manualHelp: '可以输入 PATH 中的命令、可执行文件的路径（或 macOS 上的 .app）以及参数。保存前可点击“测试”检查。',
     test: '测试',
-    testOk: '编辑器已打开仓库文件夹。'
+    testOk: '编辑器已按完整路径打开了仓库中的一个文件。'
+  },
+  fileList: {
+    viewMode: '文件显示方式',
+    viewModeHelp: '以列表（文件名和文件夹）或文件夹树显示文件——适用于所有文件列表',
+    list: '列表',
+    tree: '树',
+    folderFiles: { other: '{count} 个文件' }
+  },
+  diffNav: {
+    group: '文件中的更改',
+    prevChange: '上一处更改',
+    nextChange: '下一处更改',
+    count: '当前更改 / 更改总数',
+    fileGroup: '列表中的文件',
+    prevFile: '上一个文件',
+    nextFile: '下一个文件',
+    fileCount: '当前文件 / 文件总数'
+  },
+  remotes: {
+    title: '远程仓库',
+    help: '远程仓库是本仓库推送和拉取提交的服务器（origin、upstream……）。可以再添加一个，例如 fork 的原始仓库或镜像；在顶部栏的“推送”上点右键可选择推送到哪一个。',
+    none: '此仓库还没有远程仓库。',
+    editUrl: '修改 URL',
+    rename: '重命名',
+    remove: '移除',
+    removeTitle: '移除远程仓库',
+    removeMessage: '移除远程仓库“{name}”（{url}）？它的远程分支将不再显示；服务器上不会删除任何内容。',
+    renameTitle: '重命名远程仓库',
+    name: '名称',
+    url: 'URL',
+    urlPlaceholder: 'https://github.com/用户/项目.git 或 git@github.com:用户/项目.git',
+    fetchNow: '立即获取该远程仓库的内容（fetch）',
+    addTitle: '添加另一个远程仓库',
+    add: '添加远程仓库',
+    added: '已添加远程仓库“{name}”。',
+    removed: '已移除远程仓库“{name}”。',
+    renamed: '远程仓库已重命名为“{name}”。',
+    urlChanged: '已修改“{name}”的 URL。',
+    fetchUrl: '拉取 URL',
+    pushUrl: '推送 URL',
+    invalidName: '远程仓库名称无效：请使用字母、数字、点、连字符或下划线。',
+    invalidUrl: '请输入远程仓库 URL（不能以“-”开头）。'
   }
 }

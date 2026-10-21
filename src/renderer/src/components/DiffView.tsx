@@ -1,10 +1,12 @@
-import { useContext, useEffect, useRef, useState } from 'react'
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { DiffLine, FileDiff, LineKey } from '../../../shared/types'
 import { changeKeys, hunkKeys, lineKey, splitRows } from '../../../shared/diffKeys'
 import { DEFAULT_SETTINGS, type DiffLayout } from '../../../shared/settings'
 import { AppContext } from '../context'
+import { stepIndex, useDiffNav } from '../diffNav'
 import { t, type MessageKey } from '../i18n'
 import { useLayout } from '../layout'
+import { displayCombo, resolveBindings } from '../shortcuts'
 
 /**
  * Escolha entre "cima e baixo" e "lado a lado": todo diff abre no modo padrão das configurações;
@@ -32,6 +34,14 @@ interface Props {
   /** Quando informado, as linhas alteradas podem ser selecionadas. */
   selection?: Set<LineKey>
   onSelectionChange?(selection: Set<LineKey>): void
+  /** Quando há uma lista de arquivos ao lado: posição do arquivo e como ir para o anterior/próximo. */
+  fileNav?: { index: number; count: number; go(delta: 1 | -1): void }
+}
+
+/** Teclas atuais de uma ação (as personalizadas das configurações, se houver). */
+function useShortcutOf(): (action: string) => string {
+  const overrides = useContext(AppContext)?.settings.shortcuts
+  return (action) => displayCombo(resolveBindings(overrides ?? {})[action])
 }
 
 const TYPE_LABEL: Record<FileDiff['changeType'], MessageKey> = {
@@ -47,13 +57,56 @@ const TYPE_LABEL: Record<FileDiff['changeType'], MessageKey> = {
  * arraste o mouse para marcar várias, Shift+clique para marcar um intervalo, ou use a
  * caixa do bloco (hunk) para marcá-lo inteiro.
  */
-export function DiffView({ file, selection, onSelectionChange }: Props) {
+export function DiffView({ file, selection, onSelectionChange, fileNav }: Props) {
   const selectable = !!selection && !!onSelectionChange && !file.binary
   const [layout, setLayout] = useDiffLayout()
   const [fullFile, setFullFile] = useFullFile()
   const dragMode = useRef<'add' | 'remove' | null>(null)
   const lastClicked = useRef<LineKey | null>(null)
   const all = changeKeys(file)
+  const root = useRef<HTMLDivElement>(null)
+  const shortcutOf = useShortcutOf()
+  /** Alteração atual da navegação (índice entre os blocos de linhas alteradas) e quantas existem. */
+  const [cursor, setCursor] = useState(-1)
+  const [blocks, setBlocks] = useState(0)
+
+  /** Primeira linha de cada bloco de linhas alteradas seguidas (cada linha alterada tem data-change). */
+  const changeBlocks = () => {
+    const rows = [...(root.current?.querySelectorAll<HTMLElement>('tr.hunk-header, tr.line') ?? [])]
+    const blocks: HTMLElement[][] = []
+    rows.forEach((row, i) => {
+      if (!row.hasAttribute('data-change')) return
+      if (i > 0 && rows[i - 1].hasAttribute('data-change')) blocks[blocks.length - 1].push(row)
+      else blocks.push([row])
+    })
+    return blocks
+  }
+
+  const goChange = (delta: 1 | -1) => {
+    const list = changeBlocks()
+    const next = stepIndex(cursor, delta, list.length)
+    if (next < 0) return
+    setCursor(next)
+    list[next][0].scrollIntoView({ block: 'center', behavior: 'smooth' })
+    for (const row of list[next]) {
+      row.classList.remove('nav-flash')
+      void row.offsetWidth // reinicia a animação se a mesma alteração for escolhida de novo
+      row.classList.add('nav-flash')
+      setTimeout(() => row.classList.remove('nav-flash'), 1400)
+    }
+  }
+
+  // Outro arquivo, outro modo de exibição ou "arquivo inteiro": a contagem recomeça.
+  useLayoutEffect(() => {
+    setCursor(-1)
+    setBlocks(changeBlocks().length)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file, layout, fullFile])
+
+  useDiffNav({
+    el: () => root.current,
+    go: (kind, delta) => (kind === 'change' ? goChange(delta) : fileNav?.go(delta))
+  })
 
   useEffect(() => {
     const stop = () => (dragMode.current = null)
@@ -94,7 +147,7 @@ export function DiffView({ file, selection, onSelectionChange }: Props) {
   const allSelected = selectable && all.length > 0 && all.every((k) => selection!.has(k))
 
   return (
-    <div className="diff-file">
+    <div className="diff-file" ref={root}>
       <div className="diff-file-header">
         {selectable && (
           <input
@@ -116,6 +169,33 @@ export function DiffView({ file, selection, onSelectionChange }: Props) {
           <span className="add">+{file.additions}</span> <span className="del">−{file.deletions}</span>
         </span>
         {selectable && <span className="muted small">{selection!.size ? t('diff.selectedOf', { selected: all.filter((k) => selection!.has(k)).length, count: all.length }) : t('diff.selectHint')}</span>}
+        <span className="toolbar-spacer" />
+        {blocks > 0 && (
+          <div className="diff-nav" dir="ltr" role="group" aria-label={t('diffNav.group')}>
+            <button onClick={() => goChange(-1)} title={`${t('diffNav.prevChange')} (${shortcutOf('diff.prevChange')})`}>
+              ▲
+            </button>
+            <span className="diff-nav-count" title={t('diffNav.count')}>
+              {cursor < 0 ? '–' : cursor + 1}/{blocks}
+            </span>
+            <button onClick={() => goChange(1)} title={`${t('diffNav.nextChange')} (${shortcutOf('diff.nextChange')})`}>
+              ▼
+            </button>
+          </div>
+        )}
+        {fileNav && fileNav.count > 1 && (
+          <div className="diff-nav" dir="ltr" role="group" aria-label={t('diffNav.fileGroup')}>
+            <button onClick={() => fileNav.go(-1)} title={`${t('diffNav.prevFile')} (${shortcutOf('diff.prevFile')})`}>
+              ◀
+            </button>
+            <span className="diff-nav-count" title={t('diffNav.fileCount')}>
+              {fileNav.index + 1}/{fileNav.count}
+            </span>
+            <button onClick={() => fileNav.go(1)} title={`${t('diffNav.nextFile')} (${shortcutOf('diff.nextFile')})`}>
+              ▶
+            </button>
+          </div>
+        )}
         {!file.binary && file.hunks.length > 0 && (
           <button
             className={`diff-full ${fullFile ? 'active' : ''}`}
@@ -199,7 +279,11 @@ export function DiffView({ file, selection, onSelectionChange }: Props) {
                   </td>
                 </tr>,
                 ...splitRows(hunk).map((row) => (
-                  <tr key={`${h}:${row.left ?? '-'}:${row.right ?? '-'}`} className="line">
+                  <tr
+                    key={`${h}:${row.left ?? '-'}:${row.right ?? '-'}`}
+                    className="line"
+                    data-change={[row.left, row.right].some((i) => i !== null && hunk.lines[i].kind !== 'context') || undefined}
+                  >
                     {side(row.left, 'old')}
                     {side(row.right, 'new')}
                   </tr>
@@ -241,6 +325,7 @@ export function DiffView({ file, selection, onSelectionChange }: Props) {
                     <tr
                       key={key}
                       className={`line line-${line.kind} ${isSelected ? 'line-selected' : ''}`}
+                      data-change={change || undefined}
                       onMouseDown={change ? (e) => onLineDown(e, key) : undefined}
                       onMouseEnter={change ? () => onLineEnter(key) : undefined}
                     >

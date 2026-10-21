@@ -272,6 +272,13 @@ export interface GitCommandEntry {
   error?: string
 }
 
+/** Um remote do repositório (git remote -v). */
+export interface RemoteInfo {
+  name: string
+  fetchUrl: string
+  pushUrl: string
+}
+
 // --------------------------------------------------------- identidade git
 
 export interface GitIdentity {

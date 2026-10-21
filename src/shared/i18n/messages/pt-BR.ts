@@ -18,6 +18,7 @@ export const ptBR = {
     none: 'nenhum',
     file: 'Arquivo',
     files: { one: '{count} arquivo', other: '{count} arquivos' },
+    fileList: 'Arquivos',
     clickToCopy: 'Clique para copiar',
     compareWith: 'Comparar com {ref}',
     blameHistory: 'Blame / histórico',
@@ -94,6 +95,8 @@ export const ptBR = {
     pullHelp: 'Trazer e integrar as alterações do remoto',
     push: 'Push',
     pushHelp: 'Enviar seus commits para o remoto',
+    pushTo: 'Enviar para {remote}',
+    manageRemotes: 'Gerenciar remotes…',
     branch: 'Branch',
     stash: 'Stash',
     stashHelp: 'Guardar as alterações locais e limpar a área de trabalho',
@@ -615,6 +618,23 @@ export const ptBR = {
       duplicates: 'Há atalhos repetidos. Cada ação precisa de uma combinação diferente.',
       showList: 'Ver a lista completa de atalhos (F1)'
     },
+    notifications: {
+      title: 'Notificações',
+      description: 'Onde e com que tamanho aparecem os avisos de sucesso, erro e informação.',
+      horizontal: 'Posição na horizontal',
+      vertical: 'Posição na vertical',
+      left: 'Esquerda',
+      center: 'Centro',
+      right: 'Direita',
+      top: 'Em cima',
+      bottom: 'Embaixo',
+      width: 'Largura',
+      height: 'Altura máxima',
+      heightHelp: 'Avisos com texto maior que a altura máxima ganham barra de rolagem.',
+      sample: 'Assim aparece uma notificação.',
+      reset: 'Restaurar padrão',
+      show: 'Mostrar exemplo'
+    },
     about: {
       title: 'Sobre',
       description: 'Versões e informações do sistema.',
@@ -635,6 +655,10 @@ export const ptBR = {
       viewCompare: 'Ir para Comparar',
       toggleSidebar: 'Mostrar/ocultar a barra lateral',
       searchHistory: 'Pesquisar no histórico',
+      nextChange: 'Diff: próxima alteração',
+      prevChange: 'Diff: alteração anterior',
+      nextFile: 'Diff: próximo arquivo',
+      prevFile: 'Diff: arquivo anterior',
       studio: 'Abrir Cherry-pick Studio',
       newBranch: 'Nova branch',
       stash: 'Guardar alterações (stash)',
@@ -646,7 +670,7 @@ export const ptBR = {
       settings: 'Configurações',
       help: 'Lista de atalhos'
     },
-    groups: { navigation: 'Navegação', git: 'Git', app: 'Aplicativo' },
+    groups: { navigation: 'Navegação', diff: 'Diff', git: 'Git', app: 'Aplicativo' },
     fixed: {
       title: 'Nas listas e diálogos',
       moveSelection: 'Mover a seleção no histórico',
@@ -743,6 +767,7 @@ export const ptBR = {
     openDialogTitle: 'Abrir repositório git',
     initDialogTitle: 'Criar repositório git nesta pasta',
     outsideRepository: 'Caminho fora do repositório.',
+    fileNotFound: 'Arquivo "{path}" não existe na pasta do projeto (só em outro commit?).',
     unknownOperation: 'Operação desconhecida: {method}',
     noRepository: 'Nenhum repositório aberto.'
   },
@@ -792,8 +817,8 @@ export const ptBR = {
     help: 'O git usa suas credenciais salvas (gerenciador de credenciais ou chave SSH). Acompanhe o progresso no log de comandos.'
   },
   identity: {
-    title: 'Identidade git',
-    description: 'Nome e e-mail gravados nos seus commits.',
+    title: 'Identidade e remotes',
+    description: 'Nome e e-mail gravados nos seus commits e os remotes (servidores) do repositório.',
     scope: 'Onde aplicar',
     global: 'Global (todos os repositórios)',
     globalHelp: 'Grava em ~/.gitconfig.',
@@ -826,6 +851,48 @@ export const ptBR = {
     manualPlaceholder: 'code   ou   /caminho/do/editor --opção',
     manualHelp: 'Pode digitar um comando do PATH, o caminho do executável (ou de um .app no macOS) e argumentos. Use “Testar” para conferir antes de salvar.',
     test: 'Testar',
-    testOk: 'O editor foi aberto com a pasta do repositório.'
+    testOk: 'O editor foi aberto com um arquivo do repositório (caminho completo).'
+  },
+  fileList: {
+    viewMode: 'Exibição dos arquivos',
+    viewModeHelp: 'Mostrar os arquivos em lista (nome e pasta) ou em árvore de pastas — vale para todas as listas',
+    list: 'Lista',
+    tree: 'Árvore',
+    folderFiles: { one: '{count} arquivo', other: '{count} arquivos' }
+  },
+  diffNav: {
+    group: 'Alterações do arquivo',
+    prevChange: 'Alteração anterior',
+    nextChange: 'Próxima alteração',
+    count: 'Alteração atual / total de alterações',
+    fileGroup: 'Arquivos da lista',
+    prevFile: 'Arquivo anterior',
+    nextFile: 'Próximo arquivo',
+    fileCount: 'Arquivo atual / total de arquivos'
+  },
+  remotes: {
+    title: 'Remotes',
+    help: 'Os remotes são os servidores para onde o repositório envia e de onde baixa commits (origin, upstream…). Adicione outro, por exemplo o repositório original de um fork ou um espelho; clique com o botão direito em Enviar na barra superior para escolher para qual enviar.',
+    none: 'Este repositório ainda não tem remotes.',
+    editUrl: 'Alterar URL',
+    rename: 'Renomear',
+    remove: 'Remover',
+    removeTitle: 'Remover remote',
+    removeMessage: 'Remover o remote "{name}" ({url})? As branches remotas dele deixam de aparecer; nada é apagado no servidor.',
+    renameTitle: 'Renomear remote',
+    name: 'Nome',
+    url: 'URL',
+    urlPlaceholder: 'https://github.com/usuario/projeto.git ou git@github.com:usuario/projeto.git',
+    fetchNow: 'Baixar o conteúdo do remote agora (fetch)',
+    addTitle: 'Adicionar outro remote',
+    add: 'Adicionar remote',
+    added: 'Remote "{name}" adicionado.',
+    removed: 'Remote "{name}" removido.',
+    renamed: 'Remote renomeado para "{name}".',
+    urlChanged: 'URL de "{name}" alterada.',
+    fetchUrl: 'URL para baixar',
+    pushUrl: 'URL para enviar',
+    invalidName: 'Nome de remote inválido: use letras, números, ponto, hífen ou sublinhado.',
+    invalidUrl: 'Informe a URL do remote (ela não pode começar com "-").'
   }
 }

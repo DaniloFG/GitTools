@@ -9,6 +9,22 @@ export type LanguageSetting = 'system' | LocaleId
 /** Como o diff é exibido: linhas antigas e novas uma embaixo da outra, ou lado a lado. */
 export type DiffLayout = 'inline' | 'split'
 
+export type ToastHorizontal = 'left' | 'center' | 'right'
+export type ToastVertical = 'top' | 'bottom'
+
+/** Onde e com que tamanho aparecem as notificações (toasts) de sucesso, erro e aviso. */
+export interface ToastSettings {
+  horizontal: ToastHorizontal
+  vertical: ToastVertical
+  /** Largura de cada notificação, em pixels. */
+  width: number
+  /** Altura máxima de cada notificação, em pixels (textos maiores rolam). */
+  height: number
+}
+
+export const TOAST_WIDTH = { min: 240, max: 720, step: 20 }
+export const TOAST_HEIGHT = { min: 60, max: 480, step: 20 }
+
 export interface Settings {
   /** Idioma da interface; "system" segue o idioma do sistema operacional. */
   language: LanguageSetting
@@ -26,17 +42,33 @@ export interface Settings {
    * executável escolhido pelo usuário. Vazio = ainda não escolhido.
    */
   editor: string
+  /** Posição e tamanho das notificações. */
+  toast: ToastSettings
   /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
   shortcuts: Record<string, string>
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', editor: '', shortcuts: {} }
+export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', editor: '', toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
 
 export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6]
 export const DIVIDER_WIDTHS = [1, 2, 3, 4, 6, 8]
 export const PANE_BUTTON_SCALES = [1, 1.25, 1.5, 2]
 
 const oneOf = (value: unknown, options: number[], fallback: number) => (typeof value === 'number' && options.includes(value) ? value : fallback)
+
+const clampTo = (value: unknown, limits: { min: number; max: number; step: number }, fallback: number) =>
+  typeof value === 'number' && Number.isFinite(value) ? Math.min(limits.max, Math.max(limits.min, Math.round(value / limits.step) * limits.step)) : fallback
+
+function normalizeToast(value: unknown): ToastSettings {
+  const raw = (value && typeof value === 'object' ? value : {}) as Partial<Record<keyof ToastSettings, unknown>>
+  const d = DEFAULT_SETTINGS.toast
+  return {
+    horizontal: raw.horizontal === 'left' || raw.horizontal === 'center' || raw.horizontal === 'right' ? raw.horizontal : d.horizontal,
+    vertical: raw.vertical === 'top' || raw.vertical === 'bottom' ? raw.vertical : d.vertical,
+    width: clampTo(raw.width, TOAST_WIDTH, d.width),
+    height: clampTo(raw.height, TOAST_HEIGHT, d.height)
+  }
+}
 
 /** Aceita qualquer valor lido do disco e devolve configurações válidas. */
 export function normalizeSettings(value: unknown): Settings {
@@ -53,6 +85,7 @@ export function normalizeSettings(value: unknown): Settings {
     paneButtonScale: oneOf(raw.paneButtonScale, PANE_BUTTON_SCALES, DEFAULT_SETTINGS.paneButtonScale),
     diffLayout: raw.diffLayout === 'split' ? 'split' : 'inline',
     editor: typeof raw.editor === 'string' ? raw.editor.trim() : DEFAULT_SETTINGS.editor,
+    toast: normalizeToast(raw.toast),
     shortcuts: shortcuts as Record<string, string>
   }
 }

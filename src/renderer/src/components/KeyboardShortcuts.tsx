@@ -3,6 +3,7 @@ import { useActions } from '../actions'
 import { useApp } from '../context'
 import { git } from '../git'
 import { t } from '../i18n'
+import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings, worksInInputs } from '../shortcuts'
 import { HISTORY_SEARCH_ID } from './CommitList'
 import { togglePane } from './Split'
@@ -27,7 +28,8 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
       if (!action) return
       if (typing && !worksInInputs(combo)) return
       // Com um diálogo aberto, só a ajuda e as configurações respondem.
-      if (disabled && action !== 'help' && action !== 'settings') return
+      // (A navegação nos diffs funciona também dentro de diálogos, como o Studio.)
+      if (disabled && action !== 'help' && action !== 'settings' && !(action in DIFF_NAV_ACTIONS)) return
       e.preventDefault()
       const handlers: Record<string, () => unknown> = {
         'view.history': () => app.setView('history'),
@@ -54,6 +56,11 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         'repo.open': onOpenRepository,
         settings: () => app.openSettings(),
         help: app.openShortcuts
+      }
+      const nav = DIFF_NAV_ACTIONS[action]
+      if (nav) {
+        emitDiffNav(...nav)
+        return
       }
       void handlers[action]?.()
     }

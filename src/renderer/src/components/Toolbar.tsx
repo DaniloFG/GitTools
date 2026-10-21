@@ -26,6 +26,17 @@ export function Toolbar({ onOpenRepository, onClone }: { onOpenRepository(path?:
       ...others.slice(0, 8).map((r) => ({ label: r.name, hint: r.path, onClick: () => onOpenRepository(r.path) }))
     ])
 
+  /** Botão direito em Enviar: escolher outro remote (ou abrir o gerenciamento de remotes). */
+  const pushMenu = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    const remotes = await git.remotes().catch(() => [])
+    showMenu(e, [
+      ...remotes.map((r) => ({ label: t('toolbar.pushTo', { remote: r.name }), hint: r.pushUrl, onClick: () => run(t('busy.push'), () => git.push(r.name)) })),
+      ...(remotes.length ? (['separator'] as const) : []),
+      { label: t('toolbar.manageRemotes'), onClick: () => openSettings('git') }
+    ])
+  }
+
   return (
     <header className="toolbar">
       <button className="repo-button" onClick={repoMenu} title={repo.root}>
@@ -35,6 +46,7 @@ export function Toolbar({ onOpenRepository, onClone }: { onOpenRepository(path?:
       <span className="current-branch" title={t('toolbar.currentBranch')}>
         ⎇ {head ?? t('toolbar.detached', { sha: status.headSha?.slice(0, 7) ?? t('toolbar.noCommits') })}
       </span>
+      <div className="toolbar-spacer" />
       <div className="toolbar-group">
         <button onClick={() => run(t('busy.fetch'), () => git.fetch())} title={t('toolbar.fetchHelp')}>
           ⟳ {t('toolbar.fetch')}
@@ -42,7 +54,7 @@ export function Toolbar({ onOpenRepository, onClone }: { onOpenRepository(path?:
         <button onClick={() => run(t('busy.pull'), () => git.pull())} title={t('toolbar.pullHelp')}>
           ↓ {t('toolbar.pull')} {status.behind > 0 && <span className="badge">{status.behind}</span>}
         </button>
-        <button onClick={() => run(t('busy.push'), () => git.push())} title={t('toolbar.pushHelp')}>
+        <button onClick={() => run(t('busy.push'), () => git.push())} onContextMenu={pushMenu} title={t('toolbar.pushHelp')}>
           ↑ {t('toolbar.push')} {status.ahead > 0 && <span className="badge">{status.ahead}</span>}
         </button>
       </div>
@@ -58,7 +70,6 @@ export function Toolbar({ onOpenRepository, onClone }: { onOpenRepository(path?:
           ✎ {t('common.openInEditor')}
         </button>
       </div>
-      <div className="toolbar-spacer" />
       <button className="primary" onClick={() => openStudio({ target: head ?? undefined })}>
         🍒 {t('studio.name')}
       </button>

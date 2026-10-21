@@ -25,6 +25,7 @@ import type {
   PartialApplyOptions,
   RebasePlan,
   RebaseStep,
+  RemoteInfo,
   RepoInfo,
   RepoStatus,
   StashInfo,
@@ -101,7 +102,14 @@ export interface RepoApi {
   // Remotos
   fetch(): Promise<string>
   pull(): Promise<OperationResult>
-  push(): Promise<string>
+  /** Envia a branch atual (para o `remote` informado, ou o padrão dela). */
+  push(remote?: string): Promise<string>
+  remotes(): Promise<RemoteInfo[]>
+  /** Devolve o nome usado; `fetchNow` já baixa o conteúdo do novo remote. */
+  addRemote(name: string, url: string, fetchNow?: boolean): Promise<string>
+  setRemoteUrl(name: string, url: string): Promise<void>
+  renameRemote(name: string, newName: string): Promise<void>
+  removeRemote(name: string): Promise<void>
 
   // Stash
   stash(message?: string): Promise<void>
@@ -165,6 +173,11 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'fetch',
   'pull',
   'push',
+  'remotes',
+  'addRemote',
+  'setRemoteUrl',
+  'renameRemote',
+  'removeRemote',
   'stash',
   'stashApply',
   'stashDrop',

@@ -26,6 +26,7 @@ import type {
   PartialApplyOptions,
   RebasePlan,
   RebaseStep,
+  RemoteInfo,
   RepoInfo,
   RepoStatus,
   StashInfo,
@@ -34,6 +35,7 @@ import type {
 import { buildPartialPatch, parseDiff, quotePath } from './diff'
 import { t } from '../shared/i18n'
 import { GitError, runGit, type RunOptions } from './exec'
+import { resolveInside } from './paths'
 
 const DIFF_ARGS = [
   'diff',
@@ -217,6 +219,15 @@ function parseBlame(path: string, output: string): BlameResult {
 }
 
 /** Acesso de alto nível a um repositório git, usado pela interface gráfica. */
+/** Valida nome e URL de um remote antes de passá-los ao git (nada que pareça opção ou tenha espaços). */
+function checkRemote(name: string, url: string): { name: string; url: string } {
+  const cleanName = String(name ?? '').trim()
+  const cleanUrl = String(url ?? '').trim()
+  if (!/^[A-Za-z0-9][\w.-]*$/.test(cleanName) || cleanName.endsWith('.lock') || cleanName.includes('..')) throw new Error(t('remotes.invalidName'))
+  if (!cleanUrl || cleanUrl.startsWith('-') || /[\0\r\n]/.test(cleanUrl)) throw new Error(t('remotes.invalidUrl'))
+  return { name: cleanName, url: cleanUrl }
+}
+
 export class GitRepository implements RepoApi {
   private emptyTreeSha: string | null = null
 
@@ -224,7 +235,8 @@ export class GitRepository implements RepoApi {
 
   static async open(path: string): Promise<GitRepository> {
     const { stdout } = await runGit(path, ['rev-parse', '--show-toplevel'])
-    return new GitRepository(stdout.trim())
+    // No Windows o git informa "C:/pasta"; guardar no formato do sistema evita comparações de texto erradas.
+    return new GitRepository(resolve(stdout.trim()))
   }
 
   static async init(path: string): Promise<GitRepository> {
@@ -908,16 +920,56 @@ export class GitRepository implements RepoApi {
     }
   }
 
-  async push(): Promise<string> {
+  /** Remotes configurados, com a URL de buscar e a de enviar (que pode ser diferente). */
+  async remotes(): Promise<RemoteInfo[]> {
+    const { stdout } = await this.git(['remote', '-v'])
+    const byName = new Map<string, RemoteInfo>()
+    for (const line of stdout.split('\n')) {
+      const match = /^(\S+)\t(.*) \((fetch|push)\)$/.exec(line)
+      if (!match) continue
+      const [, name, url, kind] = match
+      const info = byName.get(name) ?? { name, fetchUrl: '', pushUrl: '' }
+      if (kind === 'fetch') info.fetchUrl = url
+      else info.pushUrl = url
+      byName.set(name, info)
+    }
+    return [...byName.values()]
+  }
+
+  async addRemote(name: string, url: string, fetchNow = false): Promise<string> {
+    const clean = checkRemote(name, url)
+    await this.git(['remote', 'add', ...(fetchNow ? ['-f'] : []), '--', clean.name, clean.url])
+    return clean.name
+  }
+
+  async setRemoteUrl(name: string, url: string): Promise<void> {
+    const clean = checkRemote(name, url)
+    await this.git(['remote', 'set-url', '--', clean.name, clean.url])
+  }
+
+  async renameRemote(name: string, newName: string): Promise<void> {
+    const clean = checkRemote(name, 'x')
+    const next = checkRemote(newName, 'x')
+    await this.git(['remote', 'rename', '--', clean.name, next.name])
+  }
+
+  async removeRemote(name: string): Promise<void> {
+    await this.git(['remote', 'remove', '--', checkRemote(name, 'x').name])
+  }
+
+  /** Envia a branch atual; sem `remote`, usa o upstream (ou o origin, ou o primeiro remote, na primeira vez). */
+  async push(remote?: string): Promise<string> {
     const status = await this.status()
     if (!status.branch) throw new Error(t('core.pushNeedsBranch'))
     let args = ['push']
-    if (!status.upstream) {
+    if (remote) {
+      args = ['push', '-u', '--', checkRemote(remote, 'x').name, status.branch]
+    } else if (!status.upstream) {
       const { stdout } = await this.git(['remote'])
       const remotes = stdout.split('\n').filter(Boolean)
       if (!remotes.length) throw new Error(t('core.noRemotes'))
-      const remote = remotes.includes('origin') ? 'origin' : remotes[0]
-      args = ['push', '-u', remote, status.branch]
+      const first = remotes.includes('origin') ? 'origin' : remotes[0]
+      args = ['push', '-u', first, status.branch]
     }
     const { stderr, stdout } = await this.git(args)
     return (stderr || stdout).trim() || t('core.pushDone')
@@ -958,8 +1010,7 @@ export class GitRepository implements RepoApi {
 
   /** Grava o conteúdo resolvido de um arquivo em conflito e marca como resolvido. */
   async saveConflictResolution(path: string, content: string): Promise<void> {
-    const full = resolve(this.root, path)
-    if (!full.startsWith(resolve(this.root) + (process.platform === 'win32' ? '\\' : '/'))) throw new Error(t('main.outsideRepository'))
+    const full = resolveInside(this.root, path)
     await writeFile(full, content, 'utf8')
     await this.git(['add', '--', path])
   }

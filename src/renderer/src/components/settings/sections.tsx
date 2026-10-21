@@ -10,6 +10,7 @@ import { AppearanceSection } from './AppearanceSection'
 import { EditorSection } from './EditorSection'
 import { GeneralSection } from './GeneralSection'
 import { IdentitySection } from './IdentitySection'
+import { NotificationsSection } from './NotificationsSection'
 import { ShortcutsSection, duplicateShortcuts } from './ShortcutsSection'
 
 export interface SettingsSectionProps {
@@ -43,6 +44,13 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     title: 'settings.appearance.title',
     description: 'settings.appearance.description',
     component: AppearanceSection
+  },
+  {
+    id: 'notifications',
+    icon: '🔔',
+    title: 'settings.notifications.title',
+    description: 'settings.notifications.description',
+    component: NotificationsSection
   },
   {
     id: 'git',

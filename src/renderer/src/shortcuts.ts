@@ -2,7 +2,7 @@
 
 import type { MessageKey } from '../../shared/i18n'
 
-export type ShortcutGroup = 'navigation' | 'git' | 'app'
+export type ShortcutGroup = 'navigation' | 'diff' | 'git' | 'app'
 
 export interface ShortcutAction {
   id: string
@@ -17,6 +17,10 @@ export const SHORTCUT_ACTIONS: ShortcutAction[] = [
   { id: 'view.compare', group: 'navigation', defaultKeys: 'Ctrl+4' },
   { id: 'layout.sidebar', group: 'navigation', defaultKeys: 'Ctrl+B' },
   { id: 'history.search', group: 'navigation', defaultKeys: 'Ctrl+F' },
+  { id: 'diff.nextChange', group: 'diff', defaultKeys: 'F7' },
+  { id: 'diff.prevChange', group: 'diff', defaultKeys: 'Shift+F7' },
+  { id: 'diff.nextFile', group: 'diff', defaultKeys: 'F8' },
+  { id: 'diff.prevFile', group: 'diff', defaultKeys: 'Shift+F8' },
   { id: 'studio', group: 'git', defaultKeys: 'Ctrl+Shift+P' },
   { id: 'branch.new', group: 'git', defaultKeys: 'Ctrl+Shift+N' },
   { id: 'stash', group: 'git', defaultKeys: 'Ctrl+Shift+S' },
@@ -37,6 +41,10 @@ export const SHORTCUT_LABELS: Record<string, MessageKey> = {
   'view.compare': 'shortcuts.actions.viewCompare',
   'layout.sidebar': 'shortcuts.actions.toggleSidebar',
   'history.search': 'shortcuts.actions.searchHistory',
+  'diff.nextChange': 'shortcuts.actions.nextChange',
+  'diff.prevChange': 'shortcuts.actions.prevChange',
+  'diff.nextFile': 'shortcuts.actions.nextFile',
+  'diff.prevFile': 'shortcuts.actions.prevFile',
   studio: 'shortcuts.actions.studio',
   'branch.new': 'shortcuts.actions.newBranch',
   stash: 'shortcuts.actions.stash',
@@ -51,6 +59,7 @@ export const SHORTCUT_LABELS: Record<string, MessageKey> = {
 
 export const SHORTCUT_GROUP_LABELS: Record<ShortcutGroup, MessageKey> = {
   navigation: 'shortcuts.groups.navigation',
+  diff: 'shortcuts.groups.diff',
   git: 'shortcuts.groups.git',
   app: 'shortcuts.groups.app'
 }
@@ -104,7 +113,7 @@ export function resolveBindings(overrides: Record<string, string>): Record<strin
 
 /** Teclas que funcionam mesmo com o foco num campo de texto. */
 export function worksInInputs(combo: string): boolean {
-  return /(^|\+)(Ctrl|Alt)\+/.test(combo) || /^F\d+$/.test(combo)
+  return /(^|\+)(Ctrl|Alt)\+/.test(combo) || /^(Shift\+)?F\d+$/.test(combo)
 }
 
 /** Pesquisa na lista de atalhos: por texto (nome da ação ou teclas) e/ou por uma combinação gravada. */

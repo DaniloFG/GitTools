@@ -8,6 +8,8 @@ import { git } from '../git'
 import { CommitDetailsPanel } from './CommitDetails'
 import { DiffView, useFullFile } from './DiffView'
 import { revealPane, Split } from './Split'
+import { stepIndex } from '../diffNav'
+import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
 
 interface Props {
@@ -176,14 +178,21 @@ export function CompareView({ request, onRequest }: Props) {
             />
             <div className="group-header">
               <strong>{t('compare.differentFiles')}</strong> <span className="count">{comparison.files.length}</span>
+              <span className="toolbar-spacer" />
+              <FileViewToggle compact />
             </div>
             {comparison.files.length === 0 ? (
               <p className="empty small">{t('compare.identical')}</p>
             ) : (
               <ul className="file-list">
-                {comparison.files.map((f) => (
+                <FileEntries
+                  items={comparison.files}
+                  pathOf={(f) => f.path}
+                  oldPathOf={(f) => f.oldPath}
+                  render={(f, { label, style }) => (
                   <li
                     key={f.path}
+                    style={style}
                     className={`file-item ${!commit && active?.path === f.path ? 'active' : ''}`}
                     onClick={() => {
                       setCommit(null)
@@ -194,10 +203,11 @@ export function CompareView({ request, onRequest }: Props) {
                     <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
                       {f.status}
                     </span>
-                    <span className="file-path">{f.oldPath ? `${f.oldPath} → ${f.path}` : f.path}</span>
+                    {label}
                     <LineStats stats={f} />
                   </li>
-                ))}
+                  )}
+                />
               </ul>
             )}
           </div>
@@ -235,7 +245,19 @@ export function CompareView({ request, onRequest }: Props) {
                   )}
                   <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
                 </div>
-                <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} />
+                <DiffView
+                  file={diff}
+                  selection={head ? selection : undefined}
+                  onSelectionChange={setSelection}
+                  fileNav={{
+                    index: Math.max(0, comparison.files.findIndex((f) => f.path === active?.path)),
+                    count: comparison.files.length,
+                    go: (delta) => {
+                      const next = comparison.files[stepIndex(comparison.files.findIndex((f) => f.path === active?.path), delta, comparison.files.length)]
+                      if (next) setActive(next)
+                    }
+                  }}
+                />
               </div>
             )}
           </section>

@@ -8,6 +8,7 @@ import { DiffView, useFullFile } from './DiffView'
 import { Modal } from './Modal'
 import { ResizableBox } from './ResizableBox'
 import { Split } from './Split'
+import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
 
 type Mode = 'branch' | 'commits' | 'files' | 'lines'
@@ -363,6 +364,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                     <div className="group-header">
                       <strong>{t('studio.changedFiles')}</strong> <span className="count">{files.length}</span>
                       <span className="toolbar-spacer" />
+                      <FileViewToggle compact />
                       <button className="link" onClick={() => setCheckedFiles(new Set(files.map((f) => f.path)))}>
                         {t('common.all')}
                       </button>
@@ -372,8 +374,12 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                     </div>
                     <ResizableBox id="studio-files" className="bordered-box">
                       <ul className="file-list">
-                        {files.map((f) => (
-                          <li key={f.path} className="file-item">
+                        <FileEntries
+                          items={files}
+                          pathOf={(f) => f.path}
+                          oldPathOf={(f) => f.oldPath}
+                          render={(f, { label, style }) => (
+                          <li key={f.path} className="file-item" style={style}>
                             <label>
                               <input
                                 type="checkbox"
@@ -388,11 +394,12 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                               <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
                                 {f.status}
                               </span>
-                              <span className="file-path">{f.oldPath ? `${f.oldPath} → ${f.path}` : f.path}</span>
+                              {label}
                               <LineStats stats={f} />
                             </label>
                           </li>
-                        ))}
+                          )}
+                        />
                       </ul>
                     </ResizableBox>
                     <div className="radio-row">

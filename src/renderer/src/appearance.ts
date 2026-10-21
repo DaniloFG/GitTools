@@ -15,6 +15,11 @@ export function applySettings(settings: Settings, locale: LocaleId, title = 'Git
   root.dir = textDirection()
   root.style.setProperty('--divider-size', `${settings.dividerWidth}px`)
   root.style.setProperty('--pane-button-scale', String(settings.paneButtonScale))
+  // Posição e tamanho das notificações (o CSS usa estes valores).
+  root.dataset.toastX = settings.toast.horizontal
+  root.dataset.toastY = settings.toast.vertical
+  root.style.setProperty('--toast-width', `${settings.toast.width}px`)
+  root.style.setProperty('--toast-height', `${settings.toast.height}px`)
   document.title = title
   window.gittools.setZoom(settings.zoom)
 }

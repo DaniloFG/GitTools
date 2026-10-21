@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GitConfigScope, GitIdentities, GitIdentity } from '../../../../shared/types'
 import { t } from '../../i18n'
+import { RemotesSection } from './RemotesSection'
 
 const errorText = (error: unknown) =>
   (error instanceof Error ? error.message : String(error)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')
@@ -60,6 +61,7 @@ export function IdentitySection() {
   const show = (v: string) => v || t('identity.notSet')
 
   return (
+    <>
     <div className="settings-group identity">
       <h4>{t('identity.scope')}</h4>
       <div className="language-list" role="radiogroup" aria-label={t('identity.scope')}>
@@ -106,5 +108,7 @@ export function IdentitySection() {
         </p>
       )}
     </div>
+    <RemotesSection />
+    </>
   )
 }

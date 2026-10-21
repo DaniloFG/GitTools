@@ -70,3 +70,19 @@ describe('configurações de editor e diff', () => {
     expect(normalizeSettings({ editor: 3, diffLayout: 'diagonal' })).toMatchObject({ editor: '', diffLayout: 'inline' })
   })
 })
+
+describe('configuração das notificações', () => {
+  it('tem padrão embaixo à direita e aceita só valores válidos', () => {
+    expect(DEFAULT_SETTINGS.toast).toEqual({ horizontal: 'right', vertical: 'bottom', width: 380, height: 240 })
+    expect(normalizeSettings({ toast: { horizontal: 'left', vertical: 'top', width: 500, height: 120 } }).toast).toEqual({
+      horizontal: 'left',
+      vertical: 'top',
+      width: 500,
+      height: 120
+    })
+    expect(normalizeSettings({ toast: { horizontal: 'meio', vertical: 3, width: 'larga', height: null } }).toast).toEqual(DEFAULT_SETTINGS.toast)
+    expect(normalizeSettings({ toast: { width: 10, height: 99999 } }).toast).toMatchObject({ width: 240, height: 480 })
+    expect(normalizeSettings({ toast: { width: 391 } }).toast.width).toBe(400)
+    expect(normalizeSettings({}).toast).toEqual(DEFAULT_SETTINGS.toast)
+  })
+})

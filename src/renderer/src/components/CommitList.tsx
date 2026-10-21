@@ -14,6 +14,7 @@ import { git } from '../git'
 import { formatShortDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
 import { graphFor, laneColor, matchesCommit, refName, type GraphRow } from '../graph'
 import { useDrop } from '../useDrop'
+import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
 
 const ROW = 30
@@ -78,7 +79,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   const commits = data.log
   const rows = graphFor(commits, data.status.headSha)
   const lanes = Math.max(1, ...rows.map((r) => Math.max(r.lanesIn.length, r.lanesOut.length, r.column + 1)))
-  const graphWidth = Math.min(lanes, 12) * LANE + 8
+  const graphWidth = Math.max(52, Math.min(lanes, 12) * LANE + 8)
   const searching = query.trim() !== ''
   /**
    * Mesmas colunas no cabeçalho e em cada linha (grid): nenhuma invade a outra; o assunto ocupa o que
@@ -262,6 +263,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
           {selected.length > 1 && ` · ${t('history.selected', { count: selected.length })}`}
         </span>
         <span className="muted hint">{t('history.hint')}</span>
+        <FileViewToggle compact />
       </div>
       <div className="commit-columns" title={t('history.columns.help')} style={{ gridTemplateColumns: template }}>
         <span className="row-toggle" />
@@ -499,12 +501,15 @@ function CommitFiles({
         ) : files.length === 0 ? (
           <li className="muted">{t('history.files.none')}</li>
         ) : (
-          files.map((file) => {
-            const slash = file.path.lastIndexOf('/')
-            return (
+          <FileEntries
+            items={files}
+            pathOf={(f) => f.path}
+            oldPathOf={(f) => f.oldPath}
+            render={(file, { label, style }) => (
               <li
                 key={file.path}
                 className="commit-file"
+                style={style}
                 title={`${file.oldPath ? `${file.oldPath} → ` : ''}${file.path}\n${t('history.files.help')}`}
                 onClick={() => onOpenFile(file.path)}
                 onDoubleClick={() => onOpenFileWindow(file.path)}
@@ -519,12 +524,11 @@ function CommitFiles({
                 <span className={`status status-${file.status}`} title={statusLabel(file.status)}>
                   {file.status}
                 </span>
-                <span className="commit-file-name">{file.path.slice(slash + 1)}</span>
-                {slash > 0 && <span className="commit-file-dir">{file.path.slice(0, slash)}</span>}
+                {label}
                 <LineStats stats={file} />
               </li>
-            )
-          })
+            )}
+          />
         )}
       </ul>
     </div>

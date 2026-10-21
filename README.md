@@ -29,7 +29,11 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Outras operações                              | Checkout (duplo clique ou botão direito na branch — o primeiro item do menu), criar/renomear/excluir branch, revert, reset, stash, fetch, pull e push (botão direito / barra superior). |
 | Clonar um repositório                         | Menu do repositório (canto superior esquerdo) → **Clonar repositório…**: URL, pasta e nome; o progresso aparece no log do git. |
 | Ver os comandos git que o GitTools executa    | Painel **Log do git** no rodapé, em tempo real (com filtro, “só os que alteram”, copiar comando).             |
-| Nome e e-mail dos commits                     | ⚙ Configurações → **Identidade git**: global (`~/.gitconfig`) ou só no repositório aberto.                    |
+| Nome e e-mail dos commits                     | ⚙ Configurações → **Identidade e remotes**: global (`~/.gitconfig`) ou só no repositório aberto.              |
+| Adicionar outro remote (fork, espelho…)       | ⚙ Configurações → **Identidade e remotes** → *Adicionar outro remote*: nome, URL e, se quiser, já baixar o conteúdo. Também dá para trocar a URL, renomear e remover. Botão direito em **Enviar** escolhe para qual remote enviar. |
+| Ver os arquivos em lista ou em árvore         | Botão **☰ Lista / ⊟ Árvore** nas listas de arquivos (histórico, detalhes do commit, Alterações, Comparar, Studio e Arquivos). A escolha vale para todas. |
+| Pular de alteração em alteração num diff      | Setas ▲ ▼ no cabeçalho do diff, ou `F7` / `Shift+F7`; ◀ ▶ ou `F8` / `Shift+F8` vão para o arquivo anterior/seguinte da lista. |
+| Escolher onde aparecem os avisos              | ⚙ Configurações → **Notificações**: esquerda/centro/direita, em cima/embaixo, largura e altura, com pré-visualização. |
 | Montar a tela do seu jeito                    | Arraste as abas (Histórico, Alterações, Arquivos, Comparar, Log do git…) para outra área ou borda da janela, e os painéis pela alça ⠿ para qualquer lado. ⊞ volta tudo ao padrão. |
 | Idioma, tema e atalhos                        | ⚙ **Configurações** (canto superior direito): idioma, tema claro/escuro/do sistema, tamanho da interface e atalhos de teclado personalizáveis (F1 lista todos). |
 
@@ -59,6 +63,19 @@ se mesmo assim houver conflito, ele aparece no painel de conflitos como em qualq
   as colunas de lugar e a borda de um título para mudar a largura (duplo clique volta ao padrão).
   Cada coluna tem seu espaço: textos longos terminam em “…” em vez de invadir a coluna vizinha. A
   coluna de data mostra também a hora.
+- **Lista ou árvore**: em toda lista de arquivos o botão **☰ Lista / ⊟ Árvore** alterna entre uma
+  linha por arquivo — **nome em destaque e, ao lado, a pasta** (`Button.tsx  src/app/ui`; renomeações
+  mostram `← caminho antigo`) — e uma árvore de pastas recolhíveis (pastas com um só filho são
+  juntadas, como no VS Code: `src/app/ui`). A escolha vale para o histórico, os detalhes, Alterações,
+  Comparar, Studio e Arquivos.
+
+  | Lista (nome + pasta) | Árvore |
+  | --- | --- |
+  | ![Arquivos em lista](docs/screenshots/arquivos-lista.png) | ![Arquivos em árvore e navegação entre alterações](docs/screenshots/arquivos-arvore.png) |
+- **Navegação nos diffs**: ▲ ▼ no cabeçalho do diff (com `3/7` mostrando onde você está) e `F7` /
+  `Shift+F7` pulam para a alteração seguinte/anterior, destacando-a; ◀ ▶ e `F8` / `Shift+F8` vão
+  para o arquivo anterior/seguinte da lista ao lado. Funcionam também na janela própria de diff e no
+  Studio; as teclas podem ser trocadas em Configurações → Atalhos de teclado.
 - **Linhas adicionadas e removidas** (`+12 −3`) ao lado de cada arquivo: nos arquivos abertos no
   próprio histórico, nos detalhes do commit, em Alterações, Comparar, Arquivos e no Studio.
 - **Pesquisa** (`Ctrl+F`): filtra por branch, tag, mensagem, autor, data ou hora (ex.: `21/10/2026`,
@@ -78,7 +95,9 @@ se mesmo assim houver conflito, ele aparece no painel de conflitos como em qualq
 - **Diff "cima e baixo" ou "lado a lado"**: todo diff abre no modo escolhido em ⚙ Configurações →
   Editor e diff; os botões no cabeçalho trocam o modo do diff aberto. A seleção de linhas funciona nos
   dois modos.
-- **Abrir no editor**: escolha em ⚙ Configurações → Editor e diff um dos editores encontrados no
+- **Abrir no editor**: o arquivo é sempre aberto pelo **caminho completo** (inclusive no Windows,
+  onde o git informa a pasta com `/`), e o botão **Testar** abre um arquivo do repositório pelo mesmo
+  caminho. Um arquivo que só existe em outro commit avisa em vez de falhar em silêncio. Escolha em ⚙ Configurações → Editor e diff um dos editores encontrados no
   computador (VS Code, Cursor, Sublime, Notepad++, JetBrains…), o executável de qualquer outro ou
   digite o comando (ex.: `code --reuse-window`, `/Applications/Zed.app`). O botão **Testar** abre o
   projeto e mostra o erro se o editor não iniciar. O botão *Abrir no editor* da barra abre o projeto
@@ -94,16 +113,28 @@ clique ou botão direito) e limpe a lista. Como qualquer aba, ele pode ser arras
 
 ### Clonar e identidade git
 
-| Clonar repositório | Identidade git |
+| Clonar repositório | Identidade e remotes |
 | --- | --- |
-| ![Clonar repositório](docs/screenshots/clonar.png) | ![Identidade git](docs/screenshots/identidade-git.png) |
+| ![Clonar repositório](docs/screenshots/clonar.png) | ![Remotes](docs/screenshots/remotes.png) |
 
 - **Clonar**: menu do repositório → *Clonar repositório…* (também na tela inicial). Informe a URL
   (HTTPS ou SSH — usa as credenciais já salvas no git), a pasta e o nome; ao terminar, o repositório
   clonado é aberto.
-- **Identidade git**: ⚙ Configurações → *Identidade git* define `user.name` e `user.email` para
+- **Identidade e remotes**: ⚙ Configurações → *Identidade e remotes* define `user.name` e `user.email` para
   **todos os repositórios** (global) ou **só o repositório aberto** (local, que tem prioridade).
   Deixe em branco para remover o valor daquele escopo; abaixo aparece a identidade em uso.
+  Logo abaixo ficam os **remotes** do repositório: veja as URLs, **adicione outro remote** (nome + URL,
+  com a opção de já baixar o conteúdo), altere a URL, renomeie ou remova. Com mais de um remote,
+  clique com o botão direito em **Enviar** (barra superior) para escolher para qual enviar.
+
+### Notificações
+
+![Posição das notificações](docs/screenshots/notificacoes.png)
+
+⚙ Configurações → **Notificações** escolhe onde aparecem os avisos de sucesso, erro e informação:
+posição na horizontal (esquerda, centro, direita) e na vertical (em cima, embaixo), **largura** e
+**altura máxima** (textos maiores ganham barra de rolagem). A mudança aparece na hora, e *Mostrar
+exemplo* dispara um aviso de teste.
 
 ### Editor de conflitos
 
@@ -185,6 +216,9 @@ Nenhuma área tem tamanho nem lugar fixo (como no VS Code): cada tela se adapta 
   combinações de botões. Vale para a lista e os detalhes do histórico, os arquivos e o diff,
   Alterações, Comparar, Arquivos e o Studio. Lado a lado sem espaço (ex.: numa área estreita), os
   painéis ficam um em cima do outro automaticamente.
+- **Ações no lado direito**: os botões de cada componente (barra superior, cabeçalho do diff, detalhes
+  do commit, grupos de Alterações, avisos de operação…) ficam sempre no fim — o lado direito — do
+  próprio componente; em árabe e outros idiomas da direita para a esquerda tudo é espelhado.
 - **⊞ Restaurar layout** na barra superior volta todas as áreas, abas e painéis ao padrão (também em
   ⚙ Configurações → Aparência e no botão direito de uma aba).
 - **Cruzamento de divisórias**: onde duas divisórias se encontram, o cursor vira ✥ e arrastar ali
@@ -213,7 +247,7 @@ Nenhuma área tem tamanho nem lugar fixo (como no VS Code): cada tela se adapta 
 ![Central de Configurações](docs/screenshots/configuracoes.png)
 
 Todas as opções gerais ficam num único lugar, separadas em seções: **Geral** (idioma),
-**Identidade git** (nome e e-mail dos commits, global ou do repositório), **Editor e diff** (editor
+**Notificações** (posição e tamanho dos avisos), **Identidade e remotes** (nome e e-mail dos commits, remotes do repositório), **Editor e diff** (editor
 para abrir arquivos, com teste, e modo do diff),
 **Aparência** (tema, tamanho, espessura das divisórias, tamanho dos botões de recolher/expandir e
 restaurar o layout dos painéis), **Atalhos de teclado** (com pesquisa pelo nome da ação ou pelas
@@ -234,6 +268,8 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 | Configurações / Lista de atalhos | `Ctrl+,` / `F1` |
 | Mover / estender a seleção no histórico | `↑` `↓` / `Shift+↑` `Shift+↓` |
 | Abrir / fechar os arquivos do commit no histórico | `→` / `←` |
+| Diff: próxima / anterior alteração | `F7` / `Shift+F7` |
+| Diff: próximo / anterior arquivo da lista | `F8` / `Shift+F8` |
 | Editor de conflitos: navegar / usar o painel da esquerda ou direita | `Alt+↑` `Alt+↓` / `Alt+←` `Alt+→` |
 
 No macOS, `Ctrl` corresponde a `⌘`. Todos podem ser trocados em ⚙ Configurações.
@@ -265,6 +301,7 @@ src/
 ├── core/               Motor git (Node puro, sem Electron) — testado em tests/
 │   ├── exec.ts         Executa o git sem shell e sem prompts interativos (e avisa cada comando ao log)
 │   ├── config.ts       Identidade git (user.name/user.email) e git clone
+│   ├── paths.ts        Caminho relativo → absoluto dentro do repositório (raiz do git no Windows)
 │   ├── diff.ts         Lê diffs unificados e monta patches parciais (linhas escolhidas)
 │   └── repository.ts   Status, branches, log, stage, merge, rebase (inclusive interativo), cherry-pick
 │                       (branch/commits/arquivos/linhas), conflitos, comparação, blame, histórico, stash, remotos
@@ -277,6 +314,8 @@ src/
 │       ├── translator.ts  Parâmetros {nome} e plurais (Intl.PluralRules)
 │       └── messages/   Um arquivo por idioma; pt-BR.ts é a referência
 └── renderer/           Interface em React
+    ├── src/fileTree.ts  Árvore de pastas das listas de arquivos
+    ├── src/diffNav.ts   Navegação entre alterações/arquivos dos diffs (botões e atalhos)
     ├── src/workbench.ts Áreas e abas da janela (esquerda, centro, direita, embaixo) e como mover abas
     └── src/components/ Histórico com grafo, detalhes do commit, diff com seleção de linhas, alterações,
                         Cherry-pick Studio, editor de conflitos, comparação, blame/histórico,

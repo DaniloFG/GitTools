@@ -17,6 +17,7 @@ export const en: Messages = {
     none: 'none',
     file: 'File',
     files: { one: '{count} file', other: '{count} files' },
+    fileList: 'Files',
     clickToCopy: 'Click to copy',
     compareWith: 'Compare with {ref}',
     blameHistory: 'Blame / history',
@@ -93,6 +94,8 @@ export const en: Messages = {
     pullHelp: 'Bring in and integrate changes from the remote',
     push: 'Push',
     pushHelp: 'Send your commits to the remote',
+    pushTo: 'Push to {remote}',
+    manageRemotes: 'Manage remotes…',
     branch: 'Branch',
     stash: 'Stash',
     stashHelp: 'Put local changes aside and clean the working tree',
@@ -614,6 +617,23 @@ export const en: Messages = {
       duplicates: 'Some shortcuts are repeated. Each action needs a different combination.',
       showList: 'See the full list of shortcuts (F1)'
     },
+    notifications: {
+      title: 'Notifications',
+      description: 'Where and how large the success, error and info messages appear.',
+      horizontal: 'Horizontal position',
+      vertical: 'Vertical position',
+      left: 'Left',
+      center: 'Center',
+      right: 'Right',
+      top: 'Top',
+      bottom: 'Bottom',
+      width: 'Width',
+      height: 'Maximum height',
+      heightHelp: 'Messages with more text than the maximum height get a scroll bar.',
+      sample: 'This is how a notification looks.',
+      reset: 'Restore default',
+      show: 'Show example'
+    },
     about: {
       title: 'About',
       description: 'Versions and system information.',
@@ -634,6 +654,10 @@ export const en: Messages = {
       viewCompare: 'Go to Compare',
       toggleSidebar: 'Show/hide the sidebar',
       searchHistory: 'Search the history',
+      nextChange: 'Diff: next change',
+      prevChange: 'Diff: previous change',
+      nextFile: 'Diff: next file',
+      prevFile: 'Diff: previous file',
       studio: 'Open Cherry-pick Studio',
       newBranch: 'New branch',
       stash: 'Stash changes',
@@ -645,7 +669,7 @@ export const en: Messages = {
       settings: 'Settings',
       help: 'Shortcut list'
     },
-    groups: { navigation: 'Navigation', git: 'Git', app: 'Application' },
+    groups: { navigation: 'Navigation', diff: 'Diff', git: 'Git', app: 'Application' },
     fixed: {
       title: 'In lists and dialogs',
       moveSelection: 'Move the selection in the history',
@@ -742,6 +766,7 @@ export const en: Messages = {
     openDialogTitle: 'Open git repository',
     initDialogTitle: 'Create a git repository in this folder',
     outsideRepository: 'Path is outside the repository.',
+    fileNotFound: 'File "{path}" does not exist in the working folder (only in another commit?).',
     unknownOperation: 'Unknown operation: {method}',
     noRepository: 'No repository is open.'
   },
@@ -791,8 +816,8 @@ export const en: Messages = {
     help: 'Git uses your saved credentials (credential manager or SSH key). Follow the progress in the git log.'
   },
   identity: {
-    title: 'Git identity',
-    description: 'Name and email recorded in your commits.',
+    title: 'Identity and remotes',
+    description: 'Name and email recorded in your commits, and the repository’s remotes (servers).',
     scope: 'Where to apply',
     global: 'Global (all repositories)',
     globalHelp: 'Saved in ~/.gitconfig.',
@@ -825,6 +850,48 @@ export const en: Messages = {
     manualPlaceholder: 'code   or   /path/to/editor --option',
     manualHelp: 'Type a command from the PATH, the executable path (or a .app on macOS) and any arguments. Use “Test” to check it before saving.',
     test: 'Test',
-    testOk: 'The editor opened the repository folder.'
+    testOk: 'The editor opened a file of the repository (by its full path).'
+  },
+  fileList: {
+    viewMode: 'File display',
+    viewModeHelp: 'Show files as a list (name and folder) or as a folder tree — applies to every file list',
+    list: 'List',
+    tree: 'Tree',
+    folderFiles: { one: '{count} file', other: '{count} files' }
+  },
+  diffNav: {
+    group: 'Changes in this file',
+    prevChange: 'Previous change',
+    nextChange: 'Next change',
+    count: 'Current change / total changes',
+    fileGroup: 'Files in the list',
+    prevFile: 'Previous file',
+    nextFile: 'Next file',
+    fileCount: 'Current file / total files'
+  },
+  remotes: {
+    title: 'Remotes',
+    help: 'Remotes are the servers the repository pushes to and fetches from (origin, upstream…). Add another one — for example the original repository of a fork, or a mirror; right-click Push in the top bar to choose which one to push to.',
+    none: 'This repository has no remotes yet.',
+    editUrl: 'Change URL',
+    rename: 'Rename',
+    remove: 'Remove',
+    removeTitle: 'Remove remote',
+    removeMessage: 'Remove the remote "{name}" ({url})? Its remote branches stop showing; nothing is deleted on the server.',
+    renameTitle: 'Rename remote',
+    name: 'Name',
+    url: 'URL',
+    urlPlaceholder: 'https://github.com/user/project.git or git@github.com:user/project.git',
+    fetchNow: 'Fetch the remote’s content now',
+    addTitle: 'Add another remote',
+    add: 'Add remote',
+    added: 'Remote "{name}" added.',
+    removed: 'Remote "{name}" removed.',
+    renamed: 'Remote renamed to "{name}".',
+    urlChanged: 'URL of "{name}" changed.',
+    fetchUrl: 'Fetch URL',
+    pushUrl: 'Push URL',
+    invalidName: 'Invalid remote name: use letters, digits, dot, hyphen or underscore.',
+    invalidUrl: 'Enter the remote URL (it cannot start with "-").'
   }
 }

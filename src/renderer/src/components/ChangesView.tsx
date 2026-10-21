@@ -9,6 +9,8 @@ import { useDrop } from '../useDrop'
 import { t } from '../i18n'
 import { DiffView, useFullFile } from './DiffView'
 import { revealPane, Split } from './Split'
+import { stepIndex } from '../diffNav'
+import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
 
 type Area = 'unstaged' | 'staged'
@@ -76,6 +78,21 @@ export function ChangesView() {
     await run(t('busy.applyingSelection'), () => git.applyLines({ kind: active.area, fullFile }, active.path, [...selection], action))
   }
 
+  /** Arquivos na ordem da tela (não staged, depois staged), para ir de um diff ao seguinte. */
+  const ordered = [
+    ...status.unstaged.map((f) => ({ area: 'unstaged' as Area, path: f.path })),
+    ...status.staged.map((f) => ({ area: 'staged' as Area, path: f.path }))
+  ]
+  const position = active ? ordered.findIndex((f) => f.area === active.area && f.path === active.path) : -1
+  const fileNav = {
+    index: Math.max(0, position),
+    count: ordered.length,
+    go: (delta: 1 | -1) => {
+      const next = ordered[stepIndex(position, delta, ordered.length)]
+      if (next) setActive(next)
+    }
+  }
+
   return (
     <Split id="changes" initial={0.45} min={[240, 280]}>
       <div className="changes">
@@ -92,6 +109,7 @@ export function ChangesView() {
         )}
         <FileGroup
           id="unstaged"
+          toggle
           title={t('changes.unstaged')}
           area="unstaged"
           files={status.unstaged}
@@ -181,7 +199,7 @@ export function ChangesView() {
                 </>
               )}
             </div>
-            <DiffView file={diff} selection={selection} onSelectionChange={setSelection} />
+            <DiffView file={diff} selection={selection} onSelectionChange={setSelection} fileNav={fileNav} />
           </div>
         )}
       </section>
@@ -201,11 +219,13 @@ interface GroupProps {
   actions?: React.ReactNode
   fileActions?(file: FileStatus): React.ReactNode
   hint?: string
+  /** Mostra o botão lista/árvore neste cabeçalho (vale para todos os grupos). */
+  toggle?: boolean
 }
 
 const parseCollapsed = (value: unknown) => value === true
 
-function FileGroup({ id, title, area, files, active, onActivate, onDropFiles, actions, fileActions, hint }: GroupProps) {
+function FileGroup({ id, title, area, files, active, onActivate, onDropFiles, actions, fileActions, hint, toggle }: GroupProps) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [collapsed, setCollapsed] = useLayout(`changes.${id}.collapsed`, parseCollapsed)
   const drop = useDrop(
@@ -225,6 +245,7 @@ function FileGroup({ id, title, area, files, active, onActivate, onDropFiles, ac
           <span>{collapsed ? '▸' : '▾'}</span> <strong>{title}</strong> <span className="count">{files.length}</span>
         </button>
         <span className="toolbar-spacer" />
+        {toggle && <FileViewToggle compact />}
         {actions}
       </div>
       {!collapsed && hint && <p className="muted small">{hint}</p>}
@@ -232,11 +253,16 @@ function FileGroup({ id, title, area, files, active, onActivate, onDropFiles, ac
         <p className="empty small">{onDropFiles ? t('changes.emptyDrop') : t('changes.empty')}</p>
       ) : (
         <ul className="file-list">
-          {files.map((f) => {
+          <FileEntries
+            items={files}
+            pathOf={(f) => f.path}
+            oldPathOf={(f) => f.origPath}
+            render={(f, { label, style }) => {
             const code = area === 'staged' ? f.index : f.untracked ? '?' : f.conflicted ? 'U' : f.worktree
             return (
               <li
                 key={f.path}
+                style={style}
                 className={`file-item ${active?.area === area && active.path === f.path ? 'active' : ''} ${picked.has(f.path) ? 'picked' : ''}`}
                 onClick={(e) => {
                   if (e.ctrlKey || e.metaKey) {
@@ -259,14 +285,15 @@ function FileGroup({ id, title, area, files, active, onActivate, onDropFiles, ac
                 <span className={`status status-${code}`} title={statusLabel(code)}>
                   {code === '?' ? 'N' : code}
                 </span>
-                <span className="file-path">{f.origPath ? `${f.origPath} → ${f.path}` : f.path}</span>
+                {label}
                 <LineStats stats={f} />
                 <span className="file-actions" onClick={(e) => e.stopPropagation()}>
                   {fileActions?.(f)}
                 </span>
               </li>
             )
-          })}
+            }}
+          />
         </ul>
       )}
     </div>

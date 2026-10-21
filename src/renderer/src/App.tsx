@@ -105,6 +105,16 @@ export function App() {
     setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), kind === 'error' ? 9000 : 5000)
   }, [])
 
+  // A Central de Configurações pede um aviso de exemplo para ver onde as notificações aparecem.
+  useEffect(() => {
+    const onSample = (e: Event) => {
+      const { kind, text } = (e as CustomEvent<{ kind: ToastKind; text: string }>).detail
+      toast(kind, text)
+    }
+    window.addEventListener('gittools:toast', onSample)
+    return () => window.removeEventListener('gittools:toast', onSample)
+  }, [toast])
+
   /** Mostra uma tela: ativa a aba dela e expande a área, se estiver recolhida. */
   const setView = useCallback(
     (view: View) => {

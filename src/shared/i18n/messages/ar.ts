@@ -22,6 +22,7 @@ export const ar: Messages = {
     none: 'لا شيء',
     file: 'الملف',
     files: { one: 'ملف واحد', two: 'ملفان', few: '{count} ملفات', many: '{count} ملفًا', other: '{count} ملف' },
+    fileList: 'الملفات',
     clickToCopy: 'انقر للنسخ',
     compareWith: 'مقارنة مع {ref}',
     blameHistory: 'المسؤولية / السجل',
@@ -101,6 +102,8 @@ export const ar: Messages = {
     pullHelp: 'جلب تغييرات المستودع البعيد ودمجها',
     push: 'دفع',
     pushHelp: 'إرسال إيداعاتك إلى المستودع البعيد',
+    pushTo: 'إرسال إلى {remote}',
+    manageRemotes: 'إدارة المستودعات البعيدة…',
     branch: 'فرع',
     stash: 'تخبئة',
     stashHelp: 'تخبئة التغييرات المحلية وتنظيف مجلد العمل',
@@ -626,6 +629,23 @@ export const ar: Messages = {
       duplicates: 'توجد اختصارات مكررة. يحتاج كل إجراء إلى مجموعة مختلفة.',
       showList: 'عرض القائمة الكاملة للاختصارات (F1)'
     },
+    notifications: {
+      title: 'الإشعارات',
+      description: 'مكان وحجم ظهور رسائل النجاح والخطأ والمعلومات.',
+      horizontal: 'الموضع الأفقي',
+      vertical: 'الموضع الرأسي',
+      left: 'يسار',
+      center: 'وسط',
+      right: 'يمين',
+      top: 'أعلى',
+      bottom: 'أسفل',
+      width: 'العرض',
+      height: 'أقصى ارتفاع',
+      heightHelp: 'الرسائل التي يزيد نصها عن أقصى ارتفاع يظهر لها شريط تمرير.',
+      sample: 'هكذا يظهر الإشعار.',
+      reset: 'استعادة الافتراضي',
+      show: 'عرض مثال'
+    },
     about: {
       title: 'حول',
       description: 'الإصدارات ومعلومات النظام.',
@@ -646,6 +666,10 @@ export const ar: Messages = {
       viewCompare: 'الانتقال إلى المقارنة',
       toggleSidebar: 'إظهار/إخفاء الشريط الجانبي',
       searchHistory: 'البحث في السجل',
+      nextChange: 'الفروقات: التغيير التالي',
+      prevChange: 'الفروقات: التغيير السابق',
+      nextFile: 'الفروقات: الملف التالي',
+      prevFile: 'الفروقات: الملف السابق',
       studio: 'فتح استوديو الانتقاء',
       newBranch: 'فرع جديد',
       stash: 'تخبئة التغييرات',
@@ -657,7 +681,7 @@ export const ar: Messages = {
       settings: 'الإعدادات',
       help: 'قائمة الاختصارات'
     },
-    groups: { navigation: 'التنقل', git: 'Git', app: 'التطبيق' },
+    groups: { navigation: 'التنقل', diff: 'الفروقات', git: 'Git', app: 'التطبيق' },
     fixed: {
       title: 'في القوائم ومربعات الحوار',
       moveSelection: 'تحريك التحديد في السجل',
@@ -751,6 +775,7 @@ export const ar: Messages = {
     openDialogTitle: 'فتح مستودع git',
     initDialogTitle: 'إنشاء مستودع git في هذا المجلد',
     outsideRepository: 'المسار خارج المستودع.',
+    fileNotFound: 'الملف "{path}" غير موجود في مجلد المشروع (ربما في إيداع آخر فقط).',
     unknownOperation: 'عملية غير معروفة: {method}',
     noRepository: 'لا يوجد مستودع مفتوح.'
   },
@@ -800,8 +825,8 @@ export const ar: Messages = {
     help: 'يستخدم git بيانات الاعتماد المحفوظة لديك (مدير بيانات الاعتماد أو مفتاح SSH). تابع التقدم في سجل أوامر git.'
   },
   identity: {
-    title: 'هوية git',
-    description: 'الاسم والبريد الإلكتروني المسجلان في إيداعاتك.',
+    title: 'الهوية والمستودعات البعيدة',
+    description: 'الاسم والبريد المسجلان في إيداعاتك، والمستودعات البعيدة (الخوادم) للمستودع.',
     scope: 'أين تُطبَّق',
     global: 'عامة (كل المستودعات)',
     globalHelp: 'تُحفظ في ~/.gitconfig.',
@@ -834,6 +859,48 @@ export const ar: Messages = {
     manualPlaceholder: 'code   أو   /path/to/editor --option',
     manualHelp: 'يمكنك كتابة أمر من PATH أو مسار الملف التنفيذي (أو تطبيق ‎.app على macOS) مع الوسائط. استخدم “اختبار” للتحقق قبل الحفظ.',
     test: 'اختبار',
-    testOk: 'فتح المحرر مجلد المستودع.'
+    testOk: 'فتح المحرر ملفًا من المستودع (بمساره الكامل).'
+  },
+  fileList: {
+    viewMode: 'عرض الملفات',
+    viewModeHelp: 'عرض الملفات كقائمة (الاسم والمجلد) أو كشجرة مجلدات — ينطبق على كل قوائم الملفات',
+    list: 'قائمة',
+    tree: 'شجرة',
+    folderFiles: { one: 'ملف واحد', two: 'ملفان', few: '{count} ملفات', many: '{count} ملفًا', other: '{count} ملف' }
+  },
+  diffNav: {
+    group: 'تغييرات الملف',
+    prevChange: 'التغيير السابق',
+    nextChange: 'التغيير التالي',
+    count: 'التغيير الحالي / عدد التغييرات',
+    fileGroup: 'ملفات القائمة',
+    prevFile: 'الملف السابق',
+    nextFile: 'الملف التالي',
+    fileCount: 'الملف الحالي / عدد الملفات'
+  },
+  remotes: {
+    title: 'المستودعات البعيدة',
+    help: 'المستودعات البعيدة هي الخوادم التي يرسل إليها المستودع الإيداعات ويجلبها منها (origin وupstream…). أضف مستودعًا آخر — مثل المستودع الأصلي لنسخة fork أو نسخة مرآة؛ انقر بزر الفأرة الأيمن على «إرسال» في الشريط العلوي لاختيار وجهة الإرسال.',
+    none: 'لا يحتوي هذا المستودع على مستودعات بعيدة بعد.',
+    editUrl: 'تغيير الرابط',
+    rename: 'إعادة تسمية',
+    remove: 'إزالة',
+    removeTitle: 'إزالة المستودع البعيد',
+    removeMessage: 'هل تريد إزالة المستودع البعيد "{name}" ({url})؟ ستختفي فروعه البعيدة؛ ولا يُحذف شيء من الخادم.',
+    renameTitle: 'إعادة تسمية المستودع البعيد',
+    name: 'الاسم',
+    url: 'الرابط',
+    urlPlaceholder: 'https://github.com/user/project.git أو git@github.com:user/project.git',
+    fetchNow: 'جلب محتوى المستودع البعيد الآن (fetch)',
+    addTitle: 'إضافة مستودع بعيد آخر',
+    add: 'إضافة مستودع بعيد',
+    added: 'تمت إضافة المستودع البعيد "{name}".',
+    removed: 'تمت إزالة المستودع البعيد "{name}".',
+    renamed: 'تمت إعادة تسمية المستودع البعيد إلى "{name}".',
+    urlChanged: 'تم تغيير رابط "{name}".',
+    fetchUrl: 'رابط الجلب',
+    pushUrl: 'رابط الإرسال',
+    invalidName: 'اسم مستودع بعيد غير صالح: استخدم أحرفًا أو أرقامًا أو نقطة أو شرطة أو شرطة سفلية.',
+    invalidUrl: 'أدخل رابط المستودع البعيد (ولا يمكن أن يبدأ بـ "-").'
   }
 }

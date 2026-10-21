@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
 import { existsSync, statSync, watch, type FSWatcher } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
-import { join, resolve, sep } from 'node:path'
+import { join, resolve } from 'node:path'
 import { REPO_METHODS, type AppInfo, type DiffWindowRequest, type RecentRepo, type RepoMethod } from '../shared/api'
 import type { GitCommandEntry, GitConfigScope, GitIdentity } from '../shared/types'
 import { matchLocale, setLocale, t } from '../shared/i18n'
@@ -9,6 +9,7 @@ import { normalizeSettings, type Settings } from '../shared/settings'
 import { cloneRepository, getIdentities, setIdentity } from '../core/config'
 import { onGitCommand, runGit } from '../core/exec'
 import { GitRepository } from '../core/repository'
+import { resolveInside } from '../core/paths'
 import { detectEditors, launchEditor, resolveEditor } from './editors'
 
 // Nome fixo: a pasta de dados (configurações, recentes) é a mesma em desenvolvimento e instalado.
@@ -156,8 +157,7 @@ function registerIpc() {
 
   ipcMain.handle('app:openFile', async (_e, relativePath: string) => {
     if (!repo) return
-    const full = resolve(repo.root, relativePath)
-    if (!full.startsWith(repo.root + sep) && full !== repo.root) throw new Error(t('main.outsideRepository'))
+    const full = resolveInside(repo.root, relativePath)
     const error = await shell.openPath(full)
     if (error) throw new Error(error)
   })
@@ -175,12 +175,14 @@ function registerIpc() {
 
   ipcMain.handle('app:openInEditor', async (_e, relativePath: string) => {
     if (!repo) throw new Error(t('main.noRepository'))
-    const full = resolve(repo.root, relativePath)
-    if (!full.startsWith(repo.root + sep) && full !== repo.root) throw new Error(t('main.outsideRepository'))
+    // Sempre o caminho absoluto: o editor pode ser iniciado de outra pasta de trabalho.
+    const full = resolveInside(repo.root, relativePath)
     const { editor } = await loadSettings()
     if (!editor) throw new Error(t('main.noEditor'))
     const command = resolveEditor(editor)
     if (!command) throw new Error(t('main.editorNotFound', { editor }))
+    // Arquivo que só existe em outro commit (ou foi removido) não tem o que abrir no disco.
+    if (!existsSync(full)) throw new Error(t('main.fileNotFound', { path: relativePath }))
     await launchEditor(command, full, repo.root)
   })
 
@@ -222,6 +224,12 @@ function registerIpc() {
   ipcMain.handle('app:testEditor', async (_e, setting: string) => {
     const command = resolveEditor(String(setting ?? ''))
     if (!command) throw new Error(t('main.editorNotFound', { editor: setting }))
+    // Com repositório aberto, testa o mesmo caminho de "Abrir no editor": um arquivo, por caminho absoluto.
+    if (repo) {
+      const { stdout } = await runGit(repo.root, ['ls-files', '-z', '--cached'])
+      const first = stdout.split('\0').find(Boolean)
+      if (first) return launchEditor(command, resolveInside(repo.root, first), repo.root)
+    }
     const folder = repo?.root ?? app.getPath('home')
     await launchEditor(command, folder, folder)
   })

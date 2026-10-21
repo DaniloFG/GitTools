@@ -8,6 +8,8 @@ import { git } from '../git'
 import { t } from '../i18n'
 import { DiffView, useFullFile } from './DiffView'
 import { revealPane, Split } from './Split'
+import { stepIndex } from '../diffNav'
+import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
 
 /** Arquivo a abrir no diff (ex.: clicado nos arquivos expandidos do histórico). `n` muda a cada pedido. */
@@ -119,6 +121,16 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
 
   if (!details) return <section className="details"><span className="spinner" /></section>
 
+  const fileNav = {
+    index: Math.max(0, details.files.findIndex((f) => f.path === active?.path)),
+    count: details.files.length,
+    go: (delta: 1 | -1) => {
+      const file = details.files[stepIndex(details.files.findIndex((f) => f.path === active?.path), delta, details.files.length)]
+      if (!file) return
+      showDiff(file)
+      document.querySelector(`.file-list [data-path="${CSS.escape(file.path)}"]`)?.scrollIntoView({ block: 'nearest' })
+    }
+  }
   const pathsOf = (files: ChangedFile[]) => files.flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]))
   const dragFiles = (file: ChangedFile) =>
     checked.has(file.path) ? details.files.filter((f) => checked.has(f.path)) : [file]
@@ -167,10 +179,20 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
           )}
         </div>
 
+        <div className="group-header">
+          <strong>{t('common.fileList')}</strong> <span className="count">{details.files.length}</span>
+          <span className="toolbar-spacer" />
+          <FileViewToggle />
+        </div>
         <ul className="file-list">
-          {details.files.map((file) => (
+          <FileEntries
+            items={details.files}
+            pathOf={(f) => f.path}
+            oldPathOf={(f) => f.oldPath}
+            render={(file, { label, style }) => (
             <li
               key={file.path}
+              style={style}
               data-path={file.path}
               className={`file-item ${active?.path === file.path ? 'active' : ''}`}
               onClick={() => showDiff(file)}
@@ -202,10 +224,11 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
               <span className={`status status-${file.status}`} title={statusLabel(file.status)}>
                 {file.status}
               </span>
-              <span className="file-path">{file.oldPath ? `${file.oldPath} → ${file.path}` : file.path}</span>
+              {label}
               <LineStats stats={file} />
             </li>
-          ))}
+            )}
+          />
         </ul>
       </section>
       <section className="details">
@@ -231,7 +254,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
                 <button onClick={() => openFileView(diff.path)}>{t('common.blameHistory')}</button>
               </div>
             )}
-            <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} />
+            <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} fileNav={fileNav} />
           </div>
         ) : (
           active && (
