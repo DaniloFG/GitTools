@@ -1,34 +1,138 @@
-# GitTools para VS Code
+<p align="center">
+  <img src="media/icon.png" width="96" alt="GitTools logo" />
+</p>
 
-Git com interface visual dentro do VS Code: **arraste e clique** para fazer merge, rebase e cherry-pick
-de branches inteiras, commits, arquivos ou até **linhas específicas**. É a mesma interface do
-aplicativo GitTools, rodando num painel do VS Code.
+<h1 align="center">GitTools</h1>
 
-## Como usar
+<p align="center">
+  <b>Git with a visual interface inside VS Code.</b><br/>
+  Drag and click to merge, rebase and cherry-pick whole branches, single commits, files — or even <i>individual lines</i>.
+</p>
 
-- **GitTools: Abrir o GitTools** (`Ctrl+Alt+G`, ou `⌘⌥G` no macOS), o botão **⑂ GitTools** na barra de
-  status ou o ícone no título do painel *Controle do código-fonte*.
-- Se a pasta aberta no VS Code é um repositório git, ela é usada; senão use **GitTools: Abrir um
-  repositório…**, ou clique com o botão direito numa pasta do Explorer → **Abrir esta pasta no GitTools**.
-- **GitTools: Ver as alterações deste arquivo no GitTools** (botão no título do editor) abre o diff do
-  arquivo atual num painel ao lado.
-- Arquivos abertos pelo GitTools (*Abrir no editor*, ou o menu do arquivo) abrem no editor do próprio VS Code.
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=DaniloFG.gittools-vscode"><img alt="Marketplace version" src="https://img.shields.io/visual-studio-marketplace/v/DaniloFG.gittools-vscode?label=Marketplace&color=2f86ea" /></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=DaniloFG.gittools-vscode"><img alt="Installs" src="https://img.shields.io/visual-studio-marketplace/i/DaniloFG.gittools-vscode?color=2f86ea" /></a>
+  <a href="https://github.com/DaniloFG/GitTools/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2f86ea" /></a>
+</p>
 
-Tudo o que o aplicativo faz está aqui: histórico com grafo, Cherry-pick Studio, editor de conflitos lado
-a lado, rebase interativo, comparar branches, blame, remotes, log dos comandos git e 6 idiomas. O tema
-segue o do VS Code (em *Configurações → Aparência* dá para forçar claro ou escuro).
+![GitTools inside VS Code: history graph, commit details and live git log](media/readme/hero.png)
 
-## Instalar
+GitTools turns the git commands that are hard to remember — especially **cherry-pick** — into things you can
+simply **drag and drop**. It runs on the git that is already installed on your machine, needs no account and
+sends nothing anywhere.
 
-Procure por **GitTools** (publisher *DaniloFG*) na aba de extensões do VS Code, ou rode
-`code --install-extension DaniloFG.gittools-vscode`. As atualizações chegam automaticamente.
+## Highlights
 
-## Requisitos
+- 🍒 **Cherry-pick anything**: a whole branch, chosen commits, specific files, or just the lines you select.
+- 🖱️ **Drag & drop**: drop a branch, commits or files onto another branch and pick what to do.
+- 🔀 **Side-by-side conflict editor**: *current × result × incoming*, block by block.
+- 🌳 **History graph** with colored branch lanes, search, tags and resizable columns.
+- 🧭 **Better diffs**: line selection, whole-file view, side-by-side mode, `F7`/`F8` to jump between changes and files.
+- 📁 **File list or folder tree** everywhere, with `+added −removed` line counts.
+- 🧩 **Arrange the workspace your way**: drag tabs and panels to any side, like in VS Code.
+- 📜 **Live git log**: see every command GitTools runs, in real time.
+- 🌍 **6 languages** (English, Português, Español, 中文, हिन्दी, العربية) and a theme that follows VS Code.
 
-[Git](https://git-scm.com/) 2.23 ou mais novo no `PATH`. Não usa nenhuma conta nem serviço externo: todas as
-operações são comandos do git instalado na máquina.
+---
 
-## Código-fonte
+## Cherry-pick a whole branch
 
-<https://github.com/DaniloFG/GitTools> — a pasta `extension/` contém a extensão; o motor git e a interface
-são compartilhados com o aplicativo.
+Drag a branch from the sidebar onto another one and choose **Merge**, **Rebase** or **Cherry-pick every commit**.
+Commits that were already applied are skipped automatically.
+
+![Dragging a branch onto main and cherry-picking all of its commits](media/readme/cherry-pick-branch.gif)
+
+## Cherry-pick only some **lines**
+
+Open a commit, click or drag over the lines you want and hit **Apply lines to…**. GitTools builds a partial patch
+with just those lines and applies it with `git apply --3way` — keep it staged for review, or commit it right away.
+
+![Selecting a few lines of a commit and applying only those to the current branch](media/readme/cherry-pick-lines.gif)
+
+## Cherry-pick Studio
+
+One place to pick **commits, files or lines** between any two branches: *Whole branch*, *Commits*, *Files* and *Lines* tabs.
+
+![Cherry-pick Studio with the Lines tab](media/readme/studio.png)
+
+## Resolve conflicts side by side
+
+When a cherry-pick, merge or rebase conflicts, open the conflict editor: choose *current*, *incoming* or *both* per block
+(or for the whole file), edit the result, and continue — all without leaving the panel.
+
+![Resolving a cherry-pick conflict in the side-by-side editor](media/readme/conflict-resolution.gif)
+
+## Folder tree and diff navigation
+
+Switch every file list between **List** (file name + folder) and **Tree**. In any diff, `F7` / `Shift+F7` jump to the
+next / previous change and `F8` / `Shift+F8` to the next / previous file.
+
+![Folder tree and jumping between changes with F7 and F8](media/readme/diff-navigation.gif)
+
+## Arrange the workspace
+
+History, Changes, Files, Compare and the Git log are tabs you can drag to the left, right or bottom — or between
+panels — and the ⊞ button puts everything back.
+
+![Dragging the Changes tab to the right side and restoring the layout](media/readme/custom-layout.gif)
+
+## Compare, blame and file history
+
+Compare any two branches, tags or commits and bring over lines or whole files; see who changed every line with
+**Blame**; follow a file through renames in its **history**.
+
+| Compare | Blame |
+| --- | --- |
+| ![Comparing two branches](media/readme/compare.png) | ![Blame for a file](media/readme/blame.png) |
+
+---
+
+## Getting started
+
+1. Open a folder that is a git repository (or use **GitTools: Open a repository…**).
+2. Run **GitTools: Open GitTools** — `Ctrl+Alt+G` (`⌘⌥G` on macOS) — or click **⑂ GitTools** in the status bar.
+
+| Command | What it does |
+| --- | --- |
+| **GitTools: Open GitTools** | Opens (or reveals) the GitTools panel. |
+| **GitTools: Open a repository…** | Picks another repository folder. |
+| **Open this folder in GitTools** | Explorer context menu on a folder. |
+| **Show this file's changes in GitTools** | Opens the diff of the current file in a panel beside it (editor title button). |
+
+Files that GitTools opens (*Open in editor*, file menus) open in **VS Code's own editor**, beside the panel.
+
+## Keyboard shortcuts (inside the panel)
+
+| Action | Shortcut |
+| --- | --- |
+| History / Changes / Files / Compare | `Ctrl+1` … `Ctrl+4` |
+| Search the history | `Ctrl+F` |
+| Cherry-pick Studio | `Ctrl+Shift+P` |
+| Next / previous change in a diff | `F7` / `Shift+F7` |
+| Next / previous file in the list | `F8` / `Shift+F8` |
+| Fetch / Pull / Push | `Ctrl+Shift+F` / `Ctrl+Shift+L` / `Ctrl+Shift+K` |
+| All shortcuts | `F1` |
+
+Every shortcut can be changed in **⚙ Settings → Keyboard shortcuts**.
+
+## Settings
+
+Open **⚙** in the panel's top bar: language, theme, diff layout, notification position and size, your git identity
+(`user.name` / `user.email`, global or per repository) and **remotes** (add, rename, change URL, remove).
+
+## Requirements
+
+- [Git](https://git-scm.com/) 2.23 or newer on your `PATH`.
+- VS Code 1.90 or newer.
+
+## Privacy
+
+Everything runs locally. GitTools only runs `git` commands on your machine; it has no telemetry, no account and no
+network calls of its own (git itself talks to your remotes when you fetch, pull, push or clone).
+
+## Links
+
+- 💻 Source code & issues: <https://github.com/DaniloFG/GitTools>
+- 🖥️ Also available as a standalone desktop app (Windows, macOS, Linux) from the same repository.
+
+Released under the [MIT License](https://github.com/DaniloFG/GitTools/blob/main/LICENSE).
