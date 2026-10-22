@@ -3,7 +3,7 @@
 // arquivos no editor.
 
 import { randomBytes } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, relative, sep } from 'node:path'
 import * as vscode from 'vscode'
@@ -13,6 +13,19 @@ import { matchLocale, setLocale } from '../../src/shared/i18n'
 import type { DiffWindowRequest } from '../../src/shared/api'
 import type { Settings } from '../../src/shared/settings'
 import { GitRepository } from '../../src/core/repository'
+
+/** Dois caminhos apontam para a mesma pasta? (links simbólicos, como /var → /private/var no macOS, e maiúsculas do Windows) */
+function samePath(a: string, b: string): boolean {
+  const real = (p: string) => {
+    try {
+      return realpathSync.native(p)
+    } catch {
+      return p
+    }
+  }
+  const [x, y] = [real(a), real(b)]
+  return process.platform === 'win32' ? x.toLowerCase() === y.toLowerCase() : x === y
+}
 
 const MAIN_VIEW = 'gittools'
 const DIFF_VIEW = 'gittools.diff'
@@ -83,7 +96,7 @@ class Controller {
 
   /** "Abrir no editor" sem arquivo: mostra o projeto no VS Code (nova janela se ele não está aberto). */
   private async revealProject(root: string): Promise<void> {
-    const open = vscode.workspace.workspaceFolders?.some((f) => f.uri.fsPath === root)
+    const open = vscode.workspace.workspaceFolders?.some((f) => samePath(f.uri.fsPath, root))
     if (open) await vscode.commands.executeCommand('workbench.view.explorer')
     else await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(root), { forceNewWindow: true })
   }

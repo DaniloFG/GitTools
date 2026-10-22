@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -135,6 +135,19 @@ describe('extensão do VS Code', () => {
     expect((await ask(panel, 'app:detectEditors')).result).toEqual([])
     const info = (await ask(panel, 'app:info')).result as { host: string; vscode: string; version: string }
     expect(info).toMatchObject({ host: 'vscode', vscode: '1.90.0-fake', version: '9.9.9' })
+  })
+
+  it.skipIf(process.platform === 'win32')('reconhece o projeto aberto mesmo quando a pasta do workspace é um link simbólico', async () => {
+    const t = await createRepo()
+    await t.commit('c', { 'a.txt': 'a\n' })
+    const link = join(mkdtempSync(join(tmpdir(), 'gittools-link-')), 'projeto')
+    dirs.push(join(link, '..'))
+    symlinkSync(t.repo.root, link)
+    fake.workspaceFolders = [{ uri: Uri.file(link) }]
+    const { run } = await start()
+    await run('gittools.open')
+    expect((await ask(fake.panels[0], 'app:openInEditor', '.')).ok).toBe(true)
+    expect(fake.executed.at(-1)?.command).toBe('workbench.view.explorer')
   })
 
   it('abre o diff de um arquivo em outro painel e fecha pelo pedido do webview', async () => {
