@@ -209,6 +209,14 @@ export const zhCN: Messages = {
     }
   },
   details: {
+    view: {
+      label: '显示',
+      both: '两者',
+      message: '描述',
+      files: '文件',
+      stacked: '上下',
+      side: '左右'
+    },
     tips: {
       title: '快速提示',
       dragCommit: '将一个提交（或用 Ctrl/Shift 选中的多个）拖到侧边栏的分支上即可拣选。',
@@ -299,6 +307,10 @@ export const zhCN: Messages = {
     },
     layout: {
       restore: '恢复布局',
+      restoreConfirm: {
+        title: '恢复此标签页的排列？',
+        message: '“更改”标签页的面板将恢复为原始排列。'
+      },
       moveUp: '上移',
       moveDown: '下移',
       moveLeft: '左移',
@@ -594,6 +606,11 @@ export const zhCN: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: '恢复默认布局？',
+      message: '面板、标签页、列和大小将恢复到原始位置。你的设置（语言、主题、快捷键等）不会改变。',
+      confirm: '恢复'
+    },
     tabsBottom: '将标签移到底部',
     tabsTop: '将标签移到顶部',
     reorderHelp: '拖动以调整顺序',

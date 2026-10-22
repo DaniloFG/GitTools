@@ -213,6 +213,14 @@ export const hi: Messages = {
     }
   },
   details: {
+    view: {
+      label: 'दिखाएँ',
+      both: 'दोनों',
+      message: 'विवरण',
+      files: 'फ़ाइलें',
+      stacked: 'ऊपर-नीचे',
+      side: 'अगल-बगल'
+    },
     tips: {
       title: 'छोटे सुझाव',
       dragCommit: 'Cherry-pick के लिए किसी commit (या Ctrl/Shift से कई) को साइडबार की branch पर खींचें।',
@@ -309,6 +317,10 @@ export const hi: Messages = {
     },
     layout: {
       restore: 'व्यवस्था पहले जैसी करें',
+      restoreConfirm: {
+        title: 'इस टैब की व्यवस्था बहाल करें?',
+        message: 'बदलाव टैब के पैनल अपनी मूल व्यवस्था में लौट जाएँगे।'
+      },
       moveUp: 'ऊपर ले जाएँ',
       moveDown: 'नीचे ले जाएँ',
       moveLeft: 'बाईं ओर ले जाएँ',
@@ -619,6 +631,11 @@ export const hi: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: 'डिफ़ॉल्ट लेआउट बहाल करें?',
+      message: 'पैनल, टैब, कॉलम और आकार अपनी मूल जगह पर लौट जाएँगे। आपकी सेटिंग (भाषा, थीम, शॉर्टकट…) नहीं बदलेंगी।',
+      confirm: 'बहाल करें'
+    },
     tabsBottom: 'टैब नीचे ले जाएँ',
     tabsTop: 'टैब ऊपर ले जाएँ',
     reorderHelp: 'क्रम बदलने के लिए खींचें',

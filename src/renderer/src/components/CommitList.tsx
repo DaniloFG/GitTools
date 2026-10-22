@@ -67,11 +67,13 @@ interface Props {
   onOpenFile(sha: string, path: string): void
   /** Abre só o diff do arquivo, numa janela própria (duplo clique). */
   onOpenFileWindow(sha: string, path: string): void
+  /** Abre o diff de um arquivo ainda não commitado no painel de detalhes. */
+  onOpenWipFile(path: string): void
 }
 
 type FilesState = ChangedFile[] | 'loading' | { error: string }
 
-export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onOpenFileWindow }: Props) {
+export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onOpenFileWindow, onOpenWipFile }: Props) {
   const { data, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
@@ -338,6 +340,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
             indent={graphFirst}
             onOpenChanges={() => setView('changes')}
             onOpenConflict={openConflict}
+            onOpenFile={onOpenWipFile}
             onOpenDiff={(source, path, title) => openDiffWindow({ source, path, title })}
           />
         )}
@@ -490,6 +493,8 @@ interface WipProps {
   indent: boolean
   onOpenChanges(): void
   onOpenConflict(path: string): void
+  /** Mostra o diff do arquivo no painel de detalhes (clique simples, como nos arquivos de um commit). */
+  onOpenFile(path: string): void
   onOpenDiff(source: import('../../../shared/types').DiffSource, path: string, title: string): void
 }
 
@@ -497,7 +502,7 @@ interface WipProps {
  * A primeira linha do histórico é sempre das alterações ainda não commitadas — haja ou não arquivos
  * alterados. Com arquivos, ▸ (ou um clique) abre a lista logo abaixo, como nos commits.
  */
-function WipRow({ status, template, columns, graphWidth, searching, headRow, indent, onOpenChanges, onOpenConflict, onOpenDiff }: WipProps) {
+function WipRow({ status, template, columns, graphWidth, searching, headRow, indent, onOpenChanges, onOpenConflict, onOpenFile, onOpenDiff }: WipProps) {
   const [open, setOpen] = useLayout<boolean>('history.wipOpen', (v) => v === true)
   const conflicts: WipItem[] = status.conflicted.map((f: FileStatus) => ({ path: f.path, origPath: f.origPath, unstaged: f, conflicted: true }))
   const items: WipItem[] = [...conflicts, ...buildEntries(status)]
@@ -589,6 +594,7 @@ function WipRow({ status, template, columns, graphWidth, searching, headRow, ind
               items={items}
               pathOf={(i) => i.path}
               oldPathOf={(i) => i.origPath}
+              statusOf={codeOf}
               render={(item, { label, style }) => {
                 const code = codeOf(item)
                 return (
@@ -596,8 +602,8 @@ function WipRow({ status, template, columns, graphWidth, searching, headRow, ind
                     key={item.path}
                     className="commit-file"
                     style={style}
-                    title={item.conflicted ? t('changes.conflictedHint') : t('history.wip.fileHelp')}
-                    onClick={() => item.conflicted && onOpenConflict(item.path)}
+                    title={item.conflicted ? t('changes.conflictedHint') : t('history.files.help')}
+                    onClick={() => (item.conflicted ? onOpenConflict(item.path) : onOpenFile(item.path))}
                     onDoubleClick={() =>
                       !item.conflicted && onOpenDiff({ kind: item.unstaged ? 'unstaged' : 'staged' }, item.path, `${item.path} · ${t('history.wip.title')}`)
                     }
@@ -744,6 +750,7 @@ function CommitFiles({
             items={files}
             pathOf={(f) => f.path}
             oldPathOf={(f) => f.oldPath}
+            statusOf={(f) => f.status}
             render={(file, { label, style }) => (
               <li
                 key={file.path}

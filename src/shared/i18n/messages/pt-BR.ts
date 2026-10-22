@@ -211,6 +211,14 @@ export const ptBR = {
     }
   },
   details: {
+    view: {
+      label: 'Exibir',
+      both: 'Ambos',
+      message: 'Descrição',
+      files: 'Arquivos',
+      stacked: 'Cima e baixo',
+      side: 'Lado a lado'
+    },
     tips: {
       title: 'Dicas rápidas',
       dragCommit: 'Arraste um commit (ou vários, com Ctrl/Shift) para uma branch na barra lateral para fazer cherry-pick.',
@@ -307,6 +315,10 @@ export const ptBR = {
     },
     layout: {
       restore: 'Restaurar disposição',
+      restoreConfirm: {
+        title: 'Restaurar a disposição desta aba?',
+        message: 'Os painéis da aba Alterações voltam à disposição original.'
+      },
       moveUp: 'Mover para cima',
       moveDown: 'Mover para baixo',
       moveLeft: 'Mover para a esquerda',
@@ -617,6 +629,11 @@ export const ptBR = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: 'Restaurar o layout padrão?',
+      message: 'Painéis, abas, colunas e tamanhos voltam às posições originais. Suas configurações (idioma, tema, atalhos…) não mudam.',
+      confirm: 'Restaurar'
+    },
     tabsBottom: 'Mover as abas para baixo',
     tabsTop: 'Mover as abas para cima',
     reorderHelp: 'Arraste para mudar a ordem',

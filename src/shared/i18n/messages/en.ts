@@ -210,6 +210,14 @@ export const en: Messages = {
     }
   },
   details: {
+    view: {
+      label: 'Show',
+      both: 'Both',
+      message: 'Description',
+      files: 'Files',
+      stacked: 'Stacked',
+      side: 'Side by side'
+    },
     tips: {
       title: 'Quick tips',
       dragCommit: 'Drag a commit (or several, with Ctrl/Shift) onto a branch in the sidebar to cherry-pick it.',
@@ -306,6 +314,10 @@ export const en: Messages = {
     },
     layout: {
       restore: 'Restore arrangement',
+      restoreConfirm: {
+        title: 'Restore this tab\'s arrangement?',
+        message: 'The panels of the Changes tab go back to their original arrangement.'
+      },
       moveUp: 'Move up',
       moveDown: 'Move down',
       moveLeft: 'Move left',
@@ -616,6 +628,11 @@ export const en: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: 'Restore the default layout?',
+      message: 'Panels, tabs, columns and sizes go back to their original positions. Your settings (language, theme, shortcuts…) are not changed.',
+      confirm: 'Restore'
+    },
     tabsBottom: 'Move tabs to the bottom',
     tabsTop: 'Move tabs to the top',
     reorderHelp: 'Drag to reorder',

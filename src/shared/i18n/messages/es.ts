@@ -210,6 +210,14 @@ export const es: Messages = {
     }
   },
   details: {
+    view: {
+      label: 'Mostrar',
+      both: 'Ambos',
+      message: 'Descripción',
+      files: 'Archivos',
+      stacked: 'Arriba y abajo',
+      side: 'Lado a lado'
+    },
     tips: {
       title: 'Consejos rápidos',
       dragCommit: 'Arrastra un commit (o varios, con Ctrl/Shift) a una rama de la barra lateral para hacer cherry-pick.',
@@ -306,6 +314,10 @@ export const es: Messages = {
     },
     layout: {
       restore: 'Restaurar disposición',
+      restoreConfirm: {
+        title: '¿Restaurar la disposición de esta pestaña?',
+        message: 'Los paneles de la pestaña Cambios vuelven a su disposición original.'
+      },
       moveUp: 'Mover arriba',
       moveDown: 'Mover abajo',
       moveLeft: 'Mover a la izquierda',
@@ -616,6 +628,11 @@ export const es: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: '¿Restaurar el diseño predeterminado?',
+      message: 'Los paneles, pestañas, columnas y tamaños vuelven a sus posiciones originales. Tus ajustes (idioma, tema, atajos…) no cambian.',
+      confirm: 'Restaurar'
+    },
     tabsBottom: 'Mover las pestañas abajo',
     tabsTop: 'Mover las pestañas arriba',
     reorderHelp: 'Arrastra para cambiar el orden',

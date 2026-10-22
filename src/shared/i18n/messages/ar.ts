@@ -218,6 +218,14 @@ export const ar: Messages = {
     }
   },
   details: {
+    view: {
+      label: 'عرض',
+      both: 'الاثنان',
+      message: 'الوصف',
+      files: 'الملفات',
+      stacked: 'فوق وتحت',
+      side: 'جنبًا إلى جنب'
+    },
     tips: {
       title: 'نصائح سريعة',
       dragCommit: 'اسحب إيداعًا (أو عدة إيداعات باستخدام Ctrl/Shift) إلى فرع في الشريط الجانبي لانتقائه.',
@@ -315,6 +323,10 @@ export const ar: Messages = {
     },
     layout: {
       restore: 'استعادة الترتيب',
+      restoreConfirm: {
+        title: 'استعادة ترتيب هذا التبويب؟',
+        message: 'ستعود لوحات تبويب التغييرات إلى ترتيبها الأصلي.'
+      },
       moveUp: 'نقل لأعلى',
       moveDown: 'نقل لأسفل',
       moveLeft: 'نقل لليسار',
@@ -628,6 +640,11 @@ export const ar: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: 'استعادة التخطيط الافتراضي؟',
+      message: 'ستعود اللوحات والتبويبات والأعمدة والأحجام إلى أماكنها الأصلية. إعداداتك (اللغة والمظهر والاختصارات…) لن تتغير.',
+      confirm: 'استعادة'
+    },
     tabsBottom: 'نقل الألسنة إلى الأسفل',
     tabsTop: 'نقل الألسنة إلى الأعلى',
     reorderHelp: 'اسحب لتغيير الترتيب',

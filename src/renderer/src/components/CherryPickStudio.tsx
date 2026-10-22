@@ -378,6 +378,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                           items={files}
                           pathOf={(f) => f.path}
                           oldPathOf={(f) => f.oldPath}
+                          statusOf={(f) => f.status}
                           render={(f, { label, style }) => (
                           <li key={f.path} className="file-item" style={style}>
                             <label>

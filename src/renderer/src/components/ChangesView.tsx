@@ -21,6 +21,9 @@ type Active = { area: Area; path: string }
 
 type Entry = ChangeEntry
 
+/** Letra de status de um arquivo na visão de caixas: a da parte fora do stage, ou a do stage. */
+const entryCode = (e: Entry) => (e.unstaged ? (e.unstaged.untracked ? '?' : e.unstaged.worktree) : e.staged!.index)
+
 export function ChangesView() {
   const { data, run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow } = useApp()
   const { status } = data
@@ -227,9 +230,10 @@ export function ChangesView() {
               items={entries}
               pathOf={(e) => e.path}
               oldPathOf={(e) => e.origPath}
+              statusOf={entryCode}
               render={(e, { label, style }) => {
                 const first = e.unstaged ?? e.staged!
-                const code = e.unstaged ? (e.unstaged.untracked ? '?' : e.unstaged.worktree) : e.staged!.index
+                const code = entryCode(e)
                 const isActive = active?.path === e.path
                 return (
                   <li
@@ -408,6 +412,7 @@ interface RowsProps {
 /** Linhas de arquivos de uma lista (Ctrl+clique escolhe vários para arrastar juntos). */
 function FileRows({ area, files, active, onActivate, fileActions }: RowsProps) {
   const [picked, setPicked] = useState<Set<string>>(new Set())
+  const codeOf = (f: FileStatus) => (area === 'staged' ? f.index : f.untracked ? '?' : f.conflicted ? 'U' : f.worktree)
   if (files.length === 0) return <p className="section-empty">{t('changes.empty')}</p>
   return (
     <ul className="file-list">
@@ -415,8 +420,9 @@ function FileRows({ area, files, active, onActivate, fileActions }: RowsProps) {
         items={files}
         pathOf={(f) => f.path}
         oldPathOf={(f) => f.origPath}
+        statusOf={codeOf}
         render={(f, { label, style }) => {
-          const code = area === 'staged' ? f.index : f.untracked ? '?' : f.conflicted ? 'U' : f.worktree
+          const code = codeOf(f)
           return (
             <li
               key={f.path}

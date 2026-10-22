@@ -1728,7 +1728,7 @@ button.ghost.danger-text:hover:not(:disabled) {
 .dialog-check {
   margin-top: 12px;
 }
-.modal .field + .field {
+.modal-body > .field + .field {
   margin-top: 12px;
 }
 .radio-list {
@@ -3616,4 +3616,67 @@ tr.nav-flash > td {
 .log-chip:focus-visible {
   color: var(--text);
   outline: none;
+}
+
+/* O nome do arquivo ganha a cor do status (as mesmas das letras M, A, D…), para ler o que houve só pelo nome. */
+.file-label[data-status='M'] .file-name,
+.file-label[data-status='T'] .file-name {
+  color: var(--warning);
+}
+.file-label[data-status='A'] .file-name,
+.file-label[data-status='?'] .file-name {
+  color: var(--success);
+}
+.file-label[data-status='D'] .file-name {
+  color: var(--danger);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.file-label[data-status='U'] .file-name {
+  color: var(--danger);
+}
+.file-label[data-status='R'] .file-name,
+.file-label[data-status='C'] .file-name {
+  color: var(--accent);
+}
+
+/* ------------------------------------------- detalhes do commit: descrição e arquivos à escolha */
+
+.details-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.details-info > .split {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.details-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  flex: none;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.details-bar .segmented button {
+  padding: 2px 9px;
+  font-size: 12px;
+}
+.details-info > .details {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* E-mail, URLs e nomes de remote são sempre lidos da esquerda para a direita, mas ficam alinhados ao lado do layout
+   (à direita nos idiomas escritos da direita para a esquerda). */
+[dir='rtl'] input[dir='ltr'],
+[dir='rtl'] textarea[dir='ltr'],
+[dir='rtl'] .remote-url[dir='ltr'] {
+  text-align: right;
+}
+.remote-url {
+  display: block;
 }

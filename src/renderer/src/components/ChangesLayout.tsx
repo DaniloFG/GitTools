@@ -220,8 +220,19 @@ export function ChangesLayout({ mode, sections, toolbar }: Props) {
       { label: `← ${t('changes.layout.moveLeft')}`, onClick: () => setLayout(moveByStep(layout, id, 'left')) },
       { label: `→ ${t('changes.layout.moveRight')}`, onClick: () => setLayout(moveByStep(layout, id, 'right')) },
       'separator',
-      { label: t('changes.layout.restore'), onClick: () => setLayout(undefined) }
+      { label: t('changes.layout.restore'), onClick: () => void restore() }
     ])
+
+  /** Restaurar a disposição desta aba também pergunta antes. */
+  const restore = async () => {
+    const ok = await app?.confirm({
+      title: t('changes.layout.restoreConfirm.title'),
+      message: t('changes.layout.restoreConfirm.message'),
+      confirmLabel: t('changes.layout.restore'),
+      danger: true
+    })
+    if (ok) setLayout(undefined)
+  }
 
   const toggle = (id: SectionId) => setCollapsed((prev) => ({ ...prev, [id]: prev[id] ? undefined : true }))
 
@@ -256,7 +267,7 @@ export function ChangesLayout({ mode, sections, toolbar }: Props) {
     <div className="changes-layout-wrap">
       <div className="changes-toolbar">
         {toolbar}
-        <button className="icon-button ghost" onClick={() => setLayout(undefined)} title={t('changes.layout.restore')} aria-label={t('changes.layout.restore')}>
+        <button className="icon-button ghost" onClick={() => void restore()} title={t('changes.layout.restore')} aria-label={t('changes.layout.restore')}>
           ⊞
         </button>
       </div>
