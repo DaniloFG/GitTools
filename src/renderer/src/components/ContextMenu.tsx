@@ -1,7 +1,15 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 export type MenuItem =
-  | { label: string; onClick(): void; danger?: boolean; disabled?: boolean; hint?: string }
+  | {
+      label: string
+      onClick(): void
+      danger?: boolean
+      disabled?: boolean
+      hint?: string
+      /** Botões pequenos ao lado do item (ex.: ★ favoritar, ✕ remover); fecham o menu ao serem usados. */
+      actions?: { icon: string; title: string; onClick(): void }[]
+    }
   | 'separator'
 
 export interface MenuState {
@@ -46,18 +54,33 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose(): voi
         item === 'separator' ? (
           <div key={i} className="menu-separator" />
         ) : (
-          <button
-            key={i}
-            className={item.danger ? 'danger' : ''}
-            disabled={item.disabled}
-            onClick={() => {
-              onClose()
-              item.onClick()
-            }}
-          >
-            <span>{item.label}</span>
-            {item.hint && <small>{item.hint}</small>}
-          </button>
+          <div key={i} className={item.actions?.length ? 'menu-row' : 'menu-item'}>
+            <button
+              className={item.danger ? 'danger' : ''}
+              disabled={item.disabled}
+              onClick={() => {
+                onClose()
+                item.onClick()
+              }}
+            >
+              <span>{item.label}</span>
+              {item.hint && <small>{item.hint}</small>}
+            </button>
+            {item.actions?.map((action) => (
+              <button
+                key={action.icon}
+                className="menu-action"
+                title={action.title}
+                aria-label={action.title}
+                onClick={() => {
+                  onClose()
+                  action.onClick()
+                }}
+              >
+                {action.icon}
+              </button>
+            ))}
+          </div>
         )
       )}
     </div>

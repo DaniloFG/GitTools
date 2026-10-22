@@ -78,6 +78,8 @@ export function installVsCodeBridge(): boolean {
     currentRepository: () => call('app:currentRepository'),
     initRepository: () => call('app:initRepository'),
     recentRepositories: () => call('app:recentRepositories'),
+    removeRecentRepository: (path) => call('app:removeRecentRepository', path),
+    setRepositoryFavorite: (path, favorite) => call('app:setRepositoryFavorite', path, favorite),
     openFile: (relativePath) => call('app:openFile', relativePath),
     detectEditors: () => call('app:detectEditors'),
     chooseEditor: () => call('app:chooseEditor'),

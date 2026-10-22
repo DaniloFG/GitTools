@@ -93,11 +93,20 @@ export class Backend {
     }
   }
 
-  private async rememberRepo(root: string, name: string): Promise<void> {
-    const list = (await this.loadRecent()).filter((r) => r.path !== root)
-    list.unshift({ path: root, name, openedAt: Date.now() })
+  /** Grava a lista: os favoritos ficam sempre; dos demais, só os 15 mais recentes. */
+  private async saveRecent(list: RecentRepo[]): Promise<void> {
+    let others = 0
+    const kept = list.filter((r) => r.favorite || ++others <= 15)
     await mkdir(this.host.dataDir(), { recursive: true })
-    await writeFile(this.recentFile(), JSON.stringify(list.slice(0, 15), null, 2))
+    await writeFile(this.recentFile(), JSON.stringify(kept, null, 2))
+  }
+
+  private async rememberRepo(root: string, name: string): Promise<void> {
+    const all = await this.loadRecent()
+    const favorite = all.find((r) => r.path === root)?.favorite
+    const list = all.filter((r) => r.path !== root)
+    list.unshift({ path: root, name, openedAt: Date.now(), ...(favorite ? { favorite } : {}) })
+    await this.saveRecent(list)
   }
 
   private async gitVersion(): Promise<string | null> {
@@ -162,6 +171,21 @@ export class Backend {
         return repo?.info() ?? null
       case 'app:recentRepositories':
         return this.loadRecent()
+      case 'app:removeRecentRepository': {
+        const path = String(args[0] ?? '')
+        return this.saveRecent((await this.loadRecent()).filter((r) => r.path !== path))
+      }
+      case 'app:setRepositoryFavorite': {
+        const path = String(args[0] ?? '')
+        const favorite = args[1] === true
+        return this.saveRecent(
+          (await this.loadRecent()).map((r) => {
+            if (r.path !== path) return r
+            const { favorite: _old, ...rest } = r
+            return favorite ? { ...rest, favorite } : rest
+          })
+        )
+      }
       case 'app:getSettings':
         return this.loadSettings()
       case 'app:saveSettings': {

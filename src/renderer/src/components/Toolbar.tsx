@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import type { RecentRepo } from '../../../shared/api'
+import { useRecentRepos } from '../recent'
 import { useActions } from '../actions'
+import type { RecentRepo } from '../../../shared/api'
 import { useApp } from '../context'
 import { git } from '../git'
 import { t } from '../i18n'
@@ -8,22 +8,30 @@ import { t } from '../i18n'
 export function Toolbar({ onOpenRepository, onClone }: { onOpenRepository(path?: string, create?: boolean): void; onClone(): void }) {
   const { repo, data, run, showMenu, openStudio, openSettings, openInEditor, resetLayout } = useApp()
   const { head, createBranch, createTag, stash, push, pushDialog } = useActions()
-  const [recent, setRecent] = useState<RecentRepo[]>([])
   const { status } = data
 
-  useEffect(() => {
-    window.gittools.recentRepositories().then(setRecent, () => setRecent([]))
-  }, [repo])
-
-  const others = recent.filter((r) => r.path !== repo.root)
+  const { favorites, others, setFavorite, remove } = useRecentRepos(repo)
+  const repoItem = (r: RecentRepo) => ({
+    label: `${r.favorite ? '★ ' : ''}${r.name}`,
+    hint: r.path,
+    onClick: () => onOpenRepository(r.path),
+    actions: [
+      { icon: r.favorite ? '★' : '☆', title: r.favorite ? t('welcome.unfavorite') : t('welcome.favorite'), onClick: () => void setFavorite(r.path, !r.favorite) },
+      { icon: '✕', title: t('welcome.removeRecent'), onClick: () => void remove(r.path) }
+    ]
+  })
+  const otherFavorites = favorites.filter((r) => r.path !== repo.root)
+  const otherRecent = others.filter((r) => r.path !== repo.root)
   const repoMenu = (e: React.MouseEvent) =>
     showMenu(e, [
       { label: t('toolbar.openRepository'), onClick: () => onOpenRepository() },
       { label: t('toolbar.createRepository'), onClick: () => onOpenRepository(undefined, true) },
       { label: t('clone.menu'), onClick: onClone },
       { label: t('toolbar.openFolder'), onClick: () => window.gittools.openFile('.') },
-      ...(others.length ? (['separator'] as const) : []),
-      ...others.slice(0, 8).map((r) => ({ label: r.name, hint: r.path, onClick: () => onOpenRepository(r.path) }))
+      ...(otherFavorites.length ? (['separator'] as const) : []),
+      ...otherFavorites.map(repoItem),
+      ...(otherRecent.length ? (['separator'] as const) : []),
+      ...otherRecent.slice(0, 8).map(repoItem)
     ])
 
   /** Seta ao lado de Enviar (ou botão direito nele): force push, outro remote, opções e remotes. */

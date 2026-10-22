@@ -109,7 +109,11 @@ export const en: Messages = {
   welcome: {
     tagline: 'Git made simple: drag and click to merge, rebase and cherry-pick branches, commits, files and even single lines.',
     loading: 'Loading repository…',
-    recent: 'Recent'
+    recent: 'Recent',
+    favorites: 'Favorites',
+    favorite: 'Add to favorites',
+    unfavorite: 'Remove from favorites',
+    removeRecent: 'Remove from the list (the folder is not deleted)'
   },
   sidebar: {
     hint: 'Drag a branch, commit or file onto a local branch to merge, rebase or cherry-pick.',

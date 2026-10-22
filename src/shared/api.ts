@@ -230,6 +230,8 @@ export interface RecentRepo {
   path: string
   name: string
   openedAt: number
+  /** Fixado no grupo de favoritos (não sai da lista com o passar do tempo). */
+  favorite?: boolean
 }
 
 /** API exposta pelo preload em `window.gittools`. */
@@ -239,6 +241,10 @@ export interface GitToolsBridge {
   currentRepository(): Promise<RepoInfo | null>
   initRepository(): Promise<RepoInfo | null>
   recentRepositories(): Promise<RecentRepo[]>
+  /** Tira um repositório da lista de recentes (a pasta não é apagada). */
+  removeRecentRepository(path: string): Promise<void>
+  /** Move um repositório para o grupo de favoritos, ou o tira de lá. */
+  setRepositoryFavorite(path: string, favorite: boolean): Promise<void>
   openFile(relativePath: string): Promise<void>
   /** Editores de código instalados neste computador. */
   detectEditors(): Promise<EditorInfo[]>

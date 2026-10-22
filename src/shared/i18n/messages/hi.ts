@@ -112,7 +112,11 @@ export const hi: Messages = {
   welcome: {
     tagline: 'आसान Git: खींचें और क्लिक करें — branches, commits, फ़ाइलों और यहाँ तक कि अलग-अलग लाइनों का merge, rebase और cherry-pick करें।',
     loading: 'Repository लोड हो रही है…',
-    recent: 'हाल की'
+    recent: 'हाल की',
+    favorites: 'पसंदीदा',
+    favorite: 'पसंदीदा में जोड़ें',
+    unfavorite: 'पसंदीदा से हटाएँ',
+    removeRecent: 'सूची से हटाएँ (फ़ोल्डर नहीं मिटता)'
   },
   sidebar: {
     hint: 'Merge, rebase या cherry-pick के लिए किसी branch, commit या फ़ाइल को लोकल branch पर खींचें।',
