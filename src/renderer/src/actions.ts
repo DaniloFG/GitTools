@@ -1,15 +1,18 @@
-import type { BranchInfo, CommitInfo, DiffSource, LineKey } from '../../shared/types'
+import type { BranchInfo, CommitInfo, DiffSource, LineKey, PushForce } from '../../shared/types'
 import { currentBranch, useApp } from './context'
 import type { DragPayload } from './dnd'
 import { git } from './git'
 import { shortSha } from './format'
 import { t } from './i18n'
+import { useLayout } from './layout'
 
 /** Ações de alto nível reutilizadas por menus, botões e arrastar-e-soltar. */
 export function useActions() {
   const app = useApp()
-  const { data, run, confirm, prompt, choose, openStudio } = app
+  const { data, run, confirm, prompt, choose, openStudio, askPush, toast } = app
   const head = currentBranch(data)
+  /** Última escolha de "fazer checkout da nova branch" (começa ligada, como era antes). */
+  const [checkoutNew, setCheckoutNew] = useLayout<boolean>('pref.checkoutNewBranch', (v) => v !== false)
 
   async function stash() {
     const message = await prompt({
@@ -26,13 +29,66 @@ export function useActions() {
   }
 
   async function createBranch(startPoint?: string) {
+    let checkout = checkoutNew
     const name = await prompt({
       title: t('actions.newBranch.title'),
       label: startPoint ? t('actions.newBranch.labelFrom', { start: startPoint }) : t('actions.newBranch.label'),
       placeholder: t('actions.newBranch.placeholder'),
-      confirmLabel: t('actions.newBranch.confirm')
+      confirmLabel: t('actions.newBranch.confirm'),
+      check: {
+        label: t('actions.newBranch.checkout'),
+        checked: checkoutNew,
+        onCheck: (value) => {
+          checkout = value
+          setCheckoutNew(value)
+        }
+      }
     })
-    if (name) await run(t('busy.creatingBranch', { name }), () => git.createBranch(name, startPoint, true))
+    if (!name) return
+    await run(t('busy.creatingBranch', { name }), async () => {
+      await git.createBranch(name, startPoint, checkout)
+      return t(checkout ? 'actions.newBranch.createdCheckout' : 'actions.newBranch.created', { name })
+    })
+  }
+
+  /** Confirma um push com force (o `lease` é o mais seguro; o `force` sobrescreve sem verificar). */
+  function confirmForce(force: PushForce, branch: string | null = head) {
+    return confirm({
+      title: t('push.forceTitle'),
+      message: t(force === 'lease' ? 'push.forceMessageLease' : 'push.forceMessageForce', { branch: branch ?? 'HEAD' }),
+      confirmLabel: t('push.forceConfirm'),
+      danger: true
+    })
+  }
+
+  /**
+   * Envia a branch atual (ou `branch`, sem checkout). `remote` vazio usa o upstream. Com `force`, pede
+   * confirmação — a menos que `confirmed` diga que o usuário já escolheu isso de forma explícita.
+   */
+  async function push(options: { remote?: string; branch?: string; force?: PushForce; confirmed?: boolean } = {}) {
+    const { remote, branch, force, confirmed } = options
+    if (force && !confirmed && !(await confirmForce(force, branch ?? head))) return
+    return run(t('busy.push'), () => git.push(remote, { force, branch: branch === head ? undefined : branch }))
+  }
+
+  /** Diálogo de push: escolher o remote e o modo (normal, force com lease ou force). */
+  async function pushDialog(branch?: string) {
+    const name = branch ?? head
+    if (!name) {
+      toast('warning', t('core.pushNeedsBranch'))
+      return
+    }
+    const remotes = (await git.remotes().catch(() => [])).map((r) => r.name)
+    if (!remotes.length) {
+      toast('warning', t('core.noRemotes'))
+      return
+    }
+    const upstream = data.branches.find((b) => !b.remote && b.name === name)?.upstream
+    const upstreamRemote = upstream ? remotes.find((r) => upstream.startsWith(`${r}/`)) : undefined
+    const choice = await askPush({ branch: name, remotes, remote: upstreamRemote ?? (remotes.includes('origin') ? 'origin' : remotes[0]) })
+    if (!choice) return
+    // Para o remote do upstream, não informar o remote: o git envia para a branch que ela acompanha.
+    await push({ remote: choice.remote === upstreamRemote ? undefined : choice.remote, branch: name, force: choice.force, confirmed: true })
   }
 
   /** Cria uma tag no commit indicado (ou no HEAD); com mensagem, a tag é anotada. */
@@ -203,6 +259,9 @@ export function useActions() {
     stash,
     checkout,
     createBranch,
+    confirmForce,
+    push,
+    pushDialog,
     createTag,
     deleteTag,
     deleteBranch,

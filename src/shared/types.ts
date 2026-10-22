@@ -102,6 +102,15 @@ export interface BranchInfo {
   subject: string
 }
 
+/** Como forçar um push: `lease` (--force-with-lease, recusa se o remoto mudou) ou `force` (--force, sobrescreve). */
+export type PushForce = 'lease' | 'force'
+
+export interface PushOptions {
+  force?: PushForce
+  /** Branch local a enviar (padrão: a atual, sem precisar de checkout). */
+  branch?: string
+}
+
 export interface TagInfo {
   name: string
   sha: string

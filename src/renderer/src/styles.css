@@ -1252,8 +1252,34 @@ mark {
 .commit-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
+}
+.commit-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+.commit-options select {
+  padding: 2px 6px;
+}
+.commit-hint {
+  margin: 0;
+  font-size: 12px;
+}
+.split-button {
+  display: inline-flex;
+}
+.split-button > button:first-child {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+}
+.split-button > .split-arrow {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  margin-inline-start: -1px;
+  padding-inline: 6px;
 }
 
 /* ---------------------------------------------------------------- banner */
@@ -1471,6 +1497,48 @@ mark {
   background: var(--bg-elevated);
   border-color: var(--danger);
   color: var(--danger);
+}
+.dialog-check {
+  margin-top: 12px;
+}
+.modal .field + .field {
+  margin-top: 12px;
+}
+.radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.radio-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.radio-option.selected {
+  border-color: var(--accent);
+  background: var(--bg-elevated);
+}
+.radio-option.danger.selected {
+  border-color: var(--danger);
+}
+.radio-option input {
+  margin-top: 3px;
+}
+.radio-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.radio-text strong {
+  color: var(--text);
+}
+.radio-text span {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 .choice-checks {
   margin-top: 12px;

@@ -38,6 +38,7 @@ import { errorMessage, shortSha } from './format'
 import { git } from './git'
 import { getLocale, setLocale, t } from './i18n'
 import { resetLayout as clearLayout } from './layout'
+import { historySignature, mergeData, type LogCache } from './stable'
 import { activate, areaOf, type AreaId, type WorkbenchState } from './workbench'
 
 export type HistoryScope = { kind: 'all' } | { kind: 'head' } | { kind: 'ref'; ref: string }
@@ -79,6 +80,9 @@ export function App() {
   const toastId = useRef(0)
   const scopeRef = useRef(scope)
   scopeRef.current = scope
+  const refreshing = useRef<Promise<void> | null>(null)
+  const refreshAgain = useRef(false)
+  const logCache = useRef<LogCache | null>(null)
 
   const effective = preview ?? settings
   const locale = resolveLocale(effective, systemLocales)
@@ -133,7 +137,12 @@ export function App() {
     toast('success', t('workbench.layoutRestored'))
   }, [toast])
 
-  const refresh = useCallback(async () => {
+  /**
+   * Baixa o estado do repositório. Só um refresh roda por vez: pedidos que chegam no meio (foco da janela,
+   * alteração na pasta .git, fim de uma operação) viram uma única nova rodada, em vez de várias em paralelo.
+   * O histórico só é baixado de novo se algo mudou de lugar (ver `historySignature`).
+   */
+  const load = useCallback(async () => {
     try {
       const s = scopeRef.current
       const [status, branches, tags, stashes, operation] = await Promise.all([
@@ -143,12 +152,38 @@ export function App() {
         git.stashes(),
         git.operationState()
       ])
-      const log = await git.log(s.kind === 'all' ? { all: true } : s.kind === 'head' ? {} : { ref: s.ref }).catch(() => [])
-      setData({ status, branches, tags, stashes, log, operation })
+      const key = historySignature(s.kind === 'ref' ? `ref:${s.ref}` : s.kind, status, branches, tags)
+      let log = logCache.current?.key === key ? logCache.current.log : null
+      if (!log) {
+        log = await git.log(s.kind === 'all' ? { all: true } : s.kind === 'head' ? {} : { ref: s.ref }).catch(() => null)
+        if (log) logCache.current = { key, log }
+        else log = logCache.current?.log ?? []
+      }
+      const next = { status, branches, tags, stashes, log, operation }
+      setData((prev) => mergeData(prev, next))
     } catch (error) {
       toast('error', errorMessage(error))
     }
   }, [toast])
+
+  const refresh = useCallback((): Promise<void> => {
+    if (refreshing.current) {
+      refreshAgain.current = true
+      return refreshing.current
+    }
+    const round = (async () => {
+      try {
+        do {
+          refreshAgain.current = false
+          await load()
+        } while (refreshAgain.current)
+      } finally {
+        refreshing.current = null
+      }
+    })()
+    refreshing.current = round
+    return round
+  }, [load])
 
   useEffect(() => {
     if (repo) void refresh()
@@ -191,6 +226,7 @@ export function App() {
   const showRepository = useCallback(
     (info: RepoInfo) => {
       setData(null)
+      logCache.current = null
       setSelected([])
       setScope({ kind: 'all' })
       setFilePath(null)
@@ -232,6 +268,7 @@ export function App() {
       confirm: (r) => new Promise((resolve) => setDialog({ kind: 'confirm', ...r, resolve })),
       prompt: (r) => new Promise((resolve) => setDialog({ kind: 'prompt', ...r, resolve })),
       choose: (r) => new Promise((resolve) => setDialog({ kind: 'choice', ...r, resolve })),
+      askPush: (r) => new Promise((resolve) => setDialog({ kind: 'push', ...r, resolve })),
       showMenu: (event: React.MouseEvent, items: MenuItem[]) => {
         event.preventDefault()
         event.stopPropagation()

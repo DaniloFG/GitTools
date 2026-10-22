@@ -47,6 +47,7 @@ export const ptBR = {
     cherryPick: 'Cherry-pick',
     cherryPickFrom: 'Cherry-pick de {ref}',
     commit: 'Commit',
+    commitPush: 'Commit e push',
     continuing: 'Continuando',
     copyingVersion: 'Copiando versão',
     creatingBranch: 'Criando {name}',
@@ -96,6 +97,10 @@ export const ptBR = {
     push: 'Push',
     pushHelp: 'Enviar seus commits para o remoto',
     pushTo: 'Enviar para {remote}',
+    pushForceLease: 'Force push (com lease)',
+    pushForce: 'Force push (sobrescrever)',
+    pushOptions: 'Opções de push…',
+    pushMore: 'Mais opções de push',
     manageRemotes: 'Gerenciar remotes…',
     branch: 'Branch',
     stash: 'Stash',
@@ -128,6 +133,8 @@ export const ptBR = {
       delete: 'Excluir…',
       checkoutDetached: 'Checkout (HEAD destacado)',
       newBranchFromTag: 'Nova branch a partir desta tag…',
+      push: 'Enviar (push)…',
+      pushForce: 'Force push (com lease)…',
       copyName: 'Copiar nome da branch'
     },
     stash: {
@@ -246,7 +253,16 @@ export const ptBR = {
     amend: 'Corrigir o último commit (amend)',
     amendButton: 'Corrigir commit',
     commit: 'Commit',
-    commitInto: 'Commit em {branch}'
+    commitInto: 'Commit em {branch}',
+    commitStageAll: 'Incluir todos os arquivos (stage)',
+    commitStageAllHelp: 'Faz o stage de todos os arquivos alterados antes de confirmar',
+    pushAfter: 'Enviar (push) em seguida',
+    amendNeedsForce: 'O último commit já está no remoto: corrigi-lo exige force push (recomendado: com lease).',
+    pushFailedAfterCommit: 'O commit foi feito, mas o push falhou: {error}',
+    commitPush: 'Commit e push em {branch}',
+    amendPush: 'Corrigir e enviar',
+    commitForcePush: 'Commit e force push',
+    amendForcePush: 'Corrigir e forçar push'
   },
   actions: {
     deleteTag: {
@@ -269,7 +285,10 @@ export const ptBR = {
       label: 'Nome da branch',
       labelFrom: 'Nome da branch (a partir de {start})',
       placeholder: 'feature/minha-alteracao',
-      confirm: 'Criar e fazer checkout'
+      confirm: 'Criar branch',
+      checkout: 'Fazer checkout da nova branch',
+      created: 'Branch "{name}" criada.',
+      createdCheckout: 'Branch "{name}" criada e ativa.'
     },
     deleteBranch: {
       title: 'Excluir branch',
@@ -666,6 +685,7 @@ export const ptBR = {
       fetch: 'Fetch',
       pull: 'Pull',
       push: 'Push',
+      pushForce: 'Push com force (lease)',
       refresh: 'Atualizar',
       openRepository: 'Abrir repositório',
       settings: 'Configurações',
@@ -786,6 +806,22 @@ export const ptBR = {
     resetLayoutHelp: 'Restaurar layout padrão: volta abas, painéis, colunas e tamanhos às posições originais',
     layoutRestored: 'Layout restaurado ao padrão.',
     resizeColumn: 'Arraste para ajustar a largura (duplo clique volta ao padrão)'
+  },
+  push: {
+    title: 'Push de {branch}',
+    remote: 'Remote',
+    mode: 'Modo',
+    normal: 'Normal',
+    normalHelp: 'Envia só se o remoto não tiver commits que você não tem.',
+    lease: 'Force com lease',
+    leaseHelp: 'Sobrescreve o remoto (--force-with-lease), mas recusa se alguém enviou algo novo que você ainda não baixou. A forma segura de forçar.',
+    force: 'Force',
+    forceHelp: 'Sobrescreve o remoto (--force) sem verificar nada. Pode apagar commits de outras pessoas.',
+    confirm: 'Enviar',
+    forceTitle: 'Force push',
+    forceMessageLease: 'Reescrever "{branch}" no remoto?\nO push será recusado se o remoto tiver commits novos que você ainda não baixou.',
+    forceMessageForce: 'Sobrescrever "{branch}" no remoto sem nenhuma verificação?\nCommits que só existem lá serão perdidos.',
+    forceConfirm: 'Forçar push'
   },
   gitlog: {
     title: 'Log do git',

@@ -43,6 +43,10 @@ export function useBranchMenu(onScope: (scope: HistoryScope) => void) {
       ...(isRemote
         ? []
         : [
+            'separator' as const,
+            { label: t('sidebar.menu.push'), onClick: () => actions.pushDialog(branch.name) },
+            { label: t('sidebar.menu.pushForce'), onClick: () => actions.push({ branch: branch.name, force: 'lease' }) },
+            'separator' as const,
             { label: t('sidebar.menu.rename'), onClick: () => actions.renameBranch(branch) },
             { label: t('sidebar.menu.delete'), onClick: () => actions.deleteBranch(branch), danger: true, disabled: branch.current }
           ]),

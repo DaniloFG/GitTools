@@ -133,7 +133,20 @@ const pad = (n: number) => String(n).padStart(2, '0')
  * Formas em que a data do commit pode ser pesquisada: "2026-10-21", "21/10/2026" (no formato do
  * idioma), "14:32" e as combinações de data e hora.
  */
+const dateTextCache = new Map<string, string>()
+
 export function dateSearchText(ms: number, locale?: string): string {
+  // Formatar datas é caro e a pesquisa refaz isso para todos os commits a cada tecla: guarda o resultado.
+  const key = `${locale ?? ''}|${ms}`
+  const cached = dateTextCache.get(key)
+  if (cached !== undefined) return cached
+  if (dateTextCache.size > 20000) dateTextCache.clear()
+  const text = formatDateSearchText(ms, locale)
+  dateTextCache.set(key, text)
+  return text
+}
+
+function formatDateSearchText(ms: number, locale?: string): string {
   const d = new Date(ms)
   const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangedFile, CommitInfo } from '../../../shared/types'
 import type { HistoryScope } from '../App'
 import { useActions } from '../actions'
@@ -19,6 +19,11 @@ import { LineStats } from './LineStats'
 
 const ROW = 30
 const LANE = 14
+/** Linhas desenhadas de início; o resto aparece conforme a lista rola (500 linhas de uma vez pesam em máquinas fracas). */
+const INITIAL_ROWS = 120
+const MORE_ROWS = 160
+/** Quanto falta para o fim da lista (em px) para desenhar mais linhas. */
+const LOAD_AHEAD = 900
 /** Distância do início da linha até o grafo: margem + botão ▸ + espaçamento (ver .row-toggle). */
 const GRAPH_OFFSET = 30
 
@@ -69,6 +74,9 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   const actions = useActions()
   const anchor = useRef<number | null>(null)
   const [query, setQuery] = useState('')
+  /** A pesquisa filtra a lista com um pequeno atraso, para a digitação não travar em históricos grandes. */
+  const deferredQuery = useDeferredValue(query)
+  const [limit, setLimit] = useState(INITIAL_ROWS)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [files, setFiles] = useState<Map<string, FilesState>>(new Map())
   const [columns, moveColumn] = useOrder('history.columns', COLUMNS)
@@ -78,9 +86,11 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   const locale = getCurrentLocale()
   const commits = data.log
   const rows = graphFor(commits, data.status.headSha)
-  const lanes = Math.max(1, ...rows.map((r) => Math.max(r.lanesIn.length, r.lanesOut.length, r.column + 1)))
-  const graphWidth = Math.max(52, Math.min(lanes, 12) * LANE + 8)
-  const searching = query.trim() !== ''
+  const graphWidth = useMemo(() => {
+    const lanes = rows.reduce((max, r) => Math.max(max, r.lanesIn.length, r.lanesOut.length, r.column + 1), 1)
+    return Math.max(52, Math.min(lanes, 12) * LANE + 8)
+  }, [rows])
+  const searching = deferredQuery.trim() !== ''
   /**
    * Mesmas colunas no cabeçalho e em cada linha (grid): nenhuma invade a outra; o assunto ocupa o que
    * sobra e os textos longos terminam em "…". Larguras zeradas (lista estreita) escondem a coluna.
@@ -108,9 +118,21 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   const selectedSet = new Set(selected)
   /** Índices (em `commits`) das linhas visíveis — todas, ou só as que batem com a pesquisa. */
   const visible = useMemo(
-    () => (searching ? commits.flatMap((c, i) => (matchesCommit(c, query, locale) ? [i] : [])) : commits.map((_, i) => i)),
-    [commits, query, searching, locale]
+    () => (searching ? commits.flatMap((c, i) => (matchesCommit(c, deferredQuery, locale) ? [i] : [])) : commits.map((_, i) => i)),
+    [commits, deferredQuery, searching, locale]
   )
+  const shown = visible.length > limit ? visible.slice(0, limit) : visible
+  const bodyRef = useRef<HTMLDivElement>(null)
+  // Janela muito alta: as linhas desenhadas podem não bastar para gerar rolagem (e nenhum evento de scroll viria).
+  useEffect(() => {
+    const el = bodyRef.current
+    if (limit < visible.length && el && el.scrollHeight - el.clientHeight < LOAD_AHEAD) setLimit((l) => l + MORE_ROWS)
+  })
+  /** Desenha mais linhas quando falta pouco para o fim do que está desenhado. */
+  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget
+    if (limit < visible.length && el.scrollHeight - el.scrollTop - el.clientHeight < LOAD_AHEAD) setLimit((l) => l + MORE_ROWS)
+  }
 
   // Arquivos dos commits expandidos são carregados sob demanda (e recarregados se o histórico mudar).
   useEffect(() => setFiles(new Map()), [commits])
@@ -170,8 +192,14 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
       anchor.current = next
       onSelect([nextSha])
     }
-    document.querySelectorAll('.commit-row')[next]?.scrollIntoView({ block: 'nearest' })
+    // A linha pode ainda não estar desenhada (lista parcial): desenha até ela e rola no quadro seguinte.
+    if (next >= limit) setLimit(next + MORE_ROWS)
+    requestAnimationFrame(() => document.querySelectorAll('.commit-row')[next]?.scrollIntoView({ block: 'nearest' }))
   }
+
+  /** Funções de sempre-atuais para as linhas, que ficam memorizadas e não podem depender delas diretamente. */
+  const handlers = useRef({} as RowHandlers)
+  const stableColumns = useMemo(() => columns, [columns.join()]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const dragShas = (commit: CommitInfo) => (selectedSet.has(commit.sha) ? commits.filter((c) => selectedSet.has(c.sha)).map((c) => c.sha) : [commit.sha])
 
@@ -181,6 +209,8 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
     const list = data.branches.filter((b) => names.has(b.name))
     return [...list.filter((b) => !b.remote), ...list.filter((b) => b.remote)]
   }
+
+  handlers.current = { click, toggle, menu: (e, commit) => menu(e, commit), dragShas }
 
   const menu = (e: React.MouseEvent, commit: CommitInfo) => {
     const shas = dragShas(commit)
@@ -289,78 +319,29 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
           </span>
         ))}
       </div>
-      <div className="list-body" tabIndex={0} onKeyDown={onKeyDown}>
+      <div ref={bodyRef} className="list-body" tabIndex={0} onKeyDown={onKeyDown} onScroll={onScroll}>
         {commits.length === 0 && <p className="empty">{t('history.empty')}</p>}
-        {searching && commits.length > 0 && visible.length === 0 && <p className="empty">{t('history.search.none', { query })}</p>}
-        {visible.map((index, pos) => {
+        {searching && commits.length > 0 && visible.length === 0 && <p className="empty">{t('history.search.none', { query: deferredQuery })}</p>}
+        {shown.map((index, pos) => {
           const commit = commits[index]
           const row = rows[index]
           const open = expanded.has(commit.sha)
           return (
             <Fragment key={commit.sha}>
-              <div
-                className={`commit-row ${selectedSet.has(commit.sha) ? 'selected' : ''} ${open ? 'expanded' : ''}`}
-                style={{ gridTemplateColumns: template }}
-                onClick={(e) => click(e, pos)}
-                onDoubleClick={() => toggle(commit.sha)}
-                onContextMenu={(e) => menu(e, commit)}
-                draggable
-                onDragStart={(e) => {
-                  const shas = dragShas(commit)
-                  startDrag(
-                    e,
-                    { type: 'commits', shas, subject: shas.length === 1 ? commit.subject : undefined },
-                    shas.length > 1 ? `🍒 ${t('history.count', { count: shas.length })}` : `🍒 ${shortSha(commit.sha)} ${commit.subject}`
-                  )
-                }}
-                onDragEnd={endDrag}
-              >
-                <button
-                  className="row-toggle"
-                  title={open ? t('history.menu.hideFiles') : t('history.menu.showFiles')}
-                  aria-expanded={open}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    toggle(commit.sha)
-                  }}
-                  onDoubleClick={(e) => e.stopPropagation()}
-                >
-                  {open ? '▾' : '▸'}
-                </button>
-                {columns.map((column) => {
-                  switch (column) {
-                    case 'graph':
-                      return <GraphCell key={column} row={row} commit={commit} width={graphWidth} dotOnly={searching} />
-                    case 'subject':
-                      return (
-                        <div key={column} className="commit-main">
-                          <RefBadges refs={commit.refs} color={row.color} onScope={onScope} />
-                          <span className="commit-subject">
-                            <Highlight text={commit.subject} query={query} />
-                          </span>
-                        </div>
-                      )
-                    case 'author':
-                      return (
-                        <span key={column} className="commit-author">
-                          <Highlight text={commit.author} query={query} />
-                        </span>
-                      )
-                    case 'date':
-                      return (
-                        <span key={column} className="commit-date" title={`${fullDate(commit.date)}\n${relativeDate(commit.date)}`}>
-                          <Highlight text={formatShortDateTime(commit.date)} query={query} />
-                        </span>
-                      )
-                    case 'sha':
-                      return (
-                        <code key={column} className="commit-sha">
-                          {shortSha(commit.sha)}
-                        </code>
-                      )
-                  }
-                })}
-              </div>
+              <CommitRow
+                commit={commit}
+                row={row}
+                pos={pos}
+                selected={selectedSet.has(commit.sha)}
+                open={open}
+                template={template}
+                columns={stableColumns}
+                graphWidth={graphWidth}
+                searching={searching}
+                query={searching ? deferredQuery : ''}
+                handlers={handlers}
+                onScope={onScope}
+              />
               {open && (
                 <CommitFiles
                   sha={commit.sha}
@@ -380,6 +361,100 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
     </div>
   )
 }
+
+interface RowHandlers {
+  click(e: React.MouseEvent, pos: number): void
+  toggle(sha: string, open?: boolean): void
+  menu(e: React.MouseEvent, commit: CommitInfo): void
+  dragShas(commit: CommitInfo): string[]
+}
+
+interface RowProps {
+  commit: CommitInfo
+  row: GraphRow
+  pos: number
+  selected: boolean
+  open: boolean
+  template: string
+  columns: readonly Column[]
+  graphWidth: number
+  searching: boolean
+  query: string
+  handlers: React.RefObject<RowHandlers>
+  onScope(scope: HistoryScope): void
+}
+
+/**
+ * Uma linha do histórico. Memorizada: clicar numa linha só redesenha a que perdeu e a que ganhou a
+ * seleção, não as centenas de outras.
+ */
+const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, template, columns, graphWidth, searching, query, handlers, onScope }: RowProps) {
+  return (
+    <div
+      className={`commit-row ${selected ? 'selected' : ''} ${open ? 'expanded' : ''}`}
+      style={{ gridTemplateColumns: template }}
+      onClick={(e) => handlers.current.click(e, pos)}
+      onDoubleClick={() => handlers.current.toggle(commit.sha)}
+      onContextMenu={(e) => handlers.current.menu(e, commit)}
+      draggable
+      onDragStart={(e) => {
+        const shas = handlers.current.dragShas(commit)
+        startDrag(
+          e,
+          { type: 'commits', shas, subject: shas.length === 1 ? commit.subject : undefined },
+          shas.length > 1 ? `🍒 ${t('history.count', { count: shas.length })}` : `🍒 ${shortSha(commit.sha)} ${commit.subject}`
+        )
+      }}
+      onDragEnd={endDrag}
+    >
+      <button
+        className="row-toggle"
+        title={open ? t('history.menu.hideFiles') : t('history.menu.showFiles')}
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation()
+          handlers.current.toggle(commit.sha)
+        }}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        {open ? '▾' : '▸'}
+      </button>
+      {columns.map((column) => {
+        switch (column) {
+          case 'graph':
+            return <GraphCell key={column} row={row} commit={commit} width={graphWidth} dotOnly={searching} />
+          case 'subject':
+            return (
+              <div key={column} className="commit-main">
+                <RefBadges refs={commit.refs} color={row.color} onScope={onScope} />
+                <span className="commit-subject">
+                  <Highlight text={commit.subject} query={query} />
+                </span>
+              </div>
+            )
+          case 'author':
+            return (
+              <span key={column} className="commit-author">
+                <Highlight text={commit.author} query={query} />
+              </span>
+            )
+          case 'date':
+            return (
+              <span key={column} className="commit-date" title={`${fullDate(commit.date)}\n${relativeDate(commit.date)}`}>
+                <Highlight text={formatShortDateTime(commit.date)} query={query} />
+              </span>
+            )
+          case 'sha':
+            return (
+              <code key={column} className="commit-sha">
+                {shortSha(commit.sha)}
+              </code>
+            )
+        }
+      })}
+    </div>
+  )
+})
 
 /** Marca no texto os trechos que batem com a pesquisa. */
 function Highlight({ text, query }: { text: string; query: string }) {

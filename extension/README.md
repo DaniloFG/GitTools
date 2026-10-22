@@ -111,6 +111,7 @@ Files that GitTools opens (*Open in editor*, file menus) open in **VS Code's own
 | Next / previous change in a diff | `F7` / `Shift+F7` |
 | Next / previous file in the list | `F8` / `Shift+F8` |
 | Fetch / Pull / Push | `Ctrl+Shift+F` / `Ctrl+Shift+L` / `Ctrl+Shift+K` |
+| Force push (with lease) | `Ctrl+Alt+Shift+K` |
 | All shortcuts | `F1` |
 
 Every shortcut can be changed in **⚙ Settings → Keyboard shortcuts**.

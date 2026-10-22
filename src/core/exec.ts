@@ -90,6 +90,8 @@ export function runGit(cwd: string, args: string[], options: RunOptions = {}): P
         GIT_SEQUENCE_EDITOR: 'true',
         GIT_MERGE_AUTOEDIT: 'no',
         GIT_PAGER: 'cat',
+        // A interface consulta o status o tempo todo: sem isso o git regrava o index (e o trava) a cada consulta.
+        GIT_OPTIONAL_LOCKS: '0',
         // Saída do git sempre em inglês: a interface traduz o que importa e o
         // código que interpreta mensagens do git não depende do idioma do sistema.
         LC_ALL: 'en_US.UTF-8',

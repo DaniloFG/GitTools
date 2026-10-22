@@ -27,6 +27,9 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Ver o histórico de um arquivo                 | Aba **Arquivos** → *Histórico do arquivo* (segue renomeações). Restaure uma versão antiga ou traga só algumas linhas dela. |
 | Reordenar, juntar, renomear ou remover commits | Botão direito num commit → **Rebase interativo**: arraste para reordenar e escolha a ação de cada commit.        |
 | Outras operações                              | Checkout (duplo clique ou botão direito na branch — o primeiro item do menu), criar/renomear/excluir branch, revert, reset, stash, fetch, pull e push (botão direito / barra superior). |
+| Enviar (push) normal ou com **force**         | Botão **Push** e a seta ▾ ao lado dele (ou botão direito): *Force push (com lease)* — a forma segura, recusa se o remoto tem algo novo que você não baixou — e *Force push (sobrescrever)*, ambos com confirmação. *Opções de push…* abre um diálogo com remote e modo. Também no botão direito de uma branch local (envia sem precisar de checkout) e em `Ctrl+Alt+Shift+K` (force com lease). |
+| Commit, amend e push de uma vez               | Aba **Alterações**: marque *Corrigir o último commit (amend)*, *Incluir todos os arquivos* e/ou *Enviar (push) em seguida* (normal, force com lease ou force) — o botão mostra o que vai acontecer (ex.: *Corrigir e forçar push*). Se o commit corrigido já está no remoto, o force é escolhido para você. As escolhas ficam lembradas. |
+| Criar uma branch com ou sem checkout          | **＋ Branch** (ou botão direito em branch/commit/tag → *Nova branch…*): a caixa *Fazer checkout da nova branch* decide se você troca para ela; a última escolha fica lembrada. |
 | Clonar um repositório                         | Menu do repositório (canto superior esquerdo) → **Clonar repositório…**: URL, pasta e nome; o progresso aparece no log do git. |
 | Ver os comandos git que o GitTools executa    | Painel **Log do git** no rodapé, em tempo real (com filtro, “só os que alteram”, copiar comando).             |
 | Nome e e-mail dos commits                     | ⚙ Configurações → **Identidade e remotes**: global (`~/.gitconfig`) ou só no repositório aberto.              |
@@ -264,6 +267,7 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 | Cherry-pick Studio | `Ctrl+Shift+P` |
 | Nova branch / Stash | `Ctrl+Shift+N` / `Ctrl+Shift+S` |
 | Fetch / Pull / Push | `Ctrl+Shift+F` / `Ctrl+Shift+L` / `Ctrl+Shift+K` |
+| Push com force (lease) | `Ctrl+Alt+Shift+K` |
 | Atualizar / Abrir repositório | `F5` / `Ctrl+O` |
 | Configurações / Lista de atalhos | `Ctrl+,` / `F1` |
 | Mover / estender a seleção no histórico | `↑` `↓` / `Shift+↑` `Shift+↓` |

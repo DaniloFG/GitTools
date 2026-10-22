@@ -46,6 +46,7 @@ export const es: Messages = {
     cherryPick: 'Cherry-pick',
     cherryPickFrom: 'Cherry-pick de {ref}',
     commit: 'Commit',
+    commitPush: 'Commit y push',
     continuing: 'Continuando',
     copyingVersion: 'Copiando versión',
     creatingBranch: 'Creando {name}',
@@ -95,6 +96,10 @@ export const es: Messages = {
     push: 'Push',
     pushHelp: 'Enviar tus commits al remoto',
     pushTo: 'Enviar a {remote}',
+    pushForceLease: 'Force push (con lease)',
+    pushForce: 'Force push (sobrescribir)',
+    pushOptions: 'Opciones de push…',
+    pushMore: 'Más opciones de push',
     manageRemotes: 'Administrar remotos…',
     branch: 'Rama',
     stash: 'Stash',
@@ -127,6 +132,8 @@ export const es: Messages = {
       delete: 'Eliminar…',
       checkoutDetached: 'Checkout (HEAD desacoplado)',
       newBranchFromTag: 'Nueva rama desde esta etiqueta…',
+      push: 'Enviar (push)…',
+      pushForce: 'Force push (con lease)…',
       copyName: 'Copiar nombre de la rama'
     },
     stash: {
@@ -245,7 +252,16 @@ export const es: Messages = {
     amend: 'Corregir el último commit (amend)',
     amendButton: 'Corregir commit',
     commit: 'Commit',
-    commitInto: 'Commit en {branch}'
+    commitInto: 'Commit en {branch}',
+    commitStageAll: 'Incluir todos los archivos (stage)',
+    commitStageAllHelp: 'Hace stage de todos los archivos modificados antes de confirmar',
+    pushAfter: 'Enviar (push) después',
+    amendNeedsForce: 'El último commit ya está en el remoto: corregirlo requiere force push (recomendado: con lease).',
+    pushFailedAfterCommit: 'El commit se hizo, pero el push falló: {error}',
+    commitPush: 'Commit y push en {branch}',
+    amendPush: 'Corregir y enviar',
+    commitForcePush: 'Commit y force push',
+    amendForcePush: 'Corregir y forzar push'
   },
   actions: {
     deleteTag: {
@@ -268,7 +284,10 @@ export const es: Messages = {
       label: 'Nombre de la rama',
       labelFrom: 'Nombre de la rama (desde {start})',
       placeholder: 'feature/mi-cambio',
-      confirm: 'Crear y hacer checkout'
+      confirm: 'Crear rama',
+      checkout: 'Hacer checkout de la nueva rama',
+      created: 'Rama "{name}" creada.',
+      createdCheckout: 'Rama "{name}" creada y activa.'
     },
     deleteBranch: {
       title: 'Eliminar rama',
@@ -665,6 +684,7 @@ export const es: Messages = {
       fetch: 'Fetch',
       pull: 'Pull',
       push: 'Push',
+      pushForce: 'Push con force (lease)',
       refresh: 'Actualizar',
       openRepository: 'Abrir repositorio',
       settings: 'Configuración',
@@ -785,6 +805,22 @@ export const es: Messages = {
     resetLayoutHelp: 'Restablecer diseño predeterminado: devuelve pestañas, paneles, columnas y tamaños a su posición original',
     layoutRestored: 'Diseño restablecido.',
     resizeColumn: 'Arrastra para ajustar el ancho (doble clic restablece el predeterminado)'
+  },
+  push: {
+    title: 'Push de {branch}',
+    remote: 'Remoto',
+    mode: 'Modo',
+    normal: 'Normal',
+    normalHelp: 'Envía solo si el remoto no tiene commits que tú no tengas.',
+    lease: 'Force con lease',
+    leaseHelp: 'Sobrescribe el remoto (--force-with-lease), pero se rechaza si alguien envió algo nuevo que aún no has descargado. La forma segura de forzar.',
+    force: 'Force',
+    forceHelp: 'Sobrescribe el remoto (--force) sin comprobar nada. Puede borrar commits de otras personas.',
+    confirm: 'Enviar',
+    forceTitle: 'Force push',
+    forceMessageLease: '¿Reescribir "{branch}" en el remoto?\nEl push se rechaza si el remoto tiene commits nuevos que aún no has descargado.',
+    forceMessageForce: '¿Sobrescribir "{branch}" en el remoto sin ninguna comprobación?\nSe perderán los commits que solo existan allí.',
+    forceConfirm: 'Forzar push'
   },
   gitlog: {
     title: 'Log de git',

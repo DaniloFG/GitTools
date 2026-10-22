@@ -7,7 +7,7 @@ import { t } from '../i18n'
 
 export function Toolbar({ onOpenRepository, onClone }: { onOpenRepository(path?: string, create?: boolean): void; onClone(): void }) {
   const { repo, data, run, showMenu, openStudio, openSettings, openInEditor, resetLayout } = useApp()
-  const { head, createBranch, createTag, stash } = useActions()
+  const { head, createBranch, createTag, stash, push, pushDialog } = useActions()
   const [recent, setRecent] = useState<RecentRepo[]>([])
   const { status } = data
 
@@ -26,13 +26,19 @@ export function Toolbar({ onOpenRepository, onClone }: { onOpenRepository(path?:
       ...others.slice(0, 8).map((r) => ({ label: r.name, hint: r.path, onClick: () => onOpenRepository(r.path) }))
     ])
 
-  /** Botão direito em Enviar: escolher outro remote (ou abrir o gerenciamento de remotes). */
+  /** Seta ao lado de Enviar (ou botão direito nele): force push, outro remote, opções e remotes. */
   const pushMenu = async (e: React.MouseEvent) => {
     e.preventDefault()
     const remotes = await git.remotes().catch(() => [])
     showMenu(e, [
-      ...remotes.map((r) => ({ label: t('toolbar.pushTo', { remote: r.name }), hint: r.pushUrl, onClick: () => run(t('busy.push'), () => git.push(r.name)) })),
-      ...(remotes.length ? (['separator'] as const) : []),
+      { label: t('toolbar.push'), onClick: () => push() },
+      { label: t('toolbar.pushForceLease'), onClick: () => push({ force: 'lease' }) },
+      { label: t('toolbar.pushForce'), onClick: () => push({ force: 'force' }), danger: true },
+      'separator',
+      ...(remotes.length > 1
+        ? [...remotes.map((r) => ({ label: t('toolbar.pushTo', { remote: r.name }), hint: r.pushUrl, onClick: () => push({ remote: r.name }) })), 'separator' as const]
+        : []),
+      { label: t('toolbar.pushOptions'), onClick: () => pushDialog() },
       { label: t('toolbar.manageRemotes'), onClick: () => openSettings('git') }
     ])
   }
@@ -54,9 +60,14 @@ export function Toolbar({ onOpenRepository, onClone }: { onOpenRepository(path?:
         <button onClick={() => run(t('busy.pull'), () => git.pull())} title={t('toolbar.pullHelp')}>
           ↓ {t('toolbar.pull')} {status.behind > 0 && <span className="badge">{status.behind}</span>}
         </button>
-        <button onClick={() => run(t('busy.push'), () => git.push())} onContextMenu={pushMenu} title={t('toolbar.pushHelp')}>
-          ↑ {t('toolbar.push')} {status.ahead > 0 && <span className="badge">{status.ahead}</span>}
-        </button>
+        <span className="split-button">
+          <button onClick={() => push()} onContextMenu={pushMenu} title={t('toolbar.pushHelp')}>
+            ↑ {t('toolbar.push')} {status.ahead > 0 && <span className="badge">{status.ahead}</span>}
+          </button>
+          <button className="split-arrow" onClick={pushMenu} title={t('toolbar.pushMore')} aria-label={t('toolbar.pushMore')} aria-haspopup="menu">
+            ▾
+          </button>
+        </span>
       </div>
       <div className="toolbar-group">
         <button onClick={() => createBranch()}>＋ {t('toolbar.branch')}</button>

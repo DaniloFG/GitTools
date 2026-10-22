@@ -45,6 +45,7 @@ export const zhCN: Messages = {
     cherryPick: '正在拣选',
     cherryPickFrom: '正在从 {ref} 拣选',
     commit: '正在提交',
+    commitPush: '正在提交并推送',
     continuing: '正在继续',
     copyingVersion: '正在复制版本',
     creatingBranch: '正在创建 {name}',
@@ -94,6 +95,10 @@ export const zhCN: Messages = {
     push: '推送',
     pushHelp: '将你的提交发送到远程仓库',
     pushTo: '推送到 {remote}',
+    pushForceLease: '强制推送（带 lease）',
+    pushForce: '强制推送（覆盖）',
+    pushOptions: '推送选项…',
+    pushMore: '更多推送选项',
     manageRemotes: '管理远程仓库…',
     branch: '分支',
     stash: '贮藏',
@@ -126,6 +131,8 @@ export const zhCN: Messages = {
       delete: '删除…',
       checkoutDetached: '检出（分离的 HEAD）',
       newBranchFromTag: '从此标签新建分支…',
+      push: '推送…',
+      pushForce: '强制推送（带 lease）…',
       copyName: '复制分支名称'
     },
     stash: {
@@ -238,7 +245,16 @@ export const zhCN: Messages = {
     amend: '修改上一次提交（amend）',
     amendButton: '修改提交',
     commit: '提交',
-    commitInto: '提交到 {branch}'
+    commitInto: '提交到 {branch}',
+    commitStageAll: '包含所有文件（暂存）',
+    commitStageAllHelp: '提交前先暂存所有已更改的文件',
+    pushAfter: '提交后推送',
+    amendNeedsForce: '最后一次提交已在远程：修改它需要强制推送（建议使用 lease）。',
+    pushFailedAfterCommit: '提交已完成，但推送失败：{error}',
+    commitPush: '提交并推送到 {branch}',
+    amendPush: '修改并推送',
+    commitForcePush: '提交并强制推送',
+    amendForcePush: '修改并强制推送'
   },
   actions: {
     deleteTag: {
@@ -261,7 +277,10 @@ export const zhCN: Messages = {
       label: '分支名称',
       labelFrom: '分支名称（基于 {start}）',
       placeholder: 'feature/my-change',
-      confirm: '创建并检出'
+      confirm: '创建分支',
+      checkout: '检出新分支',
+      created: '已创建分支“{name}”。',
+      createdCheckout: '已创建并检出分支“{name}”。'
     },
     deleteBranch: {
       title: '删除分支',
@@ -643,6 +662,7 @@ export const zhCN: Messages = {
       fetch: '获取',
       pull: '拉取',
       push: '推送',
+      pushForce: '强制推送（lease）',
       refresh: '刷新',
       openRepository: '打开仓库',
       settings: '设置',
@@ -760,6 +780,22 @@ export const zhCN: Messages = {
     resetLayoutHelp: '恢复默认布局：把标签页、面板、列和尺寸恢复到初始位置',
     layoutRestored: '布局已恢复为默认。',
     resizeColumn: '拖动以调整宽度（双击恢复默认）'
+  },
+  push: {
+    title: '推送 {branch}',
+    remote: '远程',
+    mode: '模式',
+    normal: '普通',
+    normalHelp: '仅在远程没有你缺少的提交时才推送。',
+    lease: '带 lease 的强制推送',
+    leaseHelp: '覆盖远程（--force-with-lease），但如果有人推送了你尚未拉取的新内容则会被拒绝。这是安全的强制方式。',
+    force: '强制',
+    forceHelp: '不做任何检查直接覆盖远程（--force）。可能会删除他人的提交。',
+    confirm: '推送',
+    forceTitle: '强制推送',
+    forceMessageLease: '要改写远程上的“{branch}”吗？\n如果远程有你尚未拉取的新提交，推送会被拒绝。',
+    forceMessageForce: '要不做任何检查直接覆盖远程上的“{branch}”吗？\n只存在于远程的提交将会丢失。',
+    forceConfirm: '强制推送'
   },
   gitlog: {
     title: 'Git 日志',
