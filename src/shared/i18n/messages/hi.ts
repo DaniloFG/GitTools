@@ -268,7 +268,36 @@ export const hi: Messages = {
     commitPush: '{branch} में commit और push',
     amendPush: 'सुधारें और Push करें',
     commitForcePush: 'Commit और force push',
-    amendForcePush: 'सुधारें और force push करें'
+    amendForcePush: 'सुधारें और force push करें',
+    sections: {
+      conflicts: 'Conflicts',
+      unstaged: 'बदलाव',
+      staged: 'Staged',
+      files: 'बदलाव',
+      commit: 'Commit',
+      diff: 'अंतर'
+    },
+    mode: {
+      label: 'बदलावों का दृश्य',
+      stage: 'Staged / unstaged',
+      check: 'चेकबॉक्स',
+      stageHelp: 'दो सूचियाँ: खींचें, या फ़ाइलों को commit में ले जाने के लिए ＋ और － का उपयोग करें',
+      checkHelp: 'एक ही सूची: जो फ़ाइलें commit में जाएँगी उन पर निशान लगाएँ'
+    },
+    check: {
+      marked: '{total} में से {marked} चुनी गईं',
+      all: 'सभी चुनें या हटाएँ',
+      include: 'Commit में शामिल करें'
+    },
+    layout: {
+      restore: 'व्यवस्था पहले जैसी करें',
+      moveUp: 'ऊपर ले जाएँ',
+      moveDown: 'नीचे ले जाएँ',
+      moveLeft: 'बाईं ओर ले जाएँ',
+      moveRight: 'दाईं ओर ले जाएँ',
+      drag: 'इस पैनल को हटाने के लिए शीर्षक को खींचें (दायाँ क्लिक: और विकल्प)',
+      newColumn: 'नया कॉलम'
+    }
   },
   actions: {
     deleteTag: {

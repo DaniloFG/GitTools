@@ -274,7 +274,36 @@ export const ar: Messages = {
     commitPush: 'إيداع ودفع في {branch}',
     amendPush: 'تعديل ودفع',
     commitForcePush: 'إيداع ودفع قسري',
-    amendForcePush: 'تعديل ودفع قسري'
+    amendForcePush: 'تعديل ودفع قسري',
+    sections: {
+      conflicts: 'التعارضات',
+      unstaged: 'التغييرات',
+      staged: 'المجهّزة (staged)',
+      files: 'التغييرات',
+      commit: 'إيداع',
+      diff: 'الفروقات'
+    },
+    mode: {
+      label: 'عرض التغييرات',
+      stage: 'مجهّز / غير مجهّز',
+      check: 'خانات الاختيار',
+      stageHelp: 'قائمتان: اسحب أو استخدم ＋ و － لنقل الملفات إلى الإيداع',
+      checkHelp: 'قائمة واحدة: ضع علامة على الملفات التي تدخل في الإيداع'
+    },
+    check: {
+      marked: 'تم تحديد {marked} من {total}',
+      all: 'تحديد الكل أو إلغاؤه',
+      include: 'تضمين في الإيداع'
+    },
+    layout: {
+      restore: 'استعادة الترتيب',
+      moveUp: 'نقل لأعلى',
+      moveDown: 'نقل لأسفل',
+      moveLeft: 'نقل لليسار',
+      moveRight: 'نقل لليمين',
+      drag: 'اسحب الترويسة لنقل هذه اللوحة (زر الفأرة الأيمن: مزيد من الخيارات)',
+      newColumn: 'عمود جديد'
+    }
   },
   actions: {
     deleteTag: {

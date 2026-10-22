@@ -258,7 +258,36 @@ export const zhCN: Messages = {
     commitPush: '提交并推送到 {branch}',
     amendPush: '修改并推送',
     commitForcePush: '提交并强制推送',
-    amendForcePush: '修改并强制推送'
+    amendForcePush: '修改并强制推送',
+    sections: {
+      conflicts: '冲突',
+      unstaged: '更改',
+      staged: '已暂存',
+      files: '更改',
+      commit: '提交',
+      diff: '差异'
+    },
+    mode: {
+      label: '更改视图',
+      stage: '已暂存 / 未暂存',
+      check: '复选框',
+      stageHelp: '两个列表：拖动，或用 ＋ 和 － 把文件放进提交',
+      checkHelp: '单个列表：勾选要放进提交的文件'
+    },
+    check: {
+      marked: '已勾选 {marked}/{total}',
+      all: '全选或取消全选',
+      include: '加入提交'
+    },
+    layout: {
+      restore: '恢复布局',
+      moveUp: '上移',
+      moveDown: '下移',
+      moveLeft: '左移',
+      moveRight: '右移',
+      drag: '拖动标题可移动此面板（右键查看更多选项）',
+      newColumn: '新列'
+    }
   },
   actions: {
     deleteTag: {

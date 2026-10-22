@@ -265,7 +265,36 @@ export const en: Messages = {
     commitPush: 'Commit and push to {branch}',
     amendPush: 'Amend and push',
     commitForcePush: 'Commit and force push',
-    amendForcePush: 'Amend and force push'
+    amendForcePush: 'Amend and force push',
+    sections: {
+      conflicts: 'Conflicts',
+      unstaged: 'Changes',
+      staged: 'Staged',
+      files: 'Changes',
+      commit: 'Commit',
+      diff: 'Diff'
+    },
+    mode: {
+      label: 'Changes view',
+      stage: 'Staged / unstaged',
+      check: 'Checkboxes',
+      stageHelp: 'Two lists: drag, or use ＋ and － to move files into the commit',
+      checkHelp: 'A single list: tick the files that go into the commit'
+    },
+    check: {
+      marked: '{marked} of {total} ticked',
+      all: 'Tick or untick all',
+      include: 'Include in commit'
+    },
+    layout: {
+      restore: 'Restore arrangement',
+      moveUp: 'Move up',
+      moveDown: 'Move down',
+      moveLeft: 'Move left',
+      moveRight: 'Move right',
+      drag: 'Drag the header to move this panel (right-click for more options)',
+      newColumn: 'New column'
+    }
   },
   actions: {
     deleteTag: {

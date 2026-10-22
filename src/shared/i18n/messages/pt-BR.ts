@@ -266,7 +266,36 @@ export const ptBR = {
     commitPush: 'Commit e push em {branch}',
     amendPush: 'Corrigir e enviar',
     commitForcePush: 'Commit e force push',
-    amendForcePush: 'Corrigir e forçar push'
+    amendForcePush: 'Corrigir e forçar push',
+    sections: {
+      conflicts: 'Conflitos',
+      unstaged: 'Alterações',
+      staged: 'Staged',
+      files: 'Alterações',
+      commit: 'Commit',
+      diff: 'Diferenças'
+    },
+    mode: {
+      label: 'Visão das alterações',
+      stage: 'Staged e não staged',
+      check: 'Caixas de seleção',
+      stageHelp: 'Duas listas: arraste ou use ＋ e － para mover arquivos para o commit',
+      checkHelp: 'Uma lista só: marque os arquivos que entram no commit'
+    },
+    check: {
+      marked: '{marked} de {total} marcados',
+      all: 'Marcar ou desmarcar todos',
+      include: 'Incluir no commit'
+    },
+    layout: {
+      restore: 'Restaurar disposição',
+      moveUp: 'Mover para cima',
+      moveDown: 'Mover para baixo',
+      moveLeft: 'Mover para a esquerda',
+      moveRight: 'Mover para a direita',
+      drag: 'Arraste o cabeçalho para mudar este painel de lugar (botão direito: mais opções)',
+      newColumn: 'Nova coluna'
+    }
   },
   actions: {
     deleteTag: {

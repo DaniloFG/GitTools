@@ -265,7 +265,36 @@ export const es: Messages = {
     commitPush: 'Commit y push en {branch}',
     amendPush: 'Corregir y enviar',
     commitForcePush: 'Commit y force push',
-    amendForcePush: 'Corregir y forzar push'
+    amendForcePush: 'Corregir y forzar push',
+    sections: {
+      conflicts: 'Conflictos',
+      unstaged: 'Cambios',
+      staged: 'Staged',
+      files: 'Cambios',
+      commit: 'Commit',
+      diff: 'Diferencias'
+    },
+    mode: {
+      label: 'Vista de los cambios',
+      stage: 'Staged y no staged',
+      check: 'Casillas de selección',
+      stageHelp: 'Dos listas: arrastra o usa ＋ y － para llevar archivos al commit',
+      checkHelp: 'Una sola lista: marca los archivos que entran en el commit'
+    },
+    check: {
+      marked: '{marked} de {total} marcados',
+      all: 'Marcar o desmarcar todos',
+      include: 'Incluir en el commit'
+    },
+    layout: {
+      restore: 'Restaurar disposición',
+      moveUp: 'Mover arriba',
+      moveDown: 'Mover abajo',
+      moveLeft: 'Mover a la izquierda',
+      moveRight: 'Mover a la derecha',
+      drag: 'Arrastra la cabecera para mover este panel (clic derecho: más opciones)',
+      newColumn: 'Nueva columna'
+    }
   },
   actions: {
     deleteTag: {
