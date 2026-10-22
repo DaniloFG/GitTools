@@ -1,5 +1,5 @@
 {
-  "gittools.description": "Git com interface visual: arraste e clique para fazer merge, rebase e cherry-pick de branches inteiras, commits, arquivos ou até linhas.",
+  "gittools.description": "O melhor das ferramentas de Git em uma só: grafo, commit com caixas de seleção, staging por linha, conflitos lado a lado e cherry-pick por arrastar de branches, commits, arquivos ou linhas.",
   "gittools.cmd.open": "Abrir o GitTools",
   "gittools.cmd.openRepository": "Abrir um repositório…",
   "gittools.cmd.openFileDiff": "Ver as alterações deste arquivo no GitTools",

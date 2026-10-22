@@ -6,6 +6,24 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 
 ![Histórico com grafo de branches](docs/screenshots/historico.png)
 
+## Por que o GitTools?
+
+> **Cansado de ter uma ferramenta para o grafo, outra para os conflitos e outra para escolher o que vai no commit?**
+> O GitTools junta o melhor que as melhores ferramentas de Git do mercado têm — e entrega tudo numa interface só,
+> leve, gratuita e que roda no seu computador.
+
+- 🌳 **O grafo bonito** de um cliente visual de verdade: trilhas coloridas, pesquisa, tags e colunas que você reorganiza.
+- ✅ **Escolher o commit com caixas de seleção**, ou arrastar entre *staged* e *não staged* — você decide qual visão prefere, na mesma tela.
+- ✂️ **Staging linha a linha**: leve ao commit só as linhas que importam, direto do diff.
+- 🔀 **Conflitos lado a lado** (atual × resultado × que entra), bloco a bloco, sem abrir o terminal.
+- 🍒 **Cherry-pick de outro nível**: da branch inteira, de commits, de **arquivos** ou de **linhas**, só arrastando.
+- 🧹 **Rebase interativo visual**, **blame**, histórico de arquivo e comparação de branches — tudo a um clique.
+- 🧩 **A tela do seu jeito**: painéis e abas que você move para onde quiser, como num editor moderno.
+- 🔒 **Sem conta, sem nuvem, sem telemetria.** Usa o Git que você já tem instalado. Código aberto (MIT).
+- 🧰 **Em dois lugares**: como aplicativo próprio e como extensão dentro do **VS Code**.
+
+*Uma ferramenta só. Todo o fluxo de Git. Sem alternar de janela.*
+
 ## O que dá para fazer
 
 | Quero…                                        | Como fazer no GitTools                                                                                         |

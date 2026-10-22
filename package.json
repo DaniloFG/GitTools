@@ -2,7 +2,7 @@
   "name": "gittools",
   "productName": "GitTools",
   "version": "0.5.0",
-  "description": "Interface gráfica para Git: arraste e clique para fazer merge, rebase e cherry-pick de branches, commits, arquivos e linhas.",
+  "description": "O melhor das ferramentas de Git em uma só: grafo, commit com caixas de seleção, staging por linha, conflitos lado a lado e cherry-pick por arrastar de branches, commits, arquivos ou linhas.",
   "license": "MIT",
   "author": "Danilo Gama",
   "main": "out/main/index.js",

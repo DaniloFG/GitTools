@@ -21,6 +21,23 @@ GitTools turns the git commands that are hard to remember — especially **cherr
 simply **drag and drop**. It runs on the git that is already installed on your machine, needs no account and
 sends nothing anywhere.
 
+## Why GitTools?
+
+> **Tired of one tool for the graph, another for conflicts, and yet another to pick what goes into a commit?**
+> GitTools brings together the best of what the top Git tools on the market do — in a single, lightweight,
+> free interface that lives right inside VS Code.
+
+- 🌳 **A beautiful history graph** like the best visual clients: colored lanes, search, tags and columns you can rearrange.
+- ✅ **Pick your commit with checkboxes**, or drag files between *staged* and *unstaged* — choose the view you like, in the same screen.
+- ✂️ **Line-by-line staging**: commit only the lines that matter, straight from the diff.
+- 🔀 **Side-by-side conflict editor** (*current × result × incoming*), block by block, no terminal needed.
+- 🍒 **Cherry-pick on another level**: a whole branch, commits, **files** or **lines** — just drag.
+- 🧹 **Visual interactive rebase**, **blame**, file history and branch comparison — one click away.
+- 🧩 **A workspace your way**: move panels and tabs wherever you want, like in a modern editor.
+- 🔒 **No account, no cloud, no telemetry.** It uses the git you already have installed. Open source (MIT).
+
+*One tool. The whole Git workflow. No more switching windows.*
+
 ## Highlights
 
 - 🍒 **Cherry-pick anything**: a whole branch, chosen commits, specific files, or just the lines you select.
