@@ -1,4 +1,4 @@
-// Layout do grafo de commits em "trilhas" (lanes), no estilo GitLens/gitk.
+// Layout do grafo de commits em "trilhas" (lanes).
 // Cada trilha guarda a sua cor do início ao fim (como no Source Control do VS Code): uma linha
 // muda de coluna sem mudar de cor, e uma branch nova recebe a próxima cor da paleta.
 

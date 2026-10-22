@@ -1,6 +1,6 @@
 # GitTools
 
-Ferramenta com interface gráfica (no estilo do GitLens) para usar o Git **arrastando e clicando**.
+Ferramenta com interface gráfica para usar o Git **arrastando e clicando**.
 O foco é deixar simples o que costuma ser difícil no terminal, em especial o **cherry-pick**:
 da branch inteira, de commits escolhidos, de **arquivos específicos** ou até de **linhas específicas** de um arquivo.
 
@@ -39,13 +39,13 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Montar a aba Alterações do seu jeito          | Arraste o cabeçalho de qualquer painel (Alterações, Staged, Commit, Diferenças…) para antes ou depois de outro, ou até a borda para abrir uma coluna nova; arraste as divisórias para redimensionar, recolha com ▾ e use o botão direito no cabeçalho para mover pelo menu. ⊞ restaura. Cada visão guarda a própria disposição; em janelas estreitas as colunas viram uma pilha. |
 | Stage/unstage/descartar **linhas**            | Selecione as linhas no diff e use *Stage linhas*, *Unstage linhas* ou *Descartar linhas*.                       |
 | Descartar alterações de arquivos              | Arraste-os para a lixeira (com confirmação).                                                                   |
-| Resolver conflitos                            | **Resolver lado a lado**: atual × resultado × que entra, bloco a bloco (ou o arquivo todo de uma vez), na visão clássica ou em colunas (como no SmartGit), com os painéis na ordem que você quiser. Depois *Continuar*, *Pular* ou *Abortar*. |
+| Resolver conflitos                            | **Resolver lado a lado**: atual × resultado × que entra, bloco a bloco (ou o arquivo todo de uma vez), na visão clássica ou em colunas, com os painéis na ordem que você quiser. Depois *Continuar*, *Pular* ou *Abortar*. |
 | Ver o `git log` e o que ainda não foi commitado | A aba **Histórico** é o `git log` em forma visual (passe o mouse no selo *git log*). A **primeira linha** é sempre das alterações ainda não commitadas — com ou sem arquivos alterados: mostra quantos são (e quantos estão no stage) e, com ▸ ou um clique, abre a lista dos arquivos logo abaixo; um clique num arquivo mostra o diff no painel lateral (como nos commits), duplo clique abre numa janela, e *Abrir em Alterações* leva para a aba de commit. |
 | Ler só a descrição ou só os arquivos de um commit | No painel de detalhes do commit, a barra de cima escolhe **Ambos / Descrição / Arquivos** e **Cima e baixo / Lado a lado** — uma descrição enorme não esconde mais a lista de arquivos. A escolha fica lembrada. |
 | Saber o que aconteceu num arquivo só pelo nome | O nome do arquivo segue a cor do status em todas as listas: laranja = modificado, verde = novo/adicionado, vermelho riscado = removido, azul = renomeado. |
-| Ver o tipo de cada arquivo de relance          | Ícones de arquivo no estilo do Material Icon Theme em todas as listas (⚙ Configurações → Aparência liga ou desliga). Na extensão do VS Code a interface também segue o **tema, as fontes e as cores de status do próprio VS Code**. |
+| Ver o tipo de cada arquivo de relance          | Ícones de arquivo por tipo em todas as listas (⚙ Configurações → Aparência liga ou desliga). Na extensão do VS Code a interface também segue o **tema, as fontes e as cores de status do próprio VS Code**. |
 | Achar um commit                               | Campo **Pesquisar** do histórico (`Ctrl+F`): por nome de branch ou tag, mensagem, autor ou hash.                |
-| Ver os arquivos de um commit sem sair da lista | ▸ ao lado do commit (ou duplo clique, ou `→`): os arquivos abrem logo abaixo da linha, como no VS Code.        |
+| Ver os arquivos de um commit sem sair da lista | ▸ ao lado do commit (ou duplo clique, ou `→`): os arquivos abrem logo abaixo da linha.                         |
 | Comparar duas branches, tags ou commits       | Aba **Comparar** (ou botão direito numa branch/commit): commits exclusivos de cada lado e diff dos arquivos, com opção de trazer linhas ou a versão do arquivo. |
 | Saber quem mudou cada linha                   | Aba **Arquivos** → *Blame*. Clique no commit ao lado da linha para abri-lo.                                      |
 | Ver o histórico de um arquivo                 | Aba **Arquivos** → *Histórico do arquivo* (segue renomeações). Restaure uma versão antiga ou traga só algumas linhas dela. |
@@ -94,7 +94,7 @@ se mesmo assim houver conflito, ele aparece no painel de conflitos como em qualq
 - **Lista ou árvore**: em toda lista de arquivos o botão **☰ Lista / ⊟ Árvore** alterna entre uma
   linha por arquivo — **nome em destaque e, ao lado, a pasta** (`Button.tsx  src/app/ui`; renomeações
   mostram `← caminho antigo`) — e uma árvore de pastas recolhíveis (pastas com um só filho são
-  juntadas, como no VS Code: `src/app/ui`). A escolha vale para o histórico, os detalhes, Alterações,
+  juntadas: `src/app/ui`). A escolha vale para o histórico, os detalhes, Alterações,
   Comparar, Studio e Arquivos.
 
   | Lista (nome + pasta) | Árvore |
@@ -126,14 +126,14 @@ se mesmo assim houver conflito, ele aparece no painel de conflitos como em qualq
 - **Abrir no editor**: o arquivo é sempre aberto pelo **caminho completo** (inclusive no Windows,
   onde o git informa a pasta com `/`), e o botão **Testar** abre um arquivo do repositório pelo mesmo
   caminho. Um arquivo que só existe em outro commit avisa em vez de falhar em silêncio. Escolha em ⚙ Configurações → Editor e diff um dos editores encontrados no
-  computador (VS Code, Cursor, Sublime, Notepad++, JetBrains…), o executável de qualquer outro ou
+  computador, o executável de qualquer outro ou
   digite o comando (ex.: `code --reuse-window`, `/Applications/Zed.app`). O botão **Testar** abre o
   projeto e mostra o erro se o editor não iniciar. O botão *Abrir no editor* da barra abre o projeto
   inteiro nele.
 
 ### Log do git
 
-O painel **Log do git** (no rodapé, como o terminal do VS Code) mostra em tempo real cada comando
+O painel **Log do git** (no rodapé) mostra em tempo real cada comando
 git que o GitTools executa enquanto você usa a interface: hora, resultado (✓ / ✕ com o código de
 saída e a primeira linha do erro), comando completo e duração. Filtre pelo texto, marque *Só os que
 alteram* para esconder as leituras que a interface faz para se atualizar, copie um comando (duplo
@@ -166,7 +166,7 @@ exemplo* dispara um aviso de teste.
 
 ### Editor de conflitos
 
-| Colunas (como no SmartGit) | Clássica (versões em cima, resultado embaixo) |
+| Colunas | Clássica (versões em cima, resultado embaixo) |
 | --- | --- |
 | ![Editor de conflitos em colunas](docs/screenshots/editor-de-conflitos.png) | ![Editor de conflitos clássico](docs/screenshots/editor-de-conflitos-classico.png) |
 
@@ -430,4 +430,4 @@ Plurais seguem as regras do Unicode CLDR: use `{ one, other }`, ou as formas que
 
 ## Créditos
 
-Os ícones de arquivo são um subconjunto do [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) — veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Os ícones de arquivo são um subconjunto de um conjunto de ícones de código aberto (MIT) — créditos e licença em [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

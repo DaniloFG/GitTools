@@ -44,7 +44,7 @@ export interface Settings {
   editor: string
   /** Posição e tamanho das notificações. */
   toast: ToastSettings
-  /** Mostra o ícone do tipo de cada arquivo (estilo Material Icon Theme) ao lado do nome. */
+  /** Mostra o ícone do tipo de cada arquivo ao lado do nome. */
   fileIcons: boolean
   /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
   shortcuts: Record<string, string>
