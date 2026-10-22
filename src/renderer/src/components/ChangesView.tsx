@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { FileDiff, FileStatus, LineKey } from '../../../shared/types'
 import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
-import { parseChangesMode, type ChangesMode, type SectionId } from '../changesLayout'
+import { parseChangesMode, type ChangesMode, type SectionId } from '../changesMode'
 import { useApp } from '../context'
 import { currentDrag, endDrag, startDrag } from '../dnd'
 import { stepIndex } from '../diffNav'
@@ -10,7 +10,9 @@ import { git } from '../git'
 import { t } from '../i18n'
 import { useLayout } from '../layout'
 import { useDrop } from '../useDrop'
-import { ChangesLayout, useCollapsedSections, type SectionDef } from './ChangesLayout'
+import { revealScreen, revealView } from '../dockStore'
+import { viewAvailable, type ViewId } from '../dock'
+import { PaneSlot } from '../slots'
 import { CommitBox } from './CommitBox'
 import { DiffView, useFullFile } from './DiffView'
 import { FileEntries, FileViewToggle } from './FileList'
@@ -18,6 +20,40 @@ import { LineStats } from './LineStats'
 
 type Area = 'unstaged' | 'staged'
 type Active = { area: Area; path: string }
+
+/** Um painel da tela Alterações: cabeçalho (título, número e botões) e conteúdo. */
+interface SectionDef {
+  title: ReactNode
+  badge?: number
+  /** Botões do cabeçalho (ex.: "Stage tudo"). */
+  actions?: ReactNode
+  body: ReactNode
+}
+
+/** Cada painel de Alterações é uma tela independente na janela. */
+const VIEW_OF: Record<SectionId, ViewId> = {
+  conflicts: 'changes.conflicts',
+  unstaged: 'changes.unstaged',
+  staged: 'changes.staged',
+  files: 'changes.files',
+  commit: 'changes.commit',
+  diff: 'changes.diff'
+}
+
+function SectionPanel({ id, def }: { id: SectionId; def: SectionDef }) {
+  return (
+    <section className={`csection csection-${id}`}>
+      <header className="csection-header">
+        <span className="csection-toggle">
+          <span className="csection-title">{def.title}</span>
+          {def.badge !== undefined && <span className="csection-count">{def.badge}</span>}
+        </span>
+        <span className="csection-actions">{def.actions}</span>
+      </header>
+      <div className="csection-body">{def.body}</div>
+    </section>
+  )
+}
 
 type Entry = ChangeEntry
 
@@ -28,7 +64,6 @@ export function ChangesView() {
   const { data, run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow } = useApp()
   const { status } = data
   const [mode, setMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
-  const [, setCollapsed] = useCollapsedSections()
   const [active, setActive] = useState<Active | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
@@ -125,11 +160,34 @@ export function ChangesView() {
     }
   }
 
-  /** Abre o diff do arquivo e mostra o painel do diff se ele estava recolhido. */
+  /** Abre o diff do arquivo e traz o painel do diff à frente se ele estava escondido. */
   const activate = (next: Active) => {
     setActive(next)
-    setCollapsed((prev) => (prev.diff ? { ...prev, diff: undefined } : prev))
+    revealView('changes.diff')
   }
+
+  /** Troca entre as duas visões; os painéis da nova visão aparecem no lugar dos da anterior. */
+  const chooseMode = (next: ChangesMode) => {
+    setMode(next === 'stage' ? undefined : next)
+    revealScreen('changes', (view) => viewAvailable(view, { changesMode: next, conflicts: status.conflicted.length }))
+  }
+  const modes: { id: ChangesMode; label: string; help: string }[] = [
+    { id: 'stage', label: t('changes.mode.stage'), help: t('changes.mode.stageHelp') },
+    { id: 'check', label: t('changes.mode.check'), help: t('changes.mode.checkHelp') }
+  ]
+  /** Escolha da visão e da forma de listar os arquivos, no cabeçalho das listas. */
+  const listTools = (
+    <>
+      <div className="segmented changes-mode" role="group" aria-label={t('changes.mode.label')} dir="ltr">
+        {modes.map((m) => (
+          <button key={m.id} className={mode === m.id ? 'active' : ''} aria-pressed={mode === m.id} title={m.help} onClick={() => chooseMode(m.id)}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+      <FileViewToggle compact />
+    </>
+  )
 
   const stageList = (area: Area): SectionDef => {
     const files = status[area]
@@ -138,22 +196,28 @@ export function ChangesView() {
       title: t(staged ? 'changes.sections.staged' : 'changes.sections.unstaged'),
       badge: files.length,
       actions: staged ? (
-        files.length > 0 && (
-          <button className="ghost" onClick={() => run(t('busy.unstage'), () => git.unstageFiles(files.map((f) => f.path)))}>
-            {t('changes.unstageAll')} ↑
-          </button>
-        )
+        <>
+          {files.length > 0 && (
+            <button className="ghost" onClick={() => run(t('busy.unstage'), () => git.unstageFiles(files.map((f) => f.path)))}>
+              {t('changes.unstageAll')} ↑
+            </button>
+          )}
+          <FileViewToggle compact />
+        </>
       ) : (
-        files.length > 0 && (
-          <>
-            <button className="ghost" onClick={() => run(t('busy.stage'), () => git.stageFiles(files.map((f) => f.path)))}>
-              {t('changes.stageAll')} ↓
-            </button>
-            <button className="ghost danger-text" onClick={() => discard(files.map((f) => f.path))}>
-              {t('changes.discardAll')}
-            </button>
-          </>
-        )
+        <>
+          {files.length > 0 && (
+            <>
+              <button className="ghost" onClick={() => run(t('busy.stage'), () => git.stageFiles(files.map((f) => f.path)))}>
+                {t('changes.stageAll')} ↓
+              </button>
+              <button className="ghost danger-text" onClick={() => discard(files.map((f) => f.path))}>
+                {t('changes.discardAll')}
+              </button>
+            </>
+          )}
+          {listTools}
+        </>
       ),
       body: (
         <DropBody
@@ -213,12 +277,17 @@ export function ChangesView() {
     sections.files = {
       title: t('changes.sections.files'),
       badge: entries.length,
-      actions: entries.length > 0 && (
+      actions: (
         <>
-          <span className="section-note">{t('changes.check.marked', { marked: includedCount, total: entries.length })}</span>
-          <label className="check-all" title={t('changes.check.all')}>
-            <TriCheckbox checked={allIncluded} indeterminate={!allIncluded && (includedCount > 0 || entries.some(isPartial))} onChange={(value) => void include(entries.filter((e) => isIncluded(e) !== value || isPartial(e)), value)} label={t('changes.check.all')} />
-          </label>
+          {entries.length > 0 && (
+            <>
+              <span className="section-note">{t('changes.check.marked', { marked: includedCount, total: entries.length })}</span>
+              <label className="check-all" title={t('changes.check.all')}>
+                <TriCheckbox checked={allIncluded} indeterminate={!allIncluded && (includedCount > 0 || entries.some(isPartial))} onChange={(value) => void include(entries.filter((e) => isIncluded(e) !== value || isPartial(e)), value)} label={t('changes.check.all')} />
+              </label>
+            </>
+          )}
+          {listTools}
         </>
       ),
       body:
@@ -266,11 +335,10 @@ export function ChangesView() {
         )
     }
   }
-  sections.commit = { title: t('changes.sections.commit'), body: <CommitBox />, auto: true }
+  sections.commit = { title: t('changes.sections.commit'), body: <CommitBox /> }
   const bothSides = !!active && status.unstaged.some((f) => f.path === active.path) && status.staged.some((f) => f.path === active.path)
   sections.diff = {
     title: active ? <code className="diff-title">{active.path}</code> : t('changes.sections.diff'),
-    minSize: 140,
     body:
       !active || !diff ? (
         <p className="section-empty">{t('changes.selectFile')}</p>
@@ -318,29 +386,14 @@ export function ChangesView() {
       )
   }
 
-  const modes: { id: ChangesMode; label: string; help: string }[] = [
-    { id: 'stage', label: t('changes.mode.stage'), help: t('changes.mode.stageHelp') },
-    { id: 'check', label: t('changes.mode.check'), help: t('changes.mode.checkHelp') }
-  ]
-
   return (
-    <ChangesLayout
-      mode={mode}
-      sections={sections}
-      toolbar={
-        <>
-          <div className="segmented changes-mode" role="group" aria-label={t('changes.mode.label')} dir="ltr">
-            {modes.map((m) => (
-              <button key={m.id} className={mode === m.id ? 'active' : ''} aria-pressed={mode === m.id} title={m.help} onClick={() => setMode(m.id === 'stage' ? undefined : m.id)}>
-                {m.label}
-              </button>
-            ))}
-          </div>
-          <span className="toolbar-spacer" />
-          <FileViewToggle compact />
-        </>
-      }
-    />
+    <>
+      {(Object.keys(sections) as SectionId[]).map((id) => (
+        <PaneSlot key={id} id={VIEW_OF[id]}>
+          <SectionPanel id={id} def={sections[id]!} />
+        </PaneSlot>
+      ))}
+    </>
   )
 }
 

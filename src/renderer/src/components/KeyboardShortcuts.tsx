@@ -6,7 +6,7 @@ import { t } from '../i18n'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings, worksInInputs } from '../shortcuts'
 import { HISTORY_SEARCH_ID } from './CommitList'
-import { togglePane } from './Split'
+import { toggleViewShown } from '../dockStore'
 
 /** Escuta o teclado e executa as ações conforme os atalhos configurados. */
 export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: boolean; onOpenRepository(): void }) {
@@ -36,7 +36,7 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         'view.changes': () => app.setView('changes'),
         'view.files': () => app.setView('files'),
         'view.compare': () => app.setView('compare'),
-        'layout.sidebar': () => togglePane('wb-left', 'first'),
+        'layout.sidebar': () => toggleViewShown('branches'),
         'history.search': () => {
           app.setView('history')
           // Espera o histórico aparecer (se outra aba estava aberta) para focar a pesquisa.

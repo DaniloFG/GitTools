@@ -5,9 +5,9 @@ import { currentBranch, useApp, type CompareRequest } from '../context'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
-import { CommitDetailsPanel } from './CommitDetails'
 import { DiffView, useFullFile } from './DiffView'
-import { revealPane, Split } from './Split'
+import { revealView } from '../dockStore'
+import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
@@ -17,9 +17,12 @@ interface Props {
   onRequest(request: CompareRequest): void
 }
 
-/** Compara duas branches, tags ou commits quaisquer. */
+/**
+ * Compara duas branches, tags ou commits quaisquer. São painéis independentes: a configuração com os commits de
+ * cada lado (`compare.setup`), os arquivos diferentes (`compare.files`) e o diff do arquivo (`compare.diff`).
+ */
 export function CompareView({ request, onRequest }: Props) {
-  const { data, run, toast, selectCommit, openFileView, showMenu, openDiffWindow } = useApp()
+  const { data, run, toast, selectCommit, showCommit, openFileView, showMenu, openDiffWindow } = useApp()
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''
@@ -29,7 +32,7 @@ export function CompareView({ request, onRequest }: Props) {
   const [comparison, setComparison] = useState<Comparison | null>(null)
   const [loading, setLoading] = useState(false)
   const [active, setActive] = useState<ChangedFile | null>(null)
-  /** Commit aberto no painel ao lado (clicado nas listas "Só em…"); a tela continua na comparação. */
+  /** Último commit clicado nas listas "Só em…" (aparece nos painéis do commit; a comparação continua aqui). */
   const [commit, setCommit] = useState<string | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
@@ -89,10 +92,13 @@ export function CompareView({ request, onRequest }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, comparison, fullFile])
 
-  const openCommit = (sha: string) => setCommit(sha)
+  const openCommit = (sha: string) => {
+    setCommit(sha)
+    showCommit(sha)
+  }
   const commitMenu = (e: React.MouseEvent, sha: string) =>
     showMenu(e, [
-      { label: t('compare.showCommit'), onClick: () => setCommit(sha) },
+      { label: t('compare.showCommit'), onClick: () => openCommit(sha) },
       { label: t('compare.openInHistory'), onClick: () => selectCommit(sha) },
       'separator',
       actions.copyMessageMenu([sha]),
@@ -125,7 +131,7 @@ export function CompareView({ request, onRequest }: Props) {
     )
   }
 
-  return (
+  const setup = (
     <div className="compare">
       <div className="compare-bar">
         <datalist id="compare-refs">
@@ -152,121 +158,126 @@ export function CompareView({ request, onRequest }: Props) {
           {loading ? <span className="spinner" /> : t('compare.compare')}
         </button>
       </div>
-
       {!comparison ? (
         <p className="empty">{t('compare.empty')}</p>
       ) : (
-        <Split id="compare" initial={0.4} min={[240, 280]}>
-          <div className="compare-side">
-            <CommitGroup
-              title={t('compare.onlyIn', { ref: comparison.to })}
-              commits={comparison.onlyTo}
-              active={commit}
-              onOpen={openCommit}
-              onMenu={commitMenu}
-              action={
-                head && comparison.onlyTo.length > 0 && head !== comparison.to
-                  ? { label: `🍒 ${t('compare.takeTo', { target: head })}`, run: () => actions.cherryPickCommits(head, [...comparison.onlyTo].reverse().map((c) => c.sha)) }
-                  : undefined
-              }
-            />
-            <CommitGroup
-              title={t('compare.onlyIn', { ref: comparison.from })}
-              commits={comparison.onlyFrom}
-              active={commit}
-              onOpen={openCommit}
-              onMenu={commitMenu}
-            />
-            <div className="group-header">
-              <strong>{t('compare.differentFiles')}</strong> <span className="count">{comparison.files.length}</span>
-              <span className="toolbar-spacer" />
-              <FileViewToggle compact />
-            </div>
-            {comparison.files.length === 0 ? (
-              <p className="empty small">{t('compare.identical')}</p>
-            ) : (
-              <ul className="file-list">
-                <FileEntries
-                  items={comparison.files}
-                  pathOf={(f) => f.path}
-                  oldPathOf={(f) => f.oldPath}
-                  statusOf={(f) => f.status}
-                  render={(f, { label, style }) => (
-                  <li
-                    key={f.path}
-                    style={style}
-                    className={`file-item ${!commit && active?.path === f.path ? 'active' : ''}`}
-                    onClick={() => {
-                      setCommit(null)
-                      setActive(f)
-                      revealPane('compare', 'second')
-                    }}
-                  >
-                    <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
-                      {f.status}
-                    </span>
-                    {label}
-                    <LineStats stats={f} />
-                  </li>
-                  )}
-                />
-              </ul>
-            )}
-          </div>
-          {commit ? (
-            <CommitDetailsPanel selected={[commit]} />
-          ) : (
-          <section className="details">
-            {!active ? (
-              <p className="empty">{t('compare.selectFile')}</p>
-            ) : !diff ? (
-              <p className="empty">
-                <span className="spinner" />
-              </p>
-            ) : (
-              <div className="diff-panel">
-                <div className="selection-bar">
-                  <span className="muted">
-                    {shortSha(base!)} → {comparison.to}
-                  </span>
-                  <button
-                    onClick={() => source && openDiffWindow({ source, path: active.path, title: `${active.path} · ${shortSha(base!)} → ${comparison.to}` })}
-                    title={t('diffExtra.openWindowHelp')}
-                  >
-                    ⧉ {t('diffExtra.openWindow')}
-                  </button>
-                  {head && (
-                    <>
-                      <button className="primary" disabled={!selection.size} onClick={applyLines}>
-                        {t('common.applyLinesInto', { count: selection.size, target: head })}
-                      </button>
-                      <button onClick={() => copyVersion(active)} title={t('compare.copyVersionHelp', { target: head, ref: comparison.to })}>
-                        {t('compare.copyVersion', { ref: comparison.to })}
-                      </button>
-                    </>
-                  )}
-                  <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
-                </div>
-                <DiffView
-                  file={diff}
-                  selection={head ? selection : undefined}
-                  onSelectionChange={setSelection}
-                  fileNav={{
-                    index: Math.max(0, comparison.files.findIndex((f) => f.path === active?.path)),
-                    count: comparison.files.length,
-                    go: (delta) => {
-                      const next = comparison.files[stepIndex(comparison.files.findIndex((f) => f.path === active?.path), delta, comparison.files.length)]
-                      if (next) setActive(next)
-                    }
-                  }}
-                />
-              </div>
-            )}
-          </section>
-          )}
-        </Split>
+        <div className="compare-side">
+          <CommitGroup
+            title={t('compare.onlyIn', { ref: comparison.to })}
+            commits={comparison.onlyTo}
+            active={commit}
+            onOpen={openCommit}
+            onMenu={commitMenu}
+            action={
+              head && comparison.onlyTo.length > 0 && head !== comparison.to
+                ? { label: `🍒 ${t('compare.takeTo', { target: head })}`, run: () => actions.cherryPickCommits(head, [...comparison.onlyTo].reverse().map((c) => c.sha)) }
+                : undefined
+            }
+          />
+          <CommitGroup title={t('compare.onlyIn', { ref: comparison.from })} commits={comparison.onlyFrom} active={commit} onOpen={openCommit} onMenu={commitMenu} />
+        </div>
       )}
     </div>
+  )
+
+  const filesPane = !comparison ? (
+    <p className="empty">{t('compare.empty')}</p>
+  ) : (
+    <div className="compare-side">
+      <div className="group-header">
+        <strong>{t('compare.differentFiles')}</strong> <span className="count">{comparison.files.length}</span>
+        <span className="toolbar-spacer" />
+        <FileViewToggle compact />
+      </div>
+      {comparison.files.length === 0 ? (
+        <p className="empty small">{t('compare.identical')}</p>
+      ) : (
+        <ul className="file-list">
+          <FileEntries
+            items={comparison.files}
+            pathOf={(f) => f.path}
+            oldPathOf={(f) => f.oldPath}
+            statusOf={(f) => f.status}
+            render={(f, { label, style }) => (
+              <li
+                key={f.path}
+                style={style}
+                className={`file-item ${active?.path === f.path ? 'active' : ''}`}
+                onClick={() => {
+                  setCommit(null)
+                  setActive(f)
+                  revealView('compare.diff')
+                }}
+              >
+                <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
+                  {f.status}
+                </span>
+                {label}
+                <LineStats stats={f} />
+              </li>
+            )}
+          />
+        </ul>
+      )}
+    </div>
+  )
+
+  const diffPane = (
+    <section className="details">
+      {!comparison || !active ? (
+        <p className="empty">{t('compare.selectFile')}</p>
+      ) : !diff ? (
+        <p className="empty">
+          <span className="spinner" />
+        </p>
+      ) : (
+        <div className="diff-panel">
+          <div className="selection-bar">
+            <span className="muted">
+              {shortSha(base!)} → {comparison.to}
+            </span>
+            <button
+              onClick={() => source && openDiffWindow({ source, path: active.path, title: `${active.path} · ${shortSha(base!)} → ${comparison.to}` })}
+              title={t('diffExtra.openWindowHelp')}
+            >
+              ⧉ {t('diffExtra.openWindow')}
+            </button>
+            {head && (
+              <>
+                <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                  {t('common.applyLinesInto', { count: selection.size, target: head })}
+                </button>
+                <button onClick={() => copyVersion(active)} title={t('compare.copyVersionHelp', { target: head, ref: comparison.to })}>
+                  {t('compare.copyVersion', { ref: comparison.to })}
+                </button>
+              </>
+            )}
+            <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
+          </div>
+          <DiffView
+            file={diff}
+            selection={head ? selection : undefined}
+            onSelectionChange={setSelection}
+            fileNav={{
+              index: Math.max(0, comparison.files.findIndex((f) => f.path === active?.path)),
+              count: comparison.files.length,
+              go: (delta) => {
+                const next = comparison.files[stepIndex(comparison.files.findIndex((f) => f.path === active?.path), delta, comparison.files.length)]
+                if (next) setActive(next)
+              }
+            }}
+          />
+        </div>
+      )}
+    </section>
+  )
+
+  return (
+    <>
+      <PaneSlot id="compare.setup">{setup}</PaneSlot>
+      <PaneSlot id="compare.files">{filesPane}</PaneSlot>
+      <PaneSlot id="compare.diff">{diffPane}</PaneSlot>
+    </>
   )
 }
 
