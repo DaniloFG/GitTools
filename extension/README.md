@@ -46,6 +46,7 @@ sends nothing anywhere.
 - 🌳 **History graph** with colored branch lanes, search, tags and resizable columns.
 - 🧭 **Better diffs**: line selection, whole-file view, side-by-side mode, `F7`/`F8` to jump between changes and files.
 - 📁 **File list or folder tree** everywhere, with `+added −removed` line counts.
+- 🎨 **Looks native**: follows your VS Code theme, fonts and the same colors VS Code uses for modified, added and deleted files, with file-type icons in the Material Icon Theme style (can be turned off in Settings → Appearance).
 - 🧩 **Arrange the workspace your way**: drag tabs and panels to any side, like in VS Code.
 - 📜 **Live git log**: see every command GitTools runs, in real time.
 - 🌍 **6 languages** (English, Português, Español, 中文, हिन्दी, العربية) and a theme that follows VS Code.
@@ -154,3 +155,7 @@ network calls of its own (git itself talks to your remotes when you fetch, pull,
 - 🖥️ Also available as a standalone desktop app (Windows, macOS, Linux) from the same repository.
 
 Released under the [MIT License](https://github.com/DaniloFG/GitTools/blob/main/LICENSE).
+
+## Credits
+
+File-type icons are a subset of the [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) — see `THIRD_PARTY_NOTICES.md`.

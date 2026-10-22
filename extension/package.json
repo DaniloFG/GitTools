@@ -2,7 +2,7 @@
   "name": "gittools-vscode",
   "displayName": "GitTools",
   "description": "%gittools.description%",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "publisher": "DaniloFG",
   "license": "MIT",
   "author": "Danilo Gama",

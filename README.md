@@ -43,6 +43,7 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Ver o `git log` e o que ainda não foi commitado | A aba **Histórico** é o `git log` em forma visual (passe o mouse no selo *git log*). A **primeira linha** é sempre das alterações ainda não commitadas — com ou sem arquivos alterados: mostra quantos são (e quantos estão no stage) e, com ▸ ou um clique, abre a lista dos arquivos logo abaixo; um clique num arquivo mostra o diff no painel lateral (como nos commits), duplo clique abre numa janela, e *Abrir em Alterações* leva para a aba de commit. |
 | Ler só a descrição ou só os arquivos de um commit | No painel de detalhes do commit, a barra de cima escolhe **Ambos / Descrição / Arquivos** e **Cima e baixo / Lado a lado** — uma descrição enorme não esconde mais a lista de arquivos. A escolha fica lembrada. |
 | Saber o que aconteceu num arquivo só pelo nome | O nome do arquivo segue a cor do status em todas as listas: laranja = modificado, verde = novo/adicionado, vermelho riscado = removido, azul = renomeado. |
+| Ver o tipo de cada arquivo de relance          | Ícones de arquivo no estilo do Material Icon Theme em todas as listas (⚙ Configurações → Aparência liga ou desliga). Na extensão do VS Code a interface também segue o **tema, as fontes e as cores de status do próprio VS Code**. |
 | Achar um commit                               | Campo **Pesquisar** do histórico (`Ctrl+F`): por nome de branch ou tag, mensagem, autor ou hash.                |
 | Ver os arquivos de um commit sem sair da lista | ▸ ao lado do commit (ou duplo clique, ou `→`): os arquivos abrem logo abaixo da linha, como no VS Code.        |
 | Comparar duas branches, tags ou commits       | Aba **Comparar** (ou botão direito numa branch/commit): commits exclusivos de cada lado e diff dos arquivos, com opção de trazer linhas ou a versão do arquivo. |
@@ -426,3 +427,7 @@ Plurais seguem as regras do Unicode CLDR: use `{ one, other }`, ou as formas que
 ## Licença
 
 [MIT](LICENSE)
+
+## Créditos
+
+Os ícones de arquivo são um subconjunto do [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) — veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -14,6 +14,8 @@ const THEMES: { id: ThemeSetting; label: MessageKey }[] = [
 export function AppearanceSection({ draft, update }: SettingsSectionProps) {
   const info = useAppInfo()
   const [layoutReset, setLayoutReset] = useState(false)
+  const [confirmingReset, setConfirmingReset] = useState(false)
+  const inVsCode = info?.host === 'vscode'
   return (
     <div className="settings-group">
       <div className="settings-row">
@@ -21,10 +23,19 @@ export function AppearanceSection({ draft, update }: SettingsSectionProps) {
         <div className="segmented">
           {THEMES.map((theme) => (
             <button key={theme.id} className={draft.theme === theme.id ? 'active' : ''} onClick={() => update({ theme: theme.id })}>
-              {t(theme.label)}
+              {theme.id === 'system' && inVsCode ? t('settings.appearance.themeVscode') : t(theme.label)}
             </button>
           ))}
         </div>
+      </div>
+      <div className="settings-row">
+        <div>
+          <span>{t('settings.appearance.fileIcons')}</span>
+          <p className="muted small">{t('settings.appearance.fileIconsHelp')}</p>
+        </div>
+        <label className="checkbox">
+          <input type="checkbox" checked={draft.fileIcons} onChange={(e) => update({ fileIcons: e.target.checked })} />
+        </label>
       </div>
       {info?.host !== 'vscode' && (
       <div className="settings-row">
@@ -73,15 +84,24 @@ export function AppearanceSection({ draft, update }: SettingsSectionProps) {
       </div>
       <p className="muted small">{t('settings.appearance.dividerPreview')}</p>
       <div className="settings-row">
-        <span>{layoutReset ? `✓ ${t('settings.appearance.layoutRestored')}` : t('settings.appearance.resetLayoutHelp')}</span>
-        <button
-          onClick={() => {
-            resetLayout()
-            setLayoutReset(true)
-          }}
-        >
-          {t('settings.appearance.resetLayout')}
-        </button>
+        <span>{layoutReset ? `✓ ${t('settings.appearance.layoutRestored')}` : confirmingReset ? t('layout.resetConfirm.message') : t('settings.appearance.resetLayoutHelp')}</span>
+        {confirmingReset ? (
+          <span className="button-row">
+            <button onClick={() => setConfirmingReset(false)}>{t('common.cancel')}</button>
+            <button
+              className="danger"
+              onClick={() => {
+                resetLayout()
+                setConfirmingReset(false)
+                setLayoutReset(true)
+              }}
+            >
+              {t('layout.resetConfirm.confirm')}
+            </button>
+          </span>
+        ) : (
+          <button onClick={() => setConfirmingReset(true)}>{t('settings.appearance.resetLayout')}</button>
+        )}
       </div>
     </div>
   )

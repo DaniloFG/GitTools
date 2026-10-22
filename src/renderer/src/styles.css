@@ -3680,3 +3680,51 @@ tr.nav-flash > td {
 .remote-url {
   display: block;
 }
+
+/* ------------------------------------------------------------- ícones de arquivo */
+
+.file-icon {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+}
+.file-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.tree-dir .file-icon {
+  margin-inline-start: -2px;
+}
+
+/* ------------------------------------------------ extensão do VS Code: tema e fontes do próprio VS Code */
+
+:root[data-vscode-colors='on'] {
+  --bg: var(--vscode-editor-background);
+  --bg-panel: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  --bg-elevated: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --bg-hover: var(--vscode-list-hoverBackground);
+  --bg-active: var(--vscode-list-inactiveSelectionBackground, var(--vscode-list-hoverBackground));
+  --border: var(--vscode-panel-border, var(--vscode-widget-border, rgba(128, 128, 128, 0.35)));
+  --text: var(--vscode-foreground);
+  --text-muted: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  --accent: var(--vscode-textLink-foreground, #3794ff);
+  --accent-strong: var(--vscode-button-background, #0e639c);
+  /* As mesmas cores que o VS Code usa para arquivos modificados, novos e removidos no Controle do código-fonte. */
+  --success: var(--vscode-gitDecoration-addedResourceForeground, var(--vscode-gitDecoration-untrackedResourceForeground, #5fd38d));
+  --warning: var(--vscode-gitDecoration-modifiedResourceForeground, #f2a93b);
+  --danger: var(--vscode-gitDecoration-deletedResourceForeground, var(--vscode-errorForeground, #ef6b5b));
+  --add-bg: var(--vscode-diffEditor-insertedLineBackground, var(--vscode-diffEditor-insertedTextBackground, rgba(95, 211, 141, 0.12)));
+  --del-bg: var(--vscode-diffEditor-removedLineBackground, var(--vscode-diffEditor-removedTextBackground, rgba(239, 107, 91, 0.12)));
+  --selected-line: var(--vscode-editor-selectionBackground, rgba(79, 163, 255, 0.28));
+  --mono: var(--vscode-editor-font-family, Consolas, 'Courier New', monospace);
+}
+:root[data-vscode-colors='on'] body {
+  font-family: var(--vscode-font-family, system-ui, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+}
+:root[data-vscode-colors='on'] button.primary,
+:root[data-vscode-colors='on'] .segmented button.active {
+  color: var(--vscode-button-foreground, #fff);
+}

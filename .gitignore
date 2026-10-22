@@ -7,3 +7,4 @@ release/
 release/
 *.tsbuildinfo
 extension/LICENSE
+extension/THIRD_PARTY_NOTICES.md

@@ -19,5 +19,6 @@ await esbuild({
 })
 
 copyFileSync('LICENSE', 'extension/LICENSE')
+copyFileSync('THIRD_PARTY_NOTICES.md', 'extension/THIRD_PARTY_NOTICES.md')
 // O vsce grava o .vsix aqui e não cria a pasta.
 mkdirSync('release', { recursive: true })

@@ -1,4 +1,7 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useContext, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
+import { isLightTheme, subscribeTheme } from '../appearance'
+import { AppContext } from '../context'
+import { folderIconSvg, iconNameFor, iconSvg } from '../fileIcons'
 import { buildTree, flattenTree, parseFileViewMode, splitPath, type FileViewMode } from '../fileTree'
 import { t } from '../i18n'
 import { useLayout } from '../layout'
@@ -23,11 +26,25 @@ export function FileViewToggle({ compact = false }: { compact?: boolean }) {
   )
 }
 
+/** Tema claro? Reage à troca de tema (do GitTools, do sistema ou do VS Code). */
+const useLightTheme = () => useSyncExternalStore(subscribeTheme, isLightTheme)
+
+/** Ícone do tipo do arquivo (ou da pasta); some se o usuário desligou os ícones nas configurações. */
+export function FileIcon({ path, folder }: { path?: string; folder?: 'open' | 'closed' }) {
+  const app = useContext(AppContext)
+  const light = useLightTheme()
+  if (app && app.settings.fileIcons === false) return null
+  const svg = folder ? folderIconSvg(folder === 'open') : iconSvg(iconNameFor(path ?? '', light))
+  // O SVG vem do pacote Material Icon Theme embutido (nunca de dados do repositório).
+  return <span className="file-icon" aria-hidden dangerouslySetInnerHTML={{ __html: svg }} />
+}
+
 /** Nome do arquivo em destaque e, ao lado, a pasta onde ele está; renomeações mostram de onde vieram. */
 export function FileLabel({ path, oldPath, showDir = true, status }: { path: string; oldPath?: string; showDir?: boolean; status?: string }) {
   const { name, dir } = splitPath(path)
   return (
     <span className="file-label" data-status={status} title={oldPath ? `${oldPath} → ${path}` : path}>
+      <FileIcon path={path} />
       <span className="file-name">{name}</span>
       {showDir && dir && <span className="file-dir">{dir}</span>}
       {oldPath && <span className="file-from">← {oldPath}</span>}
@@ -103,6 +120,7 @@ export function FileEntries<T>({
             aria-expanded={!row.collapsed}
           >
             <span className="tree-caret">{row.collapsed ? '▸' : '▾'}</span>
+            <FileIcon folder={row.collapsed ? 'closed' : 'open'} />
             <span className="tree-dir-name">{row.node.name}</span>
             <span className="count">{row.node.fileCount}</span>
           </li>
