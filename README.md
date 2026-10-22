@@ -293,10 +293,14 @@ conflitos lado a lado, rebase interativo, remotes…) num painel, com o git da s
   segue o do VS Code; o diff em nova janela abre outro painel.
 - **Gerar o `.vsix`**: `npm run package:extension` cria `release/gittools-vscode-<versão>.vsix` (instale
   com `code --install-extension release/gittools-vscode-*.vsix`). `npm run build:extension` só compila.
-- **Publicar uma versão** (automático): crie uma tag — `git tag v0.5.1 && git push origin v0.5.1`. O
-  workflow `publish-extension.yml` testa, empacota e publica no VS Code Marketplace; os usuários
-  recebem a atualização sozinhos. A versão publicada é a da tag. Configuração única: em *Settings →
-  Secrets and variables → Actions* crie o secret `VSCE_PAT` (token do Marketplace, escopo
+- **Publicar uma versão** (automático): o workflow `publish-extension.yml` testa, empacota e publica no
+  VS Code Marketplace; os usuários recebem a atualização sozinhos. Ele roda **a cada merge na `main` que
+  mexa no que vai para a extensão** (`extension/`, `src/` exceto `main` e `preload`, `scripts/` e os
+  arquivos de build) usando a versão de `extension/package.json` — **suba a versão na PR** para publicar;
+  se ela já estiver publicada, o workflow termina sem fazer nada. Também roda ao criar uma tag
+  (`git tag v0.5.1 && git push origin v0.5.1`, com a versão da tag) e manualmente em *Actions → Run
+  workflow*. Cada publicação nova cria o release `v<versão>` com o `.vsix` anexado. Configuração única:
+  em *Settings → Secrets and variables → Actions* crie o secret `VSCE_PAT` (token do Marketplace, escopo
   *Marketplace → Manage*); o secret opcional `OVSX_PAT` publica também no Open VSX (VSCodium, Cursor).
   Sem o secret o workflow só anexa o `.vsix` ao release do GitHub.
 - **Como é feito**: a lógica do aplicativo (repositório aberto, configurações, log de comandos,
