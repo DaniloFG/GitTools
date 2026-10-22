@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { Settings } from '../../shared/settings'
 import type { BranchInfo, CommitInfo, OperationState, RepoInfo, RepoStatus, StashInfo, TagInfo } from '../../shared/types'
-import type { ChoiceRequest, ChoiceResult, ConfirmRequest, PromptRequest } from './components/Dialogs'
+import type { ChoiceRequest, ChoiceResult, ConfirmRequest, PromptRequest, PushRequest, PushResult } from './components/Dialogs'
 import type { MenuItem } from './components/ContextMenu'
 import type { DiffWindowRequest } from '../../shared/api'
 import type { ViewId } from './workbench'
@@ -43,6 +43,8 @@ export interface AppContextValue {
   confirm(request: ConfirmRequest): Promise<boolean>
   prompt(request: PromptRequest): Promise<string | null>
   choose(request: ChoiceRequest): Promise<ChoiceResult | null>
+  /** Pergunta o remote e o modo (normal ou force) de um push. */
+  askPush(request: PushRequest): Promise<PushResult | null>
   showMenu(event: React.MouseEvent, items: MenuItem[]): void
   openStudio(request: StudioRequest): void
   selectCommit(sha: string): void

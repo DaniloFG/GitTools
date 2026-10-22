@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { PushForce } from '../../../shared/types'
 import { t } from '../i18n'
 import { Modal } from './Modal'
 
@@ -17,6 +18,8 @@ export interface PromptRequest {
   confirmLabel?: string
   /** Segundo campo, opcional (ex.: mensagem da tag); o valor é entregue a `onDetail` ao confirmar. */
   detail?: { label: string; placeholder?: string; onDetail(value: string): void }
+  /** Caixa de seleção opcional (ex.: "fazer checkout"); o valor final é entregue a `onCheck` ao confirmar. */
+  check?: { label: string; checked: boolean; onCheck(value: boolean): void }
 }
 
 export interface ChoiceOption {
@@ -44,14 +47,29 @@ export interface ChoiceResult {
   checks: Record<string, boolean>
 }
 
+export interface PushRequest {
+  branch: string
+  remotes: string[]
+  /** Remote escolhido de início. */
+  remote: string
+  force?: PushForce
+}
+
+export interface PushResult {
+  remote: string
+  force?: PushForce
+}
+
 export type DialogState =
   | ({ kind: 'confirm'; resolve(v: boolean): void } & ConfirmRequest)
   | ({ kind: 'prompt'; resolve(v: string | null): void } & PromptRequest)
   | ({ kind: 'choice'; resolve(v: ChoiceResult | null): void } & ChoiceRequest)
+  | ({ kind: 'push'; resolve(v: PushResult | null): void } & PushRequest)
 
 export function DialogHost({ dialog, onDone }: { dialog: DialogState; onDone(): void }) {
   if (dialog.kind === 'confirm') return <ConfirmDialog dialog={dialog} onDone={onDone} />
   if (dialog.kind === 'prompt') return <PromptDialog dialog={dialog} onDone={onDone} />
+  if (dialog.kind === 'push') return <PushDialog dialog={dialog} onDone={onDone} />
   return <ChoiceDialog dialog={dialog} onDone={onDone} />
 }
 
@@ -81,8 +99,12 @@ function ConfirmDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind
 function PromptDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind: 'prompt' }>; onDone(): void }) {
   const [value, setValue] = useState(dialog.initial ?? '')
   const [detail, setDetail] = useState('')
+  const [checked, setChecked] = useState(dialog.check?.checked ?? false)
   const close = (v: string | null) => {
-    if (v !== null) dialog.detail?.onDetail(detail)
+    if (v !== null) {
+      dialog.detail?.onDetail(detail)
+      dialog.check?.onCheck(checked)
+    }
     dialog.resolve(v)
     onDone()
   }
@@ -115,6 +137,72 @@ function PromptDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind:
           <textarea rows={3} value={detail} placeholder={dialog.detail.placeholder} onChange={(e) => setDetail(e.target.value)} />
         </label>
       )}
+      {dialog.check && (
+        <label className="checkbox dialog-check">
+          <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+          {dialog.check.label}
+        </label>
+      )}
+    </Modal>
+  )
+}
+
+const PUSH_MODES: { id: PushForce | 'normal'; label: 'push.normal' | 'push.lease' | 'push.force'; help: 'push.normalHelp' | 'push.leaseHelp' | 'push.forceHelp' }[] = [
+  { id: 'normal', label: 'push.normal', help: 'push.normalHelp' },
+  { id: 'lease', label: 'push.lease', help: 'push.leaseHelp' },
+  { id: 'force', label: 'push.force', help: 'push.forceHelp' }
+]
+
+/** Push com escolha do remote e do modo (normal, force com lease ou force). */
+function PushDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind: 'push' }>; onDone(): void }) {
+  const [remote, setRemote] = useState(dialog.remote)
+  const [mode, setMode] = useState<PushForce | 'normal'>(dialog.force ?? 'normal')
+  const close = (v: PushResult | null) => {
+    dialog.resolve(v)
+    onDone()
+  }
+  return (
+    <Modal
+      title={t('push.title', { branch: dialog.branch })}
+      onClose={() => close(null)}
+      footer={
+        <>
+          <button onClick={() => close(null)}>{t('common.cancel')}</button>
+          <button
+            className={mode === 'force' ? 'danger' : 'primary'}
+            disabled={!remote}
+            onClick={() => close({ remote, force: mode === 'normal' ? undefined : mode })}
+            autoFocus
+          >
+            {mode === 'normal' ? t('push.confirm') : t('push.forceConfirm')}
+          </button>
+        </>
+      }
+    >
+      <label className="field">
+        <span>{t('push.remote')}</span>
+        <select value={remote} onChange={(e) => setRemote(e.target.value)}>
+          {dialog.remotes.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="field">
+        <span>{t('push.mode')}</span>
+        <div className="radio-list" role="radiogroup">
+          {PUSH_MODES.map((m) => (
+            <label key={m.id} className={`radio-option ${mode === m.id ? 'selected' : ''} ${m.id === 'force' ? 'danger' : ''}`}>
+              <input type="radio" name="push-mode" checked={mode === m.id} onChange={() => setMode(m.id)} />
+              <span className="radio-text">
+                <strong>{t(m.label)}</strong>
+                <span>{t(m.help)}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
     </Modal>
   )
 }

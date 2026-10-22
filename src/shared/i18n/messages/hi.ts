@@ -49,6 +49,7 @@ export const hi: Messages = {
     cherryPick: 'Cherry-pick',
     cherryPickFrom: '{ref} से cherry-pick',
     commit: 'Commit किया जा रहा है',
+    commitPush: 'Commit और Push',
     continuing: 'जारी रखा जा रहा है',
     copyingVersion: 'संस्करण कॉपी किया जा रहा है',
     creatingBranch: '{name} बनाई जा रही है',
@@ -98,6 +99,10 @@ export const hi: Messages = {
     push: 'Push',
     pushHelp: 'अपने commits remote पर भेजें',
     pushTo: '{remote} पर Push करें',
+    pushForceLease: 'Force push (lease के साथ)',
+    pushForce: 'Force push (overwrite)',
+    pushOptions: 'Push विकल्प…',
+    pushMore: 'और Push विकल्प',
     manageRemotes: 'Remotes प्रबंधित करें…',
     branch: 'Branch',
     stash: 'Stash',
@@ -130,6 +135,8 @@ export const hi: Messages = {
       delete: 'हटाएँ…',
       checkoutDetached: 'Checkout (अलग HEAD)',
       newBranchFromTag: 'इस tag से नई branch…',
+      push: 'Push करें…',
+      pushForce: 'Force push (lease के साथ)…',
       copyName: 'branch का नाम कॉपी करें'
     },
     stash: {
@@ -248,7 +255,16 @@ export const hi: Messages = {
     amend: 'पिछला commit सुधारें (amend)',
     amendButton: 'Commit सुधारें',
     commit: 'Commit',
-    commitInto: '{branch} में commit'
+    commitInto: '{branch} में commit',
+    commitStageAll: 'सभी फ़ाइलें शामिल करें (stage)',
+    commitStageAllHelp: 'Commit से पहले बदली हुई सभी फ़ाइलों को stage करता है',
+    pushAfter: 'इसके बाद Push करें',
+    amendNeedsForce: 'पिछला commit पहले से remote पर है: उसे सुधारने के लिए force push चाहिए (सुझाव: lease के साथ)।',
+    pushFailedAfterCommit: 'Commit हो गया, पर Push विफल रहा: {error}',
+    commitPush: '{branch} में commit और push',
+    amendPush: 'सुधारें और Push करें',
+    commitForcePush: 'Commit और force push',
+    amendForcePush: 'सुधारें और force push करें'
   },
   actions: {
     deleteTag: {
@@ -271,7 +287,10 @@ export const hi: Messages = {
       label: 'Branch का नाम',
       labelFrom: 'Branch का नाम ({start} से)',
       placeholder: 'feature/mera-badlav',
-      confirm: 'बनाएँ और checkout करें'
+      confirm: 'Branch बनाएँ',
+      checkout: 'नई branch को checkout करें',
+      created: 'Branch "{name}" बन गई।',
+      createdCheckout: 'Branch "{name}" बन गई और checkout हो गई।'
     },
     deleteBranch: {
       title: 'Branch हटाएँ',
@@ -668,6 +687,7 @@ export const hi: Messages = {
       fetch: 'Fetch',
       pull: 'Pull',
       push: 'Push',
+      pushForce: 'Force push (lease)',
       refresh: 'रीफ़्रेश करें',
       openRepository: 'Repository खोलें',
       settings: 'सेटिंग्स',
@@ -788,6 +808,22 @@ export const hi: Messages = {
     resetLayoutHelp: 'डिफ़ॉल्ट लेआउट: टैब, पैनल, कॉलम और आकार को मूल स्थिति में लौटाता है',
     layoutRestored: 'लेआउट डिफ़ॉल्ट पर लौटा दिया गया।',
     resizeColumn: 'चौड़ाई बदलने के लिए खींचें (डबल क्लिक से डिफ़ॉल्ट)'
+  },
+  push: {
+    title: '{branch} को Push करें',
+    remote: 'Remote',
+    mode: 'मोड',
+    normal: 'सामान्य',
+    normalHelp: 'तभी Push करता है जब remote पर ऐसे commit न हों जो आपके पास नहीं हैं।',
+    lease: 'Lease के साथ Force',
+    leaseHelp: 'Remote को overwrite करता है (--force-with-lease), पर अगर किसी ने कुछ नया Push किया है जिसे आपने अभी fetch नहीं किया तो मना कर देता है। Force करने का सुरक्षित तरीका।',
+    force: 'Force',
+    forceHelp: 'बिना कुछ जाँचे remote को overwrite करता है (--force)। दूसरों के commit मिट सकते हैं।',
+    confirm: 'Push करें',
+    forceTitle: 'Force push',
+    forceMessageLease: 'Remote पर "{branch}" को दोबारा लिखें?\nअगर remote पर नए commit हैं जिन्हें आपने fetch नहीं किया, तो Push मना कर दिया जाएगा।',
+    forceMessageForce: 'बिना किसी जाँच के remote पर "{branch}" को overwrite करें?\nजो commit सिर्फ वहीं हैं, वे खो जाएँगे।',
+    forceConfirm: 'Force push करें'
   },
   gitlog: {
     title: 'Git लॉग',

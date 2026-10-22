@@ -54,6 +54,7 @@ export const ar: Messages = {
     cherryPick: 'جارٍ الانتقاء',
     cherryPickFrom: 'جارٍ الانتقاء من {ref}',
     commit: 'جارٍ الإيداع',
+    commitPush: 'جارٍ الإيداع والدفع',
     continuing: 'جارٍ المتابعة',
     copyingVersion: 'جارٍ نسخ النسخة',
     creatingBranch: 'جارٍ إنشاء {name}',
@@ -103,6 +104,10 @@ export const ar: Messages = {
     push: 'دفع',
     pushHelp: 'إرسال إيداعاتك إلى المستودع البعيد',
     pushTo: 'إرسال إلى {remote}',
+    pushForceLease: 'دفع قسري (مع lease)',
+    pushForce: 'دفع قسري (استبدال)',
+    pushOptions: 'خيارات الدفع…',
+    pushMore: 'مزيد من خيارات الدفع',
     manageRemotes: 'إدارة المستودعات البعيدة…',
     branch: 'فرع',
     stash: 'تخبئة',
@@ -135,6 +140,8 @@ export const ar: Messages = {
       delete: 'حذف…',
       checkoutDetached: 'الانتقال (HEAD منفصل)',
       newBranchFromTag: 'فرع جديد من هذا الوسم…',
+      push: 'دفع…',
+      pushForce: 'دفع قسري (مع lease)…',
       copyName: 'نسخ اسم الفرع'
     },
     stash: {
@@ -254,7 +261,16 @@ export const ar: Messages = {
     amend: 'تعديل آخر إيداع (amend)',
     amendButton: 'تعديل الإيداع',
     commit: 'إيداع',
-    commitInto: 'إيداع في {branch}'
+    commitInto: 'إيداع في {branch}',
+    commitStageAll: 'تضمين كل الملفات (stage)',
+    commitStageAllHelp: 'يجهّز كل الملفات المعدّلة قبل الإيداع',
+    pushAfter: 'الدفع بعد ذلك',
+    amendNeedsForce: 'آخر إيداع موجود بالفعل في المستودع البعيد: تعديله يتطلب دفعًا قسريًا (يُفضّل مع lease).',
+    pushFailedAfterCommit: 'تم الإيداع لكن الدفع فشل: {error}',
+    commitPush: 'إيداع ودفع في {branch}',
+    amendPush: 'تعديل ودفع',
+    commitForcePush: 'إيداع ودفع قسري',
+    amendForcePush: 'تعديل ودفع قسري'
   },
   actions: {
     deleteTag: {
@@ -277,7 +293,10 @@ export const ar: Messages = {
       label: 'اسم الفرع',
       labelFrom: 'اسم الفرع (من {start})',
       placeholder: 'feature/my-change',
-      confirm: 'إنشاء والانتقال إليه'
+      confirm: 'إنشاء فرع',
+      checkout: 'التبديل إلى الفرع الجديد (checkout)',
+      created: 'تم إنشاء الفرع "{name}".',
+      createdCheckout: 'تم إنشاء الفرع "{name}" والانتقال إليه.'
     },
     deleteBranch: {
       title: 'حذف الفرع',
@@ -677,6 +696,7 @@ export const ar: Messages = {
       fetch: 'جلب',
       pull: 'سحب',
       push: 'دفع',
+      pushForce: 'دفع قسري (lease)',
       refresh: 'تحديث',
       openRepository: 'فتح مستودع',
       settings: 'الإعدادات',
@@ -794,6 +814,22 @@ export const ar: Messages = {
     resetLayoutHelp: 'استعادة التخطيط الافتراضي: يعيد علامات التبويب واللوحات والأعمدة والأحجام إلى أماكنها الأصلية',
     layoutRestored: 'تمت استعادة التخطيط الافتراضي.',
     resizeColumn: 'اسحب لضبط العرض (النقر المزدوج يعيد الافتراضي)'
+  },
+  push: {
+    title: 'دفع {branch}',
+    remote: 'المستودع البعيد',
+    mode: 'الوضع',
+    normal: 'عادي',
+    normalHelp: 'يدفع فقط إذا لم تكن في المستودع البعيد إيداعات ليست لديك.',
+    lease: 'قسري مع lease',
+    leaseHelp: 'يستبدل المستودع البعيد (--force-with-lease) لكنه يرفض إذا دفع شخص ما شيئًا جديدًا لم تجلبه بعد. الطريقة الآمنة للإجبار.',
+    force: 'قسري',
+    forceHelp: 'يستبدل المستودع البعيد (--force) دون أي فحص. قد يحذف إيداعات الآخرين.',
+    confirm: 'دفع',
+    forceTitle: 'دفع قسري',
+    forceMessageLease: 'إعادة كتابة "{branch}" في المستودع البعيد؟\nسيُرفض الدفع إذا كانت في المستودع البعيد إيداعات جديدة لم تجلبها.',
+    forceMessageForce: 'استبدال "{branch}" في المستودع البعيد دون أي فحص؟\nستُفقد الإيداعات الموجودة هناك فقط.',
+    forceConfirm: 'دفع قسري'
   },
   gitlog: {
     title: 'سجل أوامر git',

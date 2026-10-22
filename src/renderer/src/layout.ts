@@ -48,6 +48,9 @@ export function writeLayout(key: string, value: unknown) {
   notify()
 }
 
+/** Preferências de uso (ex.: "dar checkout ao criar branch"): ficam junto do layout, mas o botão de restaurar não as apaga. */
+const PREF_PREFIX = PREFIX + 'pref.'
+
 /** Volta todos os painéis e janelas ao tamanho padrão. */
 export function resetLayout() {
   const s = storage()
@@ -55,11 +58,11 @@ export function resetLayout() {
     const keys: string[] = []
     for (let i = 0; i < s.length; i++) {
       const key = s.key(i)
-      if (key?.startsWith(PREFIX)) keys.push(key)
+      if (key?.startsWith(PREFIX) && !key.startsWith(PREF_PREFIX)) keys.push(key)
     }
     for (const key of keys) s.removeItem(key)
   }
-  cache.clear()
+  for (const key of [...cache.keys()]) if (!key.startsWith('pref.')) cache.delete(key)
   notify()
 }
 

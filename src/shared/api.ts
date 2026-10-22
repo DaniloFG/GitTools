@@ -23,6 +23,7 @@ import type {
   OperationResult,
   OperationState,
   PartialApplyOptions,
+  PushOptions,
   RebasePlan,
   RebaseStep,
   RemoteInfo,
@@ -102,8 +103,8 @@ export interface RepoApi {
   // Remotos
   fetch(): Promise<string>
   pull(): Promise<OperationResult>
-  /** Envia a branch atual (para o `remote` informado, ou o padrão dela). */
-  push(remote?: string): Promise<string>
+  /** Envia a branch atual (ou `options.branch`) para o `remote` informado, ou o padrão dela; `options.force` força. */
+  push(remote?: string, options?: PushOptions): Promise<string>
   remotes(): Promise<RemoteInfo[]>
   /** Devolve o nome usado; `fetchNow` já baixa o conteúdo do novo remote. */
   addRemote(name: string, url: string, fetchNow?: boolean): Promise<string>

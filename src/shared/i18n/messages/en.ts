@@ -46,6 +46,7 @@ export const en: Messages = {
     cherryPick: 'Cherry-picking',
     cherryPickFrom: 'Cherry-picking from {ref}',
     commit: 'Committing',
+    commitPush: 'Committing and pushing',
     continuing: 'Continuing',
     copyingVersion: 'Copying version',
     creatingBranch: 'Creating {name}',
@@ -95,6 +96,10 @@ export const en: Messages = {
     push: 'Push',
     pushHelp: 'Send your commits to the remote',
     pushTo: 'Push to {remote}',
+    pushForceLease: 'Force push (with lease)',
+    pushForce: 'Force push (overwrite)',
+    pushOptions: 'Push options…',
+    pushMore: 'More push options',
     manageRemotes: 'Manage remotes…',
     branch: 'Branch',
     stash: 'Stash',
@@ -127,6 +132,8 @@ export const en: Messages = {
       delete: 'Delete…',
       checkoutDetached: 'Checkout (detached HEAD)',
       newBranchFromTag: 'New branch from this tag…',
+      push: 'Push…',
+      pushForce: 'Force push (with lease)…',
       copyName: 'Copy branch name'
     },
     stash: {
@@ -245,7 +252,16 @@ export const en: Messages = {
     amend: 'Amend the last commit',
     amendButton: 'Amend commit',
     commit: 'Commit',
-    commitInto: 'Commit to {branch}'
+    commitInto: 'Commit to {branch}',
+    commitStageAll: 'Include all files (stage)',
+    commitStageAllHelp: 'Stages every changed file before committing',
+    pushAfter: 'Push afterwards',
+    amendNeedsForce: 'The last commit is already on the remote: amending it requires a force push (recommended: with lease).',
+    pushFailedAfterCommit: 'The commit was made, but the push failed: {error}',
+    commitPush: 'Commit and push to {branch}',
+    amendPush: 'Amend and push',
+    commitForcePush: 'Commit and force push',
+    amendForcePush: 'Amend and force push'
   },
   actions: {
     deleteTag: {
@@ -268,7 +284,10 @@ export const en: Messages = {
       label: 'Branch name',
       labelFrom: 'Branch name (from {start})',
       placeholder: 'feature/my-change',
-      confirm: 'Create and check out'
+      confirm: 'Create branch',
+      checkout: 'Check out the new branch',
+      created: 'Branch "{name}" created.',
+      createdCheckout: 'Branch "{name}" created and checked out.'
     },
     deleteBranch: {
       title: 'Delete branch',
@@ -665,6 +684,7 @@ export const en: Messages = {
       fetch: 'Fetch',
       pull: 'Pull',
       push: 'Push',
+      pushForce: 'Force push (lease)',
       refresh: 'Refresh',
       openRepository: 'Open repository',
       settings: 'Settings',
@@ -785,6 +805,22 @@ export const en: Messages = {
     resetLayoutHelp: 'Restore default layout: puts tabs, panels, columns and sizes back where they started',
     layoutRestored: 'Layout restored to the default.',
     resizeColumn: 'Drag to adjust the width (double-click restores the default)'
+  },
+  push: {
+    title: 'Push {branch}',
+    remote: 'Remote',
+    mode: 'Mode',
+    normal: 'Normal',
+    normalHelp: 'Pushes only if the remote has no commits you do not have.',
+    lease: 'Force with lease',
+    leaseHelp: 'Overwrites the remote (--force-with-lease) but refuses if someone pushed something new that you have not fetched yet. The safe way to force.',
+    force: 'Force',
+    forceHelp: 'Overwrites the remote (--force) without checking anything. It can delete other people\'s commits.',
+    confirm: 'Push',
+    forceTitle: 'Force push',
+    forceMessageLease: 'Rewrite "{branch}" on the remote?\nThe push is refused if the remote has new commits you have not fetched.',
+    forceMessageForce: 'Overwrite "{branch}" on the remote without any check?\nCommits that exist only there will be lost.',
+    forceConfirm: 'Force push'
   },
   gitlog: {
     title: 'Git log',

@@ -24,6 +24,7 @@ import type {
   OperationResult,
   OperationState,
   PartialApplyOptions,
+  PushOptions,
   RebasePlan,
   RebaseStep,
   RemoteInfo,
@@ -348,12 +349,13 @@ export class GitRepository implements RepoApi {
   }
 
   async log(options: LogOptions = {}): Promise<CommitInfo[]> {
-    const status = await this.status()
-    if (!status.headSha && !options.all) return []
+    // Só precisamos saber se já existe commit: um rev-parse custa bem menos que um status completo.
+    const hasHead = (await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })).exitCode === 0
+    if (!hasHead && !options.all) return []
     const args = ['log', `--format=${COMMIT_FORMAT}`, '--topo-order', `-n${options.limit ?? 500}`]
     if (options.all) {
       args.push('--branches', '--remotes', '--tags')
-      if (status.headSha) args.push('HEAD')
+      if (hasHead) args.push('HEAD')
     } else {
       const ref = options.ref ?? 'HEAD'
       assertRef(ref)
@@ -957,19 +959,34 @@ export class GitRepository implements RepoApi {
     await this.git(['remote', 'remove', '--', checkRemote(name, 'x').name])
   }
 
-  /** Envia a branch atual; sem `remote`, usa o upstream (ou o origin, ou o primeiro remote, na primeira vez). */
-  async push(remote?: string): Promise<string> {
-    const status = await this.status()
-    if (!status.branch) throw new Error(t('core.pushNeedsBranch'))
-    let args = ['push']
+  /**
+   * Envia uma branch (a atual, ou `options.branch` sem precisar de checkout). Sem `remote`, usa o
+   * upstream dela (ou o origin, ou o primeiro remote, na primeira vez). `options.force` força o envio.
+   */
+  async push(remote?: string, options: PushOptions = {}): Promise<string> {
+    const flags = options.force === 'force' ? ['--force'] : options.force === 'lease' ? ['--force-with-lease'] : []
+    const current = await this.status()
+    const branch = options.branch ?? current.branch
+    if (!branch) throw new Error(t('core.pushNeedsBranch'))
+    assertRef(branch, 'branch')
+    const info = options.branch ? (await this.branches()).find((b) => !b.remote && b.name === branch) : undefined
+    if (options.branch && !info) throw new Error(t('core.pushNeedsBranch'))
+    const upstream = options.branch ? (info?.upstream ?? null) : current.upstream
+    let args: string[]
     if (remote) {
-      args = ['push', '-u', '--', checkRemote(remote, 'x').name, status.branch]
-    } else if (!status.upstream) {
+      args = ['push', '-u', ...flags, '--', checkRemote(remote, 'x').name, branch]
+    } else if (!upstream) {
       const { stdout } = await this.git(['remote'])
       const remotes = stdout.split('\n').filter(Boolean)
       if (!remotes.length) throw new Error(t('core.noRemotes'))
       const first = remotes.includes('origin') ? 'origin' : remotes[0]
-      args = ['push', '-u', first, status.branch]
+      args = ['push', '-u', ...flags, first, branch]
+    } else if (options.branch) {
+      // Outra branch que não a atual: o `git push` sem argumentos só serve para a atual.
+      const slash = upstream.indexOf('/')
+      args = ['push', ...flags, '--', upstream.slice(0, slash), `${branch}:${upstream.slice(slash + 1)}`]
+    } else {
+      args = ['push', ...flags]
     }
     const { stderr, stdout } = await this.git(args)
     return (stderr || stdout).trim() || t('core.pushDone')
