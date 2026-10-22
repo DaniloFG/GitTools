@@ -657,6 +657,11 @@ export const hi: Messages = {
   settings: {
     editor: {
       diffLayoutHelp: 'हर diff इसी दृश्य में खुलता है; diff के शीर्षक के बटन केवल उसके खुले रहने तक दृश्य बदलते हैं।',
+      diffContent: 'Diff की सामग्री',
+      diffContentHelp: 'चुनें कि diff केवल बदला हुआ हिस्सा दिखाए या पूरी फ़ाइल को बदलावों के साथ हाइलाइट करके। diff हेडर का ⇕ बटन तुरंत बदल देता है।',
+      diffContentLabel: 'Diff दिखाता है',
+      diffContentChanges: 'केवल बदला हुआ हिस्सा',
+      diffContentFull: 'पूरी फ़ाइल',
       diffLayout: 'डिफ़ॉल्ट diff दृश्य',
       clear: 'कोई नहीं',
       browse: 'Executable खोजें…',
@@ -689,6 +694,8 @@ export const hi: Messages = {
       themeVscode: 'VS Code जैसा',
       fileIcons: 'फ़ाइल आइकन',
       fileIconsHelp: 'हर नाम के पास फ़ाइल के प्रकार का आइकन दिखाता है।',
+      statusLetters: 'बदलाव के अक्षर (M, A, D…)',
+      statusLettersHelp: 'हर फ़ाइल के पास बदलाव का अक्षर दिखाता है: M बदली, A जोड़ी, D हटाई, R नाम बदला। बंद होने पर केवल नाम का रंग बताता है।',
       zoom: 'इंटरफ़ेस का आकार',
       default: '(डिफ़ॉल्ट)',
       layout: 'पैनल और विंडो',

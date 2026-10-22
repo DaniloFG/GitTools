@@ -666,6 +666,11 @@ export const ar: Messages = {
   settings: {
     editor: {
       diffLayoutHelp: 'يُفتح كل فرق بهذه الطريقة؛ أزرار رأس الفرق تغيّرها فقط ما دام مفتوحًا.',
+      diffContent: 'محتوى عرض الفروقات',
+      diffContentHelp: 'اختر هل يُفتح عرض الفروقات بالجزء المتغيّر فقط أم بالملف كاملاً مع إبراز التغييرات. زر ⇕ في رأس العرض يبدّل ذلك فوراً.',
+      diffContentLabel: 'يعرض الفروقات',
+      diffContentChanges: 'الجزء المتغيّر فقط',
+      diffContentFull: 'الملف كاملاً',
       diffLayout: 'طريقة عرض الفروق الافتراضية',
       clear: 'بدون محرر',
       browse: 'استعراض الملف التنفيذي…',
@@ -698,6 +703,8 @@ export const ar: Messages = {
       themeVscode: 'مثل VS Code',
       fileIcons: 'أيقونات الملفات',
       fileIconsHelp: 'يعرض بجانب كل اسم أيقونة لنوع الملف.',
+      statusLetters: 'حروف التعديلات (M, A, D…)',
+      statusLettersHelp: 'يعرض بجانب كل ملف حرف ما تغيّر: M معدَّل، A مضاف، D محذوف، R أُعيدت تسميته. عند الإيقاف يدل لون الاسم فقط.',
       zoom: 'حجم الواجهة',
       default: '(افتراضي)',
       layout: 'اللوحات والنوافذ',

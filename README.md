@@ -127,7 +127,7 @@ se mesmo assim houver conflito, ele aparece no painel de conflitos como em qualq
   onde o git informa a pasta com `/`), e o botão **Testar** abre um arquivo do repositório pelo mesmo
   caminho. Um arquivo que só existe em outro commit avisa em vez de falhar em silêncio. Escolha em ⚙ Configurações → Editor e diff um dos editores encontrados no
   computador, o executável de qualquer outro ou
-  digite o comando (ex.: `code --reuse-window`, `/Applications/Zed.app`). O botão **Testar** abre o
+  digite o comando (ex.: `meu-editor --reuse-window`, `/Applications/MeuEditor.app`). O botão **Testar** abre o
   projeto e mostra o erro se o editor não iniciar. O botão *Abrir no editor* da barra abre o projeto
   inteiro nele.
 

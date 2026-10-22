@@ -21,12 +21,21 @@ export function useDiffLayout(): [DiffLayout, (layout: DiffLayout) => void] {
 }
 
 /**
- * Mostrar o arquivo inteiro (todo o contexto) em vez de só os trechos alterados. A escolha vale para
- * todos os diffs e fica guardada; quem busca o diff a inclui no pedido (`fullFile`).
+ * Mostrar o arquivo inteiro (todo o contexto) em vez de só os trechos alterados. O padrão vem das
+ * configurações (Editor e diff); o botão do cabeçalho do diff troca para todos os diffs e a escolha fica
+ * guardada até o padrão das configurações mudar. Quem busca o diff a inclui no pedido (`fullFile`).
  */
 export function useFullFile(): [boolean, (full: boolean) => void] {
-  const [full, setFull] = useLayout<boolean>('diff.fullFile', (v) => v === true)
-  return [full, (next) => setFull(next || undefined)]
+  const preferred = useContext(AppContext)?.settings.diffFullFile ?? DEFAULT_SETTINGS.diffFullFile
+  const [override, setOverride] = useLayout<{ preferred: boolean; full: boolean } | undefined>('diff.fullFile', parseFullFileOverride)
+  // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
+  const full = override && override.preferred === preferred ? override.full : preferred
+  return [full, (next) => setOverride(next === preferred ? undefined : { preferred, full: next })]
+}
+
+function parseFullFileOverride(value: unknown): { preferred: boolean; full: boolean } | undefined {
+  const raw = value as { preferred?: unknown; full?: unknown } | null
+  return raw && typeof raw === 'object' && typeof raw.preferred === 'boolean' && typeof raw.full === 'boolean' ? { preferred: raw.preferred, full: raw.full } : undefined
 }
 
 interface Props {

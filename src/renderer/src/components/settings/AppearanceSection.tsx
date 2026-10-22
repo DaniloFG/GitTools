@@ -37,6 +37,15 @@ export function AppearanceSection({ draft, update }: SettingsSectionProps) {
           <input type="checkbox" checked={draft.fileIcons} onChange={(e) => update({ fileIcons: e.target.checked })} />
         </label>
       </div>
+      <div className="settings-row">
+        <div>
+          <span>{t('settings.appearance.statusLetters')}</span>
+          <p className="muted small">{t('settings.appearance.statusLettersHelp')}</p>
+        </div>
+        <label className="checkbox">
+          <input type="checkbox" checked={draft.statusLetters} onChange={(e) => update({ statusLetters: e.target.checked })} />
+        </label>
+      </div>
       {info?.host !== 'vscode' && (
       <div className="settings-row">
         <span>{t('settings.appearance.zoom')}</span>

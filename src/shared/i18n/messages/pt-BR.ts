@@ -655,6 +655,11 @@ export const ptBR = {
   settings: {
     editor: {
       diffLayoutHelp: 'Todo diff abre neste modo; os botões no cabeçalho do diff trocam o modo só enquanto ele está aberto.',
+      diffContent: 'Conteúdo do diff',
+      diffContentHelp: 'Escolha se o diff abre só com o pedaço que mudou ou com o arquivo inteiro e as alterações destacadas. O botão ⇕ no cabeçalho do diff troca na hora.',
+      diffContentLabel: 'O diff mostra',
+      diffContentChanges: 'Só o trecho alterado',
+      diffContentFull: 'Arquivo inteiro',
       diffLayout: 'Modo padrão do diff',
       clear: 'Não usar nenhum',
       browse: 'Procurar executável…',
@@ -687,6 +692,8 @@ export const ptBR = {
       themeVscode: 'Igual ao VS Code',
       fileIcons: 'Ícones de arquivo',
       fileIconsHelp: 'Mostra, ao lado de cada nome, um ícone do tipo do arquivo.',
+      statusLetters: 'Letras das modificações (M, A, D…)',
+      statusLettersHelp: 'Mostra, ao lado de cada arquivo, a letra do que mudou: M modificado, A adicionado, D removido, R renomeado. Desligado, só a cor do nome indica.',
       zoom: 'Tamanho da interface',
       default: '(padrão)',
       layout: 'Painéis e janelas',

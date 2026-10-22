@@ -654,6 +654,11 @@ export const es: Messages = {
   settings: {
     editor: {
       diffLayoutHelp: 'Todo diff se abre en este modo; los botones de la cabecera lo cambian solo mientras está abierto.',
+      diffContent: 'Contenido del diff',
+      diffContentHelp: 'Elige si el diff se abre solo con la parte que cambió o con el archivo completo y los cambios resaltados. El botón ⇕ del encabezado del diff lo cambia al instante.',
+      diffContentLabel: 'El diff muestra',
+      diffContentChanges: 'Solo el fragmento modificado',
+      diffContentFull: 'Archivo completo',
       diffLayout: 'Modo predeterminado del diff',
       clear: 'No usar ninguno',
       browse: 'Buscar ejecutable…',
@@ -686,6 +691,8 @@ export const es: Messages = {
       themeVscode: 'Igual que VS Code',
       fileIcons: 'Iconos de archivo',
       fileIconsHelp: 'Muestra junto a cada nombre un icono del tipo de archivo.',
+      statusLetters: 'Letras de modificación (M, A, D…)',
+      statusLettersHelp: 'Muestra junto a cada archivo la letra de lo que cambió: M modificado, A añadido, D eliminado, R renombrado. Desactivado, solo el color del nombre lo indica.',
       zoom: 'Tamaño de la interfaz',
       default: '(predeterminado)',
       layout: 'Paneles y ventanas',

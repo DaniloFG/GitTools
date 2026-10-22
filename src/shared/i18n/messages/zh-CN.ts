@@ -632,6 +632,11 @@ export const zhCN: Messages = {
   settings: {
     editor: {
       diffLayoutHelp: '所有差异都以此方式打开；差异标题中的按钮只在其打开期间切换方式。',
+      diffContent: '差异内容',
+      diffContentHelp: '选择差异只显示修改的部分，还是显示整个文件并高亮改动。差异标题栏中的 ⇕ 按钮可立即切换。',
+      diffContentLabel: '差异显示',
+      diffContentChanges: '仅修改的部分',
+      diffContentFull: '整个文件',
       diffLayout: '默认差异显示方式',
       clear: '不使用',
       browse: '浏览可执行文件…',
@@ -664,6 +669,8 @@ export const zhCN: Messages = {
       themeVscode: '与 VS Code 相同',
       fileIcons: '文件图标',
       fileIconsHelp: '在每个文件名旁显示文件类型图标。',
+      statusLetters: '变更字母（M、A、D…）',
+      statusLettersHelp: '在每个文件旁显示变更类型字母：M 已修改、A 已添加、D 已删除、R 已重命名。关闭后仅用名称颜色表示。',
       zoom: '界面大小',
       default: '（默认）',
       layout: '面板和窗口',

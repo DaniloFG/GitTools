@@ -995,6 +995,10 @@ mark {
 .status-C {
   color: var(--accent);
 }
+/* Configurações → Aparência → letras de status desligadas: as cores nos nomes continuam. */
+:root[data-status-letters='off'] .status {
+  display: none;
+}
 
 .diff-panel {
   border-top: 1px solid var(--border);

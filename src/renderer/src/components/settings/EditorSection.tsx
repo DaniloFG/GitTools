@@ -97,6 +97,20 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
       {test && test !== 'running' && <p className={test.ok ? 'success-text' : 'warning-text'}>{test.message}</p>}
       </>)}
 
+      <h4>{t('settings.editor.diffContent')}</h4>
+      <p className="muted small">{t('settings.editor.diffContentHelp')}</p>
+      <div className="settings-row">
+        <span>{t('settings.editor.diffContentLabel')}</span>
+        <div className="segmented">
+          <button className={!draft.diffFullFile ? 'active' : ''} aria-pressed={!draft.diffFullFile} onClick={() => update({ diffFullFile: false })}>
+            {t('settings.editor.diffContentChanges')}
+          </button>
+          <button className={draft.diffFullFile ? 'active' : ''} aria-pressed={draft.diffFullFile} onClick={() => update({ diffFullFile: true })}>
+            {t('settings.editor.diffContentFull')}
+          </button>
+        </div>
+      </div>
+
       <h4>{t('settings.editor.diffLayout')}</h4>
       <p className="muted small">{t('settings.editor.diffLayoutHelp')}</p>
       <div className="settings-row">
