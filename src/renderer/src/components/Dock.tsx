@@ -1,4 +1,4 @@
-import { Fragment, useContext, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { AppContext } from '../context'
 import {
   activateView,
@@ -21,7 +21,7 @@ import {
 } from '../dock'
 import { t } from '../i18n'
 import { startResize } from '../resize'
-import { setSlot } from '../slots'
+import { slotRef } from '../slots'
 
 export interface ViewMeta {
   label: string
@@ -34,8 +34,12 @@ export interface ViewMeta {
 /** Faixa junto às bordas da janela onde soltar um painel o encaixa naquele lado. */
 const EDGE = 28
 const THRESHOLD = 5
+/** Menor tamanho a que arrastar uma divisória leva um painel. */
 const MIN_WIDTH = 140
 const MIN_HEIGHT = 80
+/** Em janelas muito pequenas os painéis encolhem até este tamanho, todos juntos, em vez de sair da tela. */
+const SQUEEZE_WIDTH = 48
+const SQUEEZE_HEIGHT = 40
 const KEY_STEP = 16
 
 interface Rect {
@@ -85,15 +89,25 @@ interface DockProps {
  * de uma borda dele (divide o painel nesse lado) ou para a borda da janela — qualquer painel em qualquer
  * lugar. O conteúdo de cada painel é levado até o lugar dele por `PaneSlot` (ver slots.tsx).
  */
-export function Dock({ state, onChange, meta, available }: DockProps) {
+export function Dock({ state, onChange: change, meta, available }: DockProps) {
   const app = useContext(AppContext)
   const rootRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ view: ViewId; hit: Hit | null } | null>(null)
   const latest = useRef(state)
   latest.current = state
+  /** Só grava quando o arranjo mudou de fato (clicar na aba que já está à frente não muda nada). */
+  const onChange = (next: DockState) => {
+    if (next !== latest.current) change(next)
+  }
 
   const isShown = (view: ViewId) => available(view) && !state.hidden.includes(view)
   const tree = shownTree(state, isShown)
+
+  // Quando uma aba passa à frente de fora (ex.: ao trazer uma tela), garante que ela apareça na barra de abas.
+  const fronts = tree ? frontViews(tree).join() : ''
+  useEffect(() => {
+    for (const tab of rootRef.current?.querySelectorAll<HTMLElement>('.dock-tab.active') ?? []) tab.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [fronts])
 
   /** Calcula o destino sob o ponteiro: entre abas, junto de uma borda da janela ou dentro de um painel. */
   const hitAt = (x: number, y: number): Hit | null => {
@@ -168,6 +182,7 @@ export function Dock({ state, onChange, meta, available }: DockProps) {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onCancel)
+      window.removeEventListener('keydown', onKey, true)
       if (!active) return
       document.body.classList.remove('docking')
       setDrag(null)
@@ -182,6 +197,13 @@ export function Dock({ state, onChange, meta, available }: DockProps) {
     }
     const onUp = end(true)
     const onCancel = end(false)
+    // Esc cancela o arrasto sem mover nada.
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape' || !active) return
+      event.stopPropagation()
+      onCancel()
+    }
+    window.addEventListener('keydown', onKey, true)
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onCancel)
@@ -208,11 +230,13 @@ export function Dock({ state, onChange, meta, available }: DockProps) {
 
   const renderGroup = (node: ShownGroup) => (
     <section className="dock-group">
-      <nav className="dock-tabs" data-group-tabs={node.id} title={t('workbench.tabsHelp')}>
+      <nav className="dock-tabs" data-group-tabs={node.id} title={t('workbench.tabsHelp')} role="tablist">
         {node.views.map((view) => (
           <button
             key={view}
             data-view={view}
+            role="tab"
+            aria-selected={view === node.active}
             className={`dock-tab ${view === node.active ? 'active' : ''} ${drag?.view === view ? 'dragging' : ''}`}
             onPointerDown={(e) => startTabDrag(e, view)}
             onClick={() => onChange(activateView(latest.current, view))}
@@ -225,7 +249,7 @@ export function Dock({ state, onChange, meta, available }: DockProps) {
         ))}
       </nav>
       <div className="dock-body" data-group={node.id}>
-        <div key={node.active} className="dock-slot" data-slot={node.active} ref={(el) => setSlot(node.active, el)} />
+        <div key={node.active} className="dock-slot" data-slot={node.active} ref={slotRef(node.active)} />
       </div>
     </section>
   )
@@ -268,7 +292,7 @@ export function Dock({ state, onChange, meta, available }: DockProps) {
     return (
       <div className={`dock-split dock-${node.dir}`}>
         {node.children.map((child, i) => {
-          const style: CSSProperties = { flex: `${child.weight} 1 0px`, [row ? 'minWidth' : 'minHeight']: row ? MIN_WIDTH : MIN_HEIGHT }
+          const style: CSSProperties = { flex: `${child.weight} 1 0px`, [row ? 'minWidth' : 'minHeight']: row ? SQUEEZE_WIDTH : SQUEEZE_HEIGHT }
           return (
             <Fragment key={child.node.id}>
               {i > 0 && (
@@ -320,6 +344,11 @@ export function Dock({ state, onChange, meta, available }: DockProps) {
       )}
     </div>
   )
+}
+
+/** Abas que estão à frente em cada grupo (para saber quando alguma mudou). */
+function frontViews(node: ShownNode): ViewId[] {
+  return node.kind === 'group' ? [node.active] : node.children.flatMap((c) => frontViews(c.node))
 }
 
 /** Novo arranjo depois de a divisória entre os filhos `i - 1` e `i` andar `delta` pixels. */

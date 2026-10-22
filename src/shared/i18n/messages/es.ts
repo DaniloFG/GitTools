@@ -220,14 +220,6 @@ export const es: Messages = {
     }
   },
   details: {
-    view: {
-      label: 'Mostrar',
-      both: 'Ambos',
-      message: 'Descripción',
-      files: 'Archivos',
-      stacked: 'Arriba y abajo',
-      side: 'Lado a lado'
-    },
     tips: {
       title: 'Consejos rápidos',
       dragCommit: 'Arrastra un commit (o varios, con Ctrl/Shift) a una rama de la barra lateral para hacer cherry-pick.',
@@ -322,19 +314,6 @@ export const es: Messages = {
       marked: '{marked} de {total} marcados',
       all: 'Marcar o desmarcar todos',
       include: 'Incluir en el commit'
-    },
-    layout: {
-      restore: 'Restaurar disposición',
-      restoreConfirm: {
-        title: '¿Restaurar la disposición de esta pestaña?',
-        message: 'Los paneles de la pestaña Cambios vuelven a su disposición original.'
-      },
-      moveUp: 'Mover arriba',
-      moveDown: 'Mover abajo',
-      moveLeft: 'Mover a la izquierda',
-      moveRight: 'Mover a la derecha',
-      drag: 'Arrastra la cabecera para mover este panel (clic derecho: más opciones)',
-      newColumn: 'Nueva columna'
     }
   },
   actions: {
@@ -658,9 +637,7 @@ export const es: Messages = {
     hidePanel: 'Contraer este panel',
     showPanel: 'Mostrar el panel contraído',
     maximize: 'Maximizar',
-    restoreWindow: 'Restaurar tamaño',
-    collapse: 'Contraer',
-    expand: 'Expandir'
+    restoreWindow: 'Restaurar tamaño'
   },
   settings: {
     editor: {
@@ -905,7 +882,6 @@ export const es: Messages = {
     panels: 'Paneles',
     panelsHelp: 'Mostrar u ocultar cualquier panel',
     resetLayout: 'Restablecer diseño predeterminado',
-    resetLayoutHelp: 'Restablecer diseño predeterminado: devuelve pestañas, paneles, columnas y tamaños a su posición original',
     layoutRestored: 'Diseño restablecido.',
     resizeColumn: 'Arrastra para ajustar el ancho (doble clic restablece el predeterminado)'
   },

@@ -12,15 +12,35 @@ import { useDrop } from '../useDrop'
 import { useLayout } from '../layout'
 import { moveItem, parseOrder, startReorder } from '../reorder'
 import { t } from '../i18n'
+import { PaneSlot } from '../slots'
 
 interface Props {
   scope: HistoryScope
   onScope(scope: HistoryScope): void
 }
 
-export function Sidebar({ scope, onScope }: Props) {
+/**
+ * Branches (locais e remotas), tags e stashes são três painéis independentes: cada um pode ficar em
+ * qualquer lugar da janela, junto de qualquer outro painel.
+ */
+export function SidebarPanes({ scope, onScope }: Props) {
+  return (
+    <>
+      <PaneSlot id="branches">
+        <BranchesPanel scope={scope} onScope={onScope} />
+      </PaneSlot>
+      <PaneSlot id="tags">
+        <TagsPanel />
+      </PaneSlot>
+      <PaneSlot id="stashes">
+        <StashesPanel />
+      </PaneSlot>
+    </>
+  )
+}
+
+function BranchesPanel({ scope, onScope }: Props) {
   const { data } = useApp()
-  const actions = useActions()
   // Cada branch usa a cor da sua trilha no grafo do histórico.
   const colors = commitColors(data.log, data.status.headSha)
   const colorOf = (b: BranchInfo) => colors.get(b.sha)
@@ -57,34 +77,7 @@ export function Sidebar({ scope, onScope }: Props) {
           ))}
         </Section>
       )
-    })),
-    {
-      id: 'tags',
-      node: (
-        <Section
-          id="tags"
-          title={t('sidebar.tags')}
-          count={data.tags.length}
-          collapsed
-          onReorder={move}
-          action={{ label: '＋', title: t('actions.newTag.title'), run: () => actions.createTag() }}
-        >
-          {data.tags.map((t) => (
-            <TagItem key={t.name} name={t.name} sha={t.sha} />
-          ))}
-        </Section>
-      )
-    },
-    {
-      id: 'stashes',
-      node: (
-        <Section id="stashes" title={t('sidebar.stashes')} count={data.stashes.length} onReorder={move}>
-          {data.stashes.map((s) => (
-            <StashItem key={s.ref} stash={s} />
-          ))}
-        </Section>
-      )
-    }
+    }))
   ]
   const ids = sections.map((s) => s.id)
   const [order, setOrder] = useLayout('order.sidebar', (value) => parseOrder(value, ids))
@@ -110,6 +103,33 @@ export function Sidebar({ scope, onScope }: Props) {
   )
 }
 
+function TagsPanel() {
+  const { data } = useApp()
+  const actions = useActions()
+  return (
+    <aside className="sidebar">
+      <Section id="tags" title={t('sidebar.tags')} count={data.tags.length} action={{ label: '＋', title: t('actions.newTag.title'), run: () => actions.createTag() }}>
+        {data.tags.map((tag) => (
+          <TagItem key={tag.name} name={tag.name} sha={tag.sha} />
+        ))}
+      </Section>
+    </aside>
+  )
+}
+
+function StashesPanel() {
+  const { data } = useApp()
+  return (
+    <aside className="sidebar">
+      <Section id="stashes" title={t('sidebar.stashes')} count={data.stashes.length}>
+        {data.stashes.map((s) => (
+          <StashItem key={s.ref} stash={s} />
+        ))}
+      </Section>
+    </aside>
+  )
+}
+
 interface SectionProps {
   /** Nome sob o qual fica guardado se a seção está aberta. */
   id: string
@@ -117,8 +137,8 @@ interface SectionProps {
   count: number
   children: ReactNode
   collapsed?: boolean
-  /** Arrastar o cabeçalho sobre outra seção troca a ordem delas. */
-  onReorder(id: string, target: string): void
+  /** Arrastar o cabeçalho sobre outra seção troca a ordem delas (só quando há mais de uma no painel). */
+  onReorder?(id: string, target: string): void
   /** Botão no cabeçalho (ex.: criar tag). */
   action?: { label: string; title: string; run(): void }
 }
@@ -126,13 +146,13 @@ interface SectionProps {
 function Section({ id, title, count, children, collapsed = false, onReorder, action }: SectionProps) {
   const [open, setOpen] = useLayout(`sidebar.${id}.open`, (value) => (typeof value === 'boolean' ? value : !collapsed))
   return (
-    <section className="sidebar-section" data-reorder="sidebar" data-reorder-id={id}>
+    <section className="sidebar-section" data-reorder={onReorder ? 'sidebar' : undefined} data-reorder-id={onReorder ? id : undefined}>
       <div className="section-header-row">
         <button
           className="section-header"
-          title={t('layout.reorderHelp')}
+          title={onReorder ? t('layout.reorderHelp') : undefined}
           onClick={() => setOpen(!open)}
-          onPointerDown={(e) => startReorder(e, 'sidebar', id, onReorder)}
+          onPointerDown={onReorder ? (e) => startReorder(e, 'sidebar', id, onReorder) : undefined}
         >
           <span>{open ? '▾' : '▸'}</span> {title} <span className="count">{count}</span>
         </button>

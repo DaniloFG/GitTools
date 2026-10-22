@@ -1,7 +1,7 @@
 // O arranjo dos painéis fica guardado no layout (o botão "restaurar layout" volta ao padrão). Estas
 // funções servem a quem está fora do React (atalhos, ações) e a quem precisa do estado atual.
 
-import { activateView, parseDock, showScreen, toggleView, type DockState, type ScreenId, type ViewId } from './dock'
+import { activateView, parseDock, showScreen, toggleScreen, toggleView, type DockState, type ScreenId, type ViewId } from './dock'
 import { readLayout, useLayout, writeLayout } from './layout'
 
 const KEY = 'dock'
@@ -42,3 +42,6 @@ export const revealView = (view: ViewId) => updateDock((s) => activateView(s, vi
 export const revealScreen = (screen: ScreenId, available?: (view: ViewId) => boolean) => updateDock((s) => showScreen(s, screen, available))
 
 export const toggleViewShown = (view: ViewId) => updateDock((s) => toggleView(s, view))
+
+/** Esconde ou mostra todos os painéis de uma tela de uma vez (ex.: a barra lateral). */
+export const toggleScreenShown = (screen: ScreenId) => updateDock((s) => toggleScreen(s, screen))

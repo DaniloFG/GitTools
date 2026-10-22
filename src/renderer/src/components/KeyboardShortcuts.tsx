@@ -6,7 +6,7 @@ import { t } from '../i18n'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings, worksInInputs } from '../shortcuts'
 import { HISTORY_SEARCH_ID } from './CommitList'
-import { toggleViewShown } from '../dockStore'
+import { toggleScreenShown } from '../dockStore'
 
 /** Escuta o teclado e executa as ações conforme os atalhos configurados. */
 export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: boolean; onOpenRepository(): void }) {
@@ -36,15 +36,18 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         'view.changes': () => app.setView('changes'),
         'view.files': () => app.setView('files'),
         'view.compare': () => app.setView('compare'),
-        'layout.sidebar': () => toggleViewShown('branches'),
+        'layout.sidebar': () => toggleScreenShown('branches'),
         'history.search': () => {
           app.setView('history')
-          // Espera o histórico aparecer (se outra aba estava aberta) para focar a pesquisa.
-          requestAnimationFrame(() => {
+          // Espera o painel do histórico aparecer (se outra aba estava à frente) para focar a pesquisa.
+          const focusSearch = (tries: number) => {
             const input = document.getElementById(HISTORY_SEARCH_ID) as HTMLInputElement | null
-            input?.focus()
-            input?.select()
-          })
+            if (input) {
+              input.focus()
+              input.select()
+            } else if (tries > 0) requestAnimationFrame(() => focusSearch(tries - 1))
+          }
+          requestAnimationFrame(() => focusSearch(12))
         },
         studio: () => app.openStudio({ target: actions.head ?? undefined }),
         'branch.new': () => actions.createBranch(),

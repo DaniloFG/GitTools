@@ -228,14 +228,6 @@ export const ar: Messages = {
     }
   },
   details: {
-    view: {
-      label: 'عرض',
-      both: 'الاثنان',
-      message: 'الوصف',
-      files: 'الملفات',
-      stacked: 'فوق وتحت',
-      side: 'جنبًا إلى جنب'
-    },
     tips: {
       title: 'نصائح سريعة',
       dragCommit: 'اسحب إيداعًا (أو عدة إيداعات باستخدام Ctrl/Shift) إلى فرع في الشريط الجانبي لانتقائه.',
@@ -331,19 +323,6 @@ export const ar: Messages = {
       marked: 'تم تحديد {marked} من {total}',
       all: 'تحديد الكل أو إلغاؤه',
       include: 'تضمين في الإيداع'
-    },
-    layout: {
-      restore: 'استعادة الترتيب',
-      restoreConfirm: {
-        title: 'استعادة ترتيب هذا التبويب؟',
-        message: 'ستعود لوحات تبويب التغييرات إلى ترتيبها الأصلي.'
-      },
-      moveUp: 'نقل لأعلى',
-      moveDown: 'نقل لأسفل',
-      moveLeft: 'نقل لليسار',
-      moveRight: 'نقل لليمين',
-      drag: 'اسحب الترويسة لنقل هذه اللوحة (زر الفأرة الأيمن: مزيد من الخيارات)',
-      newColumn: 'عمود جديد'
     }
   },
   actions: {
@@ -670,9 +649,7 @@ export const ar: Messages = {
     hidePanel: 'طيّ هذه اللوحة',
     showPanel: 'إظهار اللوحة المطوية',
     maximize: 'تكبير',
-    restoreWindow: 'استعادة الحجم',
-    collapse: 'طيّ',
-    expand: 'توسيع'
+    restoreWindow: 'استعادة الحجم'
   },
   settings: {
     editor: {
@@ -914,7 +891,6 @@ export const ar: Messages = {
     panels: 'اللوحات',
     panelsHelp: 'إظهار أو إخفاء أي لوحة',
     resetLayout: 'استعادة التخطيط الافتراضي',
-    resetLayoutHelp: 'استعادة التخطيط الافتراضي: يعيد علامات التبويب واللوحات والأعمدة والأحجام إلى أماكنها الأصلية',
     layoutRestored: 'تمت استعادة التخطيط الافتراضي.',
     resizeColumn: 'اسحب لضبط العرض (النقر المزدوج يعيد الافتراضي)'
   },

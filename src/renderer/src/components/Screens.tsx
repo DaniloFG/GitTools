@@ -81,8 +81,8 @@ export function PanelsButtons({ state, onChange, meta, available }: Omit<Props, 
 
   return (
     <>
-      <button className="ghost" onClick={panelsMenu} title={t('workbench.panelsHelp')} aria-haspopup="menu">
-        ▦ {t('workbench.panels')} ▾
+      <button className="icon-button panels-button" onClick={panelsMenu} title={`${t('workbench.panels')}: ${t('workbench.panelsHelp')}`} aria-label={t('workbench.panels')} aria-haspopup="menu">
+        ▦
       </button>
     </>
   )

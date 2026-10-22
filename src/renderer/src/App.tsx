@@ -28,8 +28,8 @@ import { OperationBanner } from './components/OperationBanner'
 import { RebaseEditor } from './components/RebaseEditor'
 import { SettingsCenter } from './components/settings/SettingsCenter'
 import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
-import { Sidebar } from './components/Sidebar'
-import { PanelsButtons, ScreenTabs } from './components/ScreenBar'
+import { SidebarPanes } from './components/Sidebar'
+import { PanelsButtons, ScreenTabs } from './components/Screens'
 import { Toasts, type Toast } from './components/Toasts'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
@@ -393,6 +393,8 @@ export function App() {
   /** Nome, número e dica de cada painel (as abas). */
   const meta: Record<ViewId, ViewMeta> = {
     branches: { label: t('workbench.views.branches') },
+    tags: { label: t('sidebar.tags') },
+    stashes: { label: t('sidebar.stashes') },
     history: { label: t('tabs.history'), help: t('history.log.tab') },
     'commit.message': { label: t('workbench.views.commitMessage') },
     'commit.files': { label: t('workbench.views.commitFiles') },
@@ -427,15 +429,13 @@ export function App() {
         <Dock state={dock} onChange={setDock} meta={meta} available={available} />
       </div>
       {/* Cada tela é desenhada aqui e levada, por portais, ao painel onde o usuário a deixou. */}
-      <PaneSlot id="branches">
-        <Sidebar
-          scope={scope}
-          onScope={(s) => {
-            setScope(s)
-            setView('history')
-          }}
-        />
-      </PaneSlot>
+      <SidebarPanes
+        scope={scope}
+        onScope={(s) => {
+          setScope(s)
+          setView('history')
+        }}
+      />
       <PaneSlot id="history">
         <CommitList
           scope={scope}

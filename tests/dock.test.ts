@@ -15,6 +15,7 @@ import {
   setSizes,
   showScreen,
   shownTree,
+  toggleScreen,
   toggleView,
   VIEW_IDS,
   zoneAt,
@@ -242,6 +243,8 @@ describe('mostrar e esconder', () => {
     expect(findGroup(state, 'changes.unstaged')?.active).toBe('changes.unstaged')
     const d = defaultDock()
     expect(activateView(d, 'history')).toBe(d)
+    // Grupo sem aba escolhida: a primeira já está à frente.
+    expect(activateView(d, 'branches')).toBe(d)
   })
 
   it('trazer uma tela ativa os painéis dela, só os disponíveis', () => {
@@ -262,6 +265,14 @@ describe('mostrar e esconder', () => {
     expect(state.hidden).toEqual([])
   })
 
+  it('esconde a tela inteira (a barra lateral) e mostra de novo', () => {
+    const hidden = toggleScreen(defaultDock(), 'branches')
+    expect(hidden.hidden.sort()).toEqual(['branches', 'stashes', 'tags'])
+    // Com só alguns escondidos, esconde o resto; só quando todos estão escondidos é que mostra.
+    expect(toggleScreen(hideView(defaultDock(), 'tags'), 'branches').hidden.sort()).toEqual(['branches', 'stashes', 'tags'])
+    expect(toggleScreen(hidden, 'branches').hidden).toEqual([])
+  })
+
   it('guarda os pesos de uma divisão válida e recusa os inválidos', () => {
     const d = defaultDock()
     const next = setSizes(d, 'd1', [1, 3])
@@ -276,8 +287,8 @@ describe('o que aparece na tela', () => {
   const hiddenSet = (...views: ViewId[]) => (v: ViewId) => !views.includes(v)
 
   it('grupos sem abas visíveis somem e a divisão com um só filho vira o próprio filho', () => {
-    const tree = shownTree(defaultDock(), hiddenSet('branches'))!
-    // Sem Branches, a raiz passa a ser a coluna do centro.
+    const tree = shownTree(defaultDock(), hiddenSet('branches', 'tags', 'stashes'))!
+    // Sem a barra lateral (Branches, Tags e Stashes), a raiz passa a ser a coluna do centro.
     expect(tree.kind).toBe('split')
     if (tree.kind === 'split') expect(tree.dir).toBe('column')
   })

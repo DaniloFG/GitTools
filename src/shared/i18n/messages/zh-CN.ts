@@ -219,14 +219,6 @@ export const zhCN: Messages = {
     }
   },
   details: {
-    view: {
-      label: '显示',
-      both: '两者',
-      message: '描述',
-      files: '文件',
-      stacked: '上下',
-      side: '左右'
-    },
     tips: {
       title: '快速提示',
       dragCommit: '将一个提交（或用 Ctrl/Shift 选中的多个）拖到侧边栏的分支上即可拣选。',
@@ -315,19 +307,6 @@ export const zhCN: Messages = {
       marked: '已勾选 {marked}/{total}',
       all: '全选或取消全选',
       include: '加入提交'
-    },
-    layout: {
-      restore: '恢复布局',
-      restoreConfirm: {
-        title: '恢复此标签页的排列？',
-        message: '“更改”标签页的面板将恢复为原始排列。'
-      },
-      moveUp: '上移',
-      moveDown: '下移',
-      moveLeft: '左移',
-      moveRight: '右移',
-      drag: '拖动标题可移动此面板（右键查看更多选项）',
-      newColumn: '新列'
     }
   },
   actions: {
@@ -636,9 +615,7 @@ export const zhCN: Messages = {
     hidePanel: '折叠此面板',
     showPanel: '显示已折叠的面板',
     maximize: '最大化',
-    restoreWindow: '还原大小',
-    collapse: '折叠',
-    expand: '展开'
+    restoreWindow: '还原大小'
   },
   settings: {
     editor: {
@@ -880,7 +857,6 @@ export const zhCN: Messages = {
     panels: '面板',
     panelsHelp: '显示或隐藏任意面板',
     resetLayout: '恢复默认布局',
-    resetLayoutHelp: '恢复默认布局：把标签页、面板、列和尺寸恢复到初始位置',
     layoutRestored: '布局已恢复为默认。',
     resizeColumn: '拖动以调整宽度（双击恢复默认）'
   },

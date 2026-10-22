@@ -7,6 +7,8 @@
 
 export type ViewId =
   | 'branches'
+  | 'tags'
+  | 'stashes'
   | 'history'
   | 'commit.message'
   | 'commit.files'
@@ -28,6 +30,8 @@ export type ViewId =
 
 export const VIEW_IDS: readonly ViewId[] = [
   'branches',
+  'tags',
+  'stashes',
   'history',
   'commit.message',
   'commit.files',
@@ -52,11 +56,21 @@ export const VIEW_IDS: readonly ViewId[] = [
 export type ScreenId = 'branches' | 'history' | 'changes' | 'files' | 'compare' | 'gitlog'
 
 export const SCREEN_VIEWS: Record<ScreenId, readonly ViewId[]> = {
-  branches: ['branches'],
+  branches: ['branches', 'tags', 'stashes'],
   history: ['history', 'commit.message', 'commit.files', 'commit.diff'],
   changes: ['changes.conflicts', 'changes.unstaged', 'changes.files', 'changes.staged', 'changes.commit', 'changes.diff'],
   files: ['files.list', 'files.history', 'files.diff', 'files.blame'],
   compare: ['compare.setup', 'compare.files', 'compare.diff'],
+  gitlog: ['gitlog']
+}
+
+/** Painel principal de cada tela (o primeiro que existir): a tela está à frente quando ele está. */
+const SCREEN_MAIN: Record<ScreenId, readonly ViewId[]> = {
+  branches: ['branches'],
+  history: ['history'],
+  changes: ['changes.unstaged', 'changes.files'],
+  files: ['files.list'],
+  compare: ['compare.setup'],
   gitlog: ['gitlog']
 }
 
@@ -125,7 +139,7 @@ export function defaultDock(): DockState {
   return {
     hidden: [],
     root: split('d1', 'row', [0.17, 0.83], [
-      group('g-branches', ['branches']),
+      split('d0', 'column', [0.64, 0.36], [group('g-branches', ['branches']), group('g-more', ['tags', 'stashes'])]),
       split('d2', 'column', [0.76, 0.24], [
         split('d3', 'row', [0.5, 0.5], [
           split('d4', 'column', [0.3, 0.7], [
@@ -355,7 +369,8 @@ export function hideView(state: DockState, view: ViewId): DockState {
 export function activateView(state: DockState, view: ViewId): DockState {
   const g = findGroup(state, view)
   if (!g) return state
-  if (g.active === view && !state.hidden.includes(view)) return state
+  // Já está à frente (a escolhida, ou a primeira quando nenhuma foi escolhida): nada a mudar.
+  if ((g.active === view || (!g.active && g.views[0] === view)) && !state.hidden.includes(view)) return state
   const next = cloneDock(state)
   findGroup(next, view)!.active = view
   next.hidden = next.hidden.filter((v) => v !== view)
@@ -367,6 +382,13 @@ export function toggleView(state: DockState, view: ViewId): DockState {
   return state.hidden.includes(view) ? activateView(state, view) : hideView(state, view)
 }
 
+/** Mostra os painéis de uma tela se todos estavam escondidos; senão, esconde todos (ex.: a barra lateral inteira). */
+export function toggleScreen(state: DockState, screen: ScreenId): DockState {
+  const views = SCREEN_VIEWS[screen]
+  if (views.every((v) => state.hidden.includes(v))) return views.reduce(activateView, state)
+  return views.reduce(hideView, state)
+}
+
 /** Traz todos os painéis (disponíveis) de uma tela: cada um fica visível, como aba escolhida do seu grupo. */
 export function showScreen(state: DockState, screen: ScreenId, available: (view: ViewId) => boolean = () => true): DockState {
   return SCREEN_VIEWS[screen].filter(available).reduce(activateView, state)
@@ -374,7 +396,7 @@ export function showScreen(state: DockState, screen: ScreenId, available: (view:
 
 /** Esta tela está à frente? (O painel principal dela é a aba escolhida do grupo e está visível.) */
 export function screenShown(state: DockState, screen: ScreenId, available: (view: ViewId) => boolean = () => true): boolean {
-  const main = SCREEN_VIEWS[screen].find(available)
+  const main = SCREEN_MAIN[screen].find(available)
   if (!main || state.hidden.includes(main)) return false
   const g = findGroup(state, main)
   return !!g && effectiveActive(g, (v) => !state.hidden.includes(v) && available(v)) === main

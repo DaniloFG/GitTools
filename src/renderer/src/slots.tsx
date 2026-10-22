@@ -26,6 +26,18 @@ export function setSlot(view: ViewId, element: HTMLElement | null) {
   for (const listener of [...listeners]) listener()
 }
 
+const refs = new Map<ViewId, (element: HTMLElement | null) => void>()
+
+/** `ref` do elemento que recebe o painel; é sempre a mesma função para o mesmo painel (o React não a chama de novo a cada desenho). */
+export function slotRef(view: ViewId): (element: HTMLElement | null) => void {
+  let ref = refs.get(view)
+  if (!ref) {
+    ref = (element) => setSlot(view, element)
+    refs.set(view, ref)
+  }
+  return ref
+}
+
 /** Elemento onde o painel está sendo mostrado agora (null = escondido ou atrás de outra aba). */
 export function useSlot(view: ViewId): HTMLElement | null {
   return useSyncExternalStore(subscribe, () => targets.get(view) ?? null)

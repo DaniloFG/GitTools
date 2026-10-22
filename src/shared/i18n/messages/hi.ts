@@ -223,14 +223,6 @@ export const hi: Messages = {
     }
   },
   details: {
-    view: {
-      label: 'दिखाएँ',
-      both: 'दोनों',
-      message: 'विवरण',
-      files: 'फ़ाइलें',
-      stacked: 'ऊपर-नीचे',
-      side: 'अगल-बगल'
-    },
     tips: {
       title: 'छोटे सुझाव',
       dragCommit: 'Cherry-pick के लिए किसी commit (या Ctrl/Shift से कई) को साइडबार की branch पर खींचें।',
@@ -325,19 +317,6 @@ export const hi: Messages = {
       marked: '{total} में से {marked} चुनी गईं',
       all: 'सभी चुनें या हटाएँ',
       include: 'Commit में शामिल करें'
-    },
-    layout: {
-      restore: 'व्यवस्था पहले जैसी करें',
-      restoreConfirm: {
-        title: 'इस टैब की व्यवस्था बहाल करें?',
-        message: 'बदलाव टैब के पैनल अपनी मूल व्यवस्था में लौट जाएँगे।'
-      },
-      moveUp: 'ऊपर ले जाएँ',
-      moveDown: 'नीचे ले जाएँ',
-      moveLeft: 'बाईं ओर ले जाएँ',
-      moveRight: 'दाईं ओर ले जाएँ',
-      drag: 'इस पैनल को हटाने के लिए शीर्षक को खींचें (दायाँ क्लिक: और विकल्प)',
-      newColumn: 'नया कॉलम'
     }
   },
   actions: {
@@ -661,9 +640,7 @@ export const hi: Messages = {
     hidePanel: 'यह पैनल समेटें',
     showPanel: 'समेटा हुआ पैनल दिखाएँ',
     maximize: 'बड़ा करें',
-    restoreWindow: 'आकार पुनर्स्थापित करें',
-    collapse: 'समेटें',
-    expand: 'फैलाएँ'
+    restoreWindow: 'आकार पुनर्स्थापित करें'
   },
   settings: {
     editor: {
@@ -908,7 +885,6 @@ export const hi: Messages = {
     panels: 'पैनल',
     panelsHelp: 'कोई भी पैनल दिखाएँ या छिपाएँ',
     resetLayout: 'डिफ़ॉल्ट लेआउट पुनर्स्थापित करें',
-    resetLayoutHelp: 'डिफ़ॉल्ट लेआउट: टैब, पैनल, कॉलम और आकार को मूल स्थिति में लौटाता है',
     layoutRestored: 'लेआउट डिफ़ॉल्ट पर लौटा दिया गया।',
     resizeColumn: 'चौड़ाई बदलने के लिए खींचें (डबल क्लिक से डिफ़ॉल्ट)'
   },

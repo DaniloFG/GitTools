@@ -1,5 +1,5 @@
 // Layout do grafo de commits em "trilhas" (lanes).
-// Cada trilha guarda a sua cor do início ao fim (como no Source Control do VS Code): uma linha
+// Cada trilha guarda a sua cor do início ao fim: uma linha
 // muda de coluna sem mudar de cor, e uma branch nova recebe a próxima cor da paleta.
 
 export interface GraphCommit {

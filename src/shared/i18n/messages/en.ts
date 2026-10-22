@@ -220,14 +220,6 @@ export const en: Messages = {
     }
   },
   details: {
-    view: {
-      label: 'Show',
-      both: 'Both',
-      message: 'Description',
-      files: 'Files',
-      stacked: 'Stacked',
-      side: 'Side by side'
-    },
     tips: {
       title: 'Quick tips',
       dragCommit: 'Drag a commit (or several, with Ctrl/Shift) onto a branch in the sidebar to cherry-pick it.',
@@ -322,19 +314,6 @@ export const en: Messages = {
       marked: '{marked} of {total} ticked',
       all: 'Tick or untick all',
       include: 'Include in commit'
-    },
-    layout: {
-      restore: 'Restore arrangement',
-      restoreConfirm: {
-        title: 'Restore this tab\'s arrangement?',
-        message: 'The panels of the Changes tab go back to their original arrangement.'
-      },
-      moveUp: 'Move up',
-      moveDown: 'Move down',
-      moveLeft: 'Move left',
-      moveRight: 'Move right',
-      drag: 'Drag the header to move this panel (right-click for more options)',
-      newColumn: 'New column'
     }
   },
   actions: {
@@ -658,9 +637,7 @@ export const en: Messages = {
     hidePanel: 'Collapse this panel',
     showPanel: 'Show the collapsed panel',
     maximize: 'Maximize',
-    restoreWindow: 'Restore size',
-    collapse: 'Collapse',
-    expand: 'Expand'
+    restoreWindow: 'Restore size'
   },
   settings: {
     editor: {
@@ -905,7 +882,6 @@ export const en: Messages = {
     panels: 'Panels',
     panelsHelp: 'Show or hide any panel',
     resetLayout: 'Restore default layout',
-    resetLayoutHelp: 'Restore default layout: puts tabs, panels, columns and sizes back where they started',
     layoutRestored: 'Layout restored to the default.',
     resizeColumn: 'Drag to adjust the width (double-click restores the default)'
   },

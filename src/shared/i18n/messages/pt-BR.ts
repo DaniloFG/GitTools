@@ -221,14 +221,6 @@ export const ptBR = {
     }
   },
   details: {
-    view: {
-      label: 'Exibir',
-      both: 'Ambos',
-      message: 'Descrição',
-      files: 'Arquivos',
-      stacked: 'Cima e baixo',
-      side: 'Lado a lado'
-    },
     tips: {
       title: 'Dicas rápidas',
       dragCommit: 'Arraste um commit (ou vários, com Ctrl/Shift) para uma branch na barra lateral para fazer cherry-pick.',
@@ -323,19 +315,6 @@ export const ptBR = {
       marked: '{marked} de {total} marcados',
       all: 'Marcar ou desmarcar todos',
       include: 'Incluir no commit'
-    },
-    layout: {
-      restore: 'Restaurar disposição',
-      restoreConfirm: {
-        title: 'Restaurar a disposição desta aba?',
-        message: 'Os painéis da aba Alterações voltam à disposição original.'
-      },
-      moveUp: 'Mover para cima',
-      moveDown: 'Mover para baixo',
-      moveLeft: 'Mover para a esquerda',
-      moveRight: 'Mover para a direita',
-      drag: 'Arraste o cabeçalho para mudar este painel de lugar (botão direito: mais opções)',
-      newColumn: 'Nova coluna'
     }
   },
   actions: {
@@ -659,9 +638,7 @@ export const ptBR = {
     hidePanel: 'Recolher este painel',
     showPanel: 'Mostrar o painel recolhido',
     maximize: 'Maximizar',
-    restoreWindow: 'Restaurar tamanho',
-    collapse: 'Recolher',
-    expand: 'Expandir'
+    restoreWindow: 'Restaurar tamanho'
   },
   settings: {
     editor: {
@@ -906,7 +883,6 @@ export const ptBR = {
     panels: 'Painéis',
     panelsHelp: 'Mostrar ou ocultar qualquer painel',
     resetLayout: 'Restaurar layout padrão',
-    resetLayoutHelp: 'Restaurar layout padrão: volta abas, painéis, colunas e tamanhos às posições originais',
     layoutRestored: 'Layout restaurado ao padrão.',
     resizeColumn: 'Arraste para ajustar a largura (duplo clique volta ao padrão)'
   },

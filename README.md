@@ -41,10 +41,12 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Descartar alterações de arquivos              | Arraste-os para a lixeira (com confirmação).                                                                   |
 | Resolver conflitos                            | **Resolver lado a lado**: atual × resultado × que entra, bloco a bloco (ou o arquivo todo de uma vez), na visão clássica ou em colunas, com os painéis na ordem que você quiser. Depois *Continuar*, *Pular* ou *Abortar*. |
 | Ver o `git log` e o que ainda não foi commitado | A aba **Histórico** é o `git log` em forma visual (passe o mouse no selo *git log*). A **primeira linha** é sempre das alterações ainda não commitadas — com ou sem arquivos alterados: mostra quantos são (e quantos estão no stage) e, com ▸ ou um clique, abre a lista dos arquivos logo abaixo; um clique num arquivo mostra o diff no painel lateral (como nos commits), duplo clique abre numa janela, e *Abrir em Alterações* leva para a aba de commit. |
-| Ler só a descrição ou só os arquivos de um commit | No painel de detalhes do commit, a barra de cima escolhe **Ambos / Descrição / Arquivos** e **Cima e baixo / Lado a lado** — uma descrição enorme não esconde mais a lista de arquivos. A escolha fica lembrada. |
+| Ler só a descrição ou só os arquivos de um commit | A **descrição**, os **arquivos** e o **diff** do commit são painéis separados: deixe à vista só os que quiser (▦ **Painéis**) e ponha lado a lado ou um sobre o outro — uma descrição enorme não esconde a lista de arquivos. O arranjo fica lembrado. |
 | Saber o que aconteceu num arquivo só pelo nome | O nome do arquivo segue a cor do status em todas as listas: laranja = modificado, verde = novo/adicionado, vermelho riscado = removido, azul = renomeado. |
-| Ver o tipo de cada arquivo de relance          | Ícones de arquivo por tipo em todas as listas (⚙ Configurações → Aparência liga ou desliga). Na extensão do VS Code a interface também segue o **tema, as fontes e as cores de status do próprio VS Code**. |
+| Ver o tipo de cada arquivo de relance          | Ícones de arquivo por tipo e a letra da modificação (M, A, D, R…) em todas as listas; ⚙ Configurações → Aparência liga ou desliga cada um separadamente (sem a letra, a cor do nome continua mostrando o que mudou). Na extensão do VS Code a interface também segue o **tema, as fontes e as cores de status do próprio VS Code**. |
 | Achar um commit                               | Campo **Pesquisar** do histórico (`Ctrl+F`): por nome de branch ou tag, mensagem, autor ou hash.                |
+| Ver só a história de algumas branches         | Na barra lateral, marque as **caixas de seleção** das branches (locais ou remotas): o Histórico lista só os commits delas, o que reduz a poluição visual. ☑ no cabeçalho da seção marca/desmarca todas do grupo e *Mostrar todas* volta a listar tudo. Clicar no nome da branch continua mostrando só aquela. |
+| Copiar a mensagem de um commit                | Botão direito no commit → **Copiar mensagem ▸** *Mensagem completa*, *Só o título* ou *Só a descrição* (com vários commits selecionados, copia as mensagens de todos). |
 | Ver os arquivos de um commit sem sair da lista | ▸ ao lado do commit (ou duplo clique, ou `→`): os arquivos abrem logo abaixo da linha.                         |
 | Comparar duas branches, tags ou commits       | Aba **Comparar** (ou botão direito numa branch/commit): commits exclusivos de cada lado e diff dos arquivos, com opção de trazer linhas ou a versão do arquivo. |
 | Saber quem mudou cada linha                   | Aba **Arquivos** → *Blame*. Clique no commit ao lado da linha para abri-lo.                                      |
@@ -114,10 +116,12 @@ se mesmo assim houver conflito, ele aparece no painel de conflitos como em qualq
 - **Diff em nova janela**: ⧉ *Abrir em nova janela* (ou duplo clique / botão direito no arquivo)
   abre o diff numa janela do sistema, que pode ir para outro monitor; ela se atualiza quando volta a
   ter o foco. Vale para os detalhes do commit, Alterações, Comparar e o histórico de um arquivo.
-- **Arquivo inteiro**: o botão ⇕ *Arquivo inteiro* no cabeçalho de qualquer diff mostra o arquivo
-  completo com as alterações destacadas, em vez de só os trechos alterados (a escolha é lembrada).
-- **Ver diff com o painel recolhido**: escolher *Ver diff* (clique ou botão direito) expande o
-  painel do diff se ele estiver recolhido.
+- **Trecho alterado ou arquivo inteiro**: ⚙ Configurações → Editor e diff → *Conteúdo do diff* escolhe se
+  todo diff abre só com os trechos alterados ou com o arquivo completo e as alterações destacadas. O botão
+  ⇕ *Arquivo inteiro* no cabeçalho de qualquer diff troca na hora (vale para todos os diffs e fica
+  lembrado até você mudar o padrão nas configurações).
+- **Ver o diff com o painel escondido**: escolher um arquivo (clique ou botão direito → *Ver diff*) traz o
+  painel do diff à frente se ele estava escondido ou atrás de outra aba.
 - **Tags**: crie uma tag no commit atual (botão *Tag* na barra), em qualquer commit ou branch (botão
   direito) ou pelo ＋ da seção Tags; com mensagem, a tag é anotada.
 - **Diff "cima e baixo" ou "lado a lado"**: todo diff abre no modo escolhido em ⚙ Configurações →
@@ -129,7 +133,8 @@ se mesmo assim houver conflito, ele aparece no painel de conflitos como em qualq
   computador, o executável de qualquer outro ou
   digite o comando (ex.: `meu-editor --reuse-window`, `/Applications/MeuEditor.app`). O botão **Testar** abre o
   projeto e mostra o erro se o editor não iniciar. O botão *Abrir no editor* da barra abre o projeto
-  inteiro nele.
+  inteiro nele. Na **extensão do VS Code** não há editor a escolher: os arquivos abrem no próprio editor
+  do VS Code, ao lado do painel do GitTools.
 
 ### Log do git
 
@@ -224,51 +229,47 @@ A mudança é aplicada na hora, como prévia, e só é gravada ao clicar em *Sal
 | --- | --- |
 | ![Interface em árabe](docs/screenshots/idioma-arabe-rtl.png) | ![Interface em chinês](docs/screenshots/idioma-chines.png) |
 
-### Layout ajustável
+### Layout livre
 
-Nenhuma área tem tamanho nem lugar fixo (como no VS Code): cada tela se adapta ao que você quer ler.
+Nenhuma tela é "pai" ou "filha" de outra: **cada painel é independente** e pode ficar em qualquer lugar da
+janela, junto de qualquer outro. A lista de commits, a descrição, os arquivos e o diff do commit, as listas
+*Não staged* e *Staged* (ou a lista com caixas de seleção), a caixa de commit, o diff das alterações, os
+arquivos, o blame, as versões de um arquivo, a comparação e o log do git são painéis separados.
 
-| Arrastar uma aba para a borda | Arrastar um painel pela alça ⠿ |
+| Soltar no meio de outro painel: vira aba dele | Soltar junto de uma borda: divide o painel nesse lado |
 | --- | --- |
-| ![Arrastando a aba Alterações para a direita](docs/screenshots/layout-arrastar-aba.png) | ![Arrastando o painel de diff para baixo](docs/screenshots/layout-arrastar-painel.png) |
+| ![Arrastando a aba do diff para o meio da lista de commits](docs/screenshots/layout-arrastar-aba.png) | ![Arrastando a aba do diff para o lado direito da lista de commits](docs/screenshots/layout-arrastar-painel.png) |
 
-![Alterações ao lado do histórico](docs/screenshots/layout-aba-na-direita.png)
+![Histórico ao lado de Alterações, com o diff embaixo](docs/screenshots/layout-aba-na-direita.png)
 
-- **Áreas e abas como no VS Code**: a janela tem as áreas *esquerda* (Branches), *centro*
-  (Histórico, Alterações, Arquivos, Comparar), *direita* e *embaixo* (Log do git). Arraste uma aba
-  para entre outras abas, para outra área ou para a borda esquerda, direita ou de baixo da janela —
-  um destaque mostra onde ela vai ficar. Assim dá para ver, por exemplo, Alterações ao lado do
-  Histórico. Botão direito numa aba → *Mover para…*.
-- **Arrastar painéis para qualquer lado**: cada painel tem uma alça ⠿ na borda; arraste-a e solte no
-  lado desejado do outro painel (em cima, embaixo, à esquerda ou à direita) — não é preciso descobrir
-  combinações de botões. Vale para a lista e os detalhes do histórico, os arquivos e o diff,
-  Alterações, Comparar, Arquivos e o Studio. Lado a lado sem espaço (ex.: numa área estreita), os
-  painéis ficam um em cima do outro automaticamente.
-- **Ações no lado direito**: os botões de cada componente (barra superior, cabeçalho do diff, detalhes
-  do commit, grupos de Alterações, avisos de operação…) ficam sempre no fim — o lado direito — do
-  próprio componente; em árabe e outros idiomas da direita para a esquerda tudo é espelhado.
-- **⊞ Restaurar layout** na barra superior volta todas as áreas, abas e painéis ao padrão (também em
-  ⚙ Configurações → Aparência e no botão direito de uma aba).
-- **Cruzamento de divisórias**: onde duas divisórias se encontram, o cursor vira ✥ e arrastar ali
-  redimensiona as duas de uma vez.
+- **Qualquer painel em qualquer lugar**: arraste a aba de um painel e solte no *meio* de outro painel (ela
+  vira uma aba dele), *junto de uma borda* dele (o painel é dividido e o seu fica nesse lado — esquerda,
+  direita, em cima ou embaixo) ou na *borda da janela* (ocupa toda a altura ou a largura). Um destaque
+  mostra onde ela vai ficar; soltar entre as abas de um painel só as reordena. Quando um painel fica sem
+  abas ele some e os vizinhos ocupam o espaço.
+- **Telas**: os botões **Histórico / Alterações / Arquivos / Comparar** da barra superior (e
+  `Ctrl+1` … `Ctrl+4`) trazem à frente os painéis de cada tela, onde quer que você os tenha deixado —
+  são atalhos, não amarras. Clicar num arquivo ou commit também mostra o painel do diff, se ele estava
+  escondido ou atrás de outra aba.
+- **Botão direito numa aba**: *Separar para o lado* (esquerda, direita, em cima, embaixo), *Encaixar na
+  borda da janela*, *Ocultar este painel* e *Restaurar layout padrão* — os mesmos movimentos do arrastar,
+  para quem prefere o menu.
+- **▦ Painéis** (barra superior): mostra ou esconde qualquer painel, um a um. `Ctrl+B` mostra/oculta a
+  barra de Branches. Os painéis escondidos voltam para o lugar onde estavam.
+- **Divisórias**: arraste para redimensionar; duplo clique (ou `Enter`) deixa os dois lados iguais; com o
+  foco na divisória, as setas ajustam o tamanho. Em janelas pequenas os painéis encolhem juntos.
+- **Restaurar layout**: ▦ Painéis → *Restaurar layout padrão* (ou ⚙ Configurações → Aparência), com
+  confirmação. O GitTools **lembra** do arranjo escolhido.
+- **Ações no lado direito**: os botões de cada componente (cabeçalho do diff, detalhes do commit, grupos de
+  Alterações, avisos de operação…) ficam sempre no fim — o lado direito — do próprio componente; em
+  árabe e outros idiomas da direita para a esquerda tudo é espelhado (inclusive os lados do arrastar).
 - **Seções reordenáveis**: arraste as seções da barra lateral para mudar a ordem.
-- **Janelas móveis**: arraste o título de qualquer diálogo para movê-lo; ⌖ volta ao centro.
-
-- **Divisórias arrastáveis** entre a barra lateral, a lista e os detalhes — também entre os arquivos
-  e o diff de um commit, a lista e o diff do histórico do arquivo, a lista de commits e as opções do
-  Cherry-pick Studio e a navegação das Configurações. Duplo clique (ou `Enter`) volta ao tamanho
-  padrão; com o foco na divisória, as setas ajustam o tamanho pelo teclado.
-- **Recolher painéis**: os botões ◂ ▸ na divisória escondem um dos lados para o outro ocupar todo o
-  espaço (ou arraste a divisória até a borda). `Ctrl+B` mostra/oculta a barra lateral. Os botões
-  crescem com o mouse em cima; o tamanho deles e a espessura das divisórias são escolhidos em
-  ⚙ Configurações → Aparência.
-- **Janelas redimensionáveis**: diálogos (Studio, editor de conflitos, rebase, configurações…) podem
-  ser redimensionados pelas bordas e maximizados pelo botão □ ou com duplo clique no título.
+- **Janelas móveis e redimensionáveis**: diálogos (Studio, editor de conflitos, rebase, configurações…)
+  se movem pelo título (⌖ volta ao centro), se redimensionam pelas bordas e maximizam pelo botão □ ou com
+  duplo clique no título. Dentro deles, as divisórias também são arrastáveis (duplo clique volta ao padrão)
+  e os botões ◂ ▸ recolhem um dos lados.
 - **Painéis ajustáveis** no editor de conflitos (atual × resultado × que entra, em colunas ou na visão
-  clássica) e coluna do blame ajustável; grupos de arquivos em Alterações e seções da barra lateral
-  podem ser recolhidos.
-- O GitTools **lembra** do layout escolhido; ⊞ na barra superior (ou ⚙ Configurações → Aparência →
-  "Restaurar layout") volta tudo ao padrão. Em janelas estreitas, as barras quebram linha e colunas secundárias saem da lista.
+  clássica) e coluna do blame ajustável.
 
 ### Configurações
 
@@ -276,8 +277,8 @@ Nenhuma área tem tamanho nem lugar fixo (como no VS Code): cada tela se adapta 
 
 Todas as opções gerais ficam num único lugar, separadas em seções: **Geral** (idioma),
 **Notificações** (posição e tamanho dos avisos), **Identidade e remotes** (nome e e-mail dos commits, remotes do repositório), **Editor e diff** (editor
-para abrir arquivos, com teste, e modo do diff),
-**Aparência** (tema, tamanho, espessura das divisórias, tamanho dos botões de recolher/expandir e
+para abrir arquivos, com teste, conteúdo do diff — trecho alterado ou arquivo inteiro — e modo do diff),
+**Aparência** (tema, ícones de arquivo, letras das modificações M/A/D, tamanho, espessura das divisórias, tamanho dos botões de recolher/expandir e
 restaurar o layout dos painéis), **Atalhos de teclado** (com pesquisa pelo nome da ação ou pelas
 próprias teclas: clique em *Gravar teclas* e pressione a combinação) e **Sobre** (versões do GitTools, do git e
 do sistema, local do arquivo de configurações e "Restaurar padrões").
@@ -325,7 +326,7 @@ conflitos lado a lado, rebase interativo, remotes…) num painel, com o git da s
   (`git tag v0.5.1 && git push origin v0.5.1`, com a versão da tag) e manualmente em *Actions → Run
   workflow*. Cada publicação nova cria o release `v<versão>` com o `.vsix` anexado. Configuração única:
   em *Settings → Secrets and variables → Actions* crie o secret `VSCE_PAT` (token do Marketplace, escopo
-  *Marketplace → Manage*); o secret opcional `OVSX_PAT` publica também no Open VSX (VSCodium, Cursor).
+  *Marketplace → Manage*); o secret opcional `OVSX_PAT` publica também no Open VSX.
   Sem o secret o workflow só anexa o `.vsix` ao release do GitHub.
 - **Como é feito**: a lógica do aplicativo (repositório aberto, configurações, log de comandos,
   remotes, clone…) ficou num `Backend` em `src/backend`, que o Electron e a extensão usam; cada um só
