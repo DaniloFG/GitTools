@@ -1,0 +1,77 @@
+name: Publicar extensão do VS Code
+
+# Ao criar uma tag "v0.5.1", o GitHub compila, testa, empacota e publica a extensão no VS Code
+# Marketplace (e, se houver o token, no Open VSX). A versão publicada é a da tag.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão a publicar (ex.: 0.5.1). Em branco usa a do extension/package.json.'
+        required: false
+
+permissions:
+  contents: write # anexar o .vsix ao release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: git config --global user.name ci && git config --global user.email ci@example.com
+      - run: npm run typecheck
+      - run: npm test
+
+      - name: Definir a versão da extensão
+        id: version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ] && [ "${{ github.ref_type }}" = "tag" ]; then VERSION="${GITHUB_REF_NAME#v}"; fi
+          if [ -n "$VERSION" ]; then
+            node -e "const fs=require('fs');const p='extension/package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.version=process.argv[1];fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n')" "$VERSION"
+          fi
+          echo "version=$(node -p "require('./extension/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - run: npm run package:extension
+        env:
+          NODE_ENV: production
+
+      - name: Publicar no VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then
+            echo "::warning::Secret VSCE_PAT não configurado: a extensão NÃO foi publicada no Marketplace (o .vsix foi anexado ao release)."
+          else
+            cd extension && npx vsce publish --no-dependencies --packagePath ../release/gittools-vscode-${{ steps.version.outputs.version }}.vsix
+          fi
+
+      - name: Publicar no Open VSX (VSCodium, Cursor…)
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -n "$OVSX_PAT" ]; then
+            npx ovsx publish release/gittools-vscode-${{ steps.version.outputs.version }}.vsix -p "$OVSX_PAT"
+          else
+            echo "Secret OVSX_PAT não configurado: Open VSX ignorado."
+          fi
+
+      - name: Anexar o .vsix ao release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.vsix
+          generate_release_notes: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gittools-vscode
+          path: release/*.vsix

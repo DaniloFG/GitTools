@@ -288,6 +288,12 @@ conflitos lado a lado, rebase interativo, remotes…) num painel, com o git da s
   segue o do VS Code; o diff em nova janela abre outro painel.
 - **Gerar o `.vsix`**: `npm run package:extension` cria `release/gittools-vscode-<versão>.vsix` (instale
   com `code --install-extension release/gittools-vscode-*.vsix`). `npm run build:extension` só compila.
+- **Publicar uma versão** (automático): crie uma tag — `git tag v0.5.1 && git push origin v0.5.1`. O
+  workflow `publish-extension.yml` testa, empacota e publica no VS Code Marketplace; os usuários
+  recebem a atualização sozinhos. A versão publicada é a da tag. Configuração única: em *Settings →
+  Secrets and variables → Actions* crie o secret `VSCE_PAT` (token do Marketplace, escopo
+  *Marketplace → Manage*); o secret opcional `OVSX_PAT` publica também no Open VSX (VSCodium, Cursor).
+  Sem o secret o workflow só anexa o `.vsix` ao release do GitHub.
 - **Como é feito**: a lógica do aplicativo (repositório aberto, configurações, log de comandos,
   remotes, clone…) ficou num `Backend` em `src/backend`, que o Electron e a extensão usam; cada um só
   fornece o `BackendHost` (diálogos, abrir arquivos, janelas). No webview, `src/renderer/src/vscodeBridge.ts`
