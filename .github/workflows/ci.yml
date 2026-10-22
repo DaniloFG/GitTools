@@ -24,3 +24,13 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: npm run build:extension
+      - name: Empacotar a extensão do VS Code
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run package:extension
+      - name: Guardar o .vsix
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gittools-vscode
+          path: release/*.vsix

@@ -274,6 +274,32 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 
 No macOS, `Ctrl` corresponde a `⌘`. Todos podem ser trocados em ⚙ Configurações.
 
+## Extensão do VS Code
+
+O GitTools também roda **dentro do VS Code**: a mesma interface (histórico com grafo, Cherry-pick Studio,
+conflitos lado a lado, rebase interativo, remotes…) num painel, com o git da sua máquina. Veja
+[`extension/README.md`](extension/README.md).
+
+- **Abrir**: `Ctrl+Alt+G` (`⌘⌥G` no macOS), o botão **⑂ GitTools** na barra de status ou o ícone no título
+  do *Controle do código-fonte*. A pasta aberta no VS Code é usada se for um repositório; também há
+  **GitTools: Abrir um repositório…**, **Abrir esta pasta no GitTools** (menu do Explorer) e
+  **Ver as alterações deste arquivo no GitTools** (título do editor).
+- Os arquivos que o GitTools abre vão para o **editor do próprio VS Code**, ao lado do painel; o tema
+  segue o do VS Code; o diff em nova janela abre outro painel.
+- **Gerar o `.vsix`**: `npm run package:extension` cria `release/gittools-vscode-<versão>.vsix` (instale
+  com `code --install-extension release/gittools-vscode-*.vsix`). `npm run build:extension` só compila.
+- **Publicar uma versão** (automático): crie uma tag — `git tag v0.5.1 && git push origin v0.5.1`. O
+  workflow `publish-extension.yml` testa, empacota e publica no VS Code Marketplace; os usuários
+  recebem a atualização sozinhos. A versão publicada é a da tag. Configuração única: em *Settings →
+  Secrets and variables → Actions* crie o secret `VSCE_PAT` (token do Marketplace, escopo
+  *Marketplace → Manage*); o secret opcional `OVSX_PAT` publica também no Open VSX (VSCodium, Cursor).
+  Sem o secret o workflow só anexa o `.vsix` ao release do GitHub.
+- **Como é feito**: a lógica do aplicativo (repositório aberto, configurações, log de comandos,
+  remotes, clone…) ficou num `Backend` em `src/backend`, que o Electron e a extensão usam; cada um só
+  fornece o `BackendHost` (diálogos, abrir arquivos, janelas). No webview, `src/renderer/src/vscodeBridge.ts`
+  faz o papel do preload, trocando mensagens com a extensão (`extension/src/extension.ts`). Os testes usam
+  uma versão mínima da API do VS Code (`tests/support/vscode.ts`).
+
 ## Como rodar
 
 Pré-requisitos: [Node.js](https://nodejs.org/) 20+ e [Git](https://git-scm.com/) 2.23+ no `PATH`.
@@ -305,6 +331,7 @@ src/
 │   ├── diff.ts         Lê diffs unificados e monta patches parciais (linhas escolhidas)
 │   └── repository.ts   Status, branches, log, stage, merge, rebase (inclusive interativo), cherry-pick
 │                       (branch/commits/arquivos/linhas), conflitos, comparação, blame, histórico, stash, remotos
+├── backend/            Lógica comum ao aplicativo e à extensão (repositório aberto, configurações, log, clone…)
 ├── main/               Processo principal do Electron: janela, diálogos, IPC
 ├── preload/            Ponte segura (contextIsolation) exposta como window.gittools
 ├── shared/             Tipos, contrato da API, marcadores de conflito, configurações e idiomas

@@ -548,6 +548,7 @@ export const zhCN: Messages = {
       diffLayout: '默认差异显示方式',
       clear: '不使用',
       browse: '浏览可执行文件…',
+      vscodeNote: '在 VS Code 中，文件会在 VS Code 自己的编辑器里打开，因此这里无需选择编辑器。下面的差异显示模式适用于 GitTools。',
       custom: '手动选择',
       noneFound: '未找到已知的编辑器。',
       detecting: '正在查找已安装的编辑器…',

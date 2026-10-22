@@ -571,6 +571,7 @@ export const ptBR = {
       diffLayout: 'Modo padrão do diff',
       clear: 'Não usar nenhum',
       browse: 'Procurar executável…',
+      vscodeNote: 'Dentro do VS Code os arquivos abrem no próprio editor do VS Code, então não há editor para escolher aqui. O modo do diff abaixo vale para o GitTools.',
       custom: 'Escolhido manualmente',
       noneFound: 'Nenhum editor conhecido foi encontrado.',
       detecting: 'Procurando editores instalados…',

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import type { RepoInfo } from '../../shared/types'
 import { applySettings, resolveLocale } from './appearance'
+import { insideVsCode } from './vscodeBridge'
 import {
   AppContext,
   type AppContextValue,
@@ -255,7 +256,8 @@ export function App() {
       },
       openRebase: (sha) => setRebaseFrom(sha),
       openInEditor: (path = '.') => {
-        if (!settings.editor) {
+        // No VS Code os arquivos abrem no próprio editor dele: não há editor a escolher.
+        if (!settings.editor && !insideVsCode()) {
           toast('info', t('editor.chooseFirst'))
           setSettingsOpen('editor')
           return

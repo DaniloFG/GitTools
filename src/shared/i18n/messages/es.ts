@@ -570,6 +570,7 @@ export const es: Messages = {
       diffLayout: 'Modo predeterminado del diff',
       clear: 'No usar ninguno',
       browse: 'Buscar ejecutable…',
+      vscodeNote: 'Dentro de VS Code los archivos se abren en el propio editor de VS Code, así que no hay editor que elegir aquí. El modo del diff de abajo vale para GitTools.',
       custom: 'Elegido manualmente',
       noneFound: 'No se encontró ningún editor conocido.',
       detecting: 'Buscando editores instalados…',

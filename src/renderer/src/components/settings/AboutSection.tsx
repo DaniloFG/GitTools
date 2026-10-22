@@ -9,8 +9,9 @@ export function AboutSection({ replace }: SettingsSectionProps) {
     ? [
         [t('settings.about.version'), info.version],
         [t('settings.about.git'), info.git ?? t('settings.about.gitMissing')],
-        ['Electron', info.electron],
-        ['Chromium', info.chrome],
+        ...(info.vscode ? ([['VS Code', info.vscode]] as [string, string][]) : []),
+        ...(info.electron ? ([['Electron', info.electron]] as [string, string][]) : []),
+        ...(info.chrome ? ([['Chromium', info.chrome]] as [string, string][]) : []),
         ['Node.js', info.node],
         [t('settings.about.platform'), info.platform],
         [t('settings.about.settingsFile'), info.settingsFile]
