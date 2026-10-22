@@ -18,6 +18,11 @@ Tudo o que o aplicativo faz está aqui: histórico com grafo, Cherry-pick Studio
 a lado, rebase interativo, comparar branches, blame, remotes, log dos comandos git e 6 idiomas. O tema
 segue o do VS Code (em *Configurações → Aparência* dá para forçar claro ou escuro).
 
+## Instalar
+
+Procure por **GitTools** (publisher *DaniloFG*) na aba de extensões do VS Code, ou rode
+`code --install-extension DaniloFG.gittools-vscode`. As atualizações chegam automaticamente.
+
 ## Requisitos
 
 [Git](https://git-scm.com/) 2.23 ou mais novo no `PATH`. Não usa nenhuma conta nem serviço externo: todas as
