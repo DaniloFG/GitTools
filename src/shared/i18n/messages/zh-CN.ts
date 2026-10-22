@@ -159,6 +159,24 @@ export const zhCN: Messages = {
     selected: { other: '已选 {count} 个' },
     hint: 'Ctrl/Shift+点击可多选 · ▸ 或双击显示文件 · 拖到分支上',
     empty: '还没有提交。',
+    log: {
+      chip: 'git log',
+      help: '此历史记录就是可视化的 “git log”：每一行是一次提交，图形显示各个分支。相当于 git log --graph --all --decorate，最多 500 个提交。',
+      tab: '历史记录 — 可视化的 git log'
+    },
+    wip: {
+      title: '未提交的更改',
+      clean: '没有更改 — 全部已提交',
+      unstaged: '{count} 个未暂存',
+      staged: '{count} 个已暂存',
+      conflicts: '{count} 个冲突',
+      open: '在“更改”中打开',
+      openHelp: '前往“更改”标签页选择要提交的内容',
+      fileHelp: '双击在窗口中查看差异',
+      help: '点击显示或隐藏已更改的文件（尚未提交）',
+      stagedTag: '已暂存',
+      partialTag: '部分'
+    },
     scope: { all: '所有分支', head: '当前分支', ref: '分支：{ref}' },
     badge: { remote: '远程分支', local: '本地分支 — 可拖动，也可把项目拖放到这里' },
     search: {

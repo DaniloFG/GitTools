@@ -160,6 +160,24 @@ export const en: Messages = {
     selected: { one: '{count} selected', other: '{count} selected' },
     hint: 'Ctrl/Shift+click to select several · ▸ or double-click shows the files · drag onto a branch',
     empty: 'No commits yet.',
+    log: {
+      chip: 'git log',
+      help: 'This history is "git log" in visual form: every row is a commit and the graph shows the branches. It is the same as git log --graph --all --decorate, up to 500 commits.',
+      tab: 'History — git log in visual form'
+    },
+    wip: {
+      title: 'Uncommitted changes',
+      clean: 'No changes — everything is committed',
+      unstaged: '{count} unstaged',
+      staged: '{count} staged',
+      conflicts: '{count} conflicted',
+      open: 'Open in Changes',
+      openHelp: 'Go to the Changes tab to choose what to commit',
+      fileHelp: 'Double-click to see the diff in a window',
+      help: 'Click to show or hide the changed files (not committed yet)',
+      stagedTag: 'staged',
+      partialTag: 'partial'
+    },
     scope: { all: 'All branches', head: 'Current branch', ref: 'Branch: {ref}' },
     badge: { remote: 'Remote branch', local: 'Local branch — drag it or drop items here' },
     search: {

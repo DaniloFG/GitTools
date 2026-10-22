@@ -161,6 +161,24 @@ export const ptBR = {
     selected: { one: '{count} selecionado', other: '{count} selecionados' },
     hint: 'Ctrl/Shift+clique para selecionar vários · ▸ ou duplo clique mostra os arquivos · arraste para uma branch',
     empty: 'Nenhum commit ainda.',
+    log: {
+      chip: 'git log',
+      help: 'Este histórico é o "git log" em forma visual: cada linha é um commit e o grafo mostra as branches. Equivale a git log --graph --all --decorate, com até 500 commits.',
+      tab: 'Histórico — o git log em forma visual'
+    },
+    wip: {
+      title: 'Alterações não commitadas',
+      clean: 'Nenhuma alteração — tudo commitado',
+      unstaged: '{count} não staged',
+      staged: '{count} staged',
+      conflicts: '{count} em conflito',
+      open: 'Abrir em Alterações',
+      openHelp: 'Ir para a aba Alterações para escolher o que commitar',
+      fileHelp: 'Duplo clique para ver o diff em uma janela',
+      help: 'Clique para ver ou esconder os arquivos alterados (ainda não commitados)',
+      stagedTag: 'staged',
+      partialTag: 'parcial'
+    },
     scope: { all: 'Todas as branches', head: 'Branch atual', ref: 'Branch: {ref}' },
     badge: { remote: 'Branch remota', local: 'Branch local — arraste ou solte itens aqui' },
     search: {

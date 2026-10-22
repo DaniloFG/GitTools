@@ -374,6 +374,7 @@ export function App() {
     },
     history: {
       label: t('tabs.history'),
+      help: t('history.log.tab'),
       render: () => (
         <Split id="history" initial={0.55} min={[280, 280]} labels={[t('workbench.panes.commits'), t('workbench.panes.details')]}>
           <CommitList

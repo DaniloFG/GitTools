@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FileDiff, FileStatus, LineKey, LineStats as Stats, RepoStatus } from '../../../shared/types'
+import type { FileDiff, FileStatus, LineKey } from '../../../shared/types'
+import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
 import { parseChangesMode, type ChangesMode, type SectionId } from '../changesLayout'
 import { useApp } from '../context'
 import { currentDrag, endDrag, startDrag } from '../dnd'
@@ -18,34 +19,7 @@ import { LineStats } from './LineStats'
 type Area = 'unstaged' | 'staged'
 type Active = { area: Area; path: string }
 
-/** Um arquivo com tudo o que se sabe dele: a parte no stage e a parte fora dele. */
-interface Entry {
-  path: string
-  origPath?: string
-  staged?: FileStatus
-  unstaged?: FileStatus
-}
-
-/** Une as duas listas do git: um arquivo com partes nos dois lados aparece uma vez só. */
-function buildEntries(status: RepoStatus): Entry[] {
-  const byPath = new Map<string, Entry>()
-  for (const f of status.unstaged) byPath.set(f.path, { path: f.path, origPath: f.origPath, unstaged: f })
-  for (const f of status.staged) {
-    const entry = byPath.get(f.path)
-    if (entry) {
-      entry.staged = f
-      entry.origPath ??= f.origPath
-    } else byPath.set(f.path, { path: f.path, origPath: f.origPath, staged: f })
-  }
-  return [...byPath.values()]
-}
-
-const sumStats = (a?: Stats, b?: Stats): Stats => {
-  if (a?.binary || b?.binary) return { binary: true }
-  const known = [a, b].filter((s) => s && (s.additions !== undefined || s.deletions !== undefined))
-  if (!known.length) return {}
-  return { additions: (a?.additions ?? 0) + (b?.additions ?? 0), deletions: (a?.deletions ?? 0) + (b?.deletions ?? 0) }
-}
+type Entry = ChangeEntry
 
 export function ChangesView() {
   const { data, run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow } = useApp()

@@ -160,6 +160,24 @@ export const es: Messages = {
     selected: { one: '{count} seleccionado', other: '{count} seleccionados' },
     hint: 'Ctrl/Shift+clic para seleccionar varios · ▸ o doble clic muestra los archivos · arrastra a una rama',
     empty: 'Todavía no hay commits.',
+    log: {
+      chip: 'git log',
+      help: 'Este historial es el "git log" en forma visual: cada fila es un commit y el grafo muestra las ramas. Equivale a git log --graph --all --decorate, con hasta 500 commits.',
+      tab: 'Historial — el git log en forma visual'
+    },
+    wip: {
+      title: 'Cambios sin commit',
+      clean: 'Sin cambios — todo está en un commit',
+      unstaged: '{count} sin stage',
+      staged: '{count} en stage',
+      conflicts: '{count} en conflicto',
+      open: 'Abrir en Cambios',
+      openHelp: 'Ir a la pestaña Cambios para elegir qué commitear',
+      fileHelp: 'Doble clic para ver el diff en una ventana',
+      help: 'Haz clic para mostrar u ocultar los archivos modificados (aún sin commit)',
+      stagedTag: 'stage',
+      partialTag: 'parcial'
+    },
     scope: { all: 'Todas las ramas', head: 'Rama actual', ref: 'Rama: {ref}' },
     badge: { remote: 'Rama remota', local: 'Rama local — arrástrala o suelta elementos aquí' },
     search: {

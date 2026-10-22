@@ -163,6 +163,24 @@ export const hi: Messages = {
     selected: { one: '{count} चुना गया', other: '{count} चुने गए' },
     hint: 'कई चुनने के लिए Ctrl/Shift+क्लिक · ▸ या डबल क्लिक से फ़ाइलें दिखें · किसी branch पर खींचें',
     empty: 'अभी तक कोई commit नहीं।',
+    log: {
+      chip: 'git log',
+      help: 'यह इतिहास दृश्य रूप में “git log” है: हर पंक्ति एक commit है और ग्राफ़ branches दिखाता है। यह git log --graph --all --decorate के बराबर है, अधिकतम 500 commit तक।',
+      tab: 'इतिहास — दृश्य रूप में git log'
+    },
+    wip: {
+      title: 'बिना commit किए बदलाव',
+      clean: 'कोई बदलाव नहीं — सब कुछ commit हो चुका है',
+      unstaged: '{count} unstaged',
+      staged: '{count} staged',
+      conflicts: '{count} में conflict',
+      open: 'बदलाव में खोलें',
+      openHelp: 'क्या commit करना है यह चुनने के लिए बदलाव टैब पर जाएँ',
+      fileHelp: 'diff को अलग विंडो में देखने के लिए डबल क्लिक करें',
+      help: 'बदली हुई फ़ाइलें (अभी commit नहीं) दिखाने या छिपाने के लिए क्लिक करें',
+      stagedTag: 'staged',
+      partialTag: 'आंशिक'
+    },
     scope: { all: 'सभी branches', head: 'मौजूदा branch', ref: 'Branch: {ref}' },
     badge: { remote: 'Remote branch', local: 'लोकल branch — इसे खींचें या यहाँ आइटम छोड़ें' },
     search: {
