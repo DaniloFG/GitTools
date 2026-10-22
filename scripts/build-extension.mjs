@@ -1,7 +1,7 @@
 // Gera extension/dist: a extensão (esbuild) e a interface do webview (vite).
 import { build as esbuild } from 'esbuild'
 import { build as vite } from 'vite'
-import { copyFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync } from 'node:fs'
 
 await vite({ configFile: 'vite.webview.config.ts', logLevel: 'warn' })
 
@@ -19,3 +19,5 @@ await esbuild({
 })
 
 copyFileSync('LICENSE', 'extension/LICENSE')
+// O vsce grava o .vsix aqui e não cria a pasta.
+mkdirSync('release', { recursive: true })
