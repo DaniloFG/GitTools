@@ -53,7 +53,8 @@ export interface AppContextValue {
   /** Abre o diff de um arquivo numa janela própria do sistema. */
   openDiffWindow(request: DiffWindowRequest): void
   /** Volta todos os painéis, abas e colunas às posições e tamanhos padrão. */
-  resetLayout(): void
+  /** Pergunta antes de voltar tudo ao padrão. */
+  resetLayout(): void | Promise<void>
   /** Abre o editor de conflitos lado a lado para um arquivo. */
   openConflict(path: string): void
   openCompare(request: CompareRequest): void

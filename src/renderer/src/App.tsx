@@ -15,7 +15,7 @@ import {
 import { CherryPickStudio } from './components/CherryPickStudio'
 import { ChangesView } from './components/ChangesView'
 import { CloneDialog } from './components/CloneDialog'
-import { CommitDetailsPanel, type FileFocus } from './components/CommitDetails'
+import { CommitDetailsPanel, type FileFocus, type WipFocus } from './components/CommitDetails'
 import { CommitList } from './components/CommitList'
 import { CompareView } from './components/CompareView'
 import { ConflictEditor } from './components/ConflictEditor'
@@ -61,6 +61,7 @@ export function App() {
   const [scope, setScope] = useState<HistoryScope>({ kind: 'all' })
   const [selected, setSelected] = useState<string[]>([])
   const [fileFocus, setFileFocus] = useState<FileFocus | null>(null)
+  const [wipFocus, setWipFocus] = useState<WipFocus | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [dialog, setDialog] = useState<DialogState | null>(null)
@@ -132,10 +133,20 @@ export function App() {
     [setWorkbench]
   )
 
-  const resetLayout = useCallback(() => {
+  const askConfirm = useCallback((request: Parameters<AppContextValue['confirm']>[0]) => new Promise<boolean>((resolve) => setDialog({ kind: 'confirm', ...request, resolve })), [])
+
+  /** Restaurar o layout apaga o arranjo que o usuário montou: pergunta antes. */
+  const resetLayout = useCallback(async () => {
+    const ok = await askConfirm({
+      title: t('layout.resetConfirm.title'),
+      message: t('layout.resetConfirm.message'),
+      confirmLabel: t('layout.resetConfirm.confirm'),
+      danger: true
+    })
+    if (!ok) return
     clearLayout()
     toast('success', t('workbench.layoutRestored'))
-  }, [toast])
+  }, [toast, askConfirm])
 
   /**
    * Baixa o estado do repositório. Só um refresh roda por vez: pedidos que chegam no meio (foco da janela,
@@ -265,7 +276,7 @@ export function App() {
       refresh,
       run,
       toast,
-      confirm: (r) => new Promise((resolve) => setDialog({ kind: 'confirm', ...r, resolve })),
+      confirm: askConfirm,
       prompt: (r) => new Promise((resolve) => setDialog({ kind: 'prompt', ...r, resolve })),
       choose: (r) => new Promise((resolve) => setDialog({ kind: 'choice', ...r, resolve })),
       askPush: (r) => new Promise((resolve) => setDialog({ kind: 'push', ...r, resolve })),
@@ -276,6 +287,7 @@ export function App() {
       },
       openStudio: (request) => setStudio(request),
       selectCommit: (sha) => {
+        setWipFocus(null)
         setView('history')
         setSelected([sha])
       },
@@ -307,7 +319,7 @@ export function App() {
     }
     // locale: força novos textos nos componentes quando o idioma muda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repo, data, busy, refresh, run, toast, settings, locale, setView, openDiffWindow, resetLayout])
+  }, [repo, data, busy, refresh, run, toast, settings, locale, setView, openDiffWindow, resetLayout, askConfirm])
 
   const settingsDialogs = (
     <>
@@ -352,10 +364,21 @@ export function App() {
 
   /** Abre o diff de um arquivo no painel de detalhes, mostrando os painéis se estiverem recolhidos. */
   const openFileInDetails = (sha: string, path: string) => {
+    setWipFocus(null)
     setSelected([sha])
     setFileFocus((prev) => ({ sha, path, n: (prev?.n ?? 0) + 1 }))
     revealPane('history', 'second')
     revealPane('commit-details', 'second')
+    setView('history')
+  }
+
+  /** Abre o diff de um arquivo não commitado no painel de detalhes, mostrando os painéis se estiverem recolhidos. */
+  const openWipFileInDetails = (path: string) => {
+    setSelected([])
+    setWipFocus((prev) => ({ path, n: (prev?.n ?? 0) + 1 }))
+    revealPane('history', 'second')
+    revealPane('commit-details', 'second')
+    revealPane('wip-details', 'second')
     setView('history')
   }
 
@@ -374,17 +397,22 @@ export function App() {
     },
     history: {
       label: t('tabs.history'),
+      help: t('history.log.tab'),
       render: () => (
         <Split id="history" initial={0.55} min={[280, 280]} labels={[t('workbench.panes.commits'), t('workbench.panes.details')]}>
           <CommitList
             scope={scope}
             onScope={setScope}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={(shas) => {
+              setWipFocus(null)
+              setSelected(shas)
+            }}
             onOpenFile={openFileInDetails}
             onOpenFileWindow={(sha, path) => openDiffWindow({ source: { kind: 'commit', sha }, path, title: `${path} · ${shortSha(sha)}` })}
+            onOpenWipFile={openWipFileInDetails}
           />
-          <CommitDetailsPanel selected={selected} focus={fileFocus} />
+          <CommitDetailsPanel selected={selected} focus={fileFocus} wip={wipFocus} />
         </Split>
       )
     },

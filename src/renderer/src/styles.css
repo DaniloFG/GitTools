@@ -617,7 +617,8 @@ body.resizing * {
   flex: 1;
   overflow-y: auto;
 }
-.commit-row {
+.commit-row,
+.wip-row {
   display: flex;
   align-items: center;
   height: 30px;
@@ -1196,18 +1197,6 @@ mark {
 
 /* ------------------------------------------------------------- alterações */
 
-.changes {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px;
-  overflow-y: auto;
-}
-.file-group {
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 8px;
-}
 .group-header {
   display: flex;
   flex-wrap: wrap;
@@ -1215,31 +1204,269 @@ mark {
   gap: 6px;
   margin-bottom: 6px;
 }
-.group-toggle {
+
+/* ----------------------------------------------------------- alterações */
+
+.changes-layout-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.changes-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 6px 10px;
+}
+.changes-mode button {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+.changes-layout {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  border-top: 1px solid var(--border);
+}
+.stack {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+.stack-row {
+  flex-direction: row;
+}
+.stack-column {
+  flex-direction: column;
+}
+.stack-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.stack-item > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+/* Linha fina entre painéis; só ganha cor e área de arrasto quando dá para redimensionar. */
+.stack-divider {
+  position: relative;
+  flex: 0 0 var(--divider-size, 1px);
+  background: var(--border);
+  touch-action: none;
+  transition: background-color 0.12s;
+}
+.stack-divider.resizable::before {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+  cursor: row-resize;
+}
+.stack-row > .stack-divider.resizable::before {
+  inset: 0 -4px;
+  cursor: col-resize;
+}
+.stack-divider.resizable:hover {
+  background: var(--accent);
+}
+
+.csection {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+.csection.dragging {
+  opacity: 0.45;
+}
+.csection-header {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: none;
+  height: 30px;
+  padding: 0 6px 0 4px;
+  user-select: none;
+  touch-action: none;
+}
+.csection-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-  padding: 0 2px;
+  padding: 2px 4px;
   border: none;
   background: transparent;
-  text-align: start;
-}
-.group-toggle > span:first-child {
-  width: 10px;
   color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
-.trash-zone {
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 10px;
-  text-align: center;
+.csection-toggle:hover:not(:disabled) {
+  background: transparent;
+  color: var(--text);
+}
+.csection-caret {
+  width: 10px;
+  font-size: 10px;
+}
+.csection-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.csection-title .diff-title {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.csection-count {
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.csection-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  margin-inline-start: auto;
+}
+.csection-grip {
+  flex: none;
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.csection-header:hover .csection-grip {
+  opacity: 0.7;
+}
+body.docking .csection-header,
+body.docking .csection-grip {
+  cursor: grabbing;
+}
+.csection-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 6px 8px;
+}
+.csection-body .file-list {
+  margin: 0;
+}
+.csection-body .file-item {
+  min-height: 26px;
+}
+.csection-commit .csection-body {
+  padding: 2px 10px 10px;
+}
+.csection-diff .csection-body {
+  padding: 0 8px 8px;
+}
+.csection-diff .diff-panel {
+  border-top: none;
+  padding-top: 0;
+}
+.csection-diff .selection-bar {
+  top: 0;
+  padding: 4px 0 6px;
+}
+button.ghost {
+  padding: 2px 8px;
+  border-color: transparent;
+  background: transparent;
   color: var(--text-muted);
   font-size: 12px;
 }
-.trash-zone.drop-over {
-  border-color: var(--danger) !important;
+button.ghost:hover:not(:disabled) {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+button.ghost.danger-text:hover:not(:disabled) {
   color: var(--danger);
+}
+.section-hint {
+  margin: 0 8px 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.section-empty {
+  margin: 0;
+  padding: 8px 10px 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.section-note {
+  margin-inline-end: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.check-all,
+.file-check {
+  display: flex;
+  align-items: center;
+}
+.check-all {
+  padding: 0 6px;
+}
+.drop-body {
+  min-height: 100%;
+  border-radius: var(--radius);
+  transition: background-color 0.12s;
+}
+.drop-body.drop-over {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.trash-zone {
+  position: sticky;
+  bottom: 0;
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--danger) 10%, var(--bg));
+  color: var(--danger);
+  font-size: 12px;
+  text-align: center;
+}
+.trash-zone.drop-over {
+  background: color-mix(in srgb, var(--danger) 24%, var(--bg));
+}
+/* Onde o painel arrastado vai ficar: uma linha entre painéis ou uma coluna nova na borda. */
+.changes-drop {
+  position: fixed;
+  z-index: 50;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.changes-drop.edge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
 }
 .commit-box {
   display: flex;
@@ -1501,7 +1728,7 @@ mark {
 .dialog-check {
   margin-top: 12px;
 }
-.modal .field + .field {
+.modal-body > .field + .field {
   margin-top: 12px;
 }
 .radio-list {
@@ -2924,6 +3151,7 @@ body.docking .pane-grip {
   --toggle-width: 22px;
 }
 .commit-row,
+.wip-row,
 .commit-columns {
   display: grid;
   column-gap: 8px;
@@ -2933,12 +3161,16 @@ body.docking .pane-grip {
   --w-sha: var(--user-sha);
 }
 .commit-row > *,
+.wip-row > *,
 .commit-columns > * {
   min-width: 0;
 }
 .commit-row .commit-author,
 .commit-row .commit-date,
 .commit-row .commit-sha,
+.wip-row .commit-author,
+.wip-row .commit-date,
+.wip-row .commit-sha,
 .commit-columns .commit-author,
 .commit-columns .commit-date,
 .commit-columns .commit-sha {
@@ -2950,7 +3182,8 @@ body.docking .pane-grip {
 .commit-row .commit-sha {
   font-size: 12px;
 }
-.commit-row .row-toggle {
+.commit-row .row-toggle,
+.wip-row .row-toggle {
   margin-inline-start: 4px;
 }
 .commit-column-head {
@@ -3290,4 +3523,208 @@ tr.nav-flash > td {
 .remote-url {
   overflow-wrap: anywhere;
   font-size: 12px;
+}
+
+/* ----------------------------------------- histórico: linha das alterações não commitadas */
+
+/* A primeira linha da lista é sempre dela; fica fixa no topo enquanto a lista rola. */
+.wip-row {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg));
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.wip-row.clean {
+  cursor: default;
+  color: var(--text-muted);
+}
+.wip-row:hover {
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg));
+}
+.wip-row .row-toggle:disabled {
+  visibility: hidden;
+}
+.wip-main {
+  gap: 8px;
+}
+.wip-title {
+  flex: none;
+  font-weight: 600;
+}
+.wip-row.clean .wip-title {
+  font-weight: 500;
+}
+.wip-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.wip-chip {
+  flex: none;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.wip-chip.ok {
+  background: color-mix(in srgb, var(--success) 18%, transparent);
+  color: var(--success);
+}
+.wip-chip.warn {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+}
+.wip-open {
+  flex: none;
+  margin-inline-start: auto;
+  padding: 1px 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+}
+.wip-open:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.wip-files .wip-chip {
+  margin-inline-start: auto;
+}
+/* Dica "git log" no cabeçalho da lista. */
+.log-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: help;
+}
+.log-chip code {
+  font-size: 11px;
+}
+.log-chip:hover,
+.log-chip:focus-visible {
+  color: var(--text);
+  outline: none;
+}
+
+/* O nome do arquivo ganha a cor do status (as mesmas das letras M, A, D…), para ler o que houve só pelo nome. */
+.file-label[data-status='M'] .file-name,
+.file-label[data-status='T'] .file-name {
+  color: var(--warning);
+}
+.file-label[data-status='A'] .file-name,
+.file-label[data-status='?'] .file-name {
+  color: var(--success);
+}
+.file-label[data-status='D'] .file-name {
+  color: var(--danger);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.file-label[data-status='U'] .file-name {
+  color: var(--danger);
+}
+.file-label[data-status='R'] .file-name,
+.file-label[data-status='C'] .file-name {
+  color: var(--accent);
+}
+
+/* ------------------------------------------- detalhes do commit: descrição e arquivos à escolha */
+
+.details-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.details-info > .split {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.details-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  flex: none;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.details-bar .segmented button {
+  padding: 2px 9px;
+  font-size: 12px;
+}
+.details-info > .details {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* E-mail, URLs e nomes de remote são sempre lidos da esquerda para a direita, mas ficam alinhados ao lado do layout
+   (à direita nos idiomas escritos da direita para a esquerda). */
+[dir='rtl'] input[dir='ltr'],
+[dir='rtl'] textarea[dir='ltr'],
+[dir='rtl'] .remote-url[dir='ltr'] {
+  text-align: right;
+}
+.remote-url {
+  display: block;
+}
+
+/* ------------------------------------------------------------- ícones de arquivo */
+
+.file-icon {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+}
+.file-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.tree-dir .file-icon {
+  margin-inline-start: -2px;
+}
+
+/* ------------------------------------------------ extensão do VS Code: tema e fontes do próprio VS Code */
+
+:root[data-vscode-colors='on'] {
+  --bg: var(--vscode-editor-background);
+  --bg-panel: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  --bg-elevated: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --bg-hover: var(--vscode-list-hoverBackground);
+  --bg-active: var(--vscode-list-inactiveSelectionBackground, var(--vscode-list-hoverBackground));
+  --border: var(--vscode-panel-border, var(--vscode-widget-border, rgba(128, 128, 128, 0.35)));
+  --text: var(--vscode-foreground);
+  --text-muted: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  --accent: var(--vscode-textLink-foreground, #3794ff);
+  --accent-strong: var(--vscode-button-background, #0e639c);
+  /* As mesmas cores que o VS Code usa para arquivos modificados, novos e removidos no Controle do código-fonte. */
+  --success: var(--vscode-gitDecoration-addedResourceForeground, var(--vscode-gitDecoration-untrackedResourceForeground, #5fd38d));
+  --warning: var(--vscode-gitDecoration-modifiedResourceForeground, #f2a93b);
+  --danger: var(--vscode-gitDecoration-deletedResourceForeground, var(--vscode-errorForeground, #ef6b5b));
+  --add-bg: var(--vscode-diffEditor-insertedLineBackground, var(--vscode-diffEditor-insertedTextBackground, rgba(95, 211, 141, 0.12)));
+  --del-bg: var(--vscode-diffEditor-removedLineBackground, var(--vscode-diffEditor-removedTextBackground, rgba(239, 107, 91, 0.12)));
+  --selected-line: var(--vscode-editor-selectionBackground, rgba(79, 163, 255, 0.28));
+  --mono: var(--vscode-editor-font-family, Consolas, 'Courier New', monospace);
+}
+:root[data-vscode-colors='on'] body {
+  font-family: var(--vscode-font-family, system-ui, sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+}
+:root[data-vscode-colors='on'] button.primary,
+:root[data-vscode-colors='on'] .segmented button.active {
+  color: var(--vscode-button-foreground, #fff);
 }

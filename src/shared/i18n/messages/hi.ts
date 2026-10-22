@@ -163,6 +163,24 @@ export const hi: Messages = {
     selected: { one: '{count} चुना गया', other: '{count} चुने गए' },
     hint: 'कई चुनने के लिए Ctrl/Shift+क्लिक · ▸ या डबल क्लिक से फ़ाइलें दिखें · किसी branch पर खींचें',
     empty: 'अभी तक कोई commit नहीं।',
+    log: {
+      chip: 'git log',
+      help: 'यह इतिहास दृश्य रूप में “git log” है: हर पंक्ति एक commit है और ग्राफ़ branches दिखाता है। यह git log --graph --all --decorate के बराबर है, अधिकतम 500 commit तक।',
+      tab: 'इतिहास — दृश्य रूप में git log'
+    },
+    wip: {
+      title: 'बिना commit किए बदलाव',
+      clean: 'कोई बदलाव नहीं — सब कुछ commit हो चुका है',
+      unstaged: '{count} unstaged',
+      staged: '{count} staged',
+      conflicts: '{count} में conflict',
+      open: 'बदलाव में खोलें',
+      openHelp: 'क्या commit करना है यह चुनने के लिए बदलाव टैब पर जाएँ',
+      fileHelp: 'diff को अलग विंडो में देखने के लिए डबल क्लिक करें',
+      help: 'बदली हुई फ़ाइलें (अभी commit नहीं) दिखाने या छिपाने के लिए क्लिक करें',
+      stagedTag: 'staged',
+      partialTag: 'आंशिक'
+    },
     scope: { all: 'सभी branches', head: 'मौजूदा branch', ref: 'Branch: {ref}' },
     badge: { remote: 'Remote branch', local: 'लोकल branch — इसे खींचें या यहाँ आइटम छोड़ें' },
     search: {
@@ -195,6 +213,14 @@ export const hi: Messages = {
     }
   },
   details: {
+    view: {
+      label: 'दिखाएँ',
+      both: 'दोनों',
+      message: 'विवरण',
+      files: 'फ़ाइलें',
+      stacked: 'ऊपर-नीचे',
+      side: 'अगल-बगल'
+    },
     tips: {
       title: 'छोटे सुझाव',
       dragCommit: 'Cherry-pick के लिए किसी commit (या Ctrl/Shift से कई) को साइडबार की branch पर खींचें।',
@@ -268,7 +294,40 @@ export const hi: Messages = {
     commitPush: '{branch} में commit और push',
     amendPush: 'सुधारें और Push करें',
     commitForcePush: 'Commit और force push',
-    amendForcePush: 'सुधारें और force push करें'
+    amendForcePush: 'सुधारें और force push करें',
+    sections: {
+      conflicts: 'Conflicts',
+      unstaged: 'बदलाव',
+      staged: 'Staged',
+      files: 'बदलाव',
+      commit: 'Commit',
+      diff: 'अंतर'
+    },
+    mode: {
+      label: 'बदलावों का दृश्य',
+      stage: 'Staged / unstaged',
+      check: 'चेकबॉक्स',
+      stageHelp: 'दो सूचियाँ: खींचें, या फ़ाइलों को commit में ले जाने के लिए ＋ और － का उपयोग करें',
+      checkHelp: 'एक ही सूची: जो फ़ाइलें commit में जाएँगी उन पर निशान लगाएँ'
+    },
+    check: {
+      marked: '{total} में से {marked} चुनी गईं',
+      all: 'सभी चुनें या हटाएँ',
+      include: 'Commit में शामिल करें'
+    },
+    layout: {
+      restore: 'व्यवस्था पहले जैसी करें',
+      restoreConfirm: {
+        title: 'इस टैब की व्यवस्था बहाल करें?',
+        message: 'बदलाव टैब के पैनल अपनी मूल व्यवस्था में लौट जाएँगे।'
+      },
+      moveUp: 'ऊपर ले जाएँ',
+      moveDown: 'नीचे ले जाएँ',
+      moveLeft: 'बाईं ओर ले जाएँ',
+      moveRight: 'दाईं ओर ले जाएँ',
+      drag: 'इस पैनल को हटाने के लिए शीर्षक को खींचें (दायाँ क्लिक: और विकल्प)',
+      newColumn: 'नया कॉलम'
+    }
   },
   actions: {
     deleteTag: {
@@ -572,6 +631,11 @@ export const hi: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: 'डिफ़ॉल्ट लेआउट बहाल करें?',
+      message: 'पैनल, टैब, कॉलम और आकार अपनी मूल जगह पर लौट जाएँगे। आपकी सेटिंग (भाषा, थीम, शॉर्टकट…) नहीं बदलेंगी।',
+      confirm: 'बहाल करें'
+    },
     tabsBottom: 'टैब नीचे ले जाएँ',
     tabsTop: 'टैब ऊपर ले जाएँ',
     reorderHelp: 'क्रम बदलने के लिए खींचें',
@@ -622,6 +686,9 @@ export const hi: Messages = {
       themeSystem: 'सिस्टम के अनुसार',
       themeDark: 'गहरी',
       themeLight: 'हल्की',
+      themeVscode: 'VS Code जैसा',
+      fileIcons: 'फ़ाइल आइकन',
+      fileIconsHelp: 'हर नाम के पास फ़ाइल के प्रकार का आइकन दिखाता है (Material Icon Theme शैली)।',
       zoom: 'इंटरफ़ेस का आकार',
       default: '(डिफ़ॉल्ट)',
       layout: 'पैनल और विंडो',

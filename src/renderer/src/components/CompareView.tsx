@@ -189,6 +189,7 @@ export function CompareView({ request, onRequest }: Props) {
                   items={comparison.files}
                   pathOf={(f) => f.path}
                   oldPathOf={(f) => f.oldPath}
+                  statusOf={(f) => f.status}
                   render={(f, { label, style }) => (
                   <li
                     key={f.path}

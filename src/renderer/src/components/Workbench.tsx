@@ -9,6 +9,8 @@ export interface ViewDef {
   label: string
   /** Número mostrado ao lado do nome (ex.: alterações pendentes). */
   badge?: number
+  /** Dica mostrada ao parar o mouse sobre a aba. */
+  help?: string
   render(): ReactNode
 }
 
@@ -147,6 +149,7 @@ export function Workbench({ state, onChange, views }: { state: WorkbenchState; o
               onPointerDown={(e) => startTabDrag(e, view)}
               onClick={() => onChange({ ...state, [id]: { ...state[id], active: view } })}
               onContextMenu={(e) => tabMenu(e, view, id)}
+              title={views[view].help}
             >
               {views[view].label}
               {!!views[view].badge && <span className="badge">{views[view].badge}</span>}

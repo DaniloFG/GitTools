@@ -6,6 +6,24 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 
 ![Histórico com grafo de branches](docs/screenshots/historico.png)
 
+## Por que o GitTools?
+
+> **Cansado de ter uma ferramenta para o grafo, outra para os conflitos e outra para escolher o que vai no commit?**
+> O GitTools junta o melhor que as melhores ferramentas de Git do mercado têm — e entrega tudo numa interface só,
+> leve, gratuita e que roda no seu computador.
+
+- 🌳 **O grafo bonito** de um cliente visual de verdade: trilhas coloridas, pesquisa, tags e colunas que você reorganiza.
+- ✅ **Escolher o commit com caixas de seleção**, ou arrastar entre *staged* e *não staged* — você decide qual visão prefere, na mesma tela.
+- ✂️ **Staging linha a linha**: leve ao commit só as linhas que importam, direto do diff.
+- 🔀 **Conflitos lado a lado** (atual × resultado × que entra), bloco a bloco, sem abrir o terminal.
+- 🍒 **Cherry-pick de outro nível**: da branch inteira, de commits, de **arquivos** ou de **linhas**, só arrastando.
+- 🧹 **Rebase interativo visual**, **blame**, histórico de arquivo e comparação de branches — tudo a um clique.
+- 🧩 **A tela do seu jeito**: painéis e abas que você move para onde quiser, como num editor moderno.
+- 🔒 **Sem conta, sem nuvem, sem telemetria.** Usa o Git que você já tem instalado. Código aberto (MIT).
+- 🧰 **Em dois lugares**: como aplicativo próprio e como extensão dentro do **VS Code**.
+
+*Uma ferramenta só. Todo o fluxo de Git. Sem alternar de janela.*
+
 ## O que dá para fazer
 
 | Quero…                                        | Como fazer no GitTools                                                                                         |
@@ -17,9 +35,15 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Fazer tudo isso entre duas branches de uma vez | **🍒 Cherry-pick Studio**: origem → destino, com abas *Branch inteira*, *Commits*, *Arquivos* e *Linhas*.       |
 | Merge / rebase                                | Arraste uma branch sobre outra e escolha *Merge* ou *Rebase*.                                                  |
 | Stage/unstage de arquivos                     | Aba *Alterações*: arraste entre “não staged” e “staged”, ou use os botões ＋ / －.                              |
+| Escolher o que entra no commit **com caixas de seleção** | Aba **Alterações** → visão **Caixas de seleção**: uma lista só com todos os arquivos alterados; marque os que entram no commit (marcar = stage, desmarcar = unstage; a caixa fica parcial quando só parte do arquivo está no commit). A visão **Staged e não staged** continua ali; a escolha fica lembrada. |
+| Montar a aba Alterações do seu jeito          | Arraste o cabeçalho de qualquer painel (Alterações, Staged, Commit, Diferenças…) para antes ou depois de outro, ou até a borda para abrir uma coluna nova; arraste as divisórias para redimensionar, recolha com ▾ e use o botão direito no cabeçalho para mover pelo menu. ⊞ restaura. Cada visão guarda a própria disposição; em janelas estreitas as colunas viram uma pilha. |
 | Stage/unstage/descartar **linhas**            | Selecione as linhas no diff e use *Stage linhas*, *Unstage linhas* ou *Descartar linhas*.                       |
 | Descartar alterações de arquivos              | Arraste-os para a lixeira (com confirmação).                                                                   |
 | Resolver conflitos                            | **Resolver lado a lado**: atual × resultado × que entra, bloco a bloco (ou o arquivo todo de uma vez), na visão clássica ou em colunas (como no SmartGit), com os painéis na ordem que você quiser. Depois *Continuar*, *Pular* ou *Abortar*. |
+| Ver o `git log` e o que ainda não foi commitado | A aba **Histórico** é o `git log` em forma visual (passe o mouse no selo *git log*). A **primeira linha** é sempre das alterações ainda não commitadas — com ou sem arquivos alterados: mostra quantos são (e quantos estão no stage) e, com ▸ ou um clique, abre a lista dos arquivos logo abaixo; um clique num arquivo mostra o diff no painel lateral (como nos commits), duplo clique abre numa janela, e *Abrir em Alterações* leva para a aba de commit. |
+| Ler só a descrição ou só os arquivos de um commit | No painel de detalhes do commit, a barra de cima escolhe **Ambos / Descrição / Arquivos** e **Cima e baixo / Lado a lado** — uma descrição enorme não esconde mais a lista de arquivos. A escolha fica lembrada. |
+| Saber o que aconteceu num arquivo só pelo nome | O nome do arquivo segue a cor do status em todas as listas: laranja = modificado, verde = novo/adicionado, vermelho riscado = removido, azul = renomeado. |
+| Ver o tipo de cada arquivo de relance          | Ícones de arquivo no estilo do Material Icon Theme em todas as listas (⚙ Configurações → Aparência liga ou desliga). Na extensão do VS Code a interface também segue o **tema, as fontes e as cores de status do próprio VS Code**. |
 | Achar um commit                               | Campo **Pesquisar** do histórico (`Ctrl+F`): por nome de branch ou tag, mensagem, autor ou hash.                |
 | Ver os arquivos de um commit sem sair da lista | ▸ ao lado do commit (ou duplo clique, ou `→`): os arquivos abrem logo abaixo da linha, como no VS Code.        |
 | Comparar duas branches, tags ou commits       | Aba **Comparar** (ou botão direito numa branch/commit): commits exclusivos de cada lado e diff dos arquivos, com opção de trazer linhas ou a versão do arquivo. |
@@ -293,10 +317,14 @@ conflitos lado a lado, rebase interativo, remotes…) num painel, com o git da s
   segue o do VS Code; o diff em nova janela abre outro painel.
 - **Gerar o `.vsix`**: `npm run package:extension` cria `release/gittools-vscode-<versão>.vsix` (instale
   com `code --install-extension release/gittools-vscode-*.vsix`). `npm run build:extension` só compila.
-- **Publicar uma versão** (automático): crie uma tag — `git tag v0.5.1 && git push origin v0.5.1`. O
-  workflow `publish-extension.yml` testa, empacota e publica no VS Code Marketplace; os usuários
-  recebem a atualização sozinhos. A versão publicada é a da tag. Configuração única: em *Settings →
-  Secrets and variables → Actions* crie o secret `VSCE_PAT` (token do Marketplace, escopo
+- **Publicar uma versão** (automático): o workflow `publish-extension.yml` testa, empacota e publica no
+  VS Code Marketplace; os usuários recebem a atualização sozinhos. Ele roda **a cada merge na `main` que
+  mexa no que vai para a extensão** (`extension/`, `src/` exceto `main` e `preload`, `scripts/` e os
+  arquivos de build) usando a versão de `extension/package.json` — **suba a versão na PR** para publicar;
+  se ela já estiver publicada, o workflow termina sem fazer nada. Também roda ao criar uma tag
+  (`git tag v0.5.1 && git push origin v0.5.1`, com a versão da tag) e manualmente em *Actions → Run
+  workflow*. Cada publicação nova cria o release `v<versão>` com o `.vsix` anexado. Configuração única:
+  em *Settings → Secrets and variables → Actions* crie o secret `VSCE_PAT` (token do Marketplace, escopo
   *Marketplace → Manage*); o secret opcional `OVSX_PAT` publica também no Open VSX (VSCodium, Cursor).
   Sem o secret o workflow só anexa o `.vsix` ao release do GitHub.
 - **Como é feito**: a lógica do aplicativo (repositório aberto, configurações, log de comandos,
@@ -399,3 +427,7 @@ Plurais seguem as regras do Unicode CLDR: use `{ one, other }`, ou as formas que
 ## Licença
 
 [MIT](LICENSE)
+
+## Créditos
+
+Os ícones de arquivo são um subconjunto do [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) — veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

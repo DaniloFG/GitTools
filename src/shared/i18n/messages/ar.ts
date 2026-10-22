@@ -168,6 +168,24 @@ export const ar: Messages = {
     selected: { one: 'تم تحديد واحد', two: 'تم تحديد اثنين', other: 'المحدد: {count}' },
     hint: 'Ctrl/Shift+نقر لتحديد عدة عناصر · ▸ أو النقر المزدوج يعرض الملفات · اسحب إلى فرع',
     empty: 'لا توجد إيداعات بعد.',
+    log: {
+      chip: 'git log',
+      help: 'هذا السجل هو «git log» بشكل مرئي: كل صف إيداع والرسم يوضح الفروع. يعادل git log --graph --all --decorate بحد أقصى 500 إيداع.',
+      tab: 'السجل — git log بشكل مرئي'
+    },
+    wip: {
+      title: 'تغييرات غير مودعة',
+      clean: 'لا توجد تغييرات — كل شيء مودع',
+      unstaged: '{count} غير مجهّز',
+      staged: '{count} مجهّز',
+      conflicts: '{count} في تعارض',
+      open: 'فتح في التغييرات',
+      openHelp: 'انتقل إلى تبويب التغييرات لاختيار ما سيُودَع',
+      fileHelp: 'انقر مرتين لعرض الفروقات في نافذة',
+      help: 'انقر لإظهار أو إخفاء الملفات المعدّلة (لم تُودَع بعد)',
+      stagedTag: 'مجهّز',
+      partialTag: 'جزئي'
+    },
     scope: { all: 'كل الفروع', head: 'الفرع الحالي', ref: 'الفرع: {ref}' },
     badge: { remote: 'فرع بعيد', local: 'فرع محلي — اسحبه أو أفلت العناصر هنا' },
     search: {
@@ -200,6 +218,14 @@ export const ar: Messages = {
     }
   },
   details: {
+    view: {
+      label: 'عرض',
+      both: 'الاثنان',
+      message: 'الوصف',
+      files: 'الملفات',
+      stacked: 'فوق وتحت',
+      side: 'جنبًا إلى جنب'
+    },
     tips: {
       title: 'نصائح سريعة',
       dragCommit: 'اسحب إيداعًا (أو عدة إيداعات باستخدام Ctrl/Shift) إلى فرع في الشريط الجانبي لانتقائه.',
@@ -274,7 +300,40 @@ export const ar: Messages = {
     commitPush: 'إيداع ودفع في {branch}',
     amendPush: 'تعديل ودفع',
     commitForcePush: 'إيداع ودفع قسري',
-    amendForcePush: 'تعديل ودفع قسري'
+    amendForcePush: 'تعديل ودفع قسري',
+    sections: {
+      conflicts: 'التعارضات',
+      unstaged: 'التغييرات',
+      staged: 'المجهّزة (staged)',
+      files: 'التغييرات',
+      commit: 'إيداع',
+      diff: 'الفروقات'
+    },
+    mode: {
+      label: 'عرض التغييرات',
+      stage: 'مجهّز / غير مجهّز',
+      check: 'خانات الاختيار',
+      stageHelp: 'قائمتان: اسحب أو استخدم ＋ و － لنقل الملفات إلى الإيداع',
+      checkHelp: 'قائمة واحدة: ضع علامة على الملفات التي تدخل في الإيداع'
+    },
+    check: {
+      marked: 'تم تحديد {marked} من {total}',
+      all: 'تحديد الكل أو إلغاؤه',
+      include: 'تضمين في الإيداع'
+    },
+    layout: {
+      restore: 'استعادة الترتيب',
+      restoreConfirm: {
+        title: 'استعادة ترتيب هذا التبويب؟',
+        message: 'ستعود لوحات تبويب التغييرات إلى ترتيبها الأصلي.'
+      },
+      moveUp: 'نقل لأعلى',
+      moveDown: 'نقل لأسفل',
+      moveLeft: 'نقل لليسار',
+      moveRight: 'نقل لليمين',
+      drag: 'اسحب الترويسة لنقل هذه اللوحة (زر الفأرة الأيمن: مزيد من الخيارات)',
+      newColumn: 'عمود جديد'
+    }
   },
   actions: {
     deleteTag: {
@@ -581,6 +640,11 @@ export const ar: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: 'استعادة التخطيط الافتراضي؟',
+      message: 'ستعود اللوحات والتبويبات والأعمدة والأحجام إلى أماكنها الأصلية. إعداداتك (اللغة والمظهر والاختصارات…) لن تتغير.',
+      confirm: 'استعادة'
+    },
     tabsBottom: 'نقل الألسنة إلى الأسفل',
     tabsTop: 'نقل الألسنة إلى الأعلى',
     reorderHelp: 'اسحب لتغيير الترتيب',
@@ -631,6 +695,9 @@ export const ar: Messages = {
       themeSystem: 'مثل النظام',
       themeDark: 'داكنة',
       themeLight: 'فاتحة',
+      themeVscode: 'مثل VS Code',
+      fileIcons: 'أيقونات الملفات',
+      fileIconsHelp: 'يعرض بجانب كل اسم أيقونة لنوع الملف (بنمط Material Icon Theme).',
       zoom: 'حجم الواجهة',
       default: '(افتراضي)',
       layout: 'اللوحات والنوافذ',

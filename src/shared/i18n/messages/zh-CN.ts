@@ -159,6 +159,24 @@ export const zhCN: Messages = {
     selected: { other: '已选 {count} 个' },
     hint: 'Ctrl/Shift+点击可多选 · ▸ 或双击显示文件 · 拖到分支上',
     empty: '还没有提交。',
+    log: {
+      chip: 'git log',
+      help: '此历史记录就是可视化的 “git log”：每一行是一次提交，图形显示各个分支。相当于 git log --graph --all --decorate，最多 500 个提交。',
+      tab: '历史记录 — 可视化的 git log'
+    },
+    wip: {
+      title: '未提交的更改',
+      clean: '没有更改 — 全部已提交',
+      unstaged: '{count} 个未暂存',
+      staged: '{count} 个已暂存',
+      conflicts: '{count} 个冲突',
+      open: '在“更改”中打开',
+      openHelp: '前往“更改”标签页选择要提交的内容',
+      fileHelp: '双击在窗口中查看差异',
+      help: '点击显示或隐藏已更改的文件（尚未提交）',
+      stagedTag: '已暂存',
+      partialTag: '部分'
+    },
     scope: { all: '所有分支', head: '当前分支', ref: '分支：{ref}' },
     badge: { remote: '远程分支', local: '本地分支 — 可拖动，也可把项目拖放到这里' },
     search: {
@@ -191,6 +209,14 @@ export const zhCN: Messages = {
     }
   },
   details: {
+    view: {
+      label: '显示',
+      both: '两者',
+      message: '描述',
+      files: '文件',
+      stacked: '上下',
+      side: '左右'
+    },
     tips: {
       title: '快速提示',
       dragCommit: '将一个提交（或用 Ctrl/Shift 选中的多个）拖到侧边栏的分支上即可拣选。',
@@ -258,7 +284,40 @@ export const zhCN: Messages = {
     commitPush: '提交并推送到 {branch}',
     amendPush: '修改并推送',
     commitForcePush: '提交并强制推送',
-    amendForcePush: '修改并强制推送'
+    amendForcePush: '修改并强制推送',
+    sections: {
+      conflicts: '冲突',
+      unstaged: '更改',
+      staged: '已暂存',
+      files: '更改',
+      commit: '提交',
+      diff: '差异'
+    },
+    mode: {
+      label: '更改视图',
+      stage: '已暂存 / 未暂存',
+      check: '复选框',
+      stageHelp: '两个列表：拖动，或用 ＋ 和 － 把文件放进提交',
+      checkHelp: '单个列表：勾选要放进提交的文件'
+    },
+    check: {
+      marked: '已勾选 {marked}/{total}',
+      all: '全选或取消全选',
+      include: '加入提交'
+    },
+    layout: {
+      restore: '恢复布局',
+      restoreConfirm: {
+        title: '恢复此标签页的排列？',
+        message: '“更改”标签页的面板将恢复为原始排列。'
+      },
+      moveUp: '上移',
+      moveDown: '下移',
+      moveLeft: '左移',
+      moveRight: '右移',
+      drag: '拖动标题可移动此面板（右键查看更多选项）',
+      newColumn: '新列'
+    }
   },
   actions: {
     deleteTag: {
@@ -547,6 +606,11 @@ export const zhCN: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: '恢复默认布局？',
+      message: '面板、标签页、列和大小将恢复到原始位置。你的设置（语言、主题、快捷键等）不会改变。',
+      confirm: '恢复'
+    },
     tabsBottom: '将标签移到底部',
     tabsTop: '将标签移到顶部',
     reorderHelp: '拖动以调整顺序',
@@ -597,6 +661,9 @@ export const zhCN: Messages = {
       themeSystem: '跟随系统',
       themeDark: '深色',
       themeLight: '浅色',
+      themeVscode: '与 VS Code 相同',
+      fileIcons: '文件图标',
+      fileIconsHelp: '在每个文件名旁显示文件类型图标（Material Icon Theme 风格）。',
       zoom: '界面大小',
       default: '（默认）',
       layout: '面板和窗口',

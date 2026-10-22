@@ -1,28 +1,42 @@
-import { useEffect, useState } from 'react'
-import type { FileDiff, FileStatus, LineKey, PushForce } from '../../../shared/types'
-import { useActions } from '../actions'
+import { useEffect, useRef, useState } from 'react'
+import type { FileDiff, FileStatus, LineKey } from '../../../shared/types'
+import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
+import { parseChangesMode, type ChangesMode, type SectionId } from '../changesLayout'
 import { useApp } from '../context'
-import { endDrag, startDrag } from '../dnd'
+import { currentDrag, endDrag, startDrag } from '../dnd'
+import { stepIndex } from '../diffNav'
 import { errorMessage, statusLabel } from '../format'
 import { git } from '../git'
+import { t } from '../i18n'
 import { useLayout } from '../layout'
 import { useDrop } from '../useDrop'
-import { t } from '../i18n'
+import { ChangesLayout, useCollapsedSections, type SectionDef } from './ChangesLayout'
+import { CommitBox } from './CommitBox'
 import { DiffView, useFullFile } from './DiffView'
-import { revealPane, Split } from './Split'
-import { stepIndex } from '../diffNav'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
 
 type Area = 'unstaged' | 'staged'
+type Active = { area: Area; path: string }
+
+type Entry = ChangeEntry
+
+/** Letra de status de um arquivo na visão de caixas: a da parte fora do stage, ou a do stage. */
+const entryCode = (e: Entry) => (e.unstaged ? (e.unstaged.untracked ? '?' : e.unstaged.worktree) : e.staged!.index)
 
 export function ChangesView() {
-  const { data, run, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow } = useApp()
+  const { data, run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow } = useApp()
   const { status } = data
-  const [active, setActive] = useState<{ area: Area; path: string } | null>(null)
+  const [mode, setMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
+  const [, setCollapsed] = useCollapsedSections()
+  const [active, setActive] = useState<Active | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()
+  /** Caixas marcadas agora e ainda não confirmadas pelo git (a tela responde na hora). */
+  const [pending, setPending] = useState<Record<string, boolean>>({})
+
+  const entries = buildEntries(status)
 
   // Se o arquivo ativo saiu da lista (ex.: foi todo para o stage), acompanha-o na outra lista.
   useEffect(() => {
@@ -79,11 +93,28 @@ export function ChangesView() {
     await run(t('busy.applyingSelection'), () => git.applyLines({ kind: active.area, fullFile }, active.path, [...selection], action))
   }
 
-  /** Arquivos na ordem da tela (não staged, depois staged), para ir de um diff ao seguinte. */
-  const ordered = [
-    ...status.unstaged.map((f) => ({ area: 'unstaged' as Area, path: f.path })),
-    ...status.staged.map((f) => ({ area: 'staged' as Area, path: f.path }))
-  ]
+  /** Marca (stage) ou desmarca (unstage) arquivos na visão de caixas, sem a tela de "ocupado" a cada clique. */
+  const include = async (list: Entry[], value: boolean) => {
+    const paths = list.map((e) => e.path)
+    setPending((prev) => ({ ...prev, ...Object.fromEntries(paths.map((p) => [p, value])) }))
+    try {
+      await (value ? git.stageFiles(paths) : git.unstageFiles(paths))
+    } catch (error) {
+      toast('error', errorMessage(error))
+    }
+    await refresh()
+    setPending((prev) => {
+      const next = { ...prev }
+      for (const p of paths) delete next[p]
+      return next
+    })
+  }
+
+  /** Arquivos na ordem da tela, para ir de um diff ao seguinte. */
+  const ordered: Active[] =
+    mode === 'check'
+      ? entries.map((e) => ({ area: e.unstaged ? 'unstaged' : 'staged', path: e.path }))
+      : [...status.unstaged.map((f) => ({ area: 'unstaged' as Area, path: f.path })), ...status.staged.map((f) => ({ area: 'staged' as Area, path: f.path }))]
   const position = active ? ordered.findIndex((f) => f.area === active.area && f.path === active.path) : -1
   const fileNav = {
     index: Math.max(0, position),
@@ -94,209 +125,266 @@ export function ChangesView() {
     }
   }
 
-  return (
-    <Split id="changes" initial={0.45} min={[240, 280]}>
-      <div className="changes">
-        {status.conflicted.length > 0 && (
-          <FileGroup
-            id="conflicted"
-            title={t('changes.conflicted')}
-            area="unstaged"
-            files={status.conflicted}
-            active={active}
-            onActivate={(f) => openConflict(f.path)}
-            hint={t('changes.conflictedHint')}
-          />
-        )}
-        <FileGroup
-          id="unstaged"
-          toggle
-          title={t('changes.unstaged')}
-          area="unstaged"
-          files={status.unstaged}
-          active={active}
-          onActivate={(f) => {
-            setActive({ area: 'unstaged', path: f.path })
-            revealPane('changes', 'second')
-          }}
-          onDropFiles={(paths) => run(t('busy.unstage'), () => git.unstageFiles(paths))}
-          actions={
-            status.unstaged.length > 0 && (
-              <>
-                <button onClick={() => run(t('busy.stage'), () => git.stageFiles(status.unstaged.map((f) => f.path)))}>{t('changes.stageAll')} ↓</button>
-                <button className="danger subtle" onClick={() => discard(status.unstaged.map((f) => f.path))}>
-                  {t('changes.discardAll')}
-                </button>
-              </>
-            )
-          }
-          fileActions={(f) => (
-            <>
-              <button title={t('common.discard')} onClick={() => discard([f.path])}>
-                ↺
-              </button>
-              <button title={t('changes.stage')} onClick={() => run(t('busy.stage'), () => git.stageFiles([f.path]))}>
-                ＋
-              </button>
-            </>
-          )}
-        />
-        <FileGroup
-          id="staged"
-          title={t('changes.staged')}
-          area="staged"
-          files={status.staged}
-          active={active}
-          onActivate={(f) => {
-            setActive({ area: 'staged', path: f.path })
-            revealPane('changes', 'second')
-          }}
-          onDropFiles={(paths) => run(t('busy.stage'), () => git.stageFiles(paths))}
-          actions={
-            status.staged.length > 0 && (
-              <button onClick={() => run(t('busy.unstage'), () => git.unstageFiles(status.staged.map((f) => f.path)))}>{t('changes.unstageAll')} ↑</button>
-            )
-          }
-          fileActions={(f) => (
-            <button title={t('changes.unstage')} onClick={() => run(t('busy.unstage'), () => git.unstageFiles([f.path]))}>
-              －
-            </button>
-          )}
-        />
-        <TrashZone onDropFiles={discard} />
-        <CommitBox />
-      </div>
+  /** Abre o diff do arquivo e mostra o painel do diff se ele estava recolhido. */
+  const activate = (next: Active) => {
+    setActive(next)
+    setCollapsed((prev) => (prev.diff ? { ...prev, diff: undefined } : prev))
+  }
 
-      <section className="details">
-        {!active || !diff ? (
-          <p className="empty">{t('changes.selectFile')}</p>
-        ) : (
-          <div className="diff-panel">
-            <div className="selection-bar">
-              <button
-                onClick={() => openDiffWindow({ source: { kind: active.area }, path: active.path, title: `${active.path} · ${t(active.area === 'staged' ? 'changes.staged' : 'changes.unstaged')}` })}
-                title={t('diffExtra.openWindowHelp')}
-              >
-                ⧉
-              </button>
-              {active.area === 'unstaged' ? (
-                <>
-                  <button className="primary" disabled={!selection.size} onClick={() => lineAction('stage')}>
-                    {t('changes.stageLines', { count: selection.size })}
-                  </button>
-                  <button className="danger subtle" disabled={!selection.size} onClick={() => lineAction('discard')}>
-                    {t('changes.discardLines')}
-                  </button>
-                  <button onClick={() => run(t('busy.stage'), () => git.stageFiles([active.path]))}>{t('changes.stageFile')}</button>
-                  <button onClick={() => openInEditor(active.path)}>{t('common.openInEditor')}</button>
-                  <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
-                </>
+  const stageList = (area: Area): SectionDef => {
+    const files = status[area]
+    const staged = area === 'staged'
+    return {
+      title: t(staged ? 'changes.sections.staged' : 'changes.sections.unstaged'),
+      badge: files.length,
+      actions: staged ? (
+        files.length > 0 && (
+          <button className="ghost" onClick={() => run(t('busy.unstage'), () => git.unstageFiles(files.map((f) => f.path)))}>
+            {t('changes.unstageAll')} ↑
+          </button>
+        )
+      ) : (
+        files.length > 0 && (
+          <>
+            <button className="ghost" onClick={() => run(t('busy.stage'), () => git.stageFiles(files.map((f) => f.path)))}>
+              {t('changes.stageAll')} ↓
+            </button>
+            <button className="ghost danger-text" onClick={() => discard(files.map((f) => f.path))}>
+              {t('changes.discardAll')}
+            </button>
+          </>
+        )
+      ),
+      body: (
+        <DropBody
+          area={area}
+          onDropFiles={(paths) => (staged ? run(t('busy.stage'), () => git.stageFiles(paths)) : run(t('busy.unstage'), () => git.unstageFiles(paths)))}
+          trash={!staged ? discard : undefined}
+        >
+          <FileRows
+            area={area}
+            files={files}
+            active={active}
+            onActivate={(f) => activate({ area, path: f.path })}
+            fileActions={(f) =>
+              staged ? (
+                <button title={t('changes.unstage')} onClick={() => run(t('busy.unstage'), () => git.unstageFiles([f.path]))}>
+                  －
+                </button>
               ) : (
                 <>
-                  <button className="primary" disabled={!selection.size} onClick={() => lineAction('unstage')}>
-                    {t('changes.unstageLines', { count: selection.size })}
+                  <button title={t('common.discard')} onClick={() => discard([f.path])}>
+                    ↺
                   </button>
-                  <button onClick={() => run(t('busy.unstage'), () => git.unstageFiles([active.path]))}>{t('changes.unstageFile')}</button>
+                  <button title={t('changes.stage')} onClick={() => run(t('busy.stage'), () => git.stageFiles([f.path]))}>
+                    ＋
+                  </button>
                 </>
-              )}
-            </div>
-            <DiffView file={diff} selection={selection} onSelectionChange={setSelection} fileNav={fileNav} />
+              )
+            }
+          />
+        </DropBody>
+      )
+    }
+  }
+
+  const isIncluded = (e: Entry) => pending[e.path] ?? (!!e.staged && !e.unstaged)
+  const isPartial = (e: Entry) => pending[e.path] === undefined && !!e.staged && !!e.unstaged
+  const includedCount = entries.filter(isIncluded).length
+  const allIncluded = entries.length > 0 && includedCount === entries.length
+
+  const sections: Partial<Record<SectionId, SectionDef>> = {}
+  if (status.conflicted.length > 0) {
+    sections.conflicts = {
+      title: t('changes.sections.conflicts'),
+      badge: status.conflicted.length,
+      body: (
+        <>
+          <p className="section-hint">{t('changes.conflictedHint')}</p>
+          <FileRows area="unstaged" files={status.conflicted} active={active} onActivate={(f) => openConflict(f.path)} />
+        </>
+      )
+    }
+  }
+  if (mode === 'stage') {
+    sections.unstaged = stageList('unstaged')
+    sections.staged = stageList('staged')
+  } else {
+    sections.files = {
+      title: t('changes.sections.files'),
+      badge: entries.length,
+      actions: entries.length > 0 && (
+        <>
+          <span className="section-note">{t('changes.check.marked', { marked: includedCount, total: entries.length })}</span>
+          <label className="check-all" title={t('changes.check.all')}>
+            <TriCheckbox checked={allIncluded} indeterminate={!allIncluded && (includedCount > 0 || entries.some(isPartial))} onChange={(value) => void include(entries.filter((e) => isIncluded(e) !== value || isPartial(e)), value)} label={t('changes.check.all')} />
+          </label>
+        </>
+      ),
+      body:
+        entries.length === 0 ? (
+          <p className="section-empty">{t('changes.empty')}</p>
+        ) : (
+          <ul className="file-list">
+            <FileEntries
+              items={entries}
+              pathOf={(e) => e.path}
+              oldPathOf={(e) => e.origPath}
+              statusOf={entryCode}
+              render={(e, { label, style }) => {
+                const first = e.unstaged ?? e.staged!
+                const code = entryCode(e)
+                const isActive = active?.path === e.path
+                return (
+                  <li
+                    key={e.path}
+                    style={style}
+                    className={`file-item ${isActive ? 'active' : ''}`}
+                    onClick={() => activate({ area: e.unstaged ? 'unstaged' : 'staged', path: e.path })}
+                    title={first.path}
+                  >
+                    <span className="file-check" onClick={(ev) => ev.stopPropagation()}>
+                      <TriCheckbox checked={isIncluded(e)} indeterminate={isPartial(e)} onChange={(value) => void include([e], value)} label={t('changes.check.include')} />
+                    </span>
+                    <span className={`status status-${code}`} title={statusLabel(code)}>
+                      {code === '?' ? 'N' : code}
+                    </span>
+                    {label}
+                    <LineStats stats={sumStats(e.staged, e.unstaged)} />
+                    <span className="file-actions" onClick={(ev) => ev.stopPropagation()}>
+                      {e.unstaged && (
+                        <button title={t('common.discard')} onClick={() => discard([e.path])}>
+                          ↺
+                        </button>
+                      )}
+                    </span>
+                  </li>
+                )
+              }}
+            />
+          </ul>
+        )
+    }
+  }
+  sections.commit = { title: t('changes.sections.commit'), body: <CommitBox />, auto: true }
+  const bothSides = !!active && status.unstaged.some((f) => f.path === active.path) && status.staged.some((f) => f.path === active.path)
+  sections.diff = {
+    title: active ? <code className="diff-title">{active.path}</code> : t('changes.sections.diff'),
+    minSize: 140,
+    body:
+      !active || !diff ? (
+        <p className="section-empty">{t('changes.selectFile')}</p>
+      ) : (
+        <div className="diff-panel">
+          <div className="selection-bar">
+            <button
+              onClick={() => openDiffWindow({ source: { kind: active.area }, path: active.path, title: `${active.path} · ${t(active.area === 'staged' ? 'changes.staged' : 'changes.unstaged')}` })}
+              title={t('diffExtra.openWindowHelp')}
+            >
+              ⧉
+            </button>
+            {bothSides && (
+              <div className="segmented" role="group" dir="ltr">
+                {(['unstaged', 'staged'] as const).map((area) => (
+                  <button key={area} className={active.area === area ? 'active' : ''} aria-pressed={active.area === area} onClick={() => setActive({ area, path: active.path })}>
+                    {t(area === 'staged' ? 'changes.sections.staged' : 'changes.sections.unstaged')}
+                  </button>
+                ))}
+              </div>
+            )}
+            {active.area === 'unstaged' ? (
+              <>
+                <button className="primary" disabled={!selection.size} onClick={() => lineAction('stage')}>
+                  {t('changes.stageLines', { count: selection.size })}
+                </button>
+                <button className="danger subtle" disabled={!selection.size} onClick={() => lineAction('discard')}>
+                  {t('changes.discardLines')}
+                </button>
+                <button onClick={() => run(t('busy.stage'), () => git.stageFiles([active.path]))}>{t('changes.stageFile')}</button>
+                <button onClick={() => openInEditor(active.path)}>{t('common.openInEditor')}</button>
+                <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
+              </>
+            ) : (
+              <>
+                <button className="primary" disabled={!selection.size} onClick={() => lineAction('unstage')}>
+                  {t('changes.unstageLines', { count: selection.size })}
+                </button>
+                <button onClick={() => run(t('busy.unstage'), () => git.unstageFiles([active.path]))}>{t('changes.unstageFile')}</button>
+              </>
+            )}
           </div>
-        )}
-      </section>
-    </Split>
-  )
-}
+          <DiffView file={diff} selection={selection} onSelectionChange={setSelection} fileNav={fileNav} />
+        </div>
+      )
+  }
 
-interface GroupProps {
-  /** Nome sob o qual fica guardado se o grupo está recolhido. */
-  id: string
-  title: string
-  area: Area
-  files: FileStatus[]
-  active: { area: Area; path: string } | null
-  onActivate(file: FileStatus): void
-  onDropFiles?(paths: string[]): void
-  actions?: React.ReactNode
-  fileActions?(file: FileStatus): React.ReactNode
-  hint?: string
-  /** Mostra o botão lista/árvore neste cabeçalho (vale para todos os grupos). */
-  toggle?: boolean
-}
-
-const parseCollapsed = (value: unknown) => value === true
-
-function FileGroup({ id, title, area, files, active, onActivate, onDropFiles, actions, fileActions, hint, toggle }: GroupProps) {
-  const [picked, setPicked] = useState<Set<string>>(new Set())
-  const [collapsed, setCollapsed] = useLayout(`changes.${id}.collapsed`, parseCollapsed)
-  const drop = useDrop(
-    (p) => !!onDropFiles && p.type === 'files' && p.area !== area,
-    (p) => p.type === 'files' && onDropFiles?.(p.paths)
-  )
+  const modes: { id: ChangesMode; label: string; help: string }[] = [
+    { id: 'stage', label: t('changes.mode.stage'), help: t('changes.mode.stageHelp') },
+    { id: 'check', label: t('changes.mode.check'), help: t('changes.mode.checkHelp') }
+  ]
 
   return (
-    <div className={`file-group ${drop.over ? 'drop-over' : ''}`} {...drop.props}>
-      <div className="group-header">
-        <button
-          className="group-toggle"
-          onClick={() => setCollapsed(collapsed ? undefined : true)}
-          title={collapsed ? t('layout.expand') : t('layout.collapse')}
-          aria-expanded={!collapsed}
-        >
-          <span>{collapsed ? '▸' : '▾'}</span> <strong>{title}</strong> <span className="count">{files.length}</span>
-        </button>
-        <span className="toolbar-spacer" />
-        {toggle && <FileViewToggle compact />}
-        {actions}
-      </div>
-      {!collapsed && hint && <p className="muted small">{hint}</p>}
-      {collapsed ? null : files.length === 0 ? (
-        <p className="empty small">{onDropFiles ? t('changes.emptyDrop') : t('changes.empty')}</p>
-      ) : (
-        <ul className="file-list">
-          <FileEntries
-            items={files}
-            pathOf={(f) => f.path}
-            oldPathOf={(f) => f.origPath}
-            render={(f, { label, style }) => {
-            const code = area === 'staged' ? f.index : f.untracked ? '?' : f.conflicted ? 'U' : f.worktree
-            return (
-              <li
-                key={f.path}
-                style={style}
-                className={`file-item ${active?.area === area && active.path === f.path ? 'active' : ''} ${picked.has(f.path) ? 'picked' : ''}`}
-                onClick={(e) => {
-                  if (e.ctrlKey || e.metaKey) {
-                    const next = new Set(picked)
-                    if (next.has(f.path)) next.delete(f.path)
-                    else next.add(f.path)
-                    setPicked(next)
-                  } else {
-                    setPicked(new Set())
-                    onActivate(f)
-                  }
-                }}
-                draggable={!f.conflicted}
-                onDragStart={(e) => {
-                  const paths = picked.has(f.path) ? [...picked] : [f.path]
-                  startDrag(e, { type: 'files', area, paths }, paths.length > 1 ? `📄 ${t('common.files', { count: paths.length })}` : `📄 ${f.path}`)
-                }}
-                onDragEnd={endDrag}
-              >
-                <span className={`status status-${code}`} title={statusLabel(code)}>
-                  {code === '?' ? 'N' : code}
-                </span>
-                {label}
-                <LineStats stats={f} />
-                <span className="file-actions" onClick={(e) => e.stopPropagation()}>
-                  {fileActions?.(f)}
-                </span>
-              </li>
-            )
-            }}
-          />
-        </ul>
-      )}
+    <ChangesLayout
+      mode={mode}
+      sections={sections}
+      toolbar={
+        <>
+          <div className="segmented changes-mode" role="group" aria-label={t('changes.mode.label')} dir="ltr">
+            {modes.map((m) => (
+              <button key={m.id} className={mode === m.id ? 'active' : ''} aria-pressed={mode === m.id} title={m.help} onClick={() => setMode(m.id === 'stage' ? undefined : m.id)}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <span className="toolbar-spacer" />
+          <FileViewToggle compact />
+        </>
+      }
+    />
+  )
+}
+
+/** Caixa de seleção que também mostra o estado "parcial" (parte das alterações do arquivo já está no commit). */
+function TriCheckbox({ checked, indeterminate, onChange, label }: { checked: boolean; indeterminate: boolean; onChange(value: boolean): void; label: string }) {
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate
+  }, [indeterminate, checked])
+  return <input ref={ref} type="checkbox" checked={checked} aria-label={label} title={label} onChange={(e) => onChange(e.target.checked)} />
+}
+
+/** Alguém está arrastando arquivos desta lista? (Para mostrar a lixeira só enquanto ela serve.) */
+function useFileDragging(area: Area) {
+  const [dragging, setDragging] = useState(false)
+  useEffect(() => {
+    const start = () => {
+      const drag = currentDrag()
+      setDragging(drag?.type === 'files' && drag.area === area)
+    }
+    const end = () => setDragging(false)
+    document.addEventListener('dragstart', start)
+    document.addEventListener('dragend', end)
+    document.addEventListener('drop', end)
+    return () => {
+      document.removeEventListener('dragstart', start)
+      document.removeEventListener('dragend', end)
+      document.removeEventListener('drop', end)
+    }
+  }, [area])
+  return dragging
+}
+
+/** Corpo de uma lista: aceita arquivos vindos da outra lista; a lixeira aparece só durante o arrasto. */
+function DropBody({ area, onDropFiles, trash, children }: { area: Area; onDropFiles(paths: string[]): void; trash?(paths: string[]): void; children: React.ReactNode }) {
+  const drop = useDrop(
+    (p) => p.type === 'files' && p.area !== area,
+    (p) => p.type === 'files' && onDropFiles(p.paths)
+  )
+  const dragging = useFileDragging(area)
+  return (
+    <div className={`drop-body ${drop.over ? 'drop-over' : ''}`} {...drop.props}>
+      {children}
+      {trash && dragging && <TrashZone onDropFiles={trash} />}
     </div>
   )
 }
@@ -313,117 +401,63 @@ function TrashZone({ onDropFiles }: { onDropFiles(paths: string[]): void }) {
   )
 }
 
-type PushMode = 'normal' | PushForce
-const parsePushMode = (v: unknown): PushMode => (v === 'lease' || v === 'force' ? v : 'normal')
+interface RowsProps {
+  area: Area
+  files: FileStatus[]
+  active: Active | null
+  onActivate(file: FileStatus): void
+  fileActions?(file: FileStatus): React.ReactNode
+}
 
-/**
- * Caixa de commit: as opções se combinam livremente — corrigir o último commit (amend), incluir tudo,
- * e enviar em seguida (normal, force com lease ou force). O botão diz o que vai acontecer.
- */
-function CommitBox() {
-  const { data, run } = useApp()
-  const { confirmForce } = useActions()
-  const [message, setMessage] = useState('')
-  const [amend, setAmend] = useState(false)
-  const [stageAll, setStageAll] = useLayout<boolean>('pref.commitStageAll', (v) => v === true)
-  const [push, setPush] = useLayout<boolean>('pref.commitPush', (v) => v === true)
-  const [chosenMode, setMode] = useLayout<PushMode>('pref.commitPushMode', parsePushMode)
-  const { status } = data
-  const pending = status.unstaged.length
-  const useStageAll = stageAll && pending > 0
-  const canCommit = !!message.trim() && (status.staged.length > 0 || amend || useStageAll) && status.conflicted.length === 0
-  // Corrigir um commit que já está no remoto reescreve o histórico dele: o push comum seria recusado.
-  const needsForce = push && amend && !!status.upstream && status.ahead === 0
-  const mode: PushMode = needsForce && chosenMode === 'normal' ? 'lease' : chosenMode
-  const forced = push && mode !== 'normal'
-
-  const commit = async () => {
-    if (!canCommit) return
-    if (push && mode === 'force' && !(await confirmForce('force', status.branch))) return
-    let committed = false
-    const result = await run(push ? t('busy.commitPush') : amend ? t('busy.amending') : t('busy.commit'), async () => {
-      if (useStageAll) await git.stageFiles(status.unstaged.map((f) => f.path))
-      await git.commit(message, amend)
-      committed = true
-      if (!push) return true
-      try {
-        return await git.push(undefined, { force: mode === 'normal' ? undefined : mode })
-      } catch (error) {
-        throw new Error(t('changes.pushFailedAfterCommit', { error: errorMessage(error) }))
-      }
-    })
-    // O commit já foi feito mesmo que o push tenha falhado: limpar a caixa evita repeti-lo.
-    if (result || committed) {
-      setMessage('')
-      setAmend(false)
-    }
-  }
-
-  const label = push
-    ? amend
-      ? forced
-        ? t('changes.amendForcePush')
-        : t('changes.amendPush')
-      : forced
-        ? t('changes.commitForcePush')
-        : t('changes.commitPush', { branch: status.branch ?? 'HEAD' })
-    : amend
-      ? t('changes.amendButton')
-      : status.branch
-        ? t('changes.commitInto', { branch: status.branch })
-        : t('changes.commit')
-
+/** Linhas de arquivos de uma lista (Ctrl+clique escolhe vários para arrastar juntos). */
+function FileRows({ area, files, active, onActivate, fileActions }: RowsProps) {
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const codeOf = (f: FileStatus) => (area === 'staged' ? f.index : f.untracked ? '?' : f.conflicted ? 'U' : f.worktree)
+  if (files.length === 0) return <p className="section-empty">{t('changes.empty')}</p>
   return (
-    <div className="commit-box">
-      <textarea
-        placeholder={t('changes.commitPlaceholder')}
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && commit()}
-        rows={3}
+    <ul className="file-list">
+      <FileEntries
+        items={files}
+        pathOf={(f) => f.path}
+        oldPathOf={(f) => f.origPath}
+        statusOf={codeOf}
+        render={(f, { label, style }) => {
+          const code = codeOf(f)
+          return (
+            <li
+              key={f.path}
+              style={style}
+              className={`file-item ${active?.area === area && active.path === f.path ? 'active' : ''} ${picked.has(f.path) ? 'picked' : ''}`}
+              onClick={(e) => {
+                if (e.ctrlKey || e.metaKey) {
+                  const next = new Set(picked)
+                  if (next.has(f.path)) next.delete(f.path)
+                  else next.add(f.path)
+                  setPicked(next)
+                } else {
+                  setPicked(new Set())
+                  onActivate(f)
+                }
+              }}
+              draggable={!f.conflicted}
+              onDragStart={(e) => {
+                const paths = picked.has(f.path) ? [...picked] : [f.path]
+                startDrag(e, { type: 'files', area, paths }, paths.length > 1 ? `📄 ${t('common.files', { count: paths.length })}` : `📄 ${f.path}`)
+              }}
+              onDragEnd={endDrag}
+            >
+              <span className={`status status-${code}`} title={statusLabel(code)}>
+                {code === '?' ? 'N' : code}
+              </span>
+              {label}
+              <LineStats stats={f} />
+              <span className="file-actions" onClick={(e) => e.stopPropagation()}>
+                {fileActions?.(f)}
+              </span>
+            </li>
+          )
+        }}
       />
-      <div className="commit-options">
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            checked={amend}
-            onChange={async (e) => {
-              setAmend(e.target.checked)
-              if (e.target.checked && !message.trim() && status.headSha) {
-                const head = await git.commitDetails('HEAD')
-                setMessage(head.body ? `${head.subject}\n\n${head.body}` : head.subject)
-              }
-            }}
-            disabled={!status.headSha}
-          />
-          {t('changes.amend')}
-        </label>
-        {pending > 0 && (
-          <label className="checkbox" title={t('changes.commitStageAllHelp')}>
-            <input type="checkbox" checked={stageAll} onChange={(e) => setStageAll(e.target.checked)} />
-            {t('changes.commitStageAll')}
-          </label>
-        )}
-        <label className="checkbox">
-          <input type="checkbox" checked={push} onChange={(e) => setPush(e.target.checked)} disabled={!status.branch} />
-          {t('changes.pushAfter')}
-        </label>
-        {push && (
-          <select value={mode} onChange={(e) => setMode(parsePushMode(e.target.value))} title={t('push.mode')} aria-label={t('push.mode')}>
-            <option value="normal" disabled={needsForce}>
-              {t('push.normal')}
-            </option>
-            <option value="lease">{t('push.lease')}</option>
-            <option value="force">{t('push.force')}</option>
-          </select>
-        )}
-      </div>
-      {needsForce && <p className="muted commit-hint">{t('changes.amendNeedsForce')}</p>}
-      <div className="commit-actions">
-        <button className={mode === 'force' && push ? 'danger' : 'primary'} disabled={!canCommit} onClick={commit}>
-          {label}
-        </button>
-      </div>
-    </div>
+    </ul>
   )
 }

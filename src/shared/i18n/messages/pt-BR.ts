@@ -161,6 +161,24 @@ export const ptBR = {
     selected: { one: '{count} selecionado', other: '{count} selecionados' },
     hint: 'Ctrl/Shift+clique para selecionar vários · ▸ ou duplo clique mostra os arquivos · arraste para uma branch',
     empty: 'Nenhum commit ainda.',
+    log: {
+      chip: 'git log',
+      help: 'Este histórico é o "git log" em forma visual: cada linha é um commit e o grafo mostra as branches. Equivale a git log --graph --all --decorate, com até 500 commits.',
+      tab: 'Histórico — o git log em forma visual'
+    },
+    wip: {
+      title: 'Alterações não commitadas',
+      clean: 'Nenhuma alteração — tudo commitado',
+      unstaged: '{count} não staged',
+      staged: '{count} staged',
+      conflicts: '{count} em conflito',
+      open: 'Abrir em Alterações',
+      openHelp: 'Ir para a aba Alterações para escolher o que commitar',
+      fileHelp: 'Duplo clique para ver o diff em uma janela',
+      help: 'Clique para ver ou esconder os arquivos alterados (ainda não commitados)',
+      stagedTag: 'staged',
+      partialTag: 'parcial'
+    },
     scope: { all: 'Todas as branches', head: 'Branch atual', ref: 'Branch: {ref}' },
     badge: { remote: 'Branch remota', local: 'Branch local — arraste ou solte itens aqui' },
     search: {
@@ -193,6 +211,14 @@ export const ptBR = {
     }
   },
   details: {
+    view: {
+      label: 'Exibir',
+      both: 'Ambos',
+      message: 'Descrição',
+      files: 'Arquivos',
+      stacked: 'Cima e baixo',
+      side: 'Lado a lado'
+    },
     tips: {
       title: 'Dicas rápidas',
       dragCommit: 'Arraste um commit (ou vários, com Ctrl/Shift) para uma branch na barra lateral para fazer cherry-pick.',
@@ -266,7 +292,40 @@ export const ptBR = {
     commitPush: 'Commit e push em {branch}',
     amendPush: 'Corrigir e enviar',
     commitForcePush: 'Commit e force push',
-    amendForcePush: 'Corrigir e forçar push'
+    amendForcePush: 'Corrigir e forçar push',
+    sections: {
+      conflicts: 'Conflitos',
+      unstaged: 'Alterações',
+      staged: 'Staged',
+      files: 'Alterações',
+      commit: 'Commit',
+      diff: 'Diferenças'
+    },
+    mode: {
+      label: 'Visão das alterações',
+      stage: 'Staged e não staged',
+      check: 'Caixas de seleção',
+      stageHelp: 'Duas listas: arraste ou use ＋ e － para mover arquivos para o commit',
+      checkHelp: 'Uma lista só: marque os arquivos que entram no commit'
+    },
+    check: {
+      marked: '{marked} de {total} marcados',
+      all: 'Marcar ou desmarcar todos',
+      include: 'Incluir no commit'
+    },
+    layout: {
+      restore: 'Restaurar disposição',
+      restoreConfirm: {
+        title: 'Restaurar a disposição desta aba?',
+        message: 'Os painéis da aba Alterações voltam à disposição original.'
+      },
+      moveUp: 'Mover para cima',
+      moveDown: 'Mover para baixo',
+      moveLeft: 'Mover para a esquerda',
+      moveRight: 'Mover para a direita',
+      drag: 'Arraste o cabeçalho para mudar este painel de lugar (botão direito: mais opções)',
+      newColumn: 'Nova coluna'
+    }
   },
   actions: {
     deleteTag: {
@@ -570,6 +629,11 @@ export const ptBR = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: 'Restaurar o layout padrão?',
+      message: 'Painéis, abas, colunas e tamanhos voltam às posições originais. Suas configurações (idioma, tema, atalhos…) não mudam.',
+      confirm: 'Restaurar'
+    },
     tabsBottom: 'Mover as abas para baixo',
     tabsTop: 'Mover as abas para cima',
     reorderHelp: 'Arraste para mudar a ordem',
@@ -620,6 +684,9 @@ export const ptBR = {
       themeSystem: 'Igual ao sistema',
       themeDark: 'Escuro',
       themeLight: 'Claro',
+      themeVscode: 'Igual ao VS Code',
+      fileIcons: 'Ícones de arquivo',
+      fileIconsHelp: 'Mostra, ao lado de cada nome, um ícone do tipo do arquivo (estilo Material Icon Theme).',
       zoom: 'Tamanho da interface',
       default: '(padrão)',
       layout: 'Painéis e janelas',

@@ -160,6 +160,24 @@ export const en: Messages = {
     selected: { one: '{count} selected', other: '{count} selected' },
     hint: 'Ctrl/Shift+click to select several · ▸ or double-click shows the files · drag onto a branch',
     empty: 'No commits yet.',
+    log: {
+      chip: 'git log',
+      help: 'This history is "git log" in visual form: every row is a commit and the graph shows the branches. It is the same as git log --graph --all --decorate, up to 500 commits.',
+      tab: 'History — git log in visual form'
+    },
+    wip: {
+      title: 'Uncommitted changes',
+      clean: 'No changes — everything is committed',
+      unstaged: '{count} unstaged',
+      staged: '{count} staged',
+      conflicts: '{count} conflicted',
+      open: 'Open in Changes',
+      openHelp: 'Go to the Changes tab to choose what to commit',
+      fileHelp: 'Double-click to see the diff in a window',
+      help: 'Click to show or hide the changed files (not committed yet)',
+      stagedTag: 'staged',
+      partialTag: 'partial'
+    },
     scope: { all: 'All branches', head: 'Current branch', ref: 'Branch: {ref}' },
     badge: { remote: 'Remote branch', local: 'Local branch — drag it or drop items here' },
     search: {
@@ -192,6 +210,14 @@ export const en: Messages = {
     }
   },
   details: {
+    view: {
+      label: 'Show',
+      both: 'Both',
+      message: 'Description',
+      files: 'Files',
+      stacked: 'Stacked',
+      side: 'Side by side'
+    },
     tips: {
       title: 'Quick tips',
       dragCommit: 'Drag a commit (or several, with Ctrl/Shift) onto a branch in the sidebar to cherry-pick it.',
@@ -265,7 +291,40 @@ export const en: Messages = {
     commitPush: 'Commit and push to {branch}',
     amendPush: 'Amend and push',
     commitForcePush: 'Commit and force push',
-    amendForcePush: 'Amend and force push'
+    amendForcePush: 'Amend and force push',
+    sections: {
+      conflicts: 'Conflicts',
+      unstaged: 'Changes',
+      staged: 'Staged',
+      files: 'Changes',
+      commit: 'Commit',
+      diff: 'Diff'
+    },
+    mode: {
+      label: 'Changes view',
+      stage: 'Staged / unstaged',
+      check: 'Checkboxes',
+      stageHelp: 'Two lists: drag, or use ＋ and － to move files into the commit',
+      checkHelp: 'A single list: tick the files that go into the commit'
+    },
+    check: {
+      marked: '{marked} of {total} ticked',
+      all: 'Tick or untick all',
+      include: 'Include in commit'
+    },
+    layout: {
+      restore: 'Restore arrangement',
+      restoreConfirm: {
+        title: 'Restore this tab\'s arrangement?',
+        message: 'The panels of the Changes tab go back to their original arrangement.'
+      },
+      moveUp: 'Move up',
+      moveDown: 'Move down',
+      moveLeft: 'Move left',
+      moveRight: 'Move right',
+      drag: 'Drag the header to move this panel (right-click for more options)',
+      newColumn: 'New column'
+    }
   },
   actions: {
     deleteTag: {
@@ -569,6 +628,11 @@ export const en: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: 'Restore the default layout?',
+      message: 'Panels, tabs, columns and sizes go back to their original positions. Your settings (language, theme, shortcuts…) are not changed.',
+      confirm: 'Restore'
+    },
     tabsBottom: 'Move tabs to the bottom',
     tabsTop: 'Move tabs to the top',
     reorderHelp: 'Drag to reorder',
@@ -619,6 +683,9 @@ export const en: Messages = {
       themeSystem: 'Same as system',
       themeDark: 'Dark',
       themeLight: 'Light',
+      themeVscode: 'Same as VS Code',
+      fileIcons: 'File icons',
+      fileIconsHelp: 'Shows an icon for the file type next to each name (Material Icon Theme style).',
       zoom: 'Interface size',
       default: '(default)',
       layout: 'Panels and windows',

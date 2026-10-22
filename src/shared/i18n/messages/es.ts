@@ -160,6 +160,24 @@ export const es: Messages = {
     selected: { one: '{count} seleccionado', other: '{count} seleccionados' },
     hint: 'Ctrl/Shift+clic para seleccionar varios · ▸ o doble clic muestra los archivos · arrastra a una rama',
     empty: 'Todavía no hay commits.',
+    log: {
+      chip: 'git log',
+      help: 'Este historial es el "git log" en forma visual: cada fila es un commit y el grafo muestra las ramas. Equivale a git log --graph --all --decorate, con hasta 500 commits.',
+      tab: 'Historial — el git log en forma visual'
+    },
+    wip: {
+      title: 'Cambios sin commit',
+      clean: 'Sin cambios — todo está en un commit',
+      unstaged: '{count} sin stage',
+      staged: '{count} en stage',
+      conflicts: '{count} en conflicto',
+      open: 'Abrir en Cambios',
+      openHelp: 'Ir a la pestaña Cambios para elegir qué commitear',
+      fileHelp: 'Doble clic para ver el diff en una ventana',
+      help: 'Haz clic para mostrar u ocultar los archivos modificados (aún sin commit)',
+      stagedTag: 'stage',
+      partialTag: 'parcial'
+    },
     scope: { all: 'Todas las ramas', head: 'Rama actual', ref: 'Rama: {ref}' },
     badge: { remote: 'Rama remota', local: 'Rama local — arrástrala o suelta elementos aquí' },
     search: {
@@ -192,6 +210,14 @@ export const es: Messages = {
     }
   },
   details: {
+    view: {
+      label: 'Mostrar',
+      both: 'Ambos',
+      message: 'Descripción',
+      files: 'Archivos',
+      stacked: 'Arriba y abajo',
+      side: 'Lado a lado'
+    },
     tips: {
       title: 'Consejos rápidos',
       dragCommit: 'Arrastra un commit (o varios, con Ctrl/Shift) a una rama de la barra lateral para hacer cherry-pick.',
@@ -265,7 +291,40 @@ export const es: Messages = {
     commitPush: 'Commit y push en {branch}',
     amendPush: 'Corregir y enviar',
     commitForcePush: 'Commit y force push',
-    amendForcePush: 'Corregir y forzar push'
+    amendForcePush: 'Corregir y forzar push',
+    sections: {
+      conflicts: 'Conflictos',
+      unstaged: 'Cambios',
+      staged: 'Staged',
+      files: 'Cambios',
+      commit: 'Commit',
+      diff: 'Diferencias'
+    },
+    mode: {
+      label: 'Vista de los cambios',
+      stage: 'Staged y no staged',
+      check: 'Casillas de selección',
+      stageHelp: 'Dos listas: arrastra o usa ＋ y － para llevar archivos al commit',
+      checkHelp: 'Una sola lista: marca los archivos que entran en el commit'
+    },
+    check: {
+      marked: '{marked} de {total} marcados',
+      all: 'Marcar o desmarcar todos',
+      include: 'Incluir en el commit'
+    },
+    layout: {
+      restore: 'Restaurar disposición',
+      restoreConfirm: {
+        title: '¿Restaurar la disposición de esta pestaña?',
+        message: 'Los paneles de la pestaña Cambios vuelven a su disposición original.'
+      },
+      moveUp: 'Mover arriba',
+      moveDown: 'Mover abajo',
+      moveLeft: 'Mover a la izquierda',
+      moveRight: 'Mover a la derecha',
+      drag: 'Arrastra la cabecera para mover este panel (clic derecho: más opciones)',
+      newColumn: 'Nueva columna'
+    }
   },
   actions: {
     deleteTag: {
@@ -569,6 +628,11 @@ export const es: Messages = {
     }
   },
   layout: {
+    resetConfirm: {
+      title: '¿Restaurar el diseño predeterminado?',
+      message: 'Los paneles, pestañas, columnas y tamaños vuelven a sus posiciones originales. Tus ajustes (idioma, tema, atajos…) no cambian.',
+      confirm: 'Restaurar'
+    },
     tabsBottom: 'Mover las pestañas abajo',
     tabsTop: 'Mover las pestañas arriba',
     reorderHelp: 'Arrastra para cambiar el orden',
@@ -619,6 +683,9 @@ export const es: Messages = {
       themeSystem: 'Igual que el sistema',
       themeDark: 'Oscuro',
       themeLight: 'Claro',
+      themeVscode: 'Igual que VS Code',
+      fileIcons: 'Iconos de archivo',
+      fileIconsHelp: 'Muestra junto a cada nombre un icono del tipo de archivo (estilo Material Icon Theme).',
       zoom: 'Tamaño de la interfaz',
       default: '(predeterminado)',
       layout: 'Paneles y ventanas',

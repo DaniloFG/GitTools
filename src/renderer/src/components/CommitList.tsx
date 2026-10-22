@@ -4,6 +4,7 @@ import type { HistoryScope } from '../App'
 import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
 import type { MenuItem } from './ContextMenu'
+import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
 import { useApp } from '../context'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, relativeDate, shortSha, statusLabel } from '../format'
@@ -16,6 +17,7 @@ import { graphFor, laneColor, matchesCommit, refName, type GraphRow } from '../g
 import { useDrop } from '../useDrop'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
+import type { FileStatus } from '../../../shared/types'
 
 const ROW = 30
 const LANE = 14
@@ -65,12 +67,14 @@ interface Props {
   onOpenFile(sha: string, path: string): void
   /** Abre só o diff do arquivo, numa janela própria (duplo clique). */
   onOpenFileWindow(sha: string, path: string): void
+  /** Abre o diff de um arquivo ainda não commitado no painel de detalhes. */
+  onOpenWipFile(path: string): void
 }
 
 type FilesState = ChangedFile[] | 'loading' | { error: string }
 
-export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onOpenFileWindow }: Props) {
-  const { data, showMenu, openStudio, openCompare, openRebase } = useApp()
+export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onOpenFileWindow, onOpenWipFile }: Props) {
+  const { data, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
   const [query, setQuery] = useState('')
@@ -123,6 +127,8 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   )
   const shown = visible.length > limit ? visible.slice(0, limit) : visible
   const bodyRef = useRef<HTMLDivElement>(null)
+  /** A linha de alterações é do HEAD: só aparece vendo tudo, o HEAD ou a branch atual. */
+  const showWip = scope.kind !== 'ref' || scope.ref === actions.head
   // Janela muito alta: as linhas desenhadas podem não bastar para gerar rolagem (e nenhum evento de scroll viria).
   useEffect(() => {
     const el = bodyRef.current
@@ -292,6 +298,9 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
           {searching ? t('history.search.found', { count: visible.length, total: commits.length }) : t('history.count', { count: commits.length })}
           {selected.length > 1 && ` · ${t('history.selected', { count: selected.length })}`}
         </span>
+        <span className="log-chip" title={t('history.log.help')} tabIndex={0} aria-label={t('history.log.help')}>
+          ⓘ <code>{t('history.log.chip')}</code>
+        </span>
         <span className="muted hint">{t('history.hint')}</span>
         <FileViewToggle compact />
       </div>
@@ -320,6 +329,21 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
         ))}
       </div>
       <div ref={bodyRef} className="list-body" tabIndex={0} onKeyDown={onKeyDown} onScroll={onScroll}>
+        {showWip && (
+          <WipRow
+            status={data.status}
+            template={template}
+            columns={stableColumns}
+            graphWidth={graphWidth}
+            searching={searching}
+            headRow={rows.find((r) => r.sha === data.status.headSha)}
+            indent={graphFirst}
+            onOpenChanges={() => setView('changes')}
+            onOpenConflict={openConflict}
+            onOpenFile={onOpenWipFile}
+            onOpenDiff={(source, path, title) => openDiffWindow({ source, path, title })}
+          />
+        )}
         {commits.length === 0 && <p className="empty">{t('history.empty')}</p>}
         {searching && commits.length > 0 && visible.length === 0 && <p className="empty">{t('history.search.none', { query: deferredQuery })}</p>}
         {shown.map((index, pos) => {
@@ -456,6 +480,152 @@ const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, te
   )
 })
 
+/** Item da lista de alterações do histórico: um arquivo (com o que está no stage e fora dele) ou um conflito. */
+type WipItem = ChangeEntry & { conflicted?: boolean }
+
+interface WipProps {
+  status: import('../../../shared/types').RepoStatus
+  template: string
+  columns: readonly Column[]
+  graphWidth: number
+  searching: boolean
+  headRow?: GraphRow
+  indent: boolean
+  onOpenChanges(): void
+  onOpenConflict(path: string): void
+  /** Mostra o diff do arquivo no painel de detalhes (clique simples, como nos arquivos de um commit). */
+  onOpenFile(path: string): void
+  onOpenDiff(source: import('../../../shared/types').DiffSource, path: string, title: string): void
+}
+
+/**
+ * A primeira linha do histórico é sempre das alterações ainda não commitadas — haja ou não arquivos
+ * alterados. Com arquivos, ▸ (ou um clique) abre a lista logo abaixo, como nos commits.
+ */
+function WipRow({ status, template, columns, graphWidth, searching, headRow, indent, onOpenChanges, onOpenConflict, onOpenFile, onOpenDiff }: WipProps) {
+  const [open, setOpen] = useLayout<boolean>('history.wipOpen', (v) => v === true)
+  const conflicts: WipItem[] = status.conflicted.map((f: FileStatus) => ({ path: f.path, origPath: f.origPath, unstaged: f, conflicted: true }))
+  const items: WipItem[] = [...conflicts, ...buildEntries(status)]
+  const files = items.length
+  const dirty = files > 0
+  const expanded = dirty && open
+  const toggle = () => dirty && setOpen(open ? undefined : true)
+
+  const graph = () => {
+    const col = searching ? 0 : (headRow?.column ?? 0)
+    const color = laneColor(headRow?.color ?? 0)
+    const cx = x(col)
+    return (
+      <svg key="graph" className="graph" width={searching ? x(0) + 8 : graphWidth} height={ROW}>
+        {dirty && !searching && <line x1={cx} y1={ROW / 2 + 5} x2={cx} y2={ROW} stroke={color} strokeWidth={2} strokeDasharray="2 3" />}
+        <circle cx={cx} cy={ROW / 2} r={4.5} fill="var(--bg)" stroke={dirty ? color : 'var(--text-muted)'} strokeWidth={2} strokeDasharray={dirty ? '3 2' : undefined} />
+      </svg>
+    )
+  }
+
+  const chips = dirty && (
+    <span className="wip-chips">
+      <span className="wip-chip">{t('common.files', { count: files })}</span>
+      {status.conflicted.length > 0 && <span className="wip-chip warn">{t('history.wip.conflicts', { count: status.conflicted.length })}</span>}
+      {status.unstaged.length > 0 && <span className="wip-chip">{t('history.wip.unstaged', { count: status.unstaged.length })}</span>}
+      {status.staged.length > 0 && <span className="wip-chip ok">{t('history.wip.staged', { count: status.staged.length })}</span>}
+    </span>
+  )
+
+  const codeOf = (item: WipItem) => (item.conflicted ? 'U' : item.unstaged ? (item.unstaged.untracked ? '?' : item.unstaged.worktree) : item.staged!.index)
+
+  return (
+    <>
+      <div
+        className={`wip-row ${dirty ? 'dirty' : 'clean'} ${expanded ? 'expanded' : ''}`}
+        style={{ gridTemplateColumns: template }}
+        onClick={toggle}
+        title={dirty ? t('history.wip.help') : undefined}
+      >
+        <button
+          className="row-toggle"
+          disabled={!dirty}
+          aria-expanded={expanded}
+          title={expanded ? t('history.menu.hideFiles') : t('history.menu.showFiles')}
+          onClick={(e) => {
+            e.stopPropagation()
+            toggle()
+          }}
+        >
+          {expanded ? '▾' : '▸'}
+        </button>
+        {columns.map((column, i) => {
+          const at = columns.indexOf('subject')
+          // As colunas depois da mensagem (autor, data, hash) não têm nada a mostrar aqui: a descrição ocupa o lugar delas.
+          if (i > at) return null
+          switch (column) {
+            case 'graph':
+              return graph()
+            case 'subject':
+              return (
+                <div key={column} className="commit-main wip-main" style={{ gridColumn: `span ${columns.length - at}` }}>
+                  <span className="wip-title">{dirty ? t('history.wip.title') : `✓ ${t('history.wip.clean')}`}</span>
+                  {chips}
+                  <button
+                    className="wip-open"
+                    title={t('history.wip.openHelp')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onOpenChanges()
+                    }}
+                  >
+                    {t('history.wip.open')} →
+                  </button>
+                </div>
+              )
+            case 'author':
+              return <span key={column} className="commit-author" />
+            case 'date':
+              return <span key={column} className="commit-date" />
+            case 'sha':
+              return <code key={column} className="commit-sha" />
+          }
+        })}
+      </div>
+      {expanded && (
+        <div className="commit-files wip-files">
+          <ul style={{ paddingInlineStart: indent ? GRAPH_OFFSET + graphWidth + 8 : GRAPH_OFFSET }}>
+            <FileEntries
+              items={items}
+              pathOf={(i) => i.path}
+              oldPathOf={(i) => i.origPath}
+              statusOf={codeOf}
+              render={(item, { label, style }) => {
+                const code = codeOf(item)
+                return (
+                  <li
+                    key={item.path}
+                    className="commit-file"
+                    style={style}
+                    title={item.conflicted ? t('changes.conflictedHint') : t('history.files.help')}
+                    onClick={() => (item.conflicted ? onOpenConflict(item.path) : onOpenFile(item.path))}
+                    onDoubleClick={() =>
+                      !item.conflicted && onOpenDiff({ kind: item.unstaged ? 'unstaged' : 'staged' }, item.path, `${item.path} · ${t('history.wip.title')}`)
+                    }
+                  >
+                    <span className={`status status-${code}`} title={statusLabel(code)}>
+                      {code === '?' ? 'N' : code}
+                    </span>
+                    {label}
+                    <LineStats stats={sumStats(item.staged, item.unstaged)} />
+                    {item.staged && !item.unstaged && <span className="wip-chip ok">{t('history.wip.stagedTag')}</span>}
+                    {item.staged && item.unstaged && <span className="wip-chip">{t('history.wip.partialTag')}</span>}
+                  </li>
+                )
+              }}
+            />
+          </ul>
+        </div>
+      )}
+    </>
+  )
+}
+
 /** Marca no texto os trechos que batem com a pesquisa. */
 function Highlight({ text, query }: { text: string; query: string }) {
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean)
@@ -580,6 +750,7 @@ function CommitFiles({
             items={files}
             pathOf={(f) => f.path}
             oldPathOf={(f) => f.oldPath}
+            statusOf={(f) => f.status}
             render={(file, { label, style }) => (
               <li
                 key={file.path}

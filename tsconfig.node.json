@@ -13,5 +13,5 @@
     "skipLibCheck": true,
     "isolatedModules": true
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "src/core/**/*", "src/backend/**/*", "extension/src/**/*", "src/shared/**/*", "src/renderer/src/graph.ts", "src/renderer/src/shortcuts.ts", "src/renderer/src/layout.ts", "src/renderer/src/panes.ts", "src/renderer/src/order.ts", "src/renderer/src/mergeLayout.ts", "src/renderer/src/workbench.ts", "src/renderer/src/fileTree.ts", "src/renderer/src/cycle.ts", "src/renderer/src/stable.ts", "tests/**/*", "*.config.ts"]
+  "include": ["src/main/**/*", "src/preload/**/*", "src/core/**/*", "src/backend/**/*", "extension/src/**/*", "src/shared/**/*", "src/renderer/src/graph.ts", "src/renderer/src/shortcuts.ts", "src/renderer/src/layout.ts", "src/renderer/src/panes.ts", "src/renderer/src/order.ts", "src/renderer/src/mergeLayout.ts", "src/renderer/src/workbench.ts", "src/renderer/src/fileTree.ts", "src/renderer/src/cycle.ts", "src/renderer/src/stable.ts", "src/renderer/src/changesLayout.ts", "src/renderer/src/changeEntries.ts", "src/renderer/src/fileIcons.ts", "src/renderer/src/fileIcons.generated.ts", "tests/**/*", "*.config.ts"]
 }
