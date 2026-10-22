@@ -121,6 +121,10 @@ export const zhCN: Messages = {
     tags: '标签',
     stashes: '贮藏',
     dropHere: '放到这里',
+    showInHistory: '仅在历史中显示（勾选多个以只查看它们的历史）',
+    toggleGroup: '全选 / 取消全选',
+    filterActive: '历史仅显示已勾选的 {count} 个分支',
+    filterClear: '显示全部',
     branchTooltip: '双击：检出 · 右键：更多操作',
     menu: {
       deleteTag: '删除标签',
@@ -177,7 +181,7 @@ export const zhCN: Messages = {
       stagedTag: '已暂存',
       partialTag: '部分'
     },
-    scope: { all: '所有分支', head: '当前分支', ref: '分支：{ref}' },
+    scope: { all: '所有分支', head: '当前分支', ref: '分支：{ref}', refs: '已勾选 {count} 个分支' },
     badge: { remote: '远程分支', local: '本地分支 — 可拖动，也可把项目拖放到这里' },
     search: {
       placeholder: '搜索分支、消息、作者、日期、时间或哈希…',
@@ -204,6 +208,12 @@ export const zhCN: Messages = {
       revert: '还原提交…',
       reset: '将 {branch} 移到这里（重置）…',
       copySha: '复制 SHA',
+      copyMessage: '复制提交信息',
+      copyMessageFull: '完整信息（标题和说明）',
+      copyMessageSubject: '仅标题（第一行）',
+      copyMessageBody: '仅说明',
+      messageCopied: '已复制 {count} 条提交信息。',
+      noBody: '此提交没有说明，只有标题。',
       showFiles: '在提交下方显示文件',
       hideFiles: '收起提交的文件'
     }

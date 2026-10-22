@@ -95,6 +95,7 @@ export function CompareView({ request, onRequest }: Props) {
       { label: t('compare.showCommit'), onClick: () => setCommit(sha) },
       { label: t('compare.openInHistory'), onClick: () => selectCommit(sha) },
       'separator',
+      actions.copyMessageMenu([sha]),
       { label: t('history.menu.copySha'), onClick: () => navigator.clipboard.writeText(sha) }
     ])
 

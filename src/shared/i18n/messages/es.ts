@@ -122,6 +122,10 @@ export const es: Messages = {
     tags: 'Etiquetas',
     stashes: 'Stashes',
     dropHere: 'soltar aquí',
+    showInHistory: 'Mostrar solo en el historial (marca varias para ver solo su historia)',
+    toggleGroup: 'Marcar todas / desmarcar todas',
+    filterActive: { one: 'Historial solo de esta rama marcada', other: 'Historial solo de las {count} ramas marcadas' },
+    filterClear: 'Mostrar todas',
     branchTooltip: 'Doble clic: checkout · Clic derecho: más acciones',
     menu: {
       deleteTag: 'Eliminar etiqueta',
@@ -178,7 +182,7 @@ export const es: Messages = {
       stagedTag: 'stage',
       partialTag: 'parcial'
     },
-    scope: { all: 'Todas las ramas', head: 'Rama actual', ref: 'Rama: {ref}' },
+    scope: { all: 'Todas las ramas', head: 'Rama actual', ref: 'Rama: {ref}', refs: { one: '1 rama marcada', other: '{count} ramas marcadas' } },
     badge: { remote: 'Rama remota', local: 'Rama local — arrástrala o suelta elementos aquí' },
     search: {
       placeholder: 'Buscar rama, mensaje, autor, fecha, hora o hash…',
@@ -205,6 +209,12 @@ export const es: Messages = {
       revert: 'Revertir commit…',
       reset: 'Mover {branch} aquí (reset)…',
       copySha: 'Copiar SHA',
+      copyMessage: 'Copiar mensaje',
+      copyMessageFull: 'Mensaje completo (título y descripción)',
+      copyMessageSubject: 'Solo el título (primera línea)',
+      copyMessageBody: 'Solo la descripción',
+      messageCopied: { one: 'Mensaje copiado.', other: '{count} mensajes copiados.' },
+      noBody: 'Este commit no tiene descripción, solo el título.',
       showFiles: 'Mostrar los archivos debajo del commit',
       hideFiles: 'Contraer los archivos del commit'
     }

@@ -122,6 +122,10 @@ export const en: Messages = {
     tags: 'Tags',
     stashes: 'Stashes',
     dropHere: 'drop here',
+    showInHistory: 'Show only in history (check several to see only their history)',
+    toggleGroup: 'Check all / uncheck all',
+    filterActive: { one: 'History of this checked branch only', other: 'History of the {count} checked branches only' },
+    filterClear: 'Show all',
     branchTooltip: 'Double-click: checkout · Right-click: more actions',
     menu: {
       deleteTag: 'Delete tag',
@@ -178,7 +182,7 @@ export const en: Messages = {
       stagedTag: 'staged',
       partialTag: 'partial'
     },
-    scope: { all: 'All branches', head: 'Current branch', ref: 'Branch: {ref}' },
+    scope: { all: 'All branches', head: 'Current branch', ref: 'Branch: {ref}', refs: { one: '1 checked branch', other: '{count} checked branches' } },
     badge: { remote: 'Remote branch', local: 'Local branch — drag it or drop items here' },
     search: {
       placeholder: 'Search branch, message, author, date, time or hash…',
@@ -205,6 +209,12 @@ export const en: Messages = {
       revert: 'Revert commit…',
       reset: 'Move {branch} here (reset)…',
       copySha: 'Copy SHA',
+      copyMessage: 'Copy message',
+      copyMessageFull: 'Full message (title and description)',
+      copyMessageSubject: 'Title only (first line)',
+      copyMessageBody: 'Description only',
+      messageCopied: { one: 'Message copied.', other: '{count} messages copied.' },
+      noBody: 'This commit has no description, only a title.',
       showFiles: 'Show the files below the commit',
       hideFiles: 'Collapse the commit files'
     }

@@ -125,6 +125,10 @@ export const hi: Messages = {
     tags: 'Tags',
     stashes: 'Stashes',
     dropHere: 'यहाँ छोड़ें',
+    showInHistory: 'इतिहास में केवल दिखाएँ (कई चुनें तो केवल उनका इतिहास दिखेगा)',
+    toggleGroup: 'सभी चुनें / सभी हटाएँ',
+    filterActive: { one: 'इतिहास केवल इस चुनी हुई ब्रांच का', other: 'इतिहास केवल चुनी हुई {count} ब्रांच का' },
+    filterClear: 'सभी दिखाएँ',
     branchTooltip: 'डबल क्लिक: checkout · राइट क्लिक: और विकल्प',
     menu: {
       deleteTag: 'टैग हटाएँ',
@@ -181,7 +185,7 @@ export const hi: Messages = {
       stagedTag: 'staged',
       partialTag: 'आंशिक'
     },
-    scope: { all: 'सभी branches', head: 'मौजूदा branch', ref: 'Branch: {ref}' },
+    scope: { all: 'सभी branches', head: 'मौजूदा branch', ref: 'Branch: {ref}', refs: { one: '1 चुनी हुई ब्रांच', other: '{count} चुनी हुई ब्रांच' } },
     badge: { remote: 'Remote branch', local: 'लोकल branch — इसे खींचें या यहाँ आइटम छोड़ें' },
     search: {
       placeholder: 'ब्रांच, संदेश, लेखक, तारीख, समय या हैश खोजें…',
@@ -208,6 +212,12 @@ export const hi: Messages = {
       revert: 'Commit revert करें…',
       reset: '{branch} को यहाँ ले जाएँ (reset)…',
       copySha: 'SHA कॉपी करें',
+      copyMessage: 'संदेश कॉपी करें',
+      copyMessageFull: 'पूरा संदेश (शीर्षक और विवरण)',
+      copyMessageSubject: 'केवल शीर्षक (पहली पंक्ति)',
+      copyMessageBody: 'केवल विवरण',
+      messageCopied: { one: 'संदेश कॉपी हो गया।', other: '{count} संदेश कॉपी हो गए।' },
+      noBody: 'इस कमिट में विवरण नहीं है, केवल शीर्षक है।',
       showFiles: 'commit के नीचे फ़ाइलें दिखाएँ',
       hideFiles: 'commit की फ़ाइलें छिपाएँ'
     }

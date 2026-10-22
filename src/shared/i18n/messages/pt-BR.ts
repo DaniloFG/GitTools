@@ -123,6 +123,10 @@ export const ptBR = {
     tags: 'Tags',
     stashes: 'Stashes',
     dropHere: 'soltar aqui',
+    showInHistory: 'Mostrar só no histórico (marque várias para ver apenas a história delas)',
+    toggleGroup: 'Marcar todas / desmarcar todas',
+    filterActive: { one: 'Histórico só desta branch marcada', other: 'Histórico só das {count} branches marcadas' },
+    filterClear: 'Mostrar todas',
     branchTooltip: 'Duplo clique: checkout · Botão direito: mais ações',
     menu: {
       deleteTag: 'Excluir tag',
@@ -179,7 +183,7 @@ export const ptBR = {
       stagedTag: 'staged',
       partialTag: 'parcial'
     },
-    scope: { all: 'Todas as branches', head: 'Branch atual', ref: 'Branch: {ref}' },
+    scope: { all: 'Todas as branches', head: 'Branch atual', ref: 'Branch: {ref}', refs: { one: '1 branch marcada', other: '{count} branches marcadas' } },
     badge: { remote: 'Branch remota', local: 'Branch local — arraste ou solte itens aqui' },
     search: {
       placeholder: 'Pesquisar branch, mensagem, autor, data, hora ou hash…',
@@ -206,6 +210,12 @@ export const ptBR = {
       revert: 'Reverter commit…',
       reset: 'Mover {branch} para cá (reset)…',
       copySha: 'Copiar SHA',
+      copyMessage: 'Copiar mensagem',
+      copyMessageFull: 'Mensagem completa (título e descrição)',
+      copyMessageSubject: 'Só o título (primeira linha)',
+      copyMessageBody: 'Só a descrição',
+      messageCopied: { one: 'Mensagem copiada.', other: '{count} mensagens copiadas.' },
+      noBody: 'Este commit não tem descrição, só o título.',
       showFiles: 'Mostrar os arquivos abaixo do commit',
       hideFiles: 'Recolher os arquivos do commit'
     }

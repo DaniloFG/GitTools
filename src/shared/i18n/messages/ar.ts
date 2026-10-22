@@ -130,6 +130,10 @@ export const ar: Messages = {
     tags: 'الوسوم',
     stashes: 'التخبئات',
     dropHere: 'أفلت هنا',
+    showInHistory: 'عرض في السجل فقط (حدّد عدة فروع لرؤية تاريخها فقط)',
+    toggleGroup: 'تحديد الكل / إلغاء تحديد الكل',
+    filterActive: { zero: 'السجل لا يعرض أي فرع محدد', one: 'السجل لهذا الفرع المحدد فقط', two: 'السجل للفرعين المحددين فقط', few: 'السجل للفروع المحددة ({count}) فقط', many: 'السجل للفروع المحددة ({count}) فقط', other: 'السجل للفروع المحددة ({count}) فقط' },
+    filterClear: 'عرض الكل',
     branchTooltip: 'نقر مزدوج: انتقال · نقر أيمن: إجراءات أخرى',
     menu: {
       deleteTag: 'حذف الوسم',
@@ -186,7 +190,7 @@ export const ar: Messages = {
       stagedTag: 'مجهّز',
       partialTag: 'جزئي'
     },
-    scope: { all: 'كل الفروع', head: 'الفرع الحالي', ref: 'الفرع: {ref}' },
+    scope: { all: 'كل الفروع', head: 'الفرع الحالي', ref: 'الفرع: {ref}', refs: { zero: 'لا فروع محددة', one: 'فرع محدد واحد', two: 'فرعان محددان', few: '{count} فروع محددة', many: '{count} فرعاً محدداً', other: '{count} فرع محدد' } },
     badge: { remote: 'فرع بعيد', local: 'فرع محلي — اسحبه أو أفلت العناصر هنا' },
     search: {
       placeholder: 'ابحث عن فرع أو رسالة أو مؤلف أو تاريخ أو وقت أو معرّف…',
@@ -213,6 +217,12 @@ export const ar: Messages = {
       revert: 'التراجع عن الإيداع…',
       reset: 'نقل {branch} إلى هنا (reset)…',
       copySha: 'نسخ SHA',
+      copyMessage: 'نسخ الرسالة',
+      copyMessageFull: 'الرسالة كاملة (العنوان والوصف)',
+      copyMessageSubject: 'العنوان فقط (السطر الأول)',
+      copyMessageBody: 'الوصف فقط',
+      messageCopied: { zero: 'لم تُنسخ أي رسالة.', one: 'تم نسخ الرسالة.', two: 'تم نسخ الرسالتين.', few: 'تم نسخ {count} رسائل.', many: 'تم نسخ {count} رسالة.', other: 'تم نسخ {count} رسالة.' },
+      noBody: 'ليس لهذا الالتزام وصف، بل عنوان فقط.',
       showFiles: 'عرض الملفات أسفل الإيداع',
       hideFiles: 'طي ملفات الإيداع'
     }

@@ -39,9 +39,10 @@ import { git } from './git'
 import { getLocale, setLocale, t } from './i18n'
 import { resetLayout as clearLayout } from './layout'
 import { historySignature, mergeData, type LogCache } from './stable'
+import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
 import { activate, areaOf, type AreaId, type WorkbenchState } from './workbench'
 
-export type HistoryScope = { kind: 'all' } | { kind: 'head' } | { kind: 'ref'; ref: string }
+export type { HistoryScope }
 
 function isOperationResult(value: unknown): value is { ok: boolean; message: string; conflicts: string[] } {
   return typeof value === 'object' && value !== null && 'ok' in value && 'conflicts' in value
@@ -163,10 +164,17 @@ export function App() {
         git.stashes(),
         git.operationState()
       ])
-      const key = historySignature(s.kind === 'ref' ? `ref:${s.ref}` : s.kind, status, branches, tags)
+      // Uma branch marcada que foi excluída ou renomeada sai do filtro (o novo escopo dispara outra leitura).
+      const names = new Set(branches.map((b) => b.name))
+      const marked = checkedRefs(s)
+      if (marked.some((name) => !names.has(name))) {
+        setScope(scopeOfRefs(marked.filter((name) => names.has(name))))
+        return
+      }
+      const key = historySignature(scopeKey(s), status, branches, tags)
       let log = logCache.current?.key === key ? logCache.current.log : null
       if (!log) {
-        log = await git.log(s.kind === 'all' ? { all: true } : s.kind === 'head' ? {} : { ref: s.ref }).catch(() => null)
+        log = await git.log(scopeLogOptions(s)).catch(() => null)
         if (log) logCache.current = { key, log }
         else log = logCache.current?.log ?? []
       }

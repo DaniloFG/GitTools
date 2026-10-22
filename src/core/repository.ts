@@ -351,11 +351,15 @@ export class GitRepository implements RepoApi {
   async log(options: LogOptions = {}): Promise<CommitInfo[]> {
     // Só precisamos saber se já existe commit: um rev-parse custa bem menos que um status completo.
     const hasHead = (await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })).exitCode === 0
-    if (!hasHead && !options.all) return []
+    const refs = [...new Set(options.refs ?? [])]
+    if (!hasHead && !options.all && refs.length === 0) return []
     const args = ['log', `--format=${COMMIT_FORMAT}`, '--topo-order', `-n${options.limit ?? 500}`]
     if (options.all) {
       args.push('--branches', '--remotes', '--tags')
       if (hasHead) args.push('HEAD')
+    } else if (refs.length > 0) {
+      for (const ref of refs) assertRef(ref)
+      args.push(...refs)
     } else {
       const ref = options.ref ?? 'HEAD'
       assertRef(ref)

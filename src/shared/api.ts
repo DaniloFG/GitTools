@@ -36,6 +36,8 @@ import type {
 export interface LogOptions {
   /** Ref a partir da qual listar; ignorado quando `all` é verdadeiro. */
   ref?: string
+  /** Várias refs (as branches marcadas na barra lateral): lista só a história delas; vale mais que `ref`. */
+  refs?: string[]
   all?: boolean
   limit?: number
 }

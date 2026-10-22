@@ -346,6 +346,27 @@ code {
   background: var(--bg-active);
   border-inline-start: 3px solid var(--branch-color, var(--accent));
 }
+/* Caixa de seleção: marca as branches cuja história aparece no Histórico. */
+.branch-check {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--branch-color, var(--accent));
+}
+.sidebar-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 8px 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: 11px;
+}
 /* O ícone da branch usa a cor da trilha dela no grafo. */
 .branch-icon {
   width: 12px;
@@ -1824,6 +1845,29 @@ button.ghost.danger-text:hover:not(:disabled) {
 }
 .context-menu .menu-action:hover {
   color: var(--text);
+}
+.context-menu .menu-parent {
+  position: relative;
+}
+.context-menu .menu-parent > button.open {
+  background: var(--bg-hover);
+}
+.context-menu .menu-arrow {
+  flex: none;
+}
+[dir='rtl'] .context-menu .menu-arrow {
+  transform: scaleX(-1);
+}
+/* Submenu: abre ao lado do item (no fim da linha), alinhado ao topo dele. */
+.context-menu.context-submenu {
+  position: absolute;
+  top: -5px;
+  inset-inline-start: 100%;
+  min-width: 200px;
+}
+.context-menu.context-submenu.flip {
+  inset-inline-start: auto;
+  inset-inline-end: 100%;
 }
 .menu-separator {
   height: 1px;
