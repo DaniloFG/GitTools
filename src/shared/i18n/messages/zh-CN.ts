@@ -108,7 +108,11 @@ export const zhCN: Messages = {
   welcome: {
     tagline: '轻松使用 Git：拖放和点击即可合并、变基和拣选分支、提交、文件，甚至单独的行。',
     loading: '正在加载仓库…',
-    recent: '最近打开'
+    recent: '最近打开',
+    favorites: '收藏',
+    favorite: '添加到收藏',
+    unfavorite: '取消收藏',
+    removeRecent: '从列表中移除（不会删除文件夹）'
   },
   sidebar: {
     hint: '将分支、提交或文件拖到本地分支上，即可合并、变基或拣选。',

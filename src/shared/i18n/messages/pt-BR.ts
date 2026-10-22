@@ -110,7 +110,11 @@ export const ptBR = {
   welcome: {
     tagline: 'Git sem complicação: arraste e clique para fazer merge, rebase e cherry-pick de branches, commits, arquivos e até linhas.',
     loading: 'Carregando repositório…',
-    recent: 'Recentes'
+    recent: 'Recentes',
+    favorites: 'Favoritos',
+    favorite: 'Adicionar aos favoritos',
+    unfavorite: 'Tirar dos favoritos',
+    removeRecent: 'Remover da lista (a pasta não é apagada)'
   },
   sidebar: {
     hint: 'Arraste uma branch, commit ou arquivo sobre uma branch local para merge, rebase ou cherry-pick.',

@@ -109,7 +109,11 @@ export const es: Messages = {
   welcome: {
     tagline: 'Git sin complicaciones: arrastra y haz clic para hacer merge, rebase y cherry-pick de ramas, commits, archivos e incluso líneas.',
     loading: 'Cargando repositorio…',
-    recent: 'Recientes'
+    recent: 'Recientes',
+    favorites: 'Favoritos',
+    favorite: 'Añadir a favoritos',
+    unfavorite: 'Quitar de favoritos',
+    removeRecent: 'Quitar de la lista (la carpeta no se borra)'
   },
   sidebar: {
     hint: 'Arrastra una rama, un commit o un archivo sobre una rama local para hacer merge, rebase o cherry-pick.',

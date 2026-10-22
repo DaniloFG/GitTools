@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
 import type { RecentRepo } from '../../../shared/api'
 import { relativeDate } from '../format'
 import { t } from '../i18n'
+import { useRecentRepos } from '../recent'
 
 interface Props {
   loading: boolean
@@ -11,10 +11,36 @@ interface Props {
 }
 
 export function Welcome({ loading, onOpen, onClone, onSettings }: Props) {
-  const [recent, setRecent] = useState<RecentRepo[]>([])
-  useEffect(() => {
-    window.gittools.recentRepositories().then(setRecent, () => setRecent([]))
-  }, [])
+  const { favorites, others, setFavorite, remove } = useRecentRepos()
+
+  const group = (title: string, list: RecentRepo[]) =>
+    list.length > 0 && (
+      <>
+        <h3>{title}</h3>
+        <ul className="recent-list">
+          {list.map((r) => (
+            <li key={r.path}>
+              <button className="recent-open" onClick={() => onOpen(r.path)}>
+                <strong>{r.name}</strong>
+                <span className="muted">{r.path}</span>
+                <small className="muted">{relativeDate(r.openedAt)}</small>
+              </button>
+              <button
+                className={`recent-action ${r.favorite ? 'active' : ''}`}
+                title={r.favorite ? t('welcome.unfavorite') : t('welcome.favorite')}
+                aria-label={r.favorite ? t('welcome.unfavorite') : t('welcome.favorite')}
+                onClick={() => void setFavorite(r.path, !r.favorite)}
+              >
+                {r.favorite ? '★' : '☆'}
+              </button>
+              <button className="recent-action" title={t('welcome.removeRecent')} aria-label={t('welcome.removeRecent')} onClick={() => void remove(r.path)}>
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      </>
+    )
 
   return (
     <div className="welcome">
@@ -43,22 +69,8 @@ export function Welcome({ loading, onOpen, onClone, onSettings }: Props) {
                 ⚙ {t('toolbar.settings')}
               </button>
             </div>
-            {recent.length > 0 && (
-              <>
-                <h3>{t('welcome.recent')}</h3>
-                <ul className="recent-list">
-                  {recent.map((r) => (
-                    <li key={r.path}>
-                      <button onClick={() => onOpen(r.path)}>
-                        <strong>{r.name}</strong>
-                        <span className="muted">{r.path}</span>
-                        <small className="muted">{relativeDate(r.openedAt)}</small>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+            {group(t('welcome.favorites'), favorites)}
+            {group(t('welcome.recent'), others)}
           </>
         )}
       </div>

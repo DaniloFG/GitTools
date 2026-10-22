@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Backend, type BackendHost } from '../src/backend/backend'
 import { BRIDGE_CHANNELS } from '../src/shared/channels'
 import { DEFAULT_SETTINGS } from '../src/shared/settings'
+import { GitRepository } from '../src/core/repository'
 import { createRepo } from './helpers'
 
 const dirs: string[] = []
@@ -52,6 +53,45 @@ describe('Backend', () => {
     const log = (await backend.invoke('repo:invoke', ['log', [{ all: true }]])) as { subject: string }[]
     expect(log.map((c) => c.subject)).toEqual(['primeiro'])
     expect((await backend.invoke('app:recentRepositories', [])) as unknown[]).toHaveLength(1)
+  })
+
+  it('remove repositórios da lista de recentes e mantém os favoritos', async () => {
+    const a = await createRepo()
+    const b = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    await b.commit('b', { 'b.txt': 'b\n' })
+    const { backend } = fakeHost()
+    const recent = async () => (await backend.invoke('app:recentRepositories', [])) as { path: string; favorite?: boolean }[]
+    const infoA = (await backend.invoke('app:openRepository', [a.dir])) as { root: string }
+    const infoB = (await backend.invoke('app:openRepository', [b.dir])) as { root: string }
+    expect((await recent()).map((r) => r.path)).toEqual([infoB.root, infoA.root])
+
+    await backend.invoke('app:setRepositoryFavorite', [infoA.root, true])
+    expect((await recent()).find((r) => r.path === infoA.root)?.favorite).toBe(true)
+    // Abrir de novo move para o topo, sem perder o favorito.
+    await backend.invoke('app:openRepository', [a.dir])
+    expect((await recent())[0]).toMatchObject({ path: infoA.root, favorite: true })
+
+    await backend.invoke('app:setRepositoryFavorite', [infoA.root, false])
+    expect((await recent()).find((r) => r.path === infoA.root)?.favorite).toBeUndefined()
+
+    await backend.invoke('app:removeRecentRepository', [infoB.root])
+    expect((await recent()).map((r) => r.path)).toEqual([infoA.root])
+    // A pasta continua lá: remover da lista não apaga nada.
+    expect(await (await GitRepository.open(b.dir)).info()).toMatchObject({ root: infoB.root })
+  })
+
+  it('o limite de recentes não derruba os favoritos', async () => {
+    const { backend, data } = fakeHost()
+    const file = join(data, 'recent-repositories.json')
+    const old = Array.from({ length: 20 }, (_, i) => ({ path: `/r/${i}`, name: `r${i}`, openedAt: 1000 - i, ...(i === 19 ? { favorite: true } : {}) }))
+    writeFileSync(file, JSON.stringify(old))
+    const t = await createRepo()
+    await t.commit('x', { 'x.txt': 'x\n' })
+    await backend.invoke('app:openRepository', [t.dir])
+    const list = JSON.parse(readFileSync(file, 'utf8')) as { path: string; favorite?: boolean }[]
+    expect(list.filter((r) => !r.favorite)).toHaveLength(15)
+    expect(list.some((r) => r.path === '/r/19' && r.favorite)).toBe(true)
   })
 
   it('recusa métodos fora da lista e chamadas sem repositório', async () => {

@@ -6,6 +6,8 @@ export const BRIDGE_CHANNELS = [
   'app:currentRepository',
   'app:initRepository',
   'app:recentRepositories',
+  'app:removeRecentRepository',
+  'app:setRepositoryFavorite',
   'app:openFile',
   'app:detectEditors',
   'app:chooseEditor',
