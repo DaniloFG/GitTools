@@ -1,0 +1,55 @@
+name: Fluxo de branches
+
+# Impõe a ordem de promoção: trabalho → develop → homolog → main.
+# Roda em todo PR para develop, homolog ou main e falha se a origem não for a permitida.
+# O check "Validar fluxo de branches" é obrigatório nas rulesets (scripts/apply-branch-protection.sh).
+
+on:
+  pull_request:
+    branches: [develop, homolog, main]
+
+permissions:
+  contents: read
+
+jobs:
+  validar-origem:
+    name: Validar fluxo de branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar origem e destino
+        env:
+          REPO: ${{ github.repository }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          ORIGEM: ${{ github.head_ref }}
+          DESTINO: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+
+          falhar() {
+            echo "::error title=Fluxo de branches::$1"
+            exit 1
+          }
+
+          if [ "$HEAD_REPO" != "$REPO" ]; then
+            falhar "PRs vindos de fork não fazem parte do fluxo. Abra o PR a partir de uma branch do repositório."
+          fi
+
+          case "$DESTINO" in
+            main)
+              [ "$ORIGEM" = "homolog" ] || falhar "A main só recebe PR da homolog (origem recebida: '$ORIGEM')."
+              ;;
+            homolog)
+              [ "$ORIGEM" = "develop" ] || falhar "A homolog só recebe PR da develop (origem recebida: '$ORIGEM')."
+              ;;
+            develop)
+              case "$ORIGEM" in
+                feature/*|fix/*|docs/*|chore/*|refactor/*|claude/*) ;;
+                *) falhar "A develop só recebe PR de feature/, fix/, docs/, chore/, refactor/ ou claude/ (origem recebida: '$ORIGEM')." ;;
+              esac
+              ;;
+            *)
+              falhar "Destino '$DESTINO' fora do fluxo."
+              ;;
+          esac
+
+          echo "Fluxo válido: $ORIGEM → $DESTINO"
