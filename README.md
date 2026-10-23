@@ -45,10 +45,12 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Saber o que aconteceu num arquivo só pelo nome | O nome do arquivo segue a cor do status em todas as listas: laranja = modificado, verde = novo/adicionado, vermelho riscado = removido, azul = renomeado. |
 | Ver o tipo de cada arquivo de relance          | Ícones de arquivo por tipo e a letra da modificação (M, A, D, R…) em todas as listas; ⚙ Configurações → Aparência liga ou desliga cada um separadamente (sem a letra, a cor do nome continua mostrando o que mudou). Na extensão do VS Code a interface também segue o **tema, as fontes e as cores de status do próprio VS Code**. |
 | Achar um commit                               | Campo **Pesquisar** do histórico (`Ctrl+F`): por nome de branch ou tag, mensagem, autor ou hash.                |
-| Ver só a história de algumas branches         | Na barra lateral, marque as **caixas de seleção** das branches (locais ou remotas): o Histórico lista só os commits delas, o que reduz a poluição visual. ☑ no cabeçalho da seção marca/desmarca todas do grupo e *Mostrar todas* volta a listar tudo. Clicar no nome da branch continua mostrando só aquela. |
+| Ver só a história de algumas branches         | Na barra lateral, marque as **caixas de seleção** das branches (locais ou remotas): o Histórico lista só os commits delas, o que reduz a poluição visual. ☑ no cabeçalho da seção marca/desmarca todas do grupo e *Mostrar todas* volta a listar tudo. Clicar no nome da branch continua mostrando só aquela. **A lista de branches é a referência e não muda** ao marcar várias: a faixa de filtro tem sempre a mesma altura, as cores das branches ficam as de antes e a tela não troca de painel — só o histórico e as linhas do tempo mudam. |
 | Copiar a mensagem de um commit                | Botão direito no commit → **Copiar mensagem ▸** *Mensagem completa*, *Só o título* ou *Só a descrição* (com vários commits selecionados, copia as mensagens de todos). |
 | Ver os arquivos de um commit sem sair da lista | ▸ ao lado do commit (ou duplo clique, ou `→`): os arquivos abrem logo abaixo da linha.                         |
 | Comparar duas branches, tags ou commits       | Aba **Comparar** (ou botão direito numa branch/commit): commits exclusivos de cada lado e diff dos arquivos, com opção de trazer linhas ou a versão do arquivo. |
+| Editar um arquivo sem sair do GitTools        | Aba **Arquivos** → clique no arquivo: abre no painel **Editor** (números de linha, `Tab` recua, `Ctrl+S` salva). O que você digitou fica guardado se trocar de arquivo ou de tela, e *Descartar alterações* volta ao salvo. Dê duplo clique na aba do painel (ou use ⤢) para **ampliá-lo** e ocupar a janela toda. |
+| Ver quem alterou a linha em que você está     | **Assistente de git no editor**: ao final da linha do cursor aparece um balão com **quem** alterou, **quando** e **o que** o commit fez (clique para abri-lo); linhas que você acabou de escrever aparecem como *Você · editando agora*. Ligado por padrão; desligue em ⚙ Configurações → Editor e diff. |
 | Saber quem mudou cada linha                   | Aba **Arquivos** → *Blame*. Clique no commit ao lado da linha para abri-lo.                                      |
 | Ver o histórico de um arquivo                 | Aba **Arquivos** → *Histórico do arquivo* (segue renomeações). Restaure uma versão antiga ou traga só algumas linhas dela. |
 | Reordenar, juntar, renomear ou remover commits | Botão direito num commit → **Rebase interativo**: arraste para reordenar e escolha a ação de cada commit.        |
@@ -64,6 +66,7 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 | Ver os arquivos em lista ou em árvore         | Botão **☰ Lista / ⊟ Árvore** nas listas de arquivos (histórico, detalhes do commit, Alterações, Comparar, Studio e Arquivos). A escolha vale para todas. |
 | Pular de alteração em alteração num diff      | Setas ▲ ▼ no cabeçalho do diff, ou `F7` / `Shift+F7`; ◀ ▶ ou `F8` / `Shift+F8` vão para o arquivo anterior/seguinte da lista. |
 | Escolher onde aparecem os avisos              | ⚙ Configurações → **Notificações**: esquerda/centro/direita, em cima/embaixo, largura e altura, com pré-visualização. |
+| Guardar um layout para usar de novo          | ▦ **Painéis** → *Salvar layout atual…* dá um nome ao arranjo de agora; ▦ → *Meus layouts* o reaplica quando quiser (⚙ Configurações → Aparência também lista, aplica e exclui). Restaurar o layout padrão **não** apaga os salvos. |
 | Montar a tela do seu jeito                    | Arraste as abas (Histórico, Alterações, Arquivos, Comparar, Log do git…) para outra área ou borda da janela, e os painéis pela alça ⠿ para qualquer lado. ⊞ volta tudo ao padrão. |
 | Idioma, tema e atalhos                        | ⚙ **Configurações** (canto superior direito): idioma, tema claro/escuro/do sistema, tamanho da interface e atalhos de teclado personalizáveis (F1 lista todos). |
 
@@ -144,6 +147,14 @@ saída e a primeira linha do erro), comando completo e duração. Filtre pelo te
 alteram* para esconder as leituras que a interface faz para se atualizar, copie um comando (duplo
 clique ou botão direito) e limpe a lista. Como qualquer aba, ele pode ser arrastado para outra área.
 
+### Filtrar o histórico por branches
+
+![Duas branches marcadas: o histórico mostra só a história delas e a lista de branches continua igual](docs/screenshots/filtro-branches.png)
+
+Marque as caixas das branches que interessam: o histórico (e as linhas do tempo) passa a mostrar só a história
+delas, enquanto a lista de branches fica exatamente como estava — mesma altura, mesmas cores, mesmo painel à
+frente. *Mostrar todas* (na faixa de filtro, que tem sempre o mesmo tamanho) volta a listar tudo.
+
 ### Clonar e identidade git
 
 | Clonar repositório | Identidade e remotes |
@@ -200,6 +211,22 @@ Arquivos binários ou removidos de um dos lados oferecem a escolha da versão in
 | --- | --- | --- |
 | ![Comparar](docs/screenshots/comparar.png) | ![Blame](docs/screenshots/blame.png) | ![Histórico do arquivo](docs/screenshots/historico-do-arquivo.png) |
 
+### Editor de arquivos com assistente de git
+
+![Editor com o balão do assistente de git ao final da linha](docs/screenshots/editor-inline.png)
+
+Clique num arquivo da aba **Arquivos** para editá-lo ali mesmo: números de linha, linha atual realçada, recuo
+automático no `Enter`, `Tab` / `Shift+Tab` para recuar (usa o recuo que o arquivo já tem), `Ctrl+S` para salvar e
+*Descartar alterações* para voltar ao conteúdo salvo. As quebras de linha (LF / CRLF) e o BOM do arquivo são
+preservados, e o que você digitou não se perde ao trocar de arquivo ou de tela (a lista marca com ● os arquivos
+com alterações não salvas). Se o arquivo mudar no disco enquanto você edita, o editor avisa antes de sobrescrever.
+Arquivos binários ou maiores que 2 MB continuam abrindo no seu editor (*Abrir no editor*).
+
+**Assistente de git inline**: o balão ao final da linha do cursor mostra *quem* alterou a linha, *quando* e *o
+que* o commit fez; clique nele para abrir o commit. Linhas que você acabou de escrever mostram *Você · editando
+agora*, e as já salvas mas ainda não commitadas, *Você · salvo, ainda não commitado*. Vem ligado — desligue em
+⚙ Configurações → **Editor e diff** → *Assistente de git no editor*.
+
 ### Rebase interativo visual
 
 ![Rebase interativo](docs/screenshots/rebase-interativo.png)
@@ -242,6 +269,8 @@ arquivos, o blame, as versões de um arquivo, a comparação e o log do git são
 
 ![Histórico ao lado de Alterações, com o diff embaixo](docs/screenshots/layout-aba-na-direita.png)
 
+![Menu Painéis com Salvar layout atual e Meus layouts](docs/screenshots/layouts-salvos.png)
+
 - **Qualquer painel em qualquer lugar**: arraste a aba de um painel e solte no *meio* de outro painel (ela
   vira uma aba dele), *junto de uma borda* dele (o painel é dividido e o seu fica nesse lado — esquerda,
   direita, em cima ou embaixo) ou na *borda da janela* (ocupa toda a altura ou a largura). Um destaque
@@ -260,6 +289,12 @@ arquivos, o blame, as versões de um arquivo, a comparação e o log do git são
   foco na divisória, as setas ajustam o tamanho. Em janelas pequenas os painéis encolhem juntos.
 - **Restaurar layout**: ▦ Painéis → *Restaurar layout padrão* (ou ⚙ Configurações → Aparência), com
   confirmação. O GitTools **lembra** do arranjo escolhido.
+- **Layouts salvos**: monte o arranjo que você gosta e use ▦ Painéis → *Salvar layout atual…* para dar um
+  nome a ele; ▦ → *Meus layouts* reaplica qualquer um (o ✕ ao lado exclui), e ⚙ Configurações → Aparência
+  também lista, aplica e exclui. Salvar com um nome que já existe substitui o antigo (com confirmação).
+  O layout guarda posição, abas e tamanhos dos painéis; restaurar o padrão não apaga os layouts salvos.
+- **Ampliar um painel**: o botão ⤢ no fim da barra de abas (ou duplo clique numa aba) faz aquele painel
+  ocupar a janela toda — ótimo para o editor ou o blame; ⤡ volta ao arranjo de antes.
 - **Ações no lado direito**: os botões de cada componente (cabeçalho do diff, detalhes do commit, grupos de
   Alterações, avisos de operação…) ficam sempre no fim — o lado direito — do próprio componente; em
   árabe e outros idiomas da direita para a esquerda tudo é espelhado (inclusive os lados do arrastar).
@@ -277,9 +312,9 @@ arquivos, o blame, as versões de um arquivo, a comparação e o log do git são
 
 Todas as opções gerais ficam num único lugar, separadas em seções: **Geral** (idioma),
 **Notificações** (posição e tamanho dos avisos), **Identidade e remotes** (nome e e-mail dos commits, remotes do repositório), **Editor e diff** (editor
-para abrir arquivos, com teste, conteúdo do diff — trecho alterado ou arquivo inteiro — e modo do diff),
+para abrir arquivos, com teste, **assistente de git no editor** — ligado por padrão —, conteúdo do diff — trecho alterado ou arquivo inteiro — e modo do diff),
 **Aparência** (tema, ícones de arquivo, letras das modificações M/A/D, tamanho, espessura das divisórias, tamanho dos botões de recolher/expandir e
-restaurar o layout dos painéis), **Atalhos de teclado** (com pesquisa pelo nome da ação ou pelas
+restaurar ou **salvar o layout** dos painéis), **Atalhos de teclado** (com pesquisa pelo nome da ação ou pelas
 próprias teclas: clique em *Gravar teclas* e pressione a combinação) e **Sobre** (versões do GitTools, do git e
 do sistema, local do arquivo de configurações e "Restaurar padrões").
 
@@ -354,6 +389,18 @@ npm run dist           # gera o instalador para o seu sistema em release/
 npm run dist:win       # (ou dist:mac / dist:linux)
 ```
 
+Os prints (`docs/screenshots`) e os GIFs da extensão (`extension/media/readme`) são gerados a partir da
+interface real, com repositórios de exemplo criados na hora — `scripts/readme-media/`:
+
+```bash
+npm run build:extension                      # a interface empacotada que o roteiro abre
+node scripts/readme-media/capture.mjs local  # prints do README (pt-BR); `extension` gera os da extensão (en)
+node scripts/readme-media/gifs.mjs           # GIFs da extensão (precisa do ffmpeg)
+```
+
+Precisam do [Playwright](https://playwright.dev/) instalado (`PLAYWRIGHT_MODULE` e `CHROMIUM` indicam onde,
+se não estiverem nos caminhos padrão); passe o nome de um print para refazer só ele.
+
 ## Como funciona
 
 ```
@@ -377,6 +424,8 @@ src/
 └── renderer/           Interface em React
     ├── src/fileTree.ts  Árvore de pastas das listas de arquivos
     ├── src/diffNav.ts   Navegação entre alterações/arquivos dos diffs (botões e atalhos)
+    ├── src/savedLayouts.ts  Layouts salvos pelo usuário (nome + foto do arranjo dos painéis)
+    ├── src/editorText.ts    Texto do editor de arquivos: LF/CRLF, BOM, cursor e origem das linhas editadas
     ├── src/workbench.ts Áreas e abas da janela (esquerda, centro, direita, embaixo) e como mover abas
     └── src/components/ Histórico com grafo, detalhes do commit, diff com seleção de linhas, alterações,
                         Cherry-pick Studio, editor de conflitos, comparação, blame/histórico,
