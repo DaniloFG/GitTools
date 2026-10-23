@@ -30,6 +30,7 @@ import { SettingsCenter } from './components/settings/SettingsCenter'
 import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
 import { SidebarPanes } from './components/Sidebar'
 import { PanelsButtons, ScreenTabs } from './components/Screens'
+import { Dashboards } from './components/Dashboards'
 import { Toasts, type Toast } from './components/Toasts'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
@@ -54,7 +55,7 @@ function isOperationResult(value: unknown): value is { ok: boolean; message: str
 /** Painéis de cada grupo de telas: o estado de cada grupo só é montado enquanto algum deles está na tela. */
 const COMMIT_VIEWS: ViewId[] = ['commit.message', 'commit.files', 'commit.diff']
 const CHANGES_VIEWS: ViewId[] = ['changes.conflicts', 'changes.unstaged', 'changes.staged', 'changes.files', 'changes.commit', 'changes.diff']
-const FILES_VIEWS: ViewId[] = ['files.list', 'files.history', 'files.diff', 'files.blame']
+const FILES_VIEWS: ViewId[] = ['files.list', 'files.history', 'files.diff', 'files.editor', 'files.blame']
 const COMPARE_VIEWS: ViewId[] = ['compare.setup', 'compare.files', 'compare.diff']
 
 export function App() {
@@ -82,6 +83,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState<string | null>(null)
   const [systemLocales, setSystemLocales] = useState<readonly string[]>(navigator.languages)
   const [helpOpen, setHelpOpen] = useState(false)
+  /** A tela de Dashboards está aberta (no lugar dos painéis, que continuam montados por trás). */
+  const [dashboardsOpen, setDashboards] = useState(false)
   const toastId = useRef(0)
   const scopeRef = useRef(scope)
   scopeRef.current = scope
@@ -132,7 +135,10 @@ export function App() {
   availableRef.current = available
 
   /** Mostra uma tela: traz à frente os painéis dela, onde quer que o usuário os tenha deixado. */
-  const setView = useCallback((view: View) => revealScreen(view, (v) => availableRef.current(v)), [])
+  const setView = useCallback((view: View) => {
+    setDashboards(false)
+    revealScreen(view, (v) => availableRef.current(v))
+  }, [])
 
   const askConfirm = useCallback((request: Parameters<AppContextValue['confirm']>[0]) => new Promise<boolean>((resolve) => setDialog({ kind: 'confirm', ...request, resolve })), [])
 
@@ -304,6 +310,8 @@ export function App() {
         setSelected([sha])
         for (const view of COMMIT_VIEWS) revealView(view)
       },
+      dashboardsOpen,
+      setDashboards,
       setView,
       openDiffWindow,
       resetLayout,
@@ -332,7 +340,7 @@ export function App() {
     }
     // locale: força novos textos nos componentes quando o idioma muda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repo, data, busy, refresh, run, toast, settings, locale, setView, openDiffWindow, resetLayout, askConfirm])
+  }, [repo, data, busy, refresh, run, toast, settings, locale, setView, dashboardsOpen, openDiffWindow, resetLayout, askConfirm])
 
   const settingsDialogs = (
     <>
@@ -408,6 +416,7 @@ export function App() {
     'files.list': { label: t('tabs.files') },
     'files.history': { label: t('workbench.views.filesHistory') },
     'files.diff': { label: t('workbench.views.filesDiff') },
+    'files.editor': { label: t('files.editor') },
     'files.blame': { label: t('files.blame') },
     'compare.setup': { label: t('tabs.compare') },
     'compare.files': { label: t('workbench.views.compareFiles') },
@@ -422,18 +431,21 @@ export function App() {
         <Toolbar
           onOpenRepository={openRepository}
           onClone={() => setCloneOpen(true)}
-          screens={<ScreenTabs state={dock} onChange={setDock} available={available} changeCount={changeCount} />}
+          screens={<ScreenTabs state={dock} onChange={(next) => (setDashboards(false), setDock(next))} available={available} changeCount={changeCount} dashboards={dashboardsOpen} onDashboards={() => setDashboards(true)} />}
           panels={<PanelsButtons state={dock} onChange={setDock} meta={meta} available={available} />}
         />
         <OperationBanner onShowChanges={() => setView('changes')} />
-        <Dock state={dock} onChange={setDock} meta={meta} available={available} />
+        <div className={dashboardsOpen ? 'dock-hidden' : 'dock-wrap'}>
+          <Dock state={dock} onChange={setDock} meta={meta} available={available} />
+        </div>
+        {dashboardsOpen && <Dashboards />}
       </div>
       {/* Cada tela é desenhada aqui e levada, por portais, ao painel onde o usuário a deixou. */}
       <SidebarPanes
         scope={scope}
-        onScope={(s) => {
+        onScope={(s, options) => {
           setScope(s)
-          setView('history')
+          if (options?.reveal !== false) setView('history')
         }}
       />
       <PaneSlot id="history">

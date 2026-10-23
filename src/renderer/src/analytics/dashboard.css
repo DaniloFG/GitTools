@@ -1,0 +1,834 @@
+/* ---------------------------------------------------------------------------------- tema dos dashboards */
+/* Paleta categórica de 8 cores em ordem fixa, rampa sequencial azul e par divergente azul ↔ vermelho (validadas
+   para os dois temas); as cores de estado nunca são usadas como cor de série. */
+.dash {
+  --dash-surface: var(--bg-elevated);
+  --dash-text: var(--text);
+  --dash-muted: var(--text-muted);
+  --dash-track: color-mix(in srgb, var(--text) 8%, transparent);
+  --dash-grid: color-mix(in srgb, var(--text) 8%, transparent);
+  --dash-axis: color-mix(in srgb, var(--text) 24%, transparent);
+  --dash-other: #898781;
+  --dash-s1: #3987e5;
+  --dash-s2: #d95926;
+  --dash-s3: #199e70;
+  --dash-s4: #c98500;
+  --dash-s5: #d55181;
+  --dash-s6: #008300;
+  --dash-s7: #9085e9;
+  --dash-s8: #e66767;
+  --dash-good: #0ca30c;
+  --dash-warning: #fab219;
+  --dash-serious: #ec835a;
+  --dash-critical: #d03b3b;
+  --dash-seq-lo: #283043;
+  --dash-seq-hi: #6da7ec;
+  --dash-div-pos: #3987e5;
+  --dash-div-neg: #e66767;
+  --dash-div-mid: #383835;
+}
+:root[data-theme='light'] .dash {
+  --dash-other: #898781;
+  --dash-s1: #2a78d6;
+  --dash-s2: #eb6834;
+  --dash-s3: #1baf7a;
+  --dash-s4: #eda100;
+  --dash-s5: #e87ba4;
+  --dash-s6: #008300;
+  --dash-s7: #6250d6;
+  --dash-s8: #e34948;
+  --dash-seq-lo: #e6eefa;
+  --dash-seq-hi: #184f95;
+  --dash-div-pos: #2a78d6;
+  --dash-div-neg: #e34948;
+  --dash-div-mid: #f0efec;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] .dash {
+    --dash-s1: #2a78d6;
+    --dash-s2: #eb6834;
+    --dash-s3: #1baf7a;
+    --dash-s4: #eda100;
+    --dash-s5: #e87ba4;
+    --dash-s6: #008300;
+    --dash-s7: #6250d6;
+    --dash-s8: #e34948;
+    --dash-seq-lo: #e6eefa;
+    --dash-seq-hi: #184f95;
+    --dash-div-pos: #2a78d6;
+    --dash-div-neg: #e34948;
+    --dash-div-mid: #f0efec;
+  }
+}
+
+/* ---------------------------------------------------------------------------------- estrutura da tela */
+.dashboards {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  background: radial-gradient(1100px 380px at 8% -12%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 70%), radial-gradient(900px 320px at 100% 0%, color-mix(in srgb, var(--dash-s7) 8%, transparent), transparent 70%), var(--bg);
+}
+.dash-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 12px 18px 0;
+}
+.dash-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 0;
+}
+.dash-tab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  padding: 6px 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+.dash-tab:hover {
+  color: var(--text);
+  background: transparent;
+}
+.dash-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 650;
+}
+.dash-tab.add {
+  padding-inline: 10px;
+  font-size: 15px;
+}
+.dash-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+.dash-updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 70px;
+  justify-content: flex-end;
+}
+.dash-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 10px 18px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+  backdrop-filter: blur(6px);
+}
+.dash-filters .segmented button {
+  padding: 3px 10px;
+}
+.dash-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.dash-date input {
+  padding: 3px 6px;
+  font-size: 12px;
+}
+.dash-summary {
+  white-space: nowrap;
+}
+.dash-banner {
+  margin: 10px 18px 0;
+  padding: 6px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 55%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: 12px;
+}
+.dash-banner.error {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.dash-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 18px 28px;
+  transition: opacity 0.15s;
+}
+.dash-scroll.refreshing {
+  opacity: 0.72;
+}
+.dash-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 240px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+/* Escolha de pessoas */
+.dash-people {
+  position: relative;
+}
+.dash-people > button.active {
+  border-color: var(--accent);
+}
+.dash-popover {
+  position: absolute;
+  z-index: 30;
+  inset-inline-start: 0;
+  top: calc(100% + 6px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 280px;
+  max-height: 340px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.dash-popover ul {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.dash-popover li label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.dash-popover li label:hover {
+  background: var(--bg-hover);
+}
+.dash-person {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dash-popover .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+/* ---------------------------------------------------------------------------------- cartões */
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--dash-surface);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent) inset, 0 8px 24px -16px rgba(0, 0, 0, 0.5);
+}
+.dash-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px 0 16px;
+}
+.dash-card-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: grab;
+  touch-action: none;
+}
+.dash-card-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dash-select {
+  max-width: 120px;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+.dash-views {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+.dash-views button {
+  min-width: 24px;
+  padding: 1px 5px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+.dash-views button:hover {
+  color: var(--text);
+}
+.dash-views button.active {
+  background: var(--accent);
+  color: #fff;
+}
+.dash-icon-btn {
+  padding: 0 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 22px;
+}
+.dash-icon-btn:hover {
+  color: var(--text);
+}
+.dash-card-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 14px 12px;
+}
+.dash-card.as-table .dash-card-body {
+  padding: 4px 6px 8px;
+}
+.dash-empty {
+  margin: auto;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+body.reordering .dash-card {
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------------------------- gráficos */
+.chart-box {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+.chart-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+.chart-svg {
+  display: block;
+  overflow: visible;
+}
+.chart-svg text {
+  font-family: inherit;
+}
+.chart-tick {
+  fill: var(--dash-muted);
+  font-size: 11px;
+}
+.chart-label {
+  fill: var(--dash-text);
+  font-size: 12px;
+}
+.chart-value {
+  fill: var(--dash-text);
+  font-size: 11px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.chart-annot {
+  fill: var(--dash-text);
+  font-size: 11px;
+  font-weight: 650;
+}
+.chart-axis-title {
+  fill: var(--dash-muted);
+  font-size: 10px;
+}
+.chart-grid {
+  stroke: var(--dash-grid);
+  stroke-width: 1;
+}
+.chart-axis {
+  stroke: var(--dash-axis);
+  stroke-width: 1;
+}
+.chart-track {
+  stroke: var(--dash-track);
+  stroke-width: 1;
+}
+.chart-cross {
+  stroke: var(--dash-axis);
+  stroke-width: 1;
+}
+.chart-row,
+.treemap g,
+.chart-svg circle {
+  transition: opacity 0.12s;
+}
+.treemap-label {
+  font-size: 11px;
+  font-weight: 650;
+  pointer-events: none;
+}
+.treemap-sub {
+  font-size: 10px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.treemap-group {
+  fill: var(--dash-muted);
+  font-size: 11px;
+  font-weight: 650;
+  pointer-events: none;
+}
+polygon.chart-grid {
+  fill: none;
+}
+
+/* Tooltip: o valor lidera; o nome da série vem depois. */
+.chart-tip {
+  position: absolute;
+  z-index: 8;
+  max-width: 280px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dash-surface) 94%, var(--text));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  pointer-events: none;
+}
+.chart-tip-title {
+  margin-bottom: 4px;
+  color: var(--dash-muted);
+  font-size: 11px;
+}
+.chart-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.55;
+}
+.chart-tip-row strong {
+  font-variant-numeric: tabular-nums;
+}
+.chart-tip-label,
+.chart-tip-note {
+  color: var(--dash-muted);
+}
+.chart-tip-note {
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid var(--dash-grid);
+  font-size: 11px;
+}
+.chart-key {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.chart-key.line {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+.chart-key.dot {
+  border-radius: 50%;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.chart-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.chart-legend button:hover:not(:disabled) {
+  color: var(--text);
+  background: transparent;
+}
+.chart-legend li.off button {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.chart-legend li.dim {
+  opacity: 0.45;
+}
+.chart-legend-label {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Parte de um todo */
+.part-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.part {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  max-height: 100%;
+}
+.part.wide {
+  flex-direction: row;
+  gap: 22px;
+}
+.donut-total {
+  fill: var(--dash-text);
+  font-size: 22px;
+  font-weight: 700;
+}
+.donut-caption {
+  fill: var(--dash-muted);
+  font-size: 11px;
+}
+.part-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 140px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.part.wide .part-legend {
+  flex: 1;
+  min-width: 0;
+}
+.part-legend li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: opacity 0.12s;
+}
+.part-legend li.dim {
+  opacity: 0.4;
+}
+.part-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.part-value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.part-pct {
+  min-width: 34px;
+  color: var(--dash-muted);
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Escala do mapa de calor */
+.scale-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 4px;
+  color: var(--dash-muted);
+  font-size: 10px;
+}
+.scale-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* Indicadores */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  gap: 12px;
+  height: 100%;
+}
+.tiles.compact {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px 4px;
+  border-radius: 10px;
+}
+.stat-value.long {
+  font-size: 20px;
+  line-height: 1.5;
+}
+.stat-label {
+  overflow: hidden;
+  color: var(--dash-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat-value {
+  color: var(--dash-text);
+  font-size: 28px;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+.stat-delta {
+  color: var(--dash-muted);
+  font-size: 11px;
+}
+.stat-delta i {
+  margin-inline-end: 3px;
+  font-size: 9px;
+  font-style: normal;
+}
+.stat-delta.good {
+  color: color-mix(in srgb, var(--dash-good) 80%, var(--text));
+}
+.stat-delta.bad {
+  color: color-mix(in srgb, var(--dash-critical) 70%, var(--text));
+}
+.spark {
+  flex: none;
+  margin-top: auto;
+}
+
+/* Medidores e estados */
+.gauge-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gauge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.gauge-value {
+  fill: var(--dash-text);
+  font-size: 30px;
+  font-weight: 700;
+}
+.gauge-caption {
+  fill: var(--dash-muted);
+  font-size: 11px;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid color-mix(in srgb, var(--tone) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone) 14%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+}
+.status-pill i {
+  color: var(--tone);
+  font-size: 11px;
+  font-style: normal;
+}
+.meters {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  height: 100%;
+}
+.meter-title {
+  margin-bottom: 4px;
+  color: var(--dash-muted);
+  font-size: 11px;
+}
+.meter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.meter-track {
+  flex: 1;
+  height: 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dash-s1) 18%, transparent);
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+.meter-caption {
+  min-width: 90px;
+  color: var(--dash-muted);
+  font-size: 12px;
+}
+
+/* Tabela (equivalente de cada gráfico) */
+.data-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0;
+  background: var(--dash-surface);
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+}
+.data-table th button {
+  width: 100%;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 650;
+  text-align: inherit;
+}
+.data-table th.num,
+.data-table td.num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.data-table td {
+  max-width: 420px;
+  padding: 4px 10px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--dash-grid);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.data-table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+/* Galeria de gráficos */
+.dash-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+.dash-gallery-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.dash-gallery-bar input {
+  flex: 1;
+  min-width: 180px;
+}
+.segmented.wrap {
+  flex-wrap: wrap;
+}
+.dash-gallery-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.dash-gallery-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  text-align: start;
+}
+.dash-gallery-item:hover {
+  border-color: var(--accent);
+}
+.dash-gallery-cat {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dash-gallery-views {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.dash-gallery-add {
+  margin-top: auto;
+  padding-top: 6px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* A tela de dashboards ocupa o lugar dos painéis; os painéis continuam montados por trás. */
+.app > .dock-hidden {
+  display: none;
+}

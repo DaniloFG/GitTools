@@ -150,3 +150,81 @@ describe('comparação desde o ancestral comum', () => {
     expect(cmp.files.map((f) => `${f.status} ${f.path}`)).toEqual(['A b.txt'])
   })
 })
+
+describe('editor de arquivos', () => {
+  it('lê e grava arquivos de texto da pasta do projeto', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'a.txt': 'um\r\ndois\r\n', 'pasta/b.txt': 'b\n' })
+    expect(await t.repo.readFile('a.txt')).toEqual({ path: 'a.txt', content: 'um\r\ndois\r\n', binary: false, tooLarge: false, size: 10 })
+    await t.repo.writeFile('pasta/b.txt', 'B\nnova\n')
+    expect(readFileSync(join(t.dir, 'pasta', 'b.txt'), 'utf8')).toBe('B\nnova\n')
+    // Gravar não faz stage: o arquivo aparece como alterado.
+    const status = await t.repo.status()
+    expect(status.unstaged.map((f) => f.path)).toEqual(['pasta/b.txt'])
+  })
+
+  it('recusa binários, arquivos grandes, pastas, caminhos fora do projeto e arquivos que não existem', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'a.txt': 'a\n', 'pasta/b.txt': 'b\n' })
+    t.write('bin.dat', 'ab\0cd')
+    t.write('grande.txt', 'x'.repeat(2 * 1024 * 1024 + 1))
+    expect(await t.repo.readFile('bin.dat')).toMatchObject({ content: null, binary: true })
+    expect(await t.repo.readFile('grande.txt')).toMatchObject({ content: null, tooLarge: true, binary: false })
+    await expect(t.repo.readFile('pasta')).rejects.toThrow('não é um arquivo comum')
+    await expect(t.repo.readFile('../fora.txt')).rejects.toThrow('fora do repositório')
+    await expect(t.repo.writeFile('../fora.txt', 'x')).rejects.toThrow('fora do repositório')
+    // O editor não cria arquivos: só reescreve os que existem.
+    await expect(t.repo.writeFile('novo.txt', 'x')).rejects.toThrow()
+    await expect(t.repo.readFile('nao-existe.txt')).rejects.toThrow()
+  })
+
+  it('o blame do arquivo salvo mostra o autor das linhas alteradas e as não commitadas', async () => {
+    const t = await createRepo()
+    const c1 = await t.commit('primeiro', { 'f.txt': 'um\ndois\n' })
+    await t.repo.writeFile('f.txt', 'um\nDOIS\n')
+    const blame = await t.repo.blame('f.txt')
+    expect(blame.lines[0].sha).toBe(c1)
+    expect(blame.lines[1].sha).toMatch(/^0+$/)
+    expect(blame.commits[c1]).toMatchObject({ author: 'Test', summary: 'primeiro' })
+  })
+})
+
+describe('analytics (dashboards)', () => {
+  it('lê commits, autores, arquivos, linhas, trailers e tags', async () => {
+    const t = await createRepo()
+    const c1 = await t.commit('feat: primeiro', { 'a.txt': 'um\ndois\n', 'src/b.txt': 'b\n' })
+    t.write('a.txt', 'um\nDOIS\ntres\n')
+    await t.git('add', '-A')
+    await t.git('commit', '-q', '-m', 'fix: ajusta\n\nExplica o motivo da mudança.\n\nSigned-off-by: Test <test@example.com>\nCo-authored-by: Ana <ana@example.com>')
+    await t.git('tag', 'v1.0.0')
+    const data = await t.repo.analytics()
+    expect(data.truncated).toBe(false)
+    expect(data.commits.map((c) => c.subject)).toEqual(['fix: ajusta', 'feat: primeiro'])
+    const [fix, first] = data.commits
+    expect(first.sha).toBe(c1)
+    expect(first).toMatchObject({ author: 'Test', email: 'test@example.com', parents: 0, bodyLength: 0, signedOff: false, coAuthors: 0, tags: [] })
+    expect(fix).toMatchObject({ parents: 1, signedOff: true, coAuthors: 1, tags: ['v1.0.0'], bodyLength: 'Explica o motivo da mudança.'.length })
+    const changes = (c: (typeof data.commits)[number]) => c.files.map(([p, add, del]) => [data.paths[p], add, del]).sort()
+    expect(changes(first)).toEqual([['a.txt', 2, 0], ['src/b.txt', 1, 0]])
+    expect(changes(fix)).toEqual([['a.txt', 2, 1]])
+    expect(data.tree.map((f) => f.path).sort()).toEqual(['a.txt', 'src/b.txt'])
+    expect(data.tree.find((f) => f.path === 'a.txt')?.size).toBe('um\nDOIS\ntres\n'.length)
+    expect(first.time).toBeGreaterThan(1_000_000_000_000)
+  })
+
+  it('respeita o limite e o escopo, e repositório vazio devolve listas vazias', async () => {
+    const empty = await createRepo()
+    expect(await empty.repo.analytics()).toMatchObject({ commits: [], tree: [], truncated: false })
+    const t = await createRepo()
+    await t.commit('um', { 'a.txt': 'a\n' })
+    await t.commit('dois', { 'a.txt': 'b\n' })
+    await t.git('checkout', '-q', '-b', 'outra')
+    await t.commit('so na outra', { 'o.txt': 'o\n' })
+    await t.git('checkout', '-q', 'main')
+    const limited = await t.repo.analytics({ limit: 2 })
+    expect(limited.truncated).toBe(true)
+    expect(limited.commits).toHaveLength(2)
+    expect((await t.repo.analytics({ scope: 'all' })).commits).toHaveLength(3)
+    expect((await t.repo.analytics({ scope: 'head' })).commits.map((c) => c.subject)).toEqual(['dois', 'um'])
+  })
+})

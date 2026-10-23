@@ -1,6 +1,7 @@
 import { useApp } from '../context'
 import { SCREEN_VIEWS, screenShown, showScreen, toggleView, type DockState, type ScreenId, type ViewId } from '../dock'
 import { t } from '../i18n'
+import { applySavedLayout, findByName, removeSavedLayout, saveCurrentLayout, useSavedLayouts } from '../savedLayouts'
 import type { ViewMeta } from './Dock'
 import type { MenuItem } from './ContextMenu'
 
@@ -11,6 +12,9 @@ interface Props {
   available(view: ViewId): boolean
   /** Arquivos alterados (número do botão Alterações). */
   changeCount: number
+  /** A tela de Dashboards está aberta e como abri-la. */
+  dashboards: boolean
+  onDashboards(): void
 }
 
 /** Telas com botão próprio (os painéis soltos, como Branches e o Log do git, ficam no menu Painéis). */
@@ -35,11 +39,11 @@ const SCREEN_NAMES: Record<ScreenId, Parameters<typeof t>[0]> = {
  * Atalhos para trazer à frente os painéis de uma tela (Histórico, Alterações, Arquivos, Comparar). Os painéis em
  * si não pertencem a nenhuma tela: ficam onde você os deixar, e cada um pode ser movido para qualquer lugar.
  */
-export function ScreenTabs({ state, onChange, available, changeCount }: Omit<Props, 'meta'>) {
+export function ScreenTabs({ state, onChange, available, changeCount, dashboards, onDashboards }: Omit<Props, 'meta'>) {
   return (
     <div className="screen-tabs" role="group" aria-label={t('workbench.screens')} title={t('workbench.screensHelp')}>
       {SCREENS.map((screen) => {
-        const current = screenShown(state, screen.id, available)
+        const current = !dashboards && screenShown(state, screen.id, available)
         return (
           <button
             key={screen.id}
@@ -52,13 +56,30 @@ export function ScreenTabs({ state, onChange, available, changeCount }: Omit<Pro
           </button>
         )
       })}
+      <button className={`screen-tab dashboards-tab ${dashboards ? 'active' : ''}`} aria-pressed={dashboards} title={t('dash.tabHelp')} onClick={onDashboards}>
+        <span aria-hidden>◔</span> {t('dash.title')}
+      </button>
     </div>
   )
 }
 
 /** Menu para mostrar ou esconder qualquer painel, e o botão de restaurar o layout. */
-export function PanelsButtons({ state, onChange, meta, available }: Omit<Props, 'changeCount'>) {
-  const { showMenu, resetLayout } = useApp()
+export function PanelsButtons({ state, onChange, meta, available }: Omit<Props, 'changeCount' | 'dashboards' | 'onDashboards'>) {
+  const { showMenu, resetLayout, prompt, confirm, toast } = useApp()
+  const [saved, setSaved] = useSavedLayouts()
+
+  /** Guarda o arranjo de agora com o nome que o usuário escolher (o mesmo nome substitui o layout antigo). */
+  const saveLayout = async () => {
+    const name = await prompt({ title: t('layouts.saveTitle'), label: t('layouts.name'), placeholder: t('layouts.namePlaceholder'), confirmLabel: t('layouts.save') })
+    if (!name) return
+    const existing = findByName(saved, name)
+    if (existing) {
+      const ok = await confirm({ title: t('layouts.replaceTitle'), message: t('layouts.replaceMessage', { name: existing.name }), confirmLabel: t('layouts.replace') })
+      if (!ok) return
+    }
+    saveCurrentLayout(saved, setSaved, name)
+    toast('success', t('layouts.saved', { name: existing?.name ?? name }))
+  }
 
   const panelsMenu = (e: React.MouseEvent) => {
     const items: MenuItem[] = []
@@ -75,7 +96,21 @@ export function PanelsButtons({ state, onChange, meta, available }: Omit<Props, 
         })
       }
     }
-    items.push('separator', { label: t('workbench.resetLayout'), onClick: () => void resetLayout() })
+    items.push('separator', { label: t('layouts.saveCurrent'), onClick: () => void saveLayout() })
+    if (saved.length) {
+      items.push({
+        label: t('layouts.mine'),
+        submenu: saved.map((layout) => ({
+          label: layout.name,
+          onClick: () => {
+            applySavedLayout(layout)
+            toast('success', t('layouts.applied', { name: layout.name }))
+          },
+          actions: [{ icon: '✕', title: t('layouts.delete'), onClick: () => setSaved(removeSavedLayout(saved, layout.id)) }]
+        }))
+      })
+    }
+    items.push({ label: t('workbench.resetLayout'), onClick: () => void resetLayout() })
     showMenu(e, items)
   }
 

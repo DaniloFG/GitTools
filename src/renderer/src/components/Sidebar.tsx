@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, useRef, type ReactNode } from 'react'
 import type { BranchInfo, StashInfo } from '../../../shared/types'
 import { ALL_SCOPE, checkedRefs, toggleGroup, toggleRef, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
@@ -16,7 +16,8 @@ import { PaneSlot } from '../slots'
 
 interface Props {
   scope: HistoryScope
-  onScope(scope: HistoryScope): void
+  /** `reveal: false` muda só o filtro, sem trazer o Histórico à frente (marcar caixas não pode mexer nos painéis). */
+  onScope(scope: HistoryScope, options?: { reveal?: boolean }): void
 }
 
 /**
@@ -39,17 +40,29 @@ export function SidebarPanes({ scope, onScope }: Props) {
   )
 }
 
+/**
+ * Cor de cada branch: a da sua trilha no grafo do histórico completo. A lista de branches é a referência e não
+ * muda ao marcar branches (só o histórico e as linhas do tempo mudam): enquanto o histórico está filtrado, as
+ * cores continuam as da última vez em que ele mostrava tudo.
+ */
+function useBranchColors(scope: HistoryScope): (b: BranchInfo) => number | undefined {
+  const { data, repo } = useApp()
+  const full = useRef<{ root: string; colors: Map<string, number> }>({ root: repo.root, colors: new Map() })
+  if (full.current.root !== repo.root) full.current = { root: repo.root, colors: new Map() }
+  const current = commitColors(data.log, data.status.headSha)
+  if (scope.kind === 'all') for (const b of data.branches) if (current.has(b.sha)) full.current.colors.set(b.name, current.get(b.sha)!)
+  return (b) => full.current.colors.get(b.name) ?? (scope.kind === 'all' ? current.get(b.sha) : undefined)
+}
+
 function BranchesPanel({ scope, onScope }: Props) {
   const { data } = useApp()
-  // Cada branch usa a cor da sua trilha no grafo do histórico.
-  const colors = commitColors(data.log, data.status.headSha)
-  const colorOf = (b: BranchInfo) => colors.get(b.sha)
+  const colorOf = useBranchColors(scope)
   const checked = checkedRefs(scope)
-  const toggle = (name: string) => onScope(toggleRef(scope, name))
+  const toggle = (name: string) => onScope(toggleRef(scope, name), { reveal: false })
   const groupAction = (list: BranchInfo[]) => ({
     label: '☑',
     title: t('sidebar.toggleGroup'),
-    run: () => onScope(toggleGroup(scope, list.map((b) => b.name)))
+    run: () => onScope(toggleGroup(scope, list.map((b) => b.name)), { reveal: false })
   })
   const local = data.branches.filter((b) => !b.remote)
   const remotes = new Map<string, BranchInfo[]>()
@@ -88,14 +101,15 @@ function BranchesPanel({ scope, onScope }: Props) {
   return (
     <aside className="sidebar">
       <p className="sidebar-hint">{t('sidebar.hint')}</p>
-      {checked.length > 0 && (
-        <div className="sidebar-filter" role="status">
-          <span>{t('sidebar.filterActive', { count: checked.length })}</span>
-          <button className="link" onClick={() => onScope(ALL_SCOPE)}>
-            {t('sidebar.filterClear')}
-          </button>
-        </div>
-      )}
+      {/* Sempre presente, com a mesma altura: marcar branches não desloca a lista abaixo. */}
+      <div className={`sidebar-filter ${checked.length > 0 ? 'active' : ''}`} role="status">
+        <span title={checked.length > 0 ? t('sidebar.filterActive', { count: checked.length }) : t('sidebar.filterNone')}>
+          {checked.length > 0 ? t('sidebar.filterActive', { count: checked.length }) : t('sidebar.filterNone')}
+        </span>
+        <button className="link" style={{ visibility: checked.length > 0 ? 'visible' : 'hidden' }} tabIndex={checked.length > 0 ? 0 : -1} onClick={() => onScope(ALL_SCOPE, { reveal: false })}>
+          {t('sidebar.filterClear')}
+        </button>
+      </div>
       {order.map((id) => (
         <Fragment key={id}>{sections.find((s) => s.id === id)?.node}</Fragment>
       ))}
@@ -175,7 +189,7 @@ interface BranchItemProps {
   /** Marcada na caixa de seleção: o histórico lista só as branches marcadas. */
   checked: boolean
   onToggle(name: string): void
-  onScope(s: HistoryScope): void
+  onScope: Props['onScope']
 }
 
 function BranchItem({ branch, color, active, checked, onToggle, onScope }: BranchItemProps) {

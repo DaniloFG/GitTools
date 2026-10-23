@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { DIVIDER_WIDTHS, PANE_BUTTON_SCALES, ZOOM_LEVELS, type ThemeSetting } from '../../../../shared/settings'
 import { t, type MessageKey } from '../../i18n'
+import { fullDate } from '../../format'
 import { resetLayout } from '../../layout'
+import { applySavedLayout, cleanName, findByName, removeSavedLayout, saveCurrentLayout, useSavedLayouts } from '../../savedLayouts'
 import type { SettingsSectionProps } from './sections'
 import { useAppInfo } from './useAppInfo'
 
@@ -10,6 +12,71 @@ const THEMES: { id: ThemeSetting; label: MessageKey }[] = [
   { id: 'dark', label: 'settings.appearance.themeDark' },
   { id: 'light', label: 'settings.appearance.themeLight' }
 ]
+
+/** Salvar o layout de agora com um nome, reaplicar um salvo ou apagá-lo. */
+function SavedLayouts() {
+  const [saved, setSaved] = useSavedLayouts()
+  const [name, setName] = useState('')
+  const [message, setMessage] = useState<string | null>(null)
+  const clean = cleanName(name)
+  const replacing = clean ? findByName(saved, clean) : undefined
+
+  const save = () => {
+    if (!clean) return
+    saveCurrentLayout(saved, setSaved, clean)
+    setMessage(t('layouts.saved', { name: replacing?.name ?? clean }))
+    setName('')
+  }
+
+  return (
+    <>
+      <h4>{t('layouts.title')}</h4>
+      <p className="muted small">{t('layouts.help')}</p>
+      <div className="settings-row">
+        <input
+          value={name}
+          placeholder={t('layouts.namePlaceholder')}
+          maxLength={60}
+          aria-label={t('layouts.name')}
+          onChange={(e) => {
+            setName(e.target.value)
+            setMessage(null)
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && save()}
+        />
+        <button disabled={!clean} onClick={save}>
+          {replacing ? t('layouts.replace') : t('layouts.save')}
+        </button>
+      </div>
+      {message && <p className="success-text">✓ {message}</p>}
+      {saved.length === 0 ? (
+        <p className="muted small">{t('layouts.none')}</p>
+      ) : (
+        saved.map((layout) => (
+          <div key={layout.id} className="settings-row">
+            <div>
+              <span>{layout.name}</span>
+              {layout.savedAt > 0 && <p className="muted small">{fullDate(layout.savedAt)}</p>}
+            </div>
+            <span className="button-row">
+              <button
+                onClick={() => {
+                  applySavedLayout(layout)
+                  setMessage(t('layouts.applied', { name: layout.name }))
+                }}
+              >
+                {t('layouts.apply')}
+              </button>
+              <button className="danger" title={t('layouts.delete')} aria-label={t('layouts.delete')} onClick={() => setSaved(removeSavedLayout(saved, layout.id))}>
+                ✕
+              </button>
+            </span>
+          </div>
+        ))
+      )}
+    </>
+  )
+}
 
 export function AppearanceSection({ draft, update }: SettingsSectionProps) {
   const info = useAppInfo()
@@ -112,6 +179,7 @@ export function AppearanceSection({ draft, update }: SettingsSectionProps) {
           <button onClick={() => setConfirmingReset(true)}>{t('settings.appearance.resetLayout')}</button>
         )}
       </div>
+      <SavedLayouts />
     </div>
   )
 }

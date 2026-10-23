@@ -66,6 +66,51 @@ export function resetLayout() {
   notify()
 }
 
+/** Chaves do layout atual (sem as preferências), no disco e na memória. */
+function layoutKeys(): string[] {
+  const keys = new Set<string>()
+  const s = storage()
+  if (s) {
+    for (let i = 0; i < s.length; i++) {
+      const key = s.key(i)
+      if (key?.startsWith(PREFIX) && !key.startsWith(PREF_PREFIX)) keys.add(key.slice(PREFIX.length))
+    }
+  }
+  for (const [key, value] of cache) if (value !== undefined && !key.startsWith('pref.')) keys.add(key)
+  return [...keys]
+}
+
+/** Foto do layout de agora (arranjo dos painéis, tamanhos, seções recolhidas…), para ser guardada e reaplicada depois. */
+export function snapshotLayout(): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const key of layoutKeys()) {
+    const value = readLayout(key)
+    if (value !== undefined) out[key] = value
+  }
+  return out
+}
+
+/** Troca o layout de agora por uma foto guardada (o que a foto não tem volta ao padrão). */
+export function applyLayoutSnapshot(snapshot: Record<string, unknown>) {
+  for (const key of layoutKeys()) cache.set(key, undefined)
+  const s = storage()
+  try {
+    for (const key of layoutKeys()) s?.removeItem(PREFIX + key)
+  } catch {
+    // Sem armazenamento disponível: vale só até fechar o aplicativo.
+  }
+  for (const [key, value] of Object.entries(snapshot)) {
+    if (key.startsWith('pref.') || value === undefined) continue
+    cache.set(key, value)
+    try {
+      s?.setItem(PREFIX + key, JSON.stringify(value))
+    } catch {
+      // idem
+    }
+  }
+  notify()
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => {

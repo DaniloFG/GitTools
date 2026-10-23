@@ -15,6 +15,45 @@
   <a href="https://github.com/DaniloFG/GitTools/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2f86ea" /></a>
 </p>
 
+![GitTools Dashboards inside VS Code: KPIs, commits over time, top contributors, activity calendar and most changed files](media/readme/dashboards-overview.png)
+
+## 📊 Dashboards — your repository's history, in numbers
+
+The new **Dashboards** tab (`Ctrl+5`) sits at the top, fills the whole panel and turns `git log` into management,
+governance and audit views — no export, no BI tool, no leaving VS Code. Every dashboard opens with several distinct
+charts, and **every chart can switch form with one click** (area, lines, bars, donut, treemap, heatmap, radar,
+scatter, funnel, gauge, calendar…) or become a table.
+
+| Dashboard | What it shows |
+| --------- | ------------- |
+| **Overview** | KPIs with change vs. the previous period, commits over time, top contributors, activity calendar, most changed files, weekday × hour, folders and commit types. |
+| **People** | Ranking by commits, lines, files or active days; each person's contribution over time, effort, profile (radar), newcomers vs. returning, *bus factor*, who touches what and a full table. |
+| **Code** | Most changed files, folder map, lines added/removed, code growth, commit size, file types, risk *hotspots* and files that change together. |
+| **Cadence** | Activity calendar, weekday × hour, commits per hour and month, rolling pace, streaks and gaps, and a release timeline. |
+| **Governance** | Message convention (*Conventional Commits*), working hours vs. off-hours vs. weekends, direct commits vs. merges vs. reverts, quality funnel, **audit flags** (no Signed-off-by, no description, author ≠ committer, huge commits…) and a list of commits to review. |
+| **Repository** | Branches (age, health, ahead/behind upstream), tags and releases, repository composition by folder and size. |
+| **GitTools** | What you did *here*: health of the git commands run, most used, duration, timeline and slowest. |
+
+![Dashboards: governance and audit](media/readme/dashboards-governance.png)
+
+![Dashboards in motion: switching dashboards, chart types, filters and the chart gallery](media/readme/dashboards.gif)
+
+- 🎛️ **Filters in a single row**: period (7 days … all time, or exact dates), person, all branches or current only, include merges and hide bots.
+- ➕ **A gallery of 46 charts**: *Add chart* opens the catalogue by category; build **your own dashboards**, rename them, and reorder and resize cards by dragging.
+- 🧾 **Audit-ready**: every chart has a **table view** and *Copy CSV* to take the numbers to a spreadsheet or a report.
+- 🌗 **Light and dark** (it follows your VS Code theme), 6 languages, an accessible palette (high contrast, colour-blind safe) and tooltips on every chart.
+
+![Dashboards: people](media/readme/dashboards-people.png)
+![Dashboards: code](media/readme/dashboards-code.png)
+![Dashboards: cadence](media/readme/dashboards-cadence.png)
+![Dashboards: repository](media/readme/dashboards-repository.png)
+![Dashboards: what was done in GitTools](media/readme/dashboards-gittools.png)
+![Dashboards: chart gallery](media/readme/dashboards-gallery.png)
+![Dashboards in the light theme](media/readme/dashboards-light.png)
+
+The numbers come straight from your local history, read with a single `git log --numstat` (it honours `.mailmap`),
+and nothing leaves your machine.
+
 ![GitTools inside VS Code: history graph, commit details and live git log](media/readme/hero.png)
 
 GitTools turns the git commands that are hard to remember — especially **cherry-pick** — into things you can
@@ -48,7 +87,9 @@ sends nothing anywhere.
 - 📁 **File list or folder tree** everywhere, with `+added −removed` line counts.
 - 🎨 **Looks native**: follows your VS Code theme, fonts and the same colors VS Code uses for modified, added and deleted files, with file-type icons (can be turned off in Settings → Appearance).
 - 🧩 **Arrange the workspace your way**: every panel is independent — drag any panel to any side of any other panel.
-- ☑️ **Focus on a few branches**: tick the checkboxes in the branch sidebar and the history shows only those branches.
+- ☑️ **Focus on a few branches**: tick the checkboxes in the branch sidebar and the history shows only those branches — the branch list itself stays put.
+- ✏️ **Edit files with a git assistant**: edit any file in a built-in editor; a bubble at the end of the cursor line tells you *who* changed it, *when* and *what the commit did*.
+- 💾 **Save your layouts**: name the arrangement you like and bring it back whenever you want.
 - 📜 **Live git log**: see every command GitTools runs, in real time.
 - 🌍 **6 languages** (English, Português, Español, 中文, हिन्दी, العربية) and a theme that follows VS Code.
 
@@ -97,7 +138,37 @@ edges to split that panel on that side, or onto the window edge — any panel, a
 Files / Compare** buttons bring a screen's panels to the front wherever you left them, **▦** shows or hides any
 panel, and *Restore default layout* puts everything back.
 
-![Dragging the Changes tab to the right side and restoring the layout](media/readme/custom-layout.gif)
+**Save your layouts**: arrange the panels the way you like and use **▦ → Save current layout…** to give the
+arrangement a name; **▦ → My layouts** brings it back whenever you want (the ✕ next to a layout deletes it, and
+**Settings → Appearance** lists them too). Restoring the default layout never deletes your saved ones.
+
+![Dragging the Changes tab to the right, saving the layout, restoring the default and applying the saved one](media/readme/custom-layout.gif)
+
+![The Panels menu with Save current layout and My layouts](media/readme/layouts-salvos.png)
+
+## Edit files — with a git assistant at the end of the line
+
+Click a file in **Files** to edit it right there: line numbers, `Tab` indents (using the file's own indentation),
+`Ctrl+S` saves, and what you typed is kept if you switch files or screens (files with unsaved changes get a ●).
+Line endings (LF / CRLF) and BOM are preserved, and the editor warns you if the file changes on disk meanwhile.
+Double-click a panel's tab (or press ⤢) to maximize it.
+
+The **inline git assistant** shows a bubble at the end of the line your cursor is on: **who** changed it, **when**
+and **what the commit did** — click it to open the commit. Lines you just wrote read *You · editing now*, and saved
+but uncommitted ones *You · saved, not committed yet*. It is on by default; turn it off in **Settings → Editor and diff →
+Git assistant in the editor**.
+
+![The inline git assistant following the cursor while editing a file](media/readme/inline-assistant.gif)
+
+![The editor with the assistant bubble at the end of the cursor line](media/readme/editor-inline.png)
+
+## Focus on a few branches
+
+Tick the checkboxes of the branches you care about and the history (and its timelines) shows only theirs. The branch
+list is your reference, so it **does not move**: the filter strip always has the same height, the branch colors stay
+the same and no other panel jumps to the front. *Show all* brings everything back.
+
+![Two branches ticked: the history shows only theirs while the branch list stays the same](media/readme/filtro-branches.png)
 
 ## Compare, blame and file history
 
@@ -131,7 +202,7 @@ Files that GitTools opens (*Open in editor*, file menus, conflict files) open in
 
 | Action | Shortcut |
 | --- | --- |
-| History / Changes / Files / Compare | `Ctrl+1` … `Ctrl+4` |
+| History / Changes / Files / Compare / Dashboards | `Ctrl+1` … `Ctrl+5` |
 | Search the history | `Ctrl+F` |
 | Cherry-pick Studio | `Ctrl+Shift+P` |
 | Next / previous change in a diff | `F7` / `Shift+F7` |

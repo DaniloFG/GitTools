@@ -50,6 +50,9 @@ export interface AppContextValue {
   selectCommit(sha: string): void
   /** Mostra o commit nos painéis de commit (descrição, arquivos e diff), sem trocar de tela. */
   showCommit(sha: string): void
+  /** A tela de Dashboards está aberta (ocupa o lugar dos painéis). */
+  dashboardsOpen: boolean
+  setDashboards(open: boolean): void
   /** Traz à frente os painéis da tela, onde quer que estejam (mostrando os que estavam escondidos). */
   setView(view: View): void
   /** Abre o diff de um arquivo numa janela própria do sistema. */

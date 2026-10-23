@@ -1,5 +1,7 @@
 import type { Settings } from './settings'
 import type {
+  Analytics,
+  AnalyticsOptions,
   BlameResult,
   GitCommandEntry,
   GitConfigScope,
@@ -16,6 +18,7 @@ import type {
   ConflictResolution,
   DiffSource,
   FileApplyMode,
+  FileContent,
   FileDiff,
   FileHistoryEntry,
   LineAction,
@@ -123,9 +126,17 @@ export interface RepoApi {
   conflictDetails(path: string): Promise<ConflictDetails>
   saveConflictResolution(path: string, content: string): Promise<void>
 
+  // Dashboards
+  /** Lê o histórico inteiro (commits, autores, arquivos e linhas) para os dashboards de métricas. */
+  analytics(options?: AnalyticsOptions): Promise<Analytics>
+
   // Comparação, arquivos, blame e histórico
   compare(from: string, to: string, sinceMergeBase?: boolean): Promise<Comparison>
   listFiles(): Promise<string[]>
+  /** Lê um arquivo da pasta do projeto (para editar no editor embutido). */
+  readFile(path: string): Promise<FileContent>
+  /** Grava o texto de um arquivo da pasta do projeto (não faz stage). */
+  writeFile(path: string, content: string): Promise<void>
   blame(path: string, rev?: string): Promise<BlameResult>
   fileHistory(path: string, limit?: number): Promise<FileHistoryEntry[]>
   restoreFile(sha: string, path: string): Promise<void>
@@ -188,6 +199,9 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'saveConflictResolution',
   'compare',
   'listFiles',
+  'readFile',
+  'writeFile',
+  'analytics',
   'blame',
   'fileHistory',
   'restoreFile',

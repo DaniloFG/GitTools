@@ -13,4 +13,11 @@ describe('configurações de exibição', () => {
     expect(normalizeSettings({ statusLetters: false, diffFullFile: true })).toMatchObject({ statusLetters: false, diffFullFile: true })
     expect(normalizeSettings({ statusLetters: 'não', diffFullFile: 'sim' })).toMatchObject({ statusLetters: true, diffFullFile: false })
   })
+
+  it('o assistente de git no editor vem ligado e só desliga se o usuário pedir', () => {
+    expect(DEFAULT_SETTINGS.inlineBlame).toBe(true)
+    expect(normalizeSettings({}).inlineBlame).toBe(true)
+    expect(normalizeSettings({ inlineBlame: false }).inlineBlame).toBe(false)
+    expect(normalizeSettings({ inlineBlame: 'não' }).inlineBlame).toBe(true)
+  })
 })
