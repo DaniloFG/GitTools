@@ -93,6 +93,8 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
   const app = useContext(AppContext)
   const rootRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ view: ViewId; hit: Hit | null } | null>(null)
+  /** Grupo que ocupa a janela toda (null = todos à vista). Não é guardado: o arranjo continua o mesmo. */
+  const [maximized, setMaximized] = useState<string | null>(null)
   const latest = useRef(state)
   latest.current = state
   /** Só grava quando o arranjo mudou de fato (clicar na aba que já está à frente não muda nada). */
@@ -102,6 +104,17 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
 
   const isShown = (view: ViewId) => available(view) && !state.hidden.includes(view)
   const tree = shownTree(state, isShown)
+
+  const maximizedGroup = maximized && tree ? findShownGroup(tree, maximized) : null
+  // O painel ampliado volta ao tamanho de antes quando ele some ou quando outro painel passa à frente (ex.: um atalho de tela).
+  const othersFront = tree && maximized ? frontViews(tree, maximized).join() : ''
+  const seenOthers = useRef<string | null>(null)
+  useEffect(() => {
+    if (!maximized) seenOthers.current = null
+    else if (!maximizedGroup) setMaximized(null)
+    else if (seenOthers.current === null) seenOthers.current = othersFront
+    else if (seenOthers.current !== othersFront) setMaximized(null)
+  }, [maximized, maximizedGroup, othersFront])
 
   // Quando uma aba passa à frente de fora (ex.: ao trazer uma tela), garante que ela apareça na barra de abas.
   const fronts = tree ? frontViews(tree).join() : ''
@@ -223,6 +236,7 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
         submenu: sides.map((side) => ({ label: t(SIDE_LABEL[side]), onClick: () => onChange(moveView(latest.current, view, { kind: 'edge', side })) }))
       },
       'separator',
+      { label: maximized === groupId ? t('workbench.restoreSize') : t('workbench.maximize'), onClick: () => setMaximized(maximized === groupId ? null : groupId) },
       { label: t('workbench.hide'), onClick: () => onChange(hideView(latest.current, view)) },
       { label: t('workbench.resetLayout'), onClick: () => void app.resetLayout() }
     ])
@@ -230,24 +244,36 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
 
   const renderGroup = (node: ShownGroup) => (
     <section className="dock-group">
-      <nav className="dock-tabs" data-group-tabs={node.id} title={t('workbench.tabsHelp')} role="tablist">
-        {node.views.map((view) => (
-          <button
-            key={view}
-            data-view={view}
-            role="tab"
-            aria-selected={view === node.active}
-            className={`dock-tab ${view === node.active ? 'active' : ''} ${drag?.view === view ? 'dragging' : ''}`}
-            onPointerDown={(e) => startTabDrag(e, view)}
-            onClick={() => onChange(activateView(latest.current, view))}
-            onContextMenu={(e) => tabMenu(e, view, node.id, node.views.length === 1)}
-            title={meta[view].help}
-          >
-            {meta[view].label}
-            {!!meta[view].badge && <span className="badge">{meta[view].badge}</span>}
-          </button>
-        ))}
-      </nav>
+      <div className="dock-tabbar">
+        <nav className="dock-tabs" data-group-tabs={node.id} title={t('workbench.tabsHelp')} role="tablist">
+          {node.views.map((view) => (
+            <button
+              key={view}
+              data-view={view}
+              role="tab"
+              aria-selected={view === node.active}
+              className={`dock-tab ${view === node.active ? 'active' : ''} ${drag?.view === view ? 'dragging' : ''}`}
+              onPointerDown={(e) => startTabDrag(e, view)}
+              onClick={() => onChange(activateView(latest.current, view))}
+              onDoubleClick={() => setMaximized(maximized === node.id ? null : node.id)}
+              onContextMenu={(e) => tabMenu(e, view, node.id, node.views.length === 1)}
+              title={meta[view].help}
+            >
+              {meta[view].label}
+              {!!meta[view].badge && <span className="badge">{meta[view].badge}</span>}
+            </button>
+          ))}
+        </nav>
+        <button
+          className="dock-maximize"
+          onClick={() => setMaximized(maximized === node.id ? null : node.id)}
+          title={maximized === node.id ? t('workbench.restoreSize') : t('workbench.maximize')}
+          aria-label={maximized === node.id ? t('workbench.restoreSize') : t('workbench.maximize')}
+          aria-pressed={maximized === node.id}
+        >
+          {maximized === node.id ? '⤡' : '⤢'}
+        </button>
+      </div>
       <div className="dock-body" data-group={node.id}>
         <div key={node.active} className="dock-slot" data-slot={node.active} ref={slotRef(node.active)} />
       </div>
@@ -326,7 +352,7 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
   return (
     <div className="dock" ref={rootRef}>
       {tree ? (
-        renderNode(tree)
+        renderNode(maximizedGroup ?? tree)
       ) : (
         <div className="dock-empty">
           <p className="empty">{t('workbench.allHidden')}</p>
@@ -346,9 +372,18 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
   )
 }
 
-/** Abas que estão à frente em cada grupo (para saber quando alguma mudou). */
-function frontViews(node: ShownNode): ViewId[] {
-  return node.kind === 'group' ? [node.active] : node.children.flatMap((c) => frontViews(c.node))
+function findShownGroup(node: ShownNode, id: string): ShownGroup | null {
+  if (node.kind === 'group') return node.id === id ? node : null
+  for (const child of node.children) {
+    const found = findShownGroup(child.node, id)
+    if (found) return found
+  }
+  return null
+}
+
+/** Abas que estão à frente em cada grupo (para saber quando alguma mudou), menos as do grupo `except`. */
+function frontViews(node: ShownNode, except?: string): ViewId[] {
+  return node.kind === 'group' ? (node.id === except ? [] : [node.active]) : node.children.flatMap((c) => frontViews(c.node, except))
 }
 
 /** Novo arranjo depois de a divisória entre os filhos `i - 1` e `i` andar `delta` pixels. */

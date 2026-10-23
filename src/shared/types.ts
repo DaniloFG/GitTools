@@ -238,6 +238,18 @@ export interface BlameResult {
   commits: Record<string, BlameCommit>
 }
 
+/** Conteúdo de um arquivo da pasta do projeto, para o editor embutido. */
+export interface FileContent {
+  path: string
+  /** Texto do arquivo; null quando não dá para editar como texto (binário ou grande demais). */
+  content: string | null
+  binary: boolean
+  /** Maior que o limite do editor embutido. */
+  tooLarge: boolean
+  /** Tamanho em bytes. */
+  size: number
+}
+
 export interface FileHistoryEntry extends CommitInfo, LineStats {
   /** Caminho do arquivo neste commit (muda quando o arquivo foi renomeado). */
   path: string

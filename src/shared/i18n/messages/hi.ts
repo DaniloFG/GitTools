@@ -5,7 +5,30 @@ import type { Messages } from '../types'
 
 export const hi: Messages = {
   editor: {
-    chooseFirst: 'पहले चुनें कि कौन-सा एडिटर उपयोग करना है।'
+    chooseFirst: 'पहले चुनें कि कौन-सा एडिटर उपयोग करना है।',
+    save: 'सहेजें',
+    saveHelp: 'फ़ाइल सहेजें (Ctrl+S)',
+    saved: '"{path}" सहेजी गई।',
+    unsaved: 'सहेजा नहीं गया',
+    unsavedHelp: 'इस फ़ाइल में ऐसे बदलाव हैं जो अभी सहेजे नहीं गए हैं।',
+    discard: 'बदलाव छोड़ें',
+    discardTitle: 'बदलाव छोड़ें',
+    discardMessage: '"{path}" में आपने जो लिखा उसे छोड़कर सहेजी हुई सामग्री पर लौटें?',
+    changedOnDisk: 'आपके संपादन के दौरान यह फ़ाइल संपादक के बाहर बदल दी गई।',
+    loadDisk: 'डिस्क वाला संस्करण लोड करें (मेरा लिखा छूट जाएगा)',
+    overwriteTitle: 'फ़ाइल को अधिलेखित करें?',
+    overwriteMessage: 'आपके खोलने के बाद "{path}" संपादक के बाहर बदली गई। अभी सहेजने से वे बदलाव मिट जाएँगे।',
+    overwrite: 'अधिलेखित करें',
+    binary: 'यह फ़ाइल बाइनरी है और यहाँ संपादित नहीं की जा सकती। "संपादक में खोलें" का उपयोग करें।',
+    tooLarge: 'यह फ़ाइल अंतर्निहित संपादक के लिए बहुत बड़ी ({size}) है। "संपादक में खोलें" का उपयोग करें।',
+    blame: {
+      you: 'आप',
+      editing: 'अभी संपादित हो रही है, सहेजी नहीं गई',
+      editingHelp: 'यह पंक्ति आपने लिखी या बदली है और अभी सहेजी नहीं गई।',
+      uncommitted: 'सहेजी गई, अभी commit नहीं',
+      uncommittedHelp: 'यह पंक्ति आपने बदली है और अभी किसी commit में नहीं है।',
+      open: 'commit खोलने के लिए क्लिक करें।'
+    }
   },
   common: {
     ok: 'ठीक है',
@@ -129,6 +152,7 @@ export const hi: Messages = {
     toggleGroup: 'सभी चुनें / सभी हटाएँ',
     filterActive: { one: 'इतिहास केवल इस चुनी हुई ब्रांच का', other: 'इतिहास केवल चुनी हुई {count} ब्रांच का' },
     filterClear: 'सभी दिखाएँ',
+    filterNone: 'सभी branches का इतिहास',
     branchTooltip: 'डबल क्लिक: checkout · राइट क्लिक: और विकल्प',
     menu: {
       deleteTag: 'टैग हटाएँ',
@@ -575,8 +599,9 @@ export const hi: Messages = {
   files: {
     filter: { one: '{count} फ़ाइल फ़िल्टर करें…', other: '{count} फ़ाइलें फ़िल्टर करें…' },
     truncated: '{count} में से {shown} दिखाई जा रही हैं। फ़िल्टर को और सटीक करें।',
-    empty: 'हर लाइन किसने बदली (blame) और फ़ाइल का इतिहास देखने के लिए एक फ़ाइल चुनें।',
+    empty: 'फ़ाइल चुनें: उसे संपादित करें, देखें कि हर पंक्ति किसने बदली (blame) और उसका इतिहास।',
     blame: 'Blame',
+    editor: 'संपादक',
     blameAt: '{sha} पर blame',
     history: 'फ़ाइल का इतिहास',
     showingAt: 'फ़ाइल {sha} के समय जैसी दिखाई जा रही है।',
@@ -650,6 +675,9 @@ export const hi: Messages = {
       diffContentLabel: 'Diff दिखाता है',
       diffContentChanges: 'केवल बदला हुआ हिस्सा',
       diffContentFull: 'पूरी फ़ाइल',
+      inlineBlame: 'संपादक में Git सहायक',
+      inlineBlameHelp: 'GitTools संपादक में फ़ाइल संपादित करते समय, कर्सर वाली पंक्ति के अंत में एक बुलबुला दिखता है: उसे किसने, कब बदला और commit ने क्या किया।',
+      inlineBlameLabel: 'कर्सर वाली पंक्ति का लेखक, तारीख और commit दिखाएँ',
       diffLayout: 'डिफ़ॉल्ट diff दृश्य',
       clear: 'कोई नहीं',
       browse: 'Executable खोजें…',
@@ -840,6 +868,7 @@ export const hi: Messages = {
     stashApplied: 'Stash लागू किया गया।',
     stashPopped: 'Stash लागू करके हटाया गया।',
     rebaseNeedsBranch: 'इतिहास दोबारा लिखने के लिए किसी branch का checkout करें।',
+    notAFile: '"{path}" एक सामान्य फ़ाइल नहीं है।',
     commitNotInBranch: 'Commit {sha} मौजूदा branch ({branch}) का हिस्सा नहीं है।',
     nothingToRewrite: 'दोबारा लिखने को कुछ नहीं।',
     firstCannotSquash: 'रखा गया पहला commit किसी पिछले commit में नहीं जोड़ा जा सकता।',
@@ -860,6 +889,24 @@ export const hi: Messages = {
     unknownOperation: 'अज्ञात ऑपरेशन: {method}',
     noRepository: 'कोई repository खुली नहीं है।'
   },
+  layouts: {
+    title: 'सहेजे गए लेआउट',
+    help: 'पैनलों की मौजूदा व्यवस्था को नाम देकर सहेजें और जब चाहें उस पर लौट आएँ। डिफ़ॉल्ट लेआउट पुनर्स्थापित करने से सहेजे गए लेआउट नहीं मिटते।',
+    name: 'लेआउट का नाम',
+    namePlaceholder: 'जैसे: कोड समीक्षा',
+    save: 'सहेजें',
+    saveTitle: 'मौजूदा लेआउट सहेजें',
+    saveCurrent: 'मौजूदा लेआउट सहेजें…',
+    mine: 'मेरे लेआउट',
+    saved: 'लेआउट "{name}" सहेजा गया।',
+    applied: 'लेआउट "{name}" लागू किया गया।',
+    apply: 'लागू करें',
+    delete: 'यह लेआउट हटाएँ',
+    replace: 'बदलें',
+    replaceTitle: 'सहेजा हुआ लेआउट बदलें',
+    replaceMessage: '"{name}" नाम का लेआउट पहले से सहेजा हुआ है। क्या उसे मौजूदा व्यवस्था से बदलें?',
+    none: 'अभी कोई लेआउट सहेजा नहीं गया है।'
+  },
   workbench: {
     views: {
       branches: 'Branches',
@@ -879,6 +926,8 @@ export const hi: Messages = {
     splitMenu: 'एक ओर अलग करें',
     edgeMenu: 'विंडो के किनारे से जोड़ें',
     hide: 'यह पैनल छिपाएँ',
+    maximize: 'इस पैनल को बड़ा करें (पूरी विंडो भरता है)',
+    restoreSize: 'सामान्य आकार पर लौटें',
     allHidden: 'सभी पैनल छिपे हैं।',
     screens: 'स्क्रीन',
     screensHelp: 'हर स्क्रीन के पैनल आगे लाता है, चाहे आपने उन्हें कहीं भी रखा हो।',

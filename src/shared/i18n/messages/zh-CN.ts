@@ -5,7 +5,30 @@ import type { Messages } from '../types'
 
 export const zhCN: Messages = {
   editor: {
-    chooseFirst: '请先选择要使用的编辑器。'
+    chooseFirst: '请先选择要使用的编辑器。',
+    save: '保存',
+    saveHelp: '保存文件 (Ctrl+S)',
+    saved: '已保存“{path}”。',
+    unsaved: '未保存',
+    unsavedHelp: '此文件有尚未保存的更改。',
+    discard: '放弃更改',
+    discardTitle: '放弃更改',
+    discardMessage: '放弃你在“{path}”中输入的内容并恢复为已保存的内容吗？',
+    changedOnDisk: '你编辑期间，此文件在编辑器之外被修改了。',
+    loadDisk: '载入磁盘上的版本（放弃我输入的内容）',
+    overwriteTitle: '覆盖该文件？',
+    overwriteMessage: '打开“{path}”之后，它在编辑器之外被修改过。现在保存会替换这些更改。',
+    overwrite: '覆盖',
+    binary: '此文件是二进制文件，无法在这里编辑。请使用“在编辑器中打开”。',
+    tooLarge: '此文件太大（{size}），内置编辑器无法打开。请使用“在编辑器中打开”。',
+    blame: {
+      you: '你',
+      editing: '正在编辑，尚未保存',
+      editingHelp: '这一行是你写的或改过的，尚未保存。',
+      uncommitted: '已保存，尚未提交',
+      uncommittedHelp: '这一行是你改的，还不在任何提交中。',
+      open: '点击打开该提交。'
+    }
   },
   common: {
     ok: '确定',
@@ -125,6 +148,7 @@ export const zhCN: Messages = {
     toggleGroup: '全选 / 取消全选',
     filterActive: '历史仅显示已勾选的 {count} 个分支',
     filterClear: '显示全部',
+    filterNone: '所有分支的历史',
     branchTooltip: '双击：检出 · 右键：更多操作',
     menu: {
       deleteTag: '删除标签',
@@ -550,8 +574,9 @@ export const zhCN: Messages = {
   files: {
     filter: { other: '筛选 {count} 个文件…' },
     truncated: '显示 {count} 个中的 {shown} 个。请细化筛选条件。',
-    empty: '选择一个文件，查看每一行是谁修改的（追溯）以及文件历史。',
+    empty: '选择一个文件即可编辑它、查看每一行是谁改的（blame）以及它的历史。',
     blame: '追溯',
+    editor: '编辑器',
     blameAt: '在 {sha} 处追溯',
     history: '文件历史',
     showingAt: '显示文件在 {sha} 时的状态。',
@@ -625,6 +650,9 @@ export const zhCN: Messages = {
       diffContentLabel: '差异显示',
       diffContentChanges: '仅修改的部分',
       diffContentFull: '整个文件',
+      inlineBlame: '编辑器中的 Git 助手',
+      inlineBlameHelp: '在 GitTools 编辑器中编辑文件时，光标所在行末尾会出现气泡，显示是谁、何时修改了这一行，以及该提交做了什么。',
+      inlineBlameLabel: '显示光标所在行的作者、日期和提交',
       diffLayout: '默认差异显示方式',
       clear: '不使用',
       browse: '浏览可执行文件…',
@@ -812,6 +840,7 @@ export const zhCN: Messages = {
     stashApplied: '已应用贮藏。',
     stashPopped: '已应用并移除贮藏。',
     rebaseNeedsBranch: '请先检出一个分支再改写历史。',
+    notAFile: '“{path}”不是普通文件。',
     commitNotInBranch: '提交 {sha} 不属于当前分支（{branch}）。',
     nothingToRewrite: '没有可改写的内容。',
     firstCannotSquash: '保留的第一个提交不能并入之前的提交。',
@@ -832,6 +861,24 @@ export const zhCN: Messages = {
     unknownOperation: '未知操作：{method}',
     noRepository: '没有打开的仓库。'
   },
+  layouts: {
+    title: '已保存的布局',
+    help: '给当前面板的排布起个名字保存下来，随时可以回到它。恢复默认布局不会删除已保存的布局。',
+    name: '布局名称',
+    namePlaceholder: '例如：代码审查',
+    save: '保存',
+    saveTitle: '保存当前布局',
+    saveCurrent: '保存当前布局…',
+    mine: '我的布局',
+    saved: '布局“{name}”已保存。',
+    applied: '已应用布局“{name}”。',
+    apply: '应用',
+    delete: '删除此布局',
+    replace: '替换',
+    replaceTitle: '替换已保存的布局',
+    replaceMessage: '已存在名为“{name}”的布局。要用当前排布替换它吗？',
+    none: '还没有已保存的布局。'
+  },
   workbench: {
     views: {
       branches: '分支',
@@ -851,6 +898,8 @@ export const zhCN: Messages = {
     splitMenu: '拆分到一侧',
     edgeMenu: '停靠到窗口边缘',
     hide: '隐藏此面板',
+    maximize: '放大此面板（占满整个窗口）',
+    restoreSize: '恢复正常大小',
     allHidden: '所有面板都已隐藏。',
     screens: '界面',
     screensHelp: '把每个界面的面板调到前面，无论你把它们放在哪里。',

@@ -1,6 +1,7 @@
 import { useApp } from '../context'
 import { SCREEN_VIEWS, screenShown, showScreen, toggleView, type DockState, type ScreenId, type ViewId } from '../dock'
 import { t } from '../i18n'
+import { applySavedLayout, findByName, removeSavedLayout, saveCurrentLayout, useSavedLayouts } from '../savedLayouts'
 import type { ViewMeta } from './Dock'
 import type { MenuItem } from './ContextMenu'
 
@@ -58,7 +59,21 @@ export function ScreenTabs({ state, onChange, available, changeCount }: Omit<Pro
 
 /** Menu para mostrar ou esconder qualquer painel, e o botão de restaurar o layout. */
 export function PanelsButtons({ state, onChange, meta, available }: Omit<Props, 'changeCount'>) {
-  const { showMenu, resetLayout } = useApp()
+  const { showMenu, resetLayout, prompt, confirm, toast } = useApp()
+  const [saved, setSaved] = useSavedLayouts()
+
+  /** Guarda o arranjo de agora com o nome que o usuário escolher (o mesmo nome substitui o layout antigo). */
+  const saveLayout = async () => {
+    const name = await prompt({ title: t('layouts.saveTitle'), label: t('layouts.name'), placeholder: t('layouts.namePlaceholder'), confirmLabel: t('layouts.save') })
+    if (!name) return
+    const existing = findByName(saved, name)
+    if (existing) {
+      const ok = await confirm({ title: t('layouts.replaceTitle'), message: t('layouts.replaceMessage', { name: existing.name }), confirmLabel: t('layouts.replace') })
+      if (!ok) return
+    }
+    saveCurrentLayout(saved, setSaved, name)
+    toast('success', t('layouts.saved', { name: existing?.name ?? name }))
+  }
 
   const panelsMenu = (e: React.MouseEvent) => {
     const items: MenuItem[] = []
@@ -75,7 +90,21 @@ export function PanelsButtons({ state, onChange, meta, available }: Omit<Props, 
         })
       }
     }
-    items.push('separator', { label: t('workbench.resetLayout'), onClick: () => void resetLayout() })
+    items.push('separator', { label: t('layouts.saveCurrent'), onClick: () => void saveLayout() })
+    if (saved.length) {
+      items.push({
+        label: t('layouts.mine'),
+        submenu: saved.map((layout) => ({
+          label: layout.name,
+          onClick: () => {
+            applySavedLayout(layout)
+            toast('success', t('layouts.applied', { name: layout.name }))
+          },
+          actions: [{ icon: '✕', title: t('layouts.delete'), onClick: () => setSaved(removeSavedLayout(saved, layout.id)) }]
+        }))
+      })
+    }
+    items.push({ label: t('workbench.resetLayout'), onClick: () => void resetLayout() })
     showMenu(e, items)
   }
 

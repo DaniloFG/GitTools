@@ -2,7 +2,30 @@ import type { Messages } from '../types'
 
 export const en: Messages = {
   editor: {
-    chooseFirst: 'First choose which editor to use.'
+    chooseFirst: 'First choose which editor to use.',
+    save: 'Save',
+    saveHelp: 'Save the file (Ctrl+S)',
+    saved: '"{path}" saved.',
+    unsaved: 'Unsaved',
+    unsavedHelp: 'This file has changes that have not been saved yet.',
+    discard: 'Discard changes',
+    discardTitle: 'Discard changes',
+    discardMessage: 'Discard what you typed in "{path}" and go back to the saved content?',
+    changedOnDisk: 'This file was changed outside the editor while you were editing it.',
+    loadDisk: 'Load the version on disk (discards what I typed)',
+    overwriteTitle: 'Overwrite the file?',
+    overwriteMessage: '"{path}" was changed outside the editor after you opened it. Saving now replaces those changes.',
+    overwrite: 'Overwrite',
+    binary: 'This file is binary and cannot be edited here. Use "Open in editor".',
+    tooLarge: 'This file is too large ({size}) for the built-in editor. Use "Open in editor".',
+    blame: {
+      you: 'You',
+      editing: 'editing now, not saved yet',
+      editingHelp: 'You wrote or changed this line and it has not been saved yet.',
+      uncommitted: 'saved, not committed yet',
+      uncommittedHelp: 'You changed this line and it is not in any commit yet.',
+      open: 'Click to open the commit.'
+    }
   },
   common: {
     ok: 'OK',
@@ -126,6 +149,7 @@ export const en: Messages = {
     toggleGroup: 'Check all / uncheck all',
     filterActive: { one: 'History of this checked branch only', other: 'History of the {count} checked branches only' },
     filterClear: 'Show all',
+    filterNone: 'History of all branches',
     branchTooltip: 'Double-click: checkout · Right-click: more actions',
     menu: {
       deleteTag: 'Delete tag',
@@ -572,8 +596,9 @@ export const en: Messages = {
   files: {
     filter: { one: 'Filter {count} file…', other: 'Filter {count} files…' },
     truncated: 'Showing {shown} of {count}. Refine the filter.',
-    empty: 'Choose a file to see who changed each line (blame) and its history.',
+    empty: 'Pick a file to edit it, see who changed each line (blame) and its history.',
     blame: 'Blame',
+    editor: 'Editor',
     blameAt: 'Blame at {sha}',
     history: 'File history',
     showingAt: 'Showing the file as it was at {sha}.',
@@ -647,6 +672,9 @@ export const en: Messages = {
       diffContentLabel: 'The diff shows',
       diffContentChanges: 'Only the changed part',
       diffContentFull: 'Whole file',
+      inlineBlame: 'Git assistant in the editor',
+      inlineBlameHelp: 'When you edit a file in the GitTools editor, a bubble at the end of the cursor line shows who changed it, when, and what the commit did.',
+      inlineBlameLabel: 'Show author, date and commit of the cursor line',
       diffLayout: 'Default diff layout',
       clear: 'Use none',
       browse: 'Browse for executable…',
@@ -837,6 +865,7 @@ export const en: Messages = {
     stashApplied: 'Stash applied.',
     stashPopped: 'Stash applied and removed.',
     rebaseNeedsBranch: 'Check out a branch to rewrite history.',
+    notAFile: '"{path}" is not a regular file.',
     commitNotInBranch: 'Commit {sha} is not part of the current branch ({branch}).',
     nothingToRewrite: 'Nothing to rewrite.',
     firstCannotSquash: 'The first kept commit cannot be squashed into a previous one.',
@@ -857,6 +886,24 @@ export const en: Messages = {
     unknownOperation: 'Unknown operation: {method}',
     noRepository: 'No repository is open.'
   },
+  layouts: {
+    title: 'Saved layouts',
+    help: 'Save the current arrangement of panels under a name and come back to it whenever you want. Restoring the default layout does not delete saved ones.',
+    name: 'Layout name',
+    namePlaceholder: 'E.g. Code review',
+    save: 'Save',
+    saveTitle: 'Save current layout',
+    saveCurrent: 'Save current layout…',
+    mine: 'My layouts',
+    saved: 'Layout "{name}" saved.',
+    applied: 'Layout "{name}" applied.',
+    apply: 'Apply',
+    delete: 'Delete this layout',
+    replace: 'Replace',
+    replaceTitle: 'Replace saved layout',
+    replaceMessage: 'A saved layout named "{name}" already exists. Replace it with the current arrangement?',
+    none: 'No saved layouts yet.'
+  },
   workbench: {
     views: {
       branches: 'Branches',
@@ -876,6 +923,8 @@ export const en: Messages = {
     splitMenu: 'Split off to the side',
     edgeMenu: 'Dock to window edge',
     hide: 'Hide this panel',
+    maximize: 'Maximize this panel (fills the window)',
+    restoreSize: 'Back to normal size',
     allHidden: 'All panels are hidden.',
     screens: 'Screens',
     screensHelp: 'Brings forward the panels of each screen, wherever you left them.',

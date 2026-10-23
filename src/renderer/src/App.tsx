@@ -54,7 +54,7 @@ function isOperationResult(value: unknown): value is { ok: boolean; message: str
 /** Painéis de cada grupo de telas: o estado de cada grupo só é montado enquanto algum deles está na tela. */
 const COMMIT_VIEWS: ViewId[] = ['commit.message', 'commit.files', 'commit.diff']
 const CHANGES_VIEWS: ViewId[] = ['changes.conflicts', 'changes.unstaged', 'changes.staged', 'changes.files', 'changes.commit', 'changes.diff']
-const FILES_VIEWS: ViewId[] = ['files.list', 'files.history', 'files.diff', 'files.blame']
+const FILES_VIEWS: ViewId[] = ['files.list', 'files.history', 'files.diff', 'files.editor', 'files.blame']
 const COMPARE_VIEWS: ViewId[] = ['compare.setup', 'compare.files', 'compare.diff']
 
 export function App() {
@@ -408,6 +408,7 @@ export function App() {
     'files.list': { label: t('tabs.files') },
     'files.history': { label: t('workbench.views.filesHistory') },
     'files.diff': { label: t('workbench.views.filesDiff') },
+    'files.editor': { label: t('files.editor') },
     'files.blame': { label: t('files.blame') },
     'compare.setup': { label: t('tabs.compare') },
     'compare.files': { label: t('workbench.views.compareFiles') },
@@ -431,9 +432,9 @@ export function App() {
       {/* Cada tela é desenhada aqui e levada, por portais, ao painel onde o usuário a deixou. */}
       <SidebarPanes
         scope={scope}
-        onScope={(s) => {
+        onScope={(s, options) => {
           setScope(s)
-          setView('history')
+          if (options?.reveal !== false) setView('history')
         }}
       />
       <PaneSlot id="history">

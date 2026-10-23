@@ -2,7 +2,30 @@ import type { Messages } from '../types'
 
 export const es: Messages = {
   editor: {
-    chooseFirst: 'Primero elige qué editor usar.'
+    chooseFirst: 'Primero elige qué editor usar.',
+    save: 'Guardar',
+    saveHelp: 'Guardar el archivo (Ctrl+S)',
+    saved: '"{path}" guardado.',
+    unsaved: 'Sin guardar',
+    unsavedHelp: 'Este archivo tiene cambios que aún no se han guardado.',
+    discard: 'Descartar cambios',
+    discardTitle: 'Descartar cambios',
+    discardMessage: '¿Descartar lo que escribiste en "{path}" y volver al contenido guardado?',
+    changedOnDisk: 'Este archivo se cambió fuera del editor mientras lo editabas.',
+    loadDisk: 'Cargar la versión del disco (descarta lo que escribí)',
+    overwriteTitle: '¿Sobrescribir el archivo?',
+    overwriteMessage: '"{path}" se cambió fuera del editor después de abrirlo. Guardar ahora reemplaza esos cambios.',
+    overwrite: 'Sobrescribir',
+    binary: 'Este archivo es binario y no se puede editar aquí. Usa "Abrir en el editor".',
+    tooLarge: 'Este archivo es demasiado grande ({size}) para el editor integrado. Usa "Abrir en el editor".',
+    blame: {
+      you: 'Tú',
+      editing: 'editando ahora, sin guardar',
+      editingHelp: 'Escribiste o cambiaste esta línea y aún no se ha guardado.',
+      uncommitted: 'guardado, aún sin commit',
+      uncommittedHelp: 'Cambiaste esta línea y todavía no está en ningún commit.',
+      open: 'Haz clic para abrir el commit.'
+    }
   },
   common: {
     ok: 'Aceptar',
@@ -126,6 +149,7 @@ export const es: Messages = {
     toggleGroup: 'Marcar todas / desmarcar todas',
     filterActive: { one: 'Historial solo de esta rama marcada', other: 'Historial solo de las {count} ramas marcadas' },
     filterClear: 'Mostrar todas',
+    filterNone: 'Historial de todas las ramas',
     branchTooltip: 'Doble clic: checkout · Clic derecho: más acciones',
     menu: {
       deleteTag: 'Eliminar etiqueta',
@@ -572,8 +596,9 @@ export const es: Messages = {
   files: {
     filter: { one: 'Filtrar {count} archivo…', other: 'Filtrar {count} archivos…' },
     truncated: 'Mostrando {shown} de {count}. Afina el filtro.',
-    empty: 'Elige un archivo para ver quién cambió cada línea (blame) y su historial.',
+    empty: 'Elige un archivo para editarlo, ver quién cambió cada línea (blame) y su historial.',
     blame: 'Blame',
+    editor: 'Editor',
     blameAt: 'Blame en {sha}',
     history: 'Historial del archivo',
     showingAt: 'Mostrando el archivo como estaba en {sha}.',
@@ -647,6 +672,9 @@ export const es: Messages = {
       diffContentLabel: 'El diff muestra',
       diffContentChanges: 'Solo el fragmento modificado',
       diffContentFull: 'Archivo completo',
+      inlineBlame: 'Asistente de git en el editor',
+      inlineBlameHelp: 'Al editar un archivo en el editor de GitTools, un globo al final de la línea del cursor muestra quién la cambió, cuándo y qué hizo el commit.',
+      inlineBlameLabel: 'Mostrar autor, fecha y commit de la línea del cursor',
       diffLayout: 'Modo predeterminado del diff',
       clear: 'No usar ninguno',
       browse: 'Buscar ejecutable…',
@@ -837,6 +865,7 @@ export const es: Messages = {
     stashApplied: 'Stash aplicado.',
     stashPopped: 'Stash aplicado y eliminado.',
     rebaseNeedsBranch: 'Haz checkout de una rama para reescribir el historial.',
+    notAFile: '"{path}" no es un archivo normal.',
     commitNotInBranch: 'El commit {sha} no forma parte de la rama actual ({branch}).',
     nothingToRewrite: 'Nada que reescribir.',
     firstCannotSquash: 'El primer commit conservado no puede unirse a uno anterior.',
@@ -857,6 +886,24 @@ export const es: Messages = {
     unknownOperation: 'Operación desconocida: {method}',
     noRepository: 'No hay ningún repositorio abierto.'
   },
+  layouts: {
+    title: 'Diseños guardados',
+    help: 'Guarda la disposición actual de los paneles con un nombre para volver a ella cuando quieras. Restablecer el diseño predeterminado no borra los guardados.',
+    name: 'Nombre del diseño',
+    namePlaceholder: 'Ej.: Revisión de código',
+    save: 'Guardar',
+    saveTitle: 'Guardar diseño actual',
+    saveCurrent: 'Guardar diseño actual…',
+    mine: 'Mis diseños',
+    saved: 'Diseño "{name}" guardado.',
+    applied: 'Diseño "{name}" aplicado.',
+    apply: 'Aplicar',
+    delete: 'Eliminar este diseño',
+    replace: 'Reemplazar',
+    replaceTitle: 'Reemplazar diseño guardado',
+    replaceMessage: 'Ya existe un diseño guardado llamado "{name}". ¿Reemplazarlo por la disposición actual?',
+    none: 'Aún no hay diseños guardados.'
+  },
   workbench: {
     views: {
       branches: 'Ramas',
@@ -876,6 +923,8 @@ export const es: Messages = {
     splitMenu: 'Separar hacia un lado',
     edgeMenu: 'Acoplar al borde de la ventana',
     hide: 'Ocultar este panel',
+    maximize: 'Ampliar este panel (ocupa toda la ventana)',
+    restoreSize: 'Volver al tamaño normal',
     allHidden: 'Todos los paneles están ocultos.',
     screens: 'Pantallas',
     screensHelp: 'Trae al frente los paneles de cada pantalla, donde los hayas dejado.',

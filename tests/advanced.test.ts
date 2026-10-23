@@ -150,3 +150,41 @@ describe('comparação desde o ancestral comum', () => {
     expect(cmp.files.map((f) => `${f.status} ${f.path}`)).toEqual(['A b.txt'])
   })
 })
+
+describe('editor de arquivos', () => {
+  it('lê e grava arquivos de texto da pasta do projeto', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'a.txt': 'um\r\ndois\r\n', 'pasta/b.txt': 'b\n' })
+    expect(await t.repo.readFile('a.txt')).toEqual({ path: 'a.txt', content: 'um\r\ndois\r\n', binary: false, tooLarge: false, size: 10 })
+    await t.repo.writeFile('pasta/b.txt', 'B\nnova\n')
+    expect(readFileSync(join(t.dir, 'pasta', 'b.txt'), 'utf8')).toBe('B\nnova\n')
+    // Gravar não faz stage: o arquivo aparece como alterado.
+    const status = await t.repo.status()
+    expect(status.unstaged.map((f) => f.path)).toEqual(['pasta/b.txt'])
+  })
+
+  it('recusa binários, arquivos grandes, pastas, caminhos fora do projeto e arquivos que não existem', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'a.txt': 'a\n', 'pasta/b.txt': 'b\n' })
+    t.write('bin.dat', 'ab\0cd')
+    t.write('grande.txt', 'x'.repeat(2 * 1024 * 1024 + 1))
+    expect(await t.repo.readFile('bin.dat')).toMatchObject({ content: null, binary: true })
+    expect(await t.repo.readFile('grande.txt')).toMatchObject({ content: null, tooLarge: true, binary: false })
+    await expect(t.repo.readFile('pasta')).rejects.toThrow('não é um arquivo comum')
+    await expect(t.repo.readFile('../fora.txt')).rejects.toThrow('fora do repositório')
+    await expect(t.repo.writeFile('../fora.txt', 'x')).rejects.toThrow('fora do repositório')
+    // O editor não cria arquivos: só reescreve os que existem.
+    await expect(t.repo.writeFile('novo.txt', 'x')).rejects.toThrow()
+    await expect(t.repo.readFile('nao-existe.txt')).rejects.toThrow()
+  })
+
+  it('o blame do arquivo salvo mostra o autor das linhas alteradas e as não commitadas', async () => {
+    const t = await createRepo()
+    const c1 = await t.commit('primeiro', { 'f.txt': 'um\ndois\n' })
+    await t.repo.writeFile('f.txt', 'um\nDOIS\n')
+    const blame = await t.repo.blame('f.txt')
+    expect(blame.lines[0].sha).toBe(c1)
+    expect(blame.lines[1].sha).toMatch(/^0+$/)
+    expect(blame.commits[c1]).toMatchObject({ author: 'Test', summary: 'primeiro' })
+  })
+})

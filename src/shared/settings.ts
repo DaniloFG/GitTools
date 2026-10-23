@@ -50,11 +50,13 @@ export interface Settings {
   statusLetters: boolean
   /** O diff abre mostrando o arquivo inteiro (true) ou só os trechos alterados (false). */
   diffFullFile: boolean
+  /** Assistente de git no editor: balão ao final da linha do cursor dizendo quem a alterou, quando e o que o commit fez. */
+  inlineBlame: boolean
   /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
   shortcuts: Record<string, string>
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
+export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
 
 export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6]
 export const DIVIDER_WIDTHS = [1, 2, 3, 4, 6, 8]
@@ -93,6 +95,7 @@ export function normalizeSettings(value: unknown): Settings {
     fileIcons: raw.fileIcons !== false,
     statusLetters: raw.statusLetters !== false,
     diffFullFile: raw.diffFullFile === true,
+    inlineBlame: raw.inlineBlame !== false,
     editor: typeof raw.editor === 'string' ? raw.editor.trim() : DEFAULT_SETTINGS.editor,
     toast: normalizeToast(raw.toast),
     shortcuts: shortcuts as Record<string, string>

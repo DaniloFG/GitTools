@@ -16,6 +16,7 @@ import type {
   ConflictResolution,
   DiffSource,
   FileApplyMode,
+  FileContent,
   FileDiff,
   FileHistoryEntry,
   LineAction,
@@ -126,6 +127,10 @@ export interface RepoApi {
   // Comparação, arquivos, blame e histórico
   compare(from: string, to: string, sinceMergeBase?: boolean): Promise<Comparison>
   listFiles(): Promise<string[]>
+  /** Lê um arquivo da pasta do projeto (para editar no editor embutido). */
+  readFile(path: string): Promise<FileContent>
+  /** Grava o texto de um arquivo da pasta do projeto (não faz stage). */
+  writeFile(path: string, content: string): Promise<void>
   blame(path: string, rev?: string): Promise<BlameResult>
   fileHistory(path: string, limit?: number): Promise<FileHistoryEntry[]>
   restoreFile(sha: string, path: string): Promise<void>
@@ -188,6 +193,8 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'saveConflictResolution',
   'compare',
   'listFiles',
+  'readFile',
+  'writeFile',
   'blame',
   'fileHistory',
   'restoreFile',
