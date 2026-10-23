@@ -76,6 +76,23 @@ describe('validação do arranjo salvo', () => {
     expect([...viewsOf(state)].sort()).toEqual([...VIEW_IDS].sort())
   })
 
+  it('um layout salvo antes do painel Editor ganha o painel junto dos outros de Arquivos', () => {
+    const state = parseDock({
+      root: {
+        kind: 'split',
+        id: 's',
+        dir: 'row',
+        sizes: [1, 1],
+        children: [
+          { kind: 'group', id: 'a', views: ['history', 'files.list'] },
+          { kind: 'group', id: 'b', views: ['files.blame', 'files.diff'] }
+        ]
+      }
+    })
+    expect(findGroup(state, 'files.editor')?.id).toBe('a')
+    expect(findGroup(defaultDock(), 'files.editor')?.views).toContain('files.blame')
+  })
+
   it('corrige pesos inválidos, aba escolhida inexistente e divisões com um só filho', () => {
     const state = parseDock({
       root: {

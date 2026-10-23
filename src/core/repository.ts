@@ -15,6 +15,7 @@ import type {
   ConflictResolution,
   DiffSource,
   FileApplyMode,
+  FileContent,
   FileDiff,
   FileHistoryEntry,
   FileStatus,
@@ -51,6 +52,8 @@ const DIFF_ARGS = [
 /** Contexto do diff "arquivo inteiro": maior que qualquer arquivo de texto razoável. */
 const FULL_CONTEXT = '-U1000000'
 const diffArgs = (fullFile = false) => (fullFile ? DIFF_ARGS.map((a) => (a === '-U3' ? FULL_CONTEXT : a)) : DIFF_ARGS)
+/** Maior arquivo que o editor embutido abre (acima disso, o editor externo é o caminho). */
+const EDITABLE_MAX_BYTES = 2 * 1024 * 1024
 const FS = '\x1f'
 const RS = '\x1e'
 const COMMIT_FORMAT = ['%H', '%P', '%an', '%ae', '%at', '%s', '%D'].join('%x1f') + '%x1e'
@@ -1056,6 +1059,24 @@ export class GitRepository implements RepoApi {
   async listFiles(): Promise<string[]> {
     const { stdout } = await this.git(['ls-files', '-z'])
     return stdout.split('\0').filter(Boolean)
+  }
+
+  async readFile(path: string): Promise<FileContent> {
+    const full = resolveInside(this.root, path)
+    const info = await lstat(full)
+    if (!info.isFile()) throw new Error(t('core.notAFile', { path }))
+    if (info.size > EDITABLE_MAX_BYTES) return { path, content: null, binary: false, tooLarge: true, size: info.size }
+    const buffer = await readFile(full)
+    if (buffer.subarray(0, 8000).includes(0)) return { path, content: null, binary: true, tooLarge: false, size: info.size }
+    return { path, content: buffer.toString('utf8'), binary: false, tooLarge: false, size: info.size }
+  }
+
+  async writeFile(path: string, content: string): Promise<void> {
+    const full = resolveInside(this.root, path)
+    // Só reescreve arquivos que já existem: o editor embutido não cria arquivos nem segue atalhos para fora da pasta.
+    const info = await lstat(full)
+    if (!info.isFile()) throw new Error(t('core.notAFile', { path }))
+    await writeFile(full, content, 'utf8')
   }
 
   async blame(path: string, rev?: string): Promise<BlameResult> {

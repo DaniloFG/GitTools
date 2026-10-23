@@ -97,6 +97,15 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
       {test && test !== 'running' && <p className={test.ok ? 'success-text' : 'warning-text'}>{test.message}</p>}
       </>)}
 
+      <h4>{t('settings.editor.inlineBlame')}</h4>
+      <p className="muted small">{t('settings.editor.inlineBlameHelp')}</p>
+      <div className="settings-row">
+        <span>{t('settings.editor.inlineBlameLabel')}</span>
+        <label className="checkbox">
+          <input type="checkbox" checked={draft.inlineBlame} onChange={(e) => update({ inlineBlame: e.target.checked })} />
+        </label>
+      </div>
+
       <h4>{t('settings.editor.diffContent')}</h4>
       <p className="muted small">{t('settings.editor.diffContentHelp')}</p>
       <div className="settings-row">

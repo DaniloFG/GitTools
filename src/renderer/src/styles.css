@@ -360,12 +360,30 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  box-sizing: border-box;
+  height: 38px;
   margin: 0 8px 6px;
   padding: 4px 8px;
-  border: 1px solid var(--accent);
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text-muted);
   font-size: 11px;
+}
+.sidebar-filter > span {
+  min-width: 0;
+  overflow: hidden;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.sidebar-filter > button {
+  flex: none;
+}
+.sidebar-filter.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: inherit;
 }
 /* O ícone da branch usa a cor da trilha dela no grafo. */
 .branch-icon {
@@ -2796,6 +2814,9 @@ body.reordering * {
   background: var(--accent);
   outline: none;
 }
+.dock > .dock-group {
+  flex: 1 1 auto;
+}
 .dock-group {
   display: flex;
   flex-direction: column;
@@ -2803,15 +2824,33 @@ body.reordering * {
   min-height: 0;
   background: var(--bg);
 }
-.dock-tabs {
+.dock-tabbar {
   display: flex;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+.dock-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
   gap: 2px;
   padding: 0 6px;
-  border-bottom: 1px solid var(--border);
   overflow-x: auto;
   scrollbar-width: thin;
-  background: var(--bg-elevated);
+}
+.dock-maximize {
+  flex: none;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.dock-maximize:hover,
+.dock-maximize[aria-pressed='true'] {
+  color: var(--text);
 }
 .dock-tab {
   display: flex;
@@ -3724,4 +3763,141 @@ tr.nav-flash > td {
 }
 .file-details > .file-header {
   border-bottom: 1px solid var(--border);
+}
+
+/* ------------------------------------------------------------------ editor de arquivos */
+.file-editor {
+  padding-bottom: 0;
+}
+.editor-dirty {
+  color: var(--warning);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.file-unsaved {
+  margin-inline-start: 6px;
+  color: var(--warning);
+  font-size: 10px;
+}
+.editor-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  font-size: 12px;
+}
+.code-editor {
+  --editor-line-height: 19px;
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: var(--editor-line-height);
+  overflow: hidden;
+  direction: ltr;
+}
+.editor-gutter {
+  flex: none;
+  width: calc(var(--editor-digits, 3) * 1ch + 20px);
+  overflow: hidden;
+  border-inline-end: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  user-select: none;
+}
+.editor-gutter pre {
+  margin: 0;
+  padding: 8px 8px 8px 0;
+  font: inherit;
+  text-align: end;
+  opacity: 0.75;
+}
+.editor-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.editor-area {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  white-space: pre;
+  overflow: auto;
+  tab-size: 4;
+  caret-color: var(--accent);
+}
+.editor-current-line {
+  position: absolute;
+  inset-inline: 0;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  pointer-events: none;
+}
+.editor-probe {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: pre;
+  font: inherit;
+}
+/* Balão ao final da linha do cursor (assistente de git). */
+.editor-popup {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  height: var(--editor-line-height);
+  align-items: center;
+}
+.editor-popup.below {
+  height: auto;
+}
+.blame-bubble {
+  display: block;
+  max-width: 100%;
+  height: calc(var(--editor-line-height) - 2px);
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  font: 11px/calc(var(--editor-line-height) - 4px) system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+button.blame-bubble {
+  cursor: pointer;
+}
+button.blame-bubble:hover {
+  background: color-mix(in srgb, var(--accent) 24%, var(--bg-elevated));
+}
+.blame-bubble.editing {
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--border));
+  background: color-mix(in srgb, var(--warning) 14%, var(--bg-elevated));
+}
+.blame-bubble-when,
+.blame-bubble-text {
+  color: var(--text-muted);
 }

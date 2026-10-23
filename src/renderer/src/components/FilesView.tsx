@@ -11,6 +11,8 @@ import { DiffView, useFullFile } from './DiffView'
 import { revealView } from '../dockStore'
 import { PaneSlot, useAnyShown } from '../slots'
 import { LineStats } from './LineStats'
+import { FileEditor } from './FileEditor'
+import { draftPaths, useDraftsVersion } from '../editorDrafts'
 import { FileEntries, FileViewToggle } from './FileList'
 
 const MAX_LISTED = 500
@@ -21,9 +23,9 @@ const GUTTER_MAX = 640
 const parseGutter = (value: unknown) => (typeof value === 'number' && value >= GUTTER_MIN && value <= GUTTER_MAX ? value : GUTTER_DEFAULT)
 
 /**
- * Explorador de arquivos com blame por linha e histórico de cada arquivo. São painéis independentes:
- * a lista de arquivos (`files.list`), o blame (`files.blame`), as versões do arquivo (`files.history`) e o
- * diff da versão escolhida (`files.diff`) — cada um pode ficar em qualquer lugar da janela.
+ * Explorador de arquivos com editor, blame por linha e histórico de cada arquivo. São painéis independentes:
+ * a lista de arquivos (`files.list`), o editor (`files.editor`), o blame (`files.blame`), as versões do arquivo
+ * (`files.history`) e o diff da versão escolhida (`files.diff`) — cada um pode ficar em qualquer lugar da janela.
  */
 export function FilesPanes({ path, onPath }: { path: string | null; onPath(path: string): void }) {
   const [blameRev, setBlameRev] = useState<string | undefined>(undefined)
@@ -33,6 +35,9 @@ export function FilesPanes({ path, onPath }: { path: string | null; onPath(path:
     <>
       <PaneSlot id="files.list">
         <FilesList path={path} onPath={onPath} />
+      </PaneSlot>
+      <PaneSlot id="files.editor">
+        {path ? <FileEditor key={path} path={path} /> : <p className="empty">{t('files.empty')}</p>}
       </PaneSlot>
       <PaneSlot id="files.blame">
         <section className="details file-details">
@@ -72,9 +77,12 @@ function FileHeader({ path, title }: { path: string; title: string }) {
 }
 
 function FilesList({ path, onPath }: { path: string | null; onPath(path: string): void }) {
-  const { data, toast } = useApp()
+  const { data, toast, repo } = useApp()
   const [files, setFiles] = useState<string[]>([])
   const [filter, setFilter] = useState('')
+  // Arquivos com alterações ainda não salvas no editor.
+  useDraftsVersion()
+  const unsaved = new Set(draftPaths(repo.root))
 
   useEffect(() => {
     git.listFiles().then(setFiles, (e) => toast('error', errorMessage(e)))
@@ -103,11 +111,16 @@ function FilesList({ path, onPath }: { path: string | null; onPath(path: string)
               style={style}
               onClick={() => {
                 onPath(f)
-                revealView('files.blame')
+                revealView('files.editor')
               }}
               title={f}
             >
               {label}
+              {unsaved.has(f) && (
+                <span className="file-unsaved" title={t('editor.unsavedHelp')} aria-label={t('editor.unsaved')}>
+                  ●
+                </span>
+              )}
             </li>
           )}
         />

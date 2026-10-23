@@ -3,7 +3,30 @@
 
 export const ptBR = {
   editor: {
-    chooseFirst: 'Escolha primeiro qual editor usar.'
+    chooseFirst: 'Escolha primeiro qual editor usar.',
+    save: 'Salvar',
+    saveHelp: 'Salvar o arquivo (Ctrl+S)',
+    saved: '"{path}" salvo.',
+    unsaved: 'Não salvo',
+    unsavedHelp: 'Há alterações neste arquivo que ainda não foram salvas.',
+    discard: 'Descartar alterações',
+    discardTitle: 'Descartar alterações',
+    discardMessage: 'Descartar o que você digitou em "{path}" e voltar ao conteúdo salvo?',
+    changedOnDisk: 'Este arquivo foi alterado fora do editor enquanto você editava.',
+    loadDisk: 'Carregar a versão do disco (descarta o que digitei)',
+    overwriteTitle: 'Sobrescrever o arquivo?',
+    overwriteMessage: '"{path}" foi alterado fora do editor depois que você o abriu. Salvar agora substitui essas alterações.',
+    overwrite: 'Sobrescrever',
+    binary: 'Este arquivo é binário e não pode ser editado aqui. Use "Abrir no editor".',
+    tooLarge: 'Este arquivo é grande demais ({size}) para o editor embutido. Use "Abrir no editor".',
+    blame: {
+      you: 'Você',
+      editing: 'editando agora, ainda não salvo',
+      editingHelp: 'Esta linha foi escrita ou alterada por você e ainda não foi salva.',
+      uncommitted: 'salvo, ainda não commitado',
+      uncommittedHelp: 'Esta linha foi alterada por você e ainda não entrou em nenhum commit.',
+      open: 'Clique para abrir o commit.'
+    }
   },
   common: {
     ok: 'OK',
@@ -127,6 +150,7 @@ export const ptBR = {
     toggleGroup: 'Marcar todas / desmarcar todas',
     filterActive: { one: 'Histórico só desta branch marcada', other: 'Histórico só das {count} branches marcadas' },
     filterClear: 'Mostrar todas',
+    filterNone: 'Histórico de todas as branches',
     branchTooltip: 'Duplo clique: checkout · Botão direito: mais ações',
     menu: {
       deleteTag: 'Excluir tag',
@@ -573,8 +597,9 @@ export const ptBR = {
   files: {
     filter: { one: 'Filtrar {count} arquivo…', other: 'Filtrar {count} arquivos…' },
     truncated: 'Mostrando {shown} de {count}. Refine o filtro.',
-    empty: 'Escolha um arquivo para ver quem alterou cada linha (blame) e o histórico dele.',
+    empty: 'Escolha um arquivo para editá-lo, ver quem alterou cada linha (blame) e o histórico dele.',
     blame: 'Blame',
+    editor: 'Editor',
     blameAt: 'Blame em {sha}',
     history: 'Histórico do arquivo',
     showingAt: 'Mostrando o arquivo como estava em {sha}.',
@@ -648,6 +673,9 @@ export const ptBR = {
       diffContentLabel: 'O diff mostra',
       diffContentChanges: 'Só o trecho alterado',
       diffContentFull: 'Arquivo inteiro',
+      inlineBlame: 'Assistente de git no editor',
+      inlineBlameHelp: 'Ao editar um arquivo no editor do GitTools, um balão ao final da linha do cursor mostra quem a alterou, quando e o que o commit fez.',
+      inlineBlameLabel: 'Mostrar autor, data e commit da linha do cursor',
       diffLayout: 'Modo padrão do diff',
       clear: 'Não usar nenhum',
       browse: 'Procurar executável…',
@@ -838,6 +866,7 @@ export const ptBR = {
     stashApplied: 'Stash aplicado.',
     stashPopped: 'Stash aplicado e removido.',
     rebaseNeedsBranch: 'Faça checkout de uma branch para reescrever o histórico.',
+    notAFile: '"{path}" não é um arquivo comum.',
     commitNotInBranch: 'O commit {sha} não faz parte da branch atual ({branch}).',
     nothingToRewrite: 'Nada para reescrever.',
     firstCannotSquash: 'O primeiro commit mantido não pode ser juntado a um anterior.',
@@ -858,6 +887,24 @@ export const ptBR = {
     unknownOperation: 'Operação desconhecida: {method}',
     noRepository: 'Nenhum repositório aberto.'
   },
+  layouts: {
+    title: 'Layouts salvos',
+    help: 'Guarde o arranjo atual dos painéis com um nome para voltar a ele quando quiser. Restaurar o layout padrão não apaga os salvos.',
+    name: 'Nome do layout',
+    namePlaceholder: 'Ex.: Revisão de código',
+    save: 'Salvar',
+    saveTitle: 'Salvar layout atual',
+    saveCurrent: 'Salvar layout atual…',
+    mine: 'Meus layouts',
+    saved: 'Layout "{name}" salvo.',
+    applied: 'Layout "{name}" aplicado.',
+    apply: 'Aplicar',
+    delete: 'Excluir este layout',
+    replace: 'Substituir',
+    replaceTitle: 'Substituir layout salvo',
+    replaceMessage: 'Já existe um layout salvo chamado "{name}". Substituir pelo arranjo atual?',
+    none: 'Nenhum layout salvo ainda.'
+  },
   workbench: {
     views: {
       branches: 'Branches',
@@ -877,6 +924,8 @@ export const ptBR = {
     splitMenu: 'Separar para o lado',
     edgeMenu: 'Encaixar na borda da janela',
     hide: 'Ocultar este painel',
+    maximize: 'Ampliar este painel (ocupa a janela toda)',
+    restoreSize: 'Voltar ao tamanho normal',
     allHidden: 'Todos os painéis estão ocultos.',
     screens: 'Telas',
     screensHelp: 'Traz à frente os painéis de cada tela, onde quer que você os tenha deixado.',

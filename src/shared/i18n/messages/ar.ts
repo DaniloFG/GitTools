@@ -7,7 +7,30 @@ import type { Messages } from '../types'
 
 export const ar: Messages = {
   editor: {
-    chooseFirst: 'اختر أولًا المحرر الذي تريد استخدامه.'
+    chooseFirst: 'اختر أولًا المحرر الذي تريد استخدامه.',
+    save: 'حفظ',
+    saveHelp: 'حفظ الملف (Ctrl+S)',
+    saved: 'تم حفظ "{path}".',
+    unsaved: 'غير محفوظ',
+    unsavedHelp: 'في هذا الملف تغييرات لم تُحفظ بعد.',
+    discard: 'تجاهل التغييرات',
+    discardTitle: 'تجاهل التغييرات',
+    discardMessage: 'هل تريد تجاهل ما كتبته في "{path}" والعودة إلى المحتوى المحفوظ؟',
+    changedOnDisk: 'تم تغيير هذا الملف خارج المحرر أثناء تحريرك له.',
+    loadDisk: 'تحميل النسخة الموجودة على القرص (يتجاهل ما كتبته)',
+    overwriteTitle: 'الكتابة فوق الملف؟',
+    overwriteMessage: 'تم تغيير "{path}" خارج المحرر بعد أن فتحته. الحفظ الآن سيستبدل تلك التغييرات.',
+    overwrite: 'الكتابة فوقه',
+    binary: 'هذا الملف ثنائي ولا يمكن تحريره هنا. استخدم "فتح في المحرر".',
+    tooLarge: 'هذا الملف كبير جدًا ({size}) على المحرر المدمج. استخدم "فتح في المحرر".',
+    blame: {
+      you: 'أنت',
+      editing: 'قيد التحرير الآن، غير محفوظ',
+      editingHelp: 'كتبت هذا السطر أو غيّرته ولم يُحفظ بعد.',
+      uncommitted: 'محفوظ، بلا إيداع بعد',
+      uncommittedHelp: 'غيّرت هذا السطر وهو ليس في أي إيداع بعد.',
+      open: 'انقر لفتح الإيداع.'
+    }
   },
   common: {
     ok: 'موافق',
@@ -134,6 +157,7 @@ export const ar: Messages = {
     toggleGroup: 'تحديد الكل / إلغاء تحديد الكل',
     filterActive: { zero: 'السجل لا يعرض أي فرع محدد', one: 'السجل لهذا الفرع المحدد فقط', two: 'السجل للفرعين المحددين فقط', few: 'السجل للفروع المحددة ({count}) فقط', many: 'السجل للفروع المحددة ({count}) فقط', other: 'السجل للفروع المحددة ({count}) فقط' },
     filterClear: 'عرض الكل',
+    filterNone: 'سجل جميع الفروع',
     branchTooltip: 'نقر مزدوج: انتقال · نقر أيمن: إجراءات أخرى',
     menu: {
       deleteTag: 'حذف الوسم',
@@ -584,8 +608,9 @@ export const ar: Messages = {
   files: {
     filter: { other: 'تصفية الملفات ({count})…' },
     truncated: 'عرض {shown} من {count}. حدّد التصفية أكثر.',
-    empty: 'اختر ملفًا لمعرفة من غيّر كل سطر (المسؤولية) ولعرض سجله.',
+    empty: 'اختر ملفًا لتحريره ومعرفة من غيّر كل سطر (blame) وسجله.',
     blame: 'المسؤولية',
+    editor: 'المحرر',
     blameAt: 'المسؤولية عند {sha}',
     history: 'سجل الملف',
     showingAt: 'عرض الملف كما كان عند {sha}.',
@@ -659,6 +684,9 @@ export const ar: Messages = {
       diffContentLabel: 'يعرض الفروقات',
       diffContentChanges: 'الجزء المتغيّر فقط',
       diffContentFull: 'الملف كاملاً',
+      inlineBlame: 'مساعد git في المحرر',
+      inlineBlameHelp: 'عند تحرير ملف في محرر GitTools، تظهر فقاعة في نهاية سطر المؤشر توضح من غيّره ومتى وماذا فعل الإيداع.',
+      inlineBlameLabel: 'إظهار المؤلف والتاريخ والإيداع لسطر المؤشر',
       diffLayout: 'طريقة عرض الفروق الافتراضية',
       clear: 'بدون محرر',
       browse: 'استعراض الملف التنفيذي…',
@@ -846,6 +874,7 @@ export const ar: Messages = {
     stashApplied: 'تم تطبيق التخبئة.',
     stashPopped: 'تم تطبيق التخبئة وحذفها.',
     rebaseNeedsBranch: 'انتقل إلى فرع لإعادة كتابة السجل.',
+    notAFile: '"{path}" ليس ملفًا عاديًا.',
     commitNotInBranch: 'الإيداع {sha} ليس جزءًا من الفرع الحالي ({branch}).',
     nothingToRewrite: 'لا شيء لإعادة كتابته.',
     firstCannotSquash: 'لا يمكن ضم أول إيداع مُبقى إلى إيداع سابق.',
@@ -866,6 +895,24 @@ export const ar: Messages = {
     unknownOperation: 'عملية غير معروفة: {method}',
     noRepository: 'لا يوجد مستودع مفتوح.'
   },
+  layouts: {
+    title: 'التخطيطات المحفوظة',
+    help: 'احفظ ترتيب اللوحات الحالي باسم لتعود إليه متى شئت. استعادة التخطيط الافتراضي لا تحذف التخطيطات المحفوظة.',
+    name: 'اسم التخطيط',
+    namePlaceholder: 'مثال: مراجعة الشيفرة',
+    save: 'حفظ',
+    saveTitle: 'حفظ التخطيط الحالي',
+    saveCurrent: 'حفظ التخطيط الحالي…',
+    mine: 'تخطيطاتي',
+    saved: 'تم حفظ التخطيط "{name}".',
+    applied: 'تم تطبيق التخطيط "{name}".',
+    apply: 'تطبيق',
+    delete: 'حذف هذا التخطيط',
+    replace: 'استبدال',
+    replaceTitle: 'استبدال تخطيط محفوظ',
+    replaceMessage: 'يوجد تخطيط محفوظ باسم "{name}" بالفعل. هل تريد استبداله بالترتيب الحالي؟',
+    none: 'لا توجد تخطيطات محفوظة بعد.'
+  },
   workbench: {
     views: {
       branches: 'الفروع',
@@ -885,6 +932,8 @@ export const ar: Messages = {
     splitMenu: 'فصل إلى جانب',
     edgeMenu: 'تثبيت عند حافة النافذة',
     hide: 'إخفاء هذه اللوحة',
+    maximize: 'تكبير هذه اللوحة (تملأ النافذة كلها)',
+    restoreSize: 'العودة إلى الحجم العادي',
     allHidden: 'جميع اللوحات مخفية.',
     screens: 'الشاشات',
     screensHelp: 'يُحضر لوحات كل شاشة إلى الأمام أينما وضعتها.',

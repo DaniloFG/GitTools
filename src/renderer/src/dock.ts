@@ -22,6 +22,7 @@ export type ViewId =
   | 'files.list'
   | 'files.history'
   | 'files.diff'
+  | 'files.editor'
   | 'files.blame'
   | 'compare.setup'
   | 'compare.files'
@@ -45,6 +46,7 @@ export const VIEW_IDS: readonly ViewId[] = [
   'files.list',
   'files.history',
   'files.diff',
+  'files.editor',
   'files.blame',
   'compare.setup',
   'compare.files',
@@ -59,7 +61,7 @@ export const SCREEN_VIEWS: Record<ScreenId, readonly ViewId[]> = {
   branches: ['branches', 'tags', 'stashes'],
   history: ['history', 'commit.message', 'commit.files', 'commit.diff'],
   changes: ['changes.conflicts', 'changes.unstaged', 'changes.files', 'changes.staged', 'changes.commit', 'changes.diff'],
-  files: ['files.list', 'files.history', 'files.diff', 'files.blame'],
+  files: ['files.list', 'files.history', 'files.diff', 'files.editor', 'files.blame'],
   compare: ['compare.setup', 'compare.files', 'compare.diff'],
   gitlog: ['gitlog']
 }
@@ -151,7 +153,7 @@ export function defaultDock(): DockState {
               group('g-side', ['commit.message', 'changes.staged', 'files.history', 'compare.files'], 'commit.message'),
               group('g-extra', ['commit.files', 'changes.commit'], 'commit.files')
             ]),
-            group('g-diff', ['commit.diff', 'changes.diff', 'files.diff', 'files.blame', 'compare.diff'], 'commit.diff')
+            group('g-diff', ['commit.diff', 'changes.diff', 'files.diff', 'files.editor', 'files.blame', 'compare.diff'], 'commit.diff')
           ])
         ]),
         group('g-log', ['gitlog'])
