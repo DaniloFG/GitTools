@@ -1,6 +1,6 @@
 import { createContext, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { AppContext } from '../context'
-import { readLayout, useLayout, writeLayout } from '../layout'
+import { useLayout } from '../layout'
 import { startResize } from '../resize'
 import {
   clampSize,
@@ -66,24 +66,12 @@ function crossingDividers(el: HTMLElement, vertical: boolean, x: number, y: numb
 
 const layoutKey = (id: string) => `split.${id}`
 
-/** Garante que um painel esteja visível (ex.: ao pedir para ver um diff num painel recolhido). */
-export function revealPane(id: string, pane: CollapsedPane) {
-  const state = parseSplitState(readLayout(layoutKey(id)))
-  if (state.collapsed === pane) writeLayout(layoutKey(id), { ...state, collapsed: undefined })
-}
-
 /**
  * Quantas divisórias arrumáveis envolvem um painel. As alças de painéis aninhados ficam deslocadas
  * para não caírem uma em cima da outra quando os painéis começam no mesmo ponto.
  */
 const DepthContext = createContext(0)
 const GRIP_OFFSET = 56
-
-/** Mostra ou esconde um painel de fora da divisória (ex.: atalho para a barra lateral). */
-export function togglePane(id: string, pane: CollapsedPane) {
-  const state = parseSplitState(readLayout(layoutKey(id)))
-  writeLayout(layoutKey(id), { ...state, collapsed: state.collapsed === pane ? undefined : pane })
-}
 
 /** Só o arranjo (troca de lugar e direção), sem tamanho nem painel recolhido. */
 const arrangementOf = ({ swapped, direction }: SplitState): SplitState => ({ swapped, direction })

@@ -1,4 +1,5 @@
 import type { BranchInfo, CommitInfo, DiffSource, LineKey, PushForce } from '../../shared/types'
+import type { MenuItem } from './components/ContextMenu'
 import { currentBranch, useApp } from './context'
 import type { DragPayload } from './dnd'
 import { git } from './git'
@@ -254,8 +255,36 @@ export function useActions() {
     await run(t('busy.reset'), () => git.resetTo(commit.sha, choice.id as 'soft' | 'mixed' | 'hard'))
   }
 
+  /** Copia a mensagem dos commits (completa, só o título ou só a descrição) para a área de transferência. */
+  async function copyMessage(shas: string[], part: 'full' | 'subject' | 'body') {
+    try {
+      const all = await Promise.all(shas.map((sha) => git.commitDetails(sha)))
+      const texts = all.map((c) => (part === 'subject' ? c.subject : part === 'body' ? c.body.trim() : c.body.trim() ? `${c.subject}\n\n${c.body.trim()}` : c.subject))
+      const kept = texts.filter(Boolean)
+      if (kept.length === 0) return toast('warning', t('history.menu.noBody'))
+      await navigator.clipboard.writeText(kept.join(part === 'subject' ? '\n' : '\n\n'))
+      toast('info', t('history.menu.messageCopied', { count: kept.length }))
+    } catch (error) {
+      toast('error', error instanceof Error ? error.message : String(error))
+    }
+  }
+
+  /** Item "Copiar mensagem" dos menus de commit, com o submenu das três formas de copiar. */
+  function copyMessageMenu(shas: string[]): MenuItem {
+    return {
+      label: t('history.menu.copyMessage'),
+      submenu: [
+        { label: t('history.menu.copyMessageFull'), onClick: () => void copyMessage(shas, 'full') },
+        { label: t('history.menu.copyMessageSubject'), onClick: () => void copyMessage(shas, 'subject') },
+        { label: t('history.menu.copyMessageBody'), onClick: () => void copyMessage(shas, 'body') }
+      ]
+    }
+  }
+
   return {
     head,
+    copyMessage,
+    copyMessageMenu,
     stash,
     checkout,
     createBranch,

@@ -12,15 +12,15 @@ export function useFileViewMode() {
 }
 
 /** Alterna entre "lista" (nome + pasta) e "árvore" (agrupado por pasta); vale para todas as listas. */
-export function FileViewToggle({ compact = false }: { compact?: boolean }) {
+export function FileViewToggle() {
   const [mode, setMode] = useFileViewMode()
   return (
     <div className="segmented file-view-toggle" role="group" aria-label={t('fileList.viewMode')} title={t('fileList.viewModeHelp')} dir="ltr">
       <button className={mode === 'list' ? 'active' : ''} aria-pressed={mode === 'list'} onClick={() => setMode(undefined)}>
-        ☰{!compact && ` ${t('fileList.list')}`}
+        ☰ {t('fileList.list')}
       </button>
       <button className={mode === 'tree' ? 'active' : ''} aria-pressed={mode === 'tree'} onClick={() => setMode('tree')}>
-        ⊟{!compact && ` ${t('fileList.tree')}`}
+        ⊟ {t('fileList.tree')}
       </button>
     </div>
   )

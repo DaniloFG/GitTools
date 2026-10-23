@@ -15,49 +15,53 @@ import {
 import { CherryPickStudio } from './components/CherryPickStudio'
 import { ChangesView } from './components/ChangesView'
 import { CloneDialog } from './components/CloneDialog'
-import { CommitDetailsPanel, type FileFocus, type WipFocus } from './components/CommitDetails'
+import { CommitPanes, type FileFocus, type WipFocus } from './components/CommitDetails'
 import { CommitList } from './components/CommitList'
 import { CompareView } from './components/CompareView'
 import { ConflictEditor } from './components/ConflictEditor'
 import { ContextMenu, type MenuItem, type MenuState } from './components/ContextMenu'
 import { DialogHost, type DialogState } from './components/Dialogs'
-import { FilesView } from './components/FilesView'
+import { FilesPanes } from './components/FilesView'
 import { GitLogView } from './components/GitLogView'
 import { KeyboardShortcuts } from './components/KeyboardShortcuts'
 import { OperationBanner } from './components/OperationBanner'
 import { RebaseEditor } from './components/RebaseEditor'
 import { SettingsCenter } from './components/settings/SettingsCenter'
 import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
-import { Sidebar } from './components/Sidebar'
-import { revealPane, Split } from './components/Split'
+import { SidebarPanes } from './components/Sidebar'
+import { PanelsButtons, ScreenTabs } from './components/Screens'
 import { Toasts, type Toast } from './components/Toasts'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
-import { useWorkbench, Workbench, type ViewDef } from './components/Workbench'
+import { Dock, type ViewMeta } from './components/Dock'
 import { errorMessage, shortSha } from './format'
 import { git } from './git'
 import { getLocale, setLocale, t } from './i18n'
-import { resetLayout as clearLayout } from './layout'
+import { resetLayout as clearLayout, useLayout } from './layout'
 import { historySignature, mergeData, type LogCache } from './stable'
-import { activate, areaOf, type AreaId, type WorkbenchState } from './workbench'
+import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
+import { viewAvailable, type ViewId } from './dock'
+import { revealScreen, revealView, useDock } from './dockStore'
+import { parseChangesMode, type ChangesMode } from './changesMode'
+import { PaneSlot, WhenShown } from './slots'
 
-export type HistoryScope = { kind: 'all' } | { kind: 'head' } | { kind: 'ref'; ref: string }
+export type { HistoryScope }
 
 function isOperationResult(value: unknown): value is { ok: boolean; message: string; conflicts: string[] } {
   return typeof value === 'object' && value !== null && 'ok' in value && 'conflicts' in value
 }
 
-/** Divisória e painel de cada área lateral (para mostrar a área se estiver recolhida). */
-const AREA_PANES: Partial<Record<AreaId, [string, 'first' | 'second']>> = {
-  left: ['wb-left', 'first'],
-  right: ['wb-right', 'second'],
-  bottom: ['wb-bottom', 'second']
-}
+/** Painéis de cada grupo de telas: o estado de cada grupo só é montado enquanto algum deles está na tela. */
+const COMMIT_VIEWS: ViewId[] = ['commit.message', 'commit.files', 'commit.diff']
+const CHANGES_VIEWS: ViewId[] = ['changes.conflicts', 'changes.unstaged', 'changes.staged', 'changes.files', 'changes.commit', 'changes.diff']
+const FILES_VIEWS: ViewId[] = ['files.list', 'files.history', 'files.diff', 'files.blame']
+const COMPARE_VIEWS: ViewId[] = ['compare.setup', 'compare.files', 'compare.diff']
 
 export function App() {
   const [repo, setRepo] = useState<RepoInfo | null>(null)
   const [data, setData] = useState<RepoData | null>(null)
-  const [workbench, setWorkbench] = useWorkbench()
+  const [dock, setDock] = useDock()
+  const [changesMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
   const [scope, setScope] = useState<HistoryScope>({ kind: 'all' })
   const [selected, setSelected] = useState<string[]>([])
   const [fileFocus, setFileFocus] = useState<FileFocus | null>(null)
@@ -121,17 +125,14 @@ export function App() {
     return () => window.removeEventListener('gittools:toast', onSample)
   }, [toast])
 
-  /** Mostra uma tela: ativa a aba dela e expande a área, se estiver recolhida. */
-  const setView = useCallback(
-    (view: View) => {
-      setWorkbench((prev: WorkbenchState) => {
-        const pane = AREA_PANES[areaOf(prev, view)]
-        if (pane) revealPane(pane[0], pane[1])
-        return activate(prev, view)
-      })
-    },
-    [setWorkbench]
-  )
+  /** Quais painéis existem agora (ex.: Conflitos só com conflitos; Staged só na visão de listas separadas). */
+  const conflicts = data?.status.conflicted.length ?? 0
+  const available = useCallback((view: ViewId) => viewAvailable(view, { changesMode, conflicts }), [changesMode, conflicts])
+  const availableRef = useRef(available)
+  availableRef.current = available
+
+  /** Mostra uma tela: traz à frente os painéis dela, onde quer que o usuário os tenha deixado. */
+  const setView = useCallback((view: View) => revealScreen(view, (v) => availableRef.current(v)), [])
 
   const askConfirm = useCallback((request: Parameters<AppContextValue['confirm']>[0]) => new Promise<boolean>((resolve) => setDialog({ kind: 'confirm', ...request, resolve })), [])
 
@@ -163,10 +164,17 @@ export function App() {
         git.stashes(),
         git.operationState()
       ])
-      const key = historySignature(s.kind === 'ref' ? `ref:${s.ref}` : s.kind, status, branches, tags)
+      // Uma branch marcada que foi excluída ou renomeada sai do filtro (o novo escopo dispara outra leitura).
+      const names = new Set(branches.map((b) => b.name))
+      const marked = checkedRefs(s)
+      if (marked.some((name) => !names.has(name))) {
+        setScope(scopeOfRefs(marked.filter((name) => names.has(name))))
+        return
+      }
+      const key = historySignature(scopeKey(s), status, branches, tags)
       let log = logCache.current?.key === key ? logCache.current.log : null
       if (!log) {
-        log = await git.log(s.kind === 'all' ? { all: true } : s.kind === 'head' ? {} : { ref: s.ref }).catch(() => null)
+        log = await git.log(scopeLogOptions(s)).catch(() => null)
         if (log) logCache.current = { key, log }
         else log = logCache.current?.log ?? []
       }
@@ -291,6 +299,11 @@ export function App() {
         setView('history')
         setSelected([sha])
       },
+      showCommit: (sha) => {
+        setWipFocus(null)
+        setSelected([sha])
+        for (const view of COMMIT_VIEWS) revealView(view)
+      },
       setView,
       openDiffWindow,
       resetLayout,
@@ -362,74 +375,96 @@ export function App() {
   const changeCount = data!.status.staged.length + data!.status.unstaged.length + data!.status.conflicted.length
   const modalOpen = !!(studio || conflict || rebaseFrom || dialog || settingsOpen || helpOpen || cloneOpen)
 
-  /** Abre o diff de um arquivo no painel de detalhes, mostrando os painéis se estiverem recolhidos. */
+  /** Abre o diff de um arquivo no painel do diff do commit, trazendo os painéis do commit se estiverem escondidos. */
   const openFileInDetails = (sha: string, path: string) => {
     setWipFocus(null)
     setSelected([sha])
     setFileFocus((prev) => ({ sha, path, n: (prev?.n ?? 0) + 1 }))
-    revealPane('history', 'second')
-    revealPane('commit-details', 'second')
     setView('history')
   }
 
-  /** Abre o diff de um arquivo não commitado no painel de detalhes, mostrando os painéis se estiverem recolhidos. */
+  /** Abre o diff de um arquivo não commitado no painel do diff, trazendo os painéis do commit se estiverem escondidos. */
   const openWipFileInDetails = (path: string) => {
     setSelected([])
     setWipFocus((prev) => ({ path, n: (prev?.n ?? 0) + 1 }))
-    revealPane('history', 'second')
-    revealPane('commit-details', 'second')
-    revealPane('wip-details', 'second')
     setView('history')
   }
 
-  const views: Record<View, ViewDef> = {
-    branches: {
-      label: t('workbench.views.branches'),
-      render: () => (
-        <Sidebar
-          scope={scope}
-          onScope={(s) => {
-            setScope(s)
-            setView('history')
-          }}
-        />
-      )
-    },
-    history: {
-      label: t('tabs.history'),
-      help: t('history.log.tab'),
-      render: () => (
-        <Split id="history" initial={0.55} min={[280, 280]} labels={[t('workbench.panes.commits'), t('workbench.panes.details')]}>
-          <CommitList
-            scope={scope}
-            onScope={setScope}
-            selected={selected}
-            onSelect={(shas) => {
-              setWipFocus(null)
-              setSelected(shas)
-            }}
-            onOpenFile={openFileInDetails}
-            onOpenFileWindow={(sha, path) => openDiffWindow({ source: { kind: 'commit', sha }, path, title: `${path} · ${shortSha(sha)}` })}
-            onOpenWipFile={openWipFileInDetails}
-          />
-          <CommitDetailsPanel selected={selected} focus={fileFocus} wip={wipFocus} />
-        </Split>
-      )
-    },
-    changes: { label: t('tabs.changes'), badge: changeCount, render: () => <ChangesView /> },
-    files: { label: t('tabs.files'), render: () => <FilesView path={filePath} onPath={setFilePath} /> },
-    compare: { label: t('tabs.compare'), render: () => <CompareView request={compare} onRequest={setCompare} /> },
-    gitlog: { label: t('gitlog.title'), render: () => <GitLogView /> }
+  /** Nome, número e dica de cada painel (as abas). */
+  const meta: Record<ViewId, ViewMeta> = {
+    branches: { label: t('workbench.views.branches') },
+    tags: { label: t('sidebar.tags') },
+    stashes: { label: t('sidebar.stashes') },
+    history: { label: t('tabs.history'), help: t('history.log.tab') },
+    'commit.message': { label: t('workbench.views.commitMessage') },
+    'commit.files': { label: t('workbench.views.commitFiles') },
+    'commit.diff': { label: t('workbench.views.commitDiff') },
+    'changes.conflicts': { label: t('changes.sections.conflicts'), badge: conflicts },
+    'changes.unstaged': { label: t('changes.sections.unstaged'), badge: changeCount },
+    'changes.staged': { label: t('changes.sections.staged') },
+    'changes.files': { label: t('changes.sections.files'), badge: changeCount },
+    'changes.commit': { label: t('changes.sections.commit') },
+    'changes.diff': { label: t('workbench.views.changesDiff') },
+    'files.list': { label: t('tabs.files') },
+    'files.history': { label: t('workbench.views.filesHistory') },
+    'files.diff': { label: t('workbench.views.filesDiff') },
+    'files.blame': { label: t('files.blame') },
+    'compare.setup': { label: t('tabs.compare') },
+    'compare.files': { label: t('workbench.views.compareFiles') },
+    'compare.diff': { label: t('workbench.views.compareDiff') },
+    gitlog: { label: t('gitlog.title') }
   }
 
   return (
     <AppContext.Provider value={context}>
       <KeyboardShortcuts disabled={modalOpen} onOpenRepository={() => openRepository()} />
       <div className="app">
-        <Toolbar onOpenRepository={openRepository} onClone={() => setCloneOpen(true)} />
+        <Toolbar
+          onOpenRepository={openRepository}
+          onClone={() => setCloneOpen(true)}
+          screens={<ScreenTabs state={dock} onChange={setDock} available={available} changeCount={changeCount} />}
+          panels={<PanelsButtons state={dock} onChange={setDock} meta={meta} available={available} />}
+        />
         <OperationBanner onShowChanges={() => setView('changes')} />
-        <Workbench state={workbench} onChange={setWorkbench} views={views} />
+        <Dock state={dock} onChange={setDock} meta={meta} available={available} />
       </div>
+      {/* Cada tela é desenhada aqui e levada, por portais, ao painel onde o usuário a deixou. */}
+      <SidebarPanes
+        scope={scope}
+        onScope={(s) => {
+          setScope(s)
+          setView('history')
+        }}
+      />
+      <PaneSlot id="history">
+        <CommitList
+          scope={scope}
+          onScope={setScope}
+          selected={selected}
+          onSelect={(shas) => {
+            setWipFocus(null)
+            setSelected(shas)
+          }}
+          onOpenFile={openFileInDetails}
+          onOpenFileWindow={(sha, path) => openDiffWindow({ source: { kind: 'commit', sha }, path, title: `${path} · ${shortSha(sha)}` })}
+          onOpenWipFile={openWipFileInDetails}
+        />
+      </PaneSlot>
+      <WhenShown views={COMMIT_VIEWS}>
+        <CommitPanes selected={selected} focus={fileFocus} wip={wipFocus} />
+      </WhenShown>
+      <WhenShown views={CHANGES_VIEWS}>
+        <ChangesView />
+      </WhenShown>
+      <WhenShown views={FILES_VIEWS}>
+        <FilesPanes path={filePath} onPath={setFilePath} />
+      </WhenShown>
+      <WhenShown views={COMPARE_VIEWS}>
+        <CompareView request={compare} onRequest={setCompare} />
+      </WhenShown>
+      <PaneSlot id="gitlog">
+        <GitLogView />
+      </PaneSlot>
       {studio && <CherryPickStudio request={studio} onClose={() => setStudio(null)} />}
       {conflict && <ConflictEditor path={conflict} onClose={() => setConflict(null)} />}
       {rebaseFrom && <RebaseEditor fromSha={rebaseFrom} onClose={() => setRebaseFrom(null)} />}

@@ -4,7 +4,7 @@ import type { BranchInfo, CommitInfo, OperationState, RepoInfo, RepoStatus, Stas
 import type { ChoiceRequest, ChoiceResult, ConfirmRequest, PromptRequest, PushRequest, PushResult } from './components/Dialogs'
 import type { MenuItem } from './components/ContextMenu'
 import type { DiffWindowRequest } from '../../shared/api'
-import type { ViewId } from './workbench'
+import type { ScreenId } from './dock'
 
 export interface RepoData {
   status: RepoStatus
@@ -24,8 +24,8 @@ export interface StudioRequest {
   mode?: 'branch' | 'commits' | 'files' | 'lines'
 }
 
-/** Telas que podem ser mostradas (cada uma é uma aba numa das áreas da janela). */
-export type View = ViewId
+/** Telas que podem ser mostradas (cada uma é um conjunto de painéis que o usuário encaixa onde quiser). */
+export type View = ScreenId
 
 export interface CompareRequest {
   from?: string
@@ -48,7 +48,9 @@ export interface AppContextValue {
   showMenu(event: React.MouseEvent, items: MenuItem[]): void
   openStudio(request: StudioRequest): void
   selectCommit(sha: string): void
-  /** Mostra a tela (na área onde ela estiver), expandindo a área se estiver recolhida. */
+  /** Mostra o commit nos painéis de commit (descrição, arquivos e diff), sem trocar de tela. */
+  showCommit(sha: string): void
+  /** Traz à frente os painéis da tela, onde quer que estejam (mostrando os que estavam escondidos). */
   setView(view: View): void
   /** Abre o diff de um arquivo numa janela própria do sistema. */
   openDiffWindow(request: DiffWindowRequest): void

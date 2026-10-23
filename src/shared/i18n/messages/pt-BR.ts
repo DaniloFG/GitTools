@@ -123,6 +123,10 @@ export const ptBR = {
     tags: 'Tags',
     stashes: 'Stashes',
     dropHere: 'soltar aqui',
+    showInHistory: 'Mostrar só no histórico (marque várias para ver apenas a história delas)',
+    toggleGroup: 'Marcar todas / desmarcar todas',
+    filterActive: { one: 'Histórico só desta branch marcada', other: 'Histórico só das {count} branches marcadas' },
+    filterClear: 'Mostrar todas',
     branchTooltip: 'Duplo clique: checkout · Botão direito: mais ações',
     menu: {
       deleteTag: 'Excluir tag',
@@ -179,7 +183,7 @@ export const ptBR = {
       stagedTag: 'staged',
       partialTag: 'parcial'
     },
-    scope: { all: 'Todas as branches', head: 'Branch atual', ref: 'Branch: {ref}' },
+    scope: { all: 'Todas as branches', head: 'Branch atual', ref: 'Branch: {ref}', refs: { one: '1 branch marcada', other: '{count} branches marcadas' } },
     badge: { remote: 'Branch remota', local: 'Branch local — arraste ou solte itens aqui' },
     search: {
       placeholder: 'Pesquisar branch, mensagem, autor, data, hora ou hash…',
@@ -206,19 +210,17 @@ export const ptBR = {
       revert: 'Reverter commit…',
       reset: 'Mover {branch} para cá (reset)…',
       copySha: 'Copiar SHA',
+      copyMessage: 'Copiar mensagem',
+      copyMessageFull: 'Mensagem completa (título e descrição)',
+      copyMessageSubject: 'Só o título (primeira linha)',
+      copyMessageBody: 'Só a descrição',
+      messageCopied: { one: 'Mensagem copiada.', other: '{count} mensagens copiadas.' },
+      noBody: 'Este commit não tem descrição, só o título.',
       showFiles: 'Mostrar os arquivos abaixo do commit',
       hideFiles: 'Recolher os arquivos do commit'
     }
   },
   details: {
-    view: {
-      label: 'Exibir',
-      both: 'Ambos',
-      message: 'Descrição',
-      files: 'Arquivos',
-      stacked: 'Cima e baixo',
-      side: 'Lado a lado'
-    },
     tips: {
       title: 'Dicas rápidas',
       dragCommit: 'Arraste um commit (ou vários, com Ctrl/Shift) para uma branch na barra lateral para fazer cherry-pick.',
@@ -228,6 +230,7 @@ export const ptBR = {
     },
     multiTitle: { one: '{count} commit selecionado', other: '{count} commits selecionados' },
     multiHelp: 'Arraste a seleção para uma branch, ou:',
+    pickOne: 'Escolha um único commit no Histórico para ver aqui.',
     cherryPickInto: 'Cherry-pick em {target}',
     chooseFilesOrLines: 'Escolher arquivos ou linhas destes commits…',
     linesContext: 'De {path} no commit {sha} — "{subject}"',
@@ -312,19 +315,6 @@ export const ptBR = {
       marked: '{marked} de {total} marcados',
       all: 'Marcar ou desmarcar todos',
       include: 'Incluir no commit'
-    },
-    layout: {
-      restore: 'Restaurar disposição',
-      restoreConfirm: {
-        title: 'Restaurar a disposição desta aba?',
-        message: 'Os painéis da aba Alterações voltam à disposição original.'
-      },
-      moveUp: 'Mover para cima',
-      moveDown: 'Mover para baixo',
-      moveLeft: 'Mover para a esquerda',
-      moveRight: 'Mover para a direita',
-      drag: 'Arraste o cabeçalho para mudar este painel de lugar (botão direito: mais opções)',
-      newColumn: 'Nova coluna'
     }
   },
   actions: {
@@ -548,7 +538,7 @@ export const ptBR = {
       classic: 'Clássica',
       classicHelp: 'As duas versões lado a lado em cima e o resultado embaixo',
       columns: 'Colunas',
-      columnsHelp: 'Três colunas lado a lado, como no SmartGit',
+      columnsHelp: 'Três colunas lado a lado',
       swapSides: 'Inverter versões',
       swapSidesHelp: 'Troca de lugar os painéis da versão atual e da que entra',
       reset: 'arranjo padrão',
@@ -648,13 +638,16 @@ export const ptBR = {
     hidePanel: 'Recolher este painel',
     showPanel: 'Mostrar o painel recolhido',
     maximize: 'Maximizar',
-    restoreWindow: 'Restaurar tamanho',
-    collapse: 'Recolher',
-    expand: 'Expandir'
+    restoreWindow: 'Restaurar tamanho'
   },
   settings: {
     editor: {
       diffLayoutHelp: 'Todo diff abre neste modo; os botões no cabeçalho do diff trocam o modo só enquanto ele está aberto.',
+      diffContent: 'Conteúdo do diff',
+      diffContentHelp: 'Escolha se o diff abre só com o pedaço que mudou ou com o arquivo inteiro e as alterações destacadas. O botão ⇕ no cabeçalho do diff troca na hora.',
+      diffContentLabel: 'O diff mostra',
+      diffContentChanges: 'Só o trecho alterado',
+      diffContentFull: 'Arquivo inteiro',
       diffLayout: 'Modo padrão do diff',
       clear: 'Não usar nenhum',
       browse: 'Procurar executável…',
@@ -686,7 +679,9 @@ export const ptBR = {
       themeLight: 'Claro',
       themeVscode: 'Igual ao VS Code',
       fileIcons: 'Ícones de arquivo',
-      fileIconsHelp: 'Mostra, ao lado de cada nome, um ícone do tipo do arquivo (estilo Material Icon Theme).',
+      fileIconsHelp: 'Mostra, ao lado de cada nome, um ícone do tipo do arquivo.',
+      statusLetters: 'Letras das modificações (M, A, D…)',
+      statusLettersHelp: 'Mostra, ao lado de cada arquivo, a letra do que mudou: M modificado, A adicionado, D removido, R renomeado. Desligado, só a cor do nome indica.',
       zoom: 'Tamanho da interface',
       default: '(padrão)',
       layout: 'Painéis e janelas',
@@ -864,17 +859,30 @@ export const ptBR = {
     noRepository: 'Nenhum repositório aberto.'
   },
   workbench: {
-    views: { branches: 'Branches' },
-    panes: { commits: 'Lista de commits', details: 'Detalhes do commit' },
-    area: { left: 'Esquerda', center: 'Centro', right: 'Direita', bottom: 'Embaixo' },
+    views: {
+      branches: 'Branches',
+      commitMessage: 'Descrição do commit',
+      commitFiles: 'Arquivos do commit',
+      commitDiff: 'Diff do commit',
+      changesDiff: 'Diff das alterações',
+      filesHistory: 'Versões do arquivo',
+      filesDiff: 'Diff da versão',
+      compareFiles: 'Arquivos diferentes',
+      compareDiff: 'Diff da comparação'
+    },
     side: { left: 'À esquerda', right: 'À direita', top: 'Em cima', bottom: 'Embaixo' },
     dragPanel: 'Arraste para mover este painel (esquerda, direita, em cima ou embaixo)',
-    tabsHelp: 'Arraste uma aba para reordenar ou para outra área (borda esquerda, direita ou de baixo). Botão direito: mais opções.',
-    moveTo: 'Mover para: {area}',
-    dropInto: 'Soltar em: {area}',
-    emptyArea: 'Arraste uma aba para cá.',
+    tabsHelp: 'Arraste a aba para o meio de outro painel (vira aba dele), para junto de uma borda do painel (divide o painel) ou para a borda da janela. Botão direito: mais opções.',
+    dropTabs: 'Soltar como aba aqui',
+    splitMenu: 'Separar para o lado',
+    edgeMenu: 'Encaixar na borda da janela',
+    hide: 'Ocultar este painel',
+    allHidden: 'Todos os painéis estão ocultos.',
+    screens: 'Telas',
+    screensHelp: 'Traz à frente os painéis de cada tela, onde quer que você os tenha deixado.',
+    panels: 'Painéis',
+    panelsHelp: 'Mostrar ou ocultar qualquer painel',
     resetLayout: 'Restaurar layout padrão',
-    resetLayoutHelp: 'Restaurar layout padrão: volta abas, painéis, colunas e tamanhos às posições originais',
     layoutRestored: 'Layout restaurado ao padrão.',
     resizeColumn: 'Arraste para ajustar a largura (duplo clique volta ao padrão)'
   },

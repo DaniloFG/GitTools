@@ -122,6 +122,10 @@ export const en: Messages = {
     tags: 'Tags',
     stashes: 'Stashes',
     dropHere: 'drop here',
+    showInHistory: 'Show only in history (check several to see only their history)',
+    toggleGroup: 'Check all / uncheck all',
+    filterActive: { one: 'History of this checked branch only', other: 'History of the {count} checked branches only' },
+    filterClear: 'Show all',
     branchTooltip: 'Double-click: checkout · Right-click: more actions',
     menu: {
       deleteTag: 'Delete tag',
@@ -178,7 +182,7 @@ export const en: Messages = {
       stagedTag: 'staged',
       partialTag: 'partial'
     },
-    scope: { all: 'All branches', head: 'Current branch', ref: 'Branch: {ref}' },
+    scope: { all: 'All branches', head: 'Current branch', ref: 'Branch: {ref}', refs: { one: '1 checked branch', other: '{count} checked branches' } },
     badge: { remote: 'Remote branch', local: 'Local branch — drag it or drop items here' },
     search: {
       placeholder: 'Search branch, message, author, date, time or hash…',
@@ -205,19 +209,17 @@ export const en: Messages = {
       revert: 'Revert commit…',
       reset: 'Move {branch} here (reset)…',
       copySha: 'Copy SHA',
+      copyMessage: 'Copy message',
+      copyMessageFull: 'Full message (title and description)',
+      copyMessageSubject: 'Title only (first line)',
+      copyMessageBody: 'Description only',
+      messageCopied: { one: 'Message copied.', other: '{count} messages copied.' },
+      noBody: 'This commit has no description, only a title.',
       showFiles: 'Show the files below the commit',
       hideFiles: 'Collapse the commit files'
     }
   },
   details: {
-    view: {
-      label: 'Show',
-      both: 'Both',
-      message: 'Description',
-      files: 'Files',
-      stacked: 'Stacked',
-      side: 'Side by side'
-    },
     tips: {
       title: 'Quick tips',
       dragCommit: 'Drag a commit (or several, with Ctrl/Shift) onto a branch in the sidebar to cherry-pick it.',
@@ -227,6 +229,7 @@ export const en: Messages = {
     },
     multiTitle: { one: '{count} commit selected', other: '{count} commits selected' },
     multiHelp: 'Drag the selection onto a branch, or:',
+    pickOne: 'Pick a single commit in History to see it here.',
     cherryPickInto: 'Cherry-pick into {target}',
     chooseFilesOrLines: 'Choose files or lines from these commits…',
     linesContext: 'From {path} in commit {sha} — "{subject}"',
@@ -311,19 +314,6 @@ export const en: Messages = {
       marked: '{marked} of {total} ticked',
       all: 'Tick or untick all',
       include: 'Include in commit'
-    },
-    layout: {
-      restore: 'Restore arrangement',
-      restoreConfirm: {
-        title: 'Restore this tab\'s arrangement?',
-        message: 'The panels of the Changes tab go back to their original arrangement.'
-      },
-      moveUp: 'Move up',
-      moveDown: 'Move down',
-      moveLeft: 'Move left',
-      moveRight: 'Move right',
-      drag: 'Drag the header to move this panel (right-click for more options)',
-      newColumn: 'New column'
     }
   },
   actions: {
@@ -547,7 +537,7 @@ export const en: Messages = {
       classic: 'Classic',
       classicHelp: 'Both versions side by side on top and the result below',
       columns: 'Columns',
-      columnsHelp: 'Three side-by-side columns, like SmartGit',
+      columnsHelp: 'Three side-by-side columns',
       swapSides: 'Swap versions',
       swapSidesHelp: 'Swaps the places of the current and incoming panes',
       reset: 'default arrangement',
@@ -647,13 +637,16 @@ export const en: Messages = {
     hidePanel: 'Collapse this panel',
     showPanel: 'Show the collapsed panel',
     maximize: 'Maximize',
-    restoreWindow: 'Restore size',
-    collapse: 'Collapse',
-    expand: 'Expand'
+    restoreWindow: 'Restore size'
   },
   settings: {
     editor: {
       diffLayoutHelp: 'Every diff opens in this layout; the buttons in the diff header switch it only while that diff is open.',
+      diffContent: 'Diff content',
+      diffContentHelp: 'Choose whether the diff opens with only the changed part or with the whole file and the changes highlighted. The ⇕ button in the diff header switches it on the spot.',
+      diffContentLabel: 'The diff shows',
+      diffContentChanges: 'Only the changed part',
+      diffContentFull: 'Whole file',
       diffLayout: 'Default diff layout',
       clear: 'Use none',
       browse: 'Browse for executable…',
@@ -685,7 +678,9 @@ export const en: Messages = {
       themeLight: 'Light',
       themeVscode: 'Same as VS Code',
       fileIcons: 'File icons',
-      fileIconsHelp: 'Shows an icon for the file type next to each name (Material Icon Theme style).',
+      fileIconsHelp: 'Shows an icon for the file type next to each name.',
+      statusLetters: 'Change letters (M, A, D…)',
+      statusLettersHelp: 'Shows the letter of what changed next to each file: M modified, A added, D deleted, R renamed. When off, only the name color tells.',
       zoom: 'Interface size',
       default: '(default)',
       layout: 'Panels and windows',
@@ -863,17 +858,30 @@ export const en: Messages = {
     noRepository: 'No repository is open.'
   },
   workbench: {
-    views: { branches: 'Branches' },
-    panes: { commits: 'Commit list', details: 'Commit details' },
-    area: { left: 'Left', center: 'Center', right: 'Right', bottom: 'Bottom' },
+    views: {
+      branches: 'Branches',
+      commitMessage: 'Commit message',
+      commitFiles: 'Commit files',
+      commitDiff: 'Commit diff',
+      changesDiff: 'Changes diff',
+      filesHistory: 'File versions',
+      filesDiff: 'Version diff',
+      compareFiles: 'Different files',
+      compareDiff: 'Comparison diff'
+    },
     side: { left: 'On the left', right: 'On the right', top: 'On top', bottom: 'At the bottom' },
     dragPanel: 'Drag to move this panel (left, right, top or bottom)',
-    tabsHelp: 'Drag a tab to reorder it or to another area (left, right or bottom edge). Right-click: more options.',
-    moveTo: 'Move to: {area}',
-    dropInto: 'Drop into: {area}',
-    emptyArea: 'Drag a tab here.',
+    tabsHelp: 'Drag the tab onto the middle of another panel (it becomes a tab there), next to a panel edge (splits the panel) or to a window edge. Right-click: more options.',
+    dropTabs: 'Drop here as a tab',
+    splitMenu: 'Split off to the side',
+    edgeMenu: 'Dock to window edge',
+    hide: 'Hide this panel',
+    allHidden: 'All panels are hidden.',
+    screens: 'Screens',
+    screensHelp: 'Brings forward the panels of each screen, wherever you left them.',
+    panels: 'Panels',
+    panelsHelp: 'Show or hide any panel',
     resetLayout: 'Restore default layout',
-    resetLayoutHelp: 'Restore default layout: puts tabs, panels, columns and sizes back where they started',
     layoutRestored: 'Layout restored to the default.',
     resizeColumn: 'Drag to adjust the width (double-click restores the default)'
   },

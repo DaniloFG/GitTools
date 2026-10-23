@@ -261,7 +261,7 @@ code {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 12px;
+  gap: 6px 10px;
   padding: 8px 12px;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
@@ -289,7 +289,7 @@ code {
   color: var(--text-muted);
   font-family: var(--mono);
   font-size: 12px;
-  max-width: 260px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -345,6 +345,27 @@ code {
 .branch-item.active {
   background: var(--bg-active);
   border-inline-start: 3px solid var(--branch-color, var(--accent));
+}
+/* Caixa de seleção: marca as branches cuja história aparece no Histórico. */
+.branch-check {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--branch-color, var(--accent));
+}
+.sidebar-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 8px 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  font-size: 11px;
 }
 /* O ícone da branch usa a cor da trilha dela no grafo. */
 .branch-icon {
@@ -995,12 +1016,17 @@ mark {
 .status-C {
   color: var(--accent);
 }
+/* Configurações → Aparência → letras de status desligadas: as cores nos nomes continuam. */
+:root[data-status-letters='off'] .status {
+  display: none;
+}
 
 .diff-panel {
   border-top: 1px solid var(--border);
   padding-top: 8px;
 }
-.split-pane > .details > .diff-panel:first-child {
+.split-pane > .details > .diff-panel:first-child,
+.dock-slot > .details > .diff-panel:first-child {
   border-top: none;
   padding-top: 0;
 }
@@ -1207,75 +1233,9 @@ mark {
 
 /* ----------------------------------------------------------- alterações */
 
-.changes-layout-wrap {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-.changes-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: none;
-  padding: 6px 10px;
-}
 .changes-mode button {
   padding: 2px 10px;
   font-size: 12px;
-}
-.changes-layout {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-  border-top: 1px solid var(--border);
-}
-.stack {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-}
-.stack-row {
-  flex-direction: row;
-}
-.stack-column {
-  flex-direction: column;
-}
-.stack-item {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-.stack-item > * {
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
-}
-/* Linha fina entre painéis; só ganha cor e área de arrasto quando dá para redimensionar. */
-.stack-divider {
-  position: relative;
-  flex: 0 0 var(--divider-size, 1px);
-  background: var(--border);
-  touch-action: none;
-  transition: background-color 0.12s;
-}
-.stack-divider.resizable::before {
-  content: '';
-  position: absolute;
-  inset: -4px 0;
-  cursor: row-resize;
-}
-.stack-row > .stack-divider.resizable::before {
-  inset: 0 -4px;
-  cursor: col-resize;
-}
-.stack-divider.resizable:hover {
-  background: var(--accent);
 }
 
 .csection {
@@ -1285,40 +1245,26 @@ mark {
   min-height: 0;
   background: var(--bg);
 }
-.csection.dragging {
-  opacity: 0.45;
-}
 .csection-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
   flex: none;
-  height: 30px;
-  padding: 0 6px 0 4px;
+  min-height: 30px;
+  padding: 0 6px 0 8px;
   user-select: none;
-  touch-action: none;
 }
 .csection-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding: 2px 4px;
-  border: none;
-  background: transparent;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-.csection-toggle:hover:not(:disabled) {
-  background: transparent;
-  color: var(--text);
-}
-.csection-caret {
-  width: 10px;
-  font-size: 10px;
 }
 .csection-title {
   overflow: hidden;
@@ -1346,22 +1292,6 @@ mark {
   gap: 2px;
   flex: none;
   margin-inline-start: auto;
-}
-.csection-grip {
-  flex: none;
-  padding: 0 4px;
-  color: var(--text-muted);
-  font-size: 12px;
-  cursor: grab;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-.csection-header:hover .csection-grip {
-  opacity: 0.7;
-}
-body.docking .csection-header,
-body.docking .csection-grip {
-  cursor: grabbing;
 }
 .csection-body {
   flex: 1 1 auto;
@@ -1448,25 +1378,6 @@ button.ghost.danger-text:hover:not(:disabled) {
 }
 .trash-zone.drop-over {
   background: color-mix(in srgb, var(--danger) 24%, var(--bg));
-}
-/* Onde o painel arrastado vai ficar: uma linha entre painéis ou uma coluna nova na borda. */
-.changes-drop {
-  position: fixed;
-  z-index: 50;
-  background: var(--accent);
-  border-radius: 2px;
-  pointer-events: none;
-}
-.changes-drop.edge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--accent);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
 }
 .commit-box {
   display: flex;
@@ -1820,6 +1731,29 @@ button.ghost.danger-text:hover:not(:disabled) {
 }
 .context-menu .menu-action:hover {
   color: var(--text);
+}
+.context-menu .menu-parent {
+  position: relative;
+}
+.context-menu .menu-parent > button.open {
+  background: var(--bg-hover);
+}
+.context-menu .menu-arrow {
+  flex: none;
+}
+[dir='rtl'] .context-menu .menu-arrow {
+  transform: scaleX(-1);
+}
+/* Submenu: abre ao lado do item (no fim da linha), alinhado ao topo dele. */
+.context-menu.context-submenu {
+  position: absolute;
+  top: -5px;
+  inset-inline-start: 100%;
+  min-width: 200px;
+}
+.context-menu.context-submenu.flip {
+  inset-inline-start: auto;
+  inset-inline-end: 100%;
 }
 .menu-separator {
   height: 1px;
@@ -2804,31 +2738,72 @@ body.reordering * {
   max-width: 100%;
 }
 
-/* ---------------------------------------------- áreas e abas (estilo VS Code) */
+/* ------------------------------------------------ painéis livres (abas e divisões) */
 
-.workbench {
+.dock {
   position: relative;
   flex: 1;
   display: flex;
   min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
-.workbench > .workspace {
-  flex: 1;
+.dock-split {
+  flex: 1 1 auto;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
 }
-.area {
-  flex: 1;
+.dock-split.dock-column {
+  flex-direction: column;
+}
+/* Cada filho de uma divisão divide o espaço pelo peso (o `flex` vem do arranjo guardado). */
+.dock-cell {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.dock-cell > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+.dock-divider {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 var(--divider-size, 2px);
+  background: var(--border);
+  touch-action: none;
+  transition: background-color 0.12s;
+}
+.dock-row > .dock-divider {
+  cursor: col-resize;
+}
+.dock-column > .dock-divider {
+  cursor: row-resize;
+}
+.dock-divider::before {
+  content: '';
+  position: absolute;
+  inset: 0 -5px;
+}
+.dock-column > .dock-divider::before {
+  inset: -5px 0;
+}
+.dock-divider:hover,
+.dock-divider:focus-visible {
+  background: var(--accent);
+  outline: none;
+}
+.dock-group {
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
   background: var(--bg);
 }
-.area-left,
-.area-right {
-  background: var(--bg-panel);
-}
-.area-tabs {
+.dock-tabs {
   display: flex;
   flex-shrink: 0;
   gap: 2px;
@@ -2838,7 +2813,7 @@ body.reordering * {
   scrollbar-width: thin;
   background: var(--bg-elevated);
 }
-.area-tab {
+.dock-tab {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -2846,41 +2821,70 @@ body.reordering * {
   border-bottom: 2px solid transparent;
   border-radius: 0;
   background: transparent;
-  padding: 6px 12px;
+  padding: 4px 10px;
   color: var(--text-muted);
+  font-size: 12px;
   cursor: grab;
   white-space: nowrap;
   touch-action: none;
 }
-.area-left .area-tab,
-.area-right .area-tab,
-.area-bottom .area-tab {
-  padding: 4px 10px;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.area-tab.active {
+.dock-tab.active {
   color: var(--text);
   border-bottom-color: var(--accent);
 }
-.area-tab.dragging {
+.dock-tab.dragging {
   opacity: 0.45;
 }
-.area-body {
+.dock-body {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
 }
-.area-body > * {
+/* Onde o conteúdo do painel aparece (levado até aqui por PaneSlot). */
+.dock-slot {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+.dock-slot > * {
   flex: 1 1 auto;
   min-height: 0;
   min-width: 0;
 }
-.area-empty {
+.dock-empty {
   margin: auto;
+  text-align: center;
+}
+
+/* Atalhos das telas, na barra de ferramentas: trazem à frente os painéis de cada tela. */
+.screen-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+}
+.screen-tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  padding: 3px 10px;
+  color: var(--text-muted);
+}
+.screen-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.screen-tab.active {
+  background: var(--bg-active);
+  color: var(--text);
 }
 body.docking,
 body.docking * {
@@ -2914,50 +2918,6 @@ body.docking * {
   font-size: 12px;
   font-weight: 600;
 }
-/* Faixas nas bordas da janela, visíveis só enquanto uma aba é arrastada. */
-.dock-edges {
-  position: absolute;
-  inset: 0;
-  z-index: 55;
-  pointer-events: none;
-}
-.dock-edge {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
-  color: var(--accent);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-.dock-edge.active {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-}
-.dock-edge-left {
-  inset-block: 4px 60px;
-  inset-inline-start: 4px;
-  width: 48px;
-}
-.dock-edge-right {
-  inset-block: 4px 60px;
-  inset-inline-end: 4px;
-  width: 48px;
-}
-/* Só o texto fica na vertical: no contêiner, as propriedades lógicas continuam no eixo horizontal. */
-.dock-edge-left span,
-.dock-edge-right span {
-  writing-mode: vertical-rl;
-}
-.dock-edge-bottom {
-  inset-inline: 60px;
-  bottom: 4px;
-  height: 48px;
-}
-
 /* -------------------------------------- arrastar painéis internos para um lado */
 
 .split {
@@ -3303,6 +3263,43 @@ body.docking .pane-grip {
   overflow: auto;
   padding: 0 10px 10px;
 }
+/* Nos painéis, as barras de botões do diff (ações e setas) ficam fixas no topo e só o conteúdo do diff rola. */
+.details:has(> .diff-panel) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.diff-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.diff-panel > .selection-bar {
+  position: static;
+  flex: none;
+}
+.diff-panel .diff-file {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: 0;
+}
+.diff-panel .diff-file-header {
+  flex: none;
+}
+.diff-panel .diff-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.csection-diff .csection-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 /* Na janela de diff a barra com as setas de alteração/arquivo e os botões fica fixa no topo ao rolar. */
 .diff-window-app .diff-file {
   margin-top: 10px;
@@ -3640,34 +3637,8 @@ tr.nav-flash > td {
   color: var(--accent);
 }
 
-/* ------------------------------------------- detalhes do commit: descrição e arquivos à escolha */
-
-.details-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
-.details-info > .split {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-.details-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  flex: none;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-}
-.details-bar .segmented button {
-  padding: 2px 9px;
-  font-size: 12px;
-}
-.details-info > .details {
-  flex: 1 1 auto;
-  min-height: 0;
+.commit-actions {
+  margin-top: 10px;
 }
 
 /* E-mail, URLs e nomes de remote são sempre lidos da esquerda para a direita, mas ficam alinhados ao lado do layout
@@ -3727,4 +3698,30 @@ tr.nav-flash > td {
 :root[data-vscode-colors='on'] button.primary,
 :root[data-vscode-colors='on'] .segmented button.active {
   color: var(--vscode-button-foreground, #fff);
+}
+
+/* Botões de função fixos no cabeçalho do painel: só o conteúdo rola. */
+.details > .group-header,
+.details > .sticky-actions,
+.file-details > .file-header {
+  position: sticky;
+  top: -12px;
+  z-index: 2;
+  margin: -12px -14px 6px;
+  padding: 8px 14px 6px;
+  background: var(--bg);
+}
+.compare-side > .group-header {
+  position: sticky;
+  top: -10px;
+  z-index: 2;
+  margin: -10px -10px 6px;
+  padding: 8px 10px 6px;
+  background: var(--bg);
+}
+.details > .sticky-actions {
+  margin-bottom: 8px;
+}
+.file-details > .file-header {
+  border-bottom: 1px solid var(--border);
 }

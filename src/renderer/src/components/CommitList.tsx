@@ -1,6 +1,6 @@
 import { Fragment, memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangedFile, CommitInfo } from '../../../shared/types'
-import type { HistoryScope } from '../App'
+import { showsWorkingChanges, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
 import type { MenuItem } from './ContextMenu'
@@ -128,7 +128,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   const shown = visible.length > limit ? visible.slice(0, limit) : visible
   const bodyRef = useRef<HTMLDivElement>(null)
   /** A linha de alterações é do HEAD: só aparece vendo tudo, o HEAD ou a branch atual. */
-  const showWip = scope.kind !== 'ref' || scope.ref === actions.head
+  const showWip = showsWorkingChanges(scope, actions.head)
   // Janela muito alta: as linhas desenhadas podem não bastar para gerar rolagem (e nenhum evento de scroll viria).
   useEffect(() => {
     const el = bodyRef.current
@@ -254,6 +254,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
       { label: t('history.menu.revert'), onClick: () => actions.revert(commit) },
       { label: t('history.menu.reset', { branch: head ?? 'HEAD' }), onClick: () => actions.reset(commit) },
       'separator',
+      actions.copyMessageMenu(shas),
       { label: t('history.menu.copySha'), onClick: () => navigator.clipboard.writeText(commit.sha) }
     ])
   }
@@ -263,14 +264,17 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
       <div className="list-header">
         <select
           value={scope.kind === 'ref' ? `ref:${scope.ref}` : scope.kind}
+          title={scope.kind === 'refs' ? scope.refs.join('\n') : undefined}
           onChange={(e) => {
             const v = e.target.value
+            if (v === 'refs') return
             onScope(v === 'all' ? { kind: 'all' } : v === 'head' ? { kind: 'head' } : { kind: 'ref', ref: v.slice(4) })
           }}
         >
           <option value="all">{t('history.scope.all')}</option>
           <option value="head">{t('history.scope.head')}</option>
           {scope.kind === 'ref' && <option value={`ref:${scope.ref}`}>{t('history.scope.ref', { ref: scope.ref })}</option>}
+          {scope.kind === 'refs' && <option value="refs">{t('history.scope.refs', { count: scope.refs.length })}</option>}
         </select>
         <div className="search-box">
           <span className="search-icon">⌕</span>
@@ -302,7 +306,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
           ⓘ <code>{t('history.log.chip')}</code>
         </span>
         <span className="muted hint">{t('history.hint')}</span>
-        <FileViewToggle compact />
+        <FileViewToggle />
       </div>
       <div className="commit-columns" title={t('history.columns.help')} style={{ gridTemplateColumns: template }}>
         <span className="row-toggle" />

@@ -125,6 +125,10 @@ export const hi: Messages = {
     tags: 'Tags',
     stashes: 'Stashes',
     dropHere: 'यहाँ छोड़ें',
+    showInHistory: 'इतिहास में केवल दिखाएँ (कई चुनें तो केवल उनका इतिहास दिखेगा)',
+    toggleGroup: 'सभी चुनें / सभी हटाएँ',
+    filterActive: { one: 'इतिहास केवल इस चुनी हुई ब्रांच का', other: 'इतिहास केवल चुनी हुई {count} ब्रांच का' },
+    filterClear: 'सभी दिखाएँ',
     branchTooltip: 'डबल क्लिक: checkout · राइट क्लिक: और विकल्प',
     menu: {
       deleteTag: 'टैग हटाएँ',
@@ -181,7 +185,7 @@ export const hi: Messages = {
       stagedTag: 'staged',
       partialTag: 'आंशिक'
     },
-    scope: { all: 'सभी branches', head: 'मौजूदा branch', ref: 'Branch: {ref}' },
+    scope: { all: 'सभी branches', head: 'मौजूदा branch', ref: 'Branch: {ref}', refs: { one: '1 चुनी हुई ब्रांच', other: '{count} चुनी हुई ब्रांच' } },
     badge: { remote: 'Remote branch', local: 'लोकल branch — इसे खींचें या यहाँ आइटम छोड़ें' },
     search: {
       placeholder: 'ब्रांच, संदेश, लेखक, तारीख, समय या हैश खोजें…',
@@ -208,19 +212,17 @@ export const hi: Messages = {
       revert: 'Commit revert करें…',
       reset: '{branch} को यहाँ ले जाएँ (reset)…',
       copySha: 'SHA कॉपी करें',
+      copyMessage: 'संदेश कॉपी करें',
+      copyMessageFull: 'पूरा संदेश (शीर्षक और विवरण)',
+      copyMessageSubject: 'केवल शीर्षक (पहली पंक्ति)',
+      copyMessageBody: 'केवल विवरण',
+      messageCopied: { one: 'संदेश कॉपी हो गया।', other: '{count} संदेश कॉपी हो गए।' },
+      noBody: 'इस कमिट में विवरण नहीं है, केवल शीर्षक है।',
       showFiles: 'commit के नीचे फ़ाइलें दिखाएँ',
       hideFiles: 'commit की फ़ाइलें छिपाएँ'
     }
   },
   details: {
-    view: {
-      label: 'दिखाएँ',
-      both: 'दोनों',
-      message: 'विवरण',
-      files: 'फ़ाइलें',
-      stacked: 'ऊपर-नीचे',
-      side: 'अगल-बगल'
-    },
     tips: {
       title: 'छोटे सुझाव',
       dragCommit: 'Cherry-pick के लिए किसी commit (या Ctrl/Shift से कई) को साइडबार की branch पर खींचें।',
@@ -230,6 +232,7 @@ export const hi: Messages = {
     },
     multiTitle: { one: '{count} commit चुना गया', other: '{count} commits चुने गए' },
     multiHelp: 'चयन को किसी branch पर खींचें, या:',
+    pickOne: 'यहाँ देखने के लिए इतिहास में एक कमिट चुनें।',
     cherryPickInto: '{target} में cherry-pick',
     chooseFilesOrLines: 'इन commits से फ़ाइलें या लाइनें चुनें…',
     linesContext: 'Commit {sha} की {path} से — "{subject}"',
@@ -314,19 +317,6 @@ export const hi: Messages = {
       marked: '{total} में से {marked} चुनी गईं',
       all: 'सभी चुनें या हटाएँ',
       include: 'Commit में शामिल करें'
-    },
-    layout: {
-      restore: 'व्यवस्था पहले जैसी करें',
-      restoreConfirm: {
-        title: 'इस टैब की व्यवस्था बहाल करें?',
-        message: 'बदलाव टैब के पैनल अपनी मूल व्यवस्था में लौट जाएँगे।'
-      },
-      moveUp: 'ऊपर ले जाएँ',
-      moveDown: 'नीचे ले जाएँ',
-      moveLeft: 'बाईं ओर ले जाएँ',
-      moveRight: 'दाईं ओर ले जाएँ',
-      drag: 'इस पैनल को हटाने के लिए शीर्षक को खींचें (दायाँ क्लिक: और विकल्प)',
-      newColumn: 'नया कॉलम'
     }
   },
   actions: {
@@ -550,7 +540,7 @@ export const hi: Messages = {
       classic: 'क्लासिक',
       classicHelp: 'दोनों संस्करण ऊपर अगल-बगल और परिणाम नीचे',
       columns: 'कॉलम',
-      columnsHelp: 'तीन कॉलम अगल-बगल, SmartGit की तरह',
+      columnsHelp: 'तीन कॉलम अगल-बगल',
       swapSides: 'संस्करण बदलें',
       swapSidesHelp: 'मौजूदा और आने वाले संस्करण के पैनल की जगह बदलता है',
       reset: 'डिफ़ॉल्ट व्यवस्था',
@@ -650,13 +640,16 @@ export const hi: Messages = {
     hidePanel: 'यह पैनल समेटें',
     showPanel: 'समेटा हुआ पैनल दिखाएँ',
     maximize: 'बड़ा करें',
-    restoreWindow: 'आकार पुनर्स्थापित करें',
-    collapse: 'समेटें',
-    expand: 'फैलाएँ'
+    restoreWindow: 'आकार पुनर्स्थापित करें'
   },
   settings: {
     editor: {
       diffLayoutHelp: 'हर diff इसी दृश्य में खुलता है; diff के शीर्षक के बटन केवल उसके खुले रहने तक दृश्य बदलते हैं।',
+      diffContent: 'Diff की सामग्री',
+      diffContentHelp: 'चुनें कि diff केवल बदला हुआ हिस्सा दिखाए या पूरी फ़ाइल को बदलावों के साथ हाइलाइट करके। diff हेडर का ⇕ बटन तुरंत बदल देता है।',
+      diffContentLabel: 'Diff दिखाता है',
+      diffContentChanges: 'केवल बदला हुआ हिस्सा',
+      diffContentFull: 'पूरी फ़ाइल',
       diffLayout: 'डिफ़ॉल्ट diff दृश्य',
       clear: 'कोई नहीं',
       browse: 'Executable खोजें…',
@@ -688,7 +681,9 @@ export const hi: Messages = {
       themeLight: 'हल्की',
       themeVscode: 'VS Code जैसा',
       fileIcons: 'फ़ाइल आइकन',
-      fileIconsHelp: 'हर नाम के पास फ़ाइल के प्रकार का आइकन दिखाता है (Material Icon Theme शैली)।',
+      fileIconsHelp: 'हर नाम के पास फ़ाइल के प्रकार का आइकन दिखाता है।',
+      statusLetters: 'बदलाव के अक्षर (M, A, D…)',
+      statusLettersHelp: 'हर फ़ाइल के पास बदलाव का अक्षर दिखाता है: M बदली, A जोड़ी, D हटाई, R नाम बदला। बंद होने पर केवल नाम का रंग बताता है।',
       zoom: 'इंटरफ़ेस का आकार',
       default: '(डिफ़ॉल्ट)',
       layout: 'पैनल और विंडो',
@@ -866,17 +861,30 @@ export const hi: Messages = {
     noRepository: 'कोई repository खुली नहीं है।'
   },
   workbench: {
-    views: { branches: 'Branches' },
-    panes: { commits: 'Commits की सूची', details: 'Commit का विवरण' },
-    area: { left: 'बाएँ', center: 'बीच में', right: 'दाएँ', bottom: 'नीचे' },
+    views: {
+      branches: 'Branches',
+      commitMessage: 'कमिट विवरण',
+      commitFiles: 'कमिट की फ़ाइलें',
+      commitDiff: 'कमिट diff',
+      changesDiff: 'बदलावों का diff',
+      filesHistory: 'फ़ाइल के संस्करण',
+      filesDiff: 'संस्करण का diff',
+      compareFiles: 'अलग फ़ाइलें',
+      compareDiff: 'तुलना का diff'
+    },
     side: { left: 'बाईं ओर', right: 'दाईं ओर', top: 'ऊपर', bottom: 'नीचे' },
     dragPanel: 'इस पैनल को हिलाने के लिए खींचें (बाएँ, दाएँ, ऊपर या नीचे)',
-    tabsHelp: 'क्रम बदलने या दूसरे हिस्से (बाएँ, दाएँ या नीचे के किनारे) में ले जाने के लिए टैब खींचें। राइट क्लिक: और विकल्प।',
-    moveTo: 'यहाँ ले जाएँ: {area}',
-    dropInto: 'यहाँ छोड़ें: {area}',
-    emptyArea: 'कोई टैब यहाँ खींचें।',
+    tabsHelp: 'टैब को दूसरे पैनल के बीच में खींचें (वह उसका टैब बन जाएगा), पैनल के किनारे के पास (पैनल बँटेगा) या विंडो के किनारे पर। राइट-क्लिक: और विकल्प।',
+    dropTabs: 'यहाँ टैब के रूप में छोड़ें',
+    splitMenu: 'एक ओर अलग करें',
+    edgeMenu: 'विंडो के किनारे से जोड़ें',
+    hide: 'यह पैनल छिपाएँ',
+    allHidden: 'सभी पैनल छिपे हैं।',
+    screens: 'स्क्रीन',
+    screensHelp: 'हर स्क्रीन के पैनल आगे लाता है, चाहे आपने उन्हें कहीं भी रखा हो।',
+    panels: 'पैनल',
+    panelsHelp: 'कोई भी पैनल दिखाएँ या छिपाएँ',
     resetLayout: 'डिफ़ॉल्ट लेआउट पुनर्स्थापित करें',
-    resetLayoutHelp: 'डिफ़ॉल्ट लेआउट: टैब, पैनल, कॉलम और आकार को मूल स्थिति में लौटाता है',
     layoutRestored: 'लेआउट डिफ़ॉल्ट पर लौटा दिया गया।',
     resizeColumn: 'चौड़ाई बदलने के लिए खींचें (डबल क्लिक से डिफ़ॉल्ट)'
   },

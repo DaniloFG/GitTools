@@ -35,7 +35,7 @@ const withArrow = (label: string, arrow: string) => (LEADING_ARROWS.has(arrow) ?
 
 /**
  * Editor de conflitos com três painéis — versão atual (HEAD), resultado e versão que entra — em duas visões:
- * clássica (as duas versões em cima e o resultado embaixo) ou em colunas, como no SmartGit. Os painéis
+ * clássica (as duas versões em cima e o resultado embaixo) ou em colunas. Os painéis
  * podem ser arrastados para trocar de lugar; as setas e os atalhos seguem a posição deles na tela.
  * Os painéis rolam juntos, e cada bloco em conflito ocupa a mesma altura nos três.
  */
@@ -108,7 +108,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
 
   const isResolved = (i: number) => !!resolutions[i]
   const step = (dir: 1 | -1, onlyPending = false) => goTo(nextConflict(current, conflicts.length, dir, isResolved, onlyPending))
-  /** Resolve o conflito atual e segue para o próximo pendente (como os botões "Take" do SmartGit). */
+  /** Resolve o conflito atual e segue para o próximo pendente. */
   const takeCurrent = (resolution: ChunkResolution) => {
     if (!conflicts.length) return
     setAt(current, resolution)

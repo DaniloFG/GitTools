@@ -364,7 +364,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                     <div className="group-header">
                       <strong>{t('studio.changedFiles')}</strong> <span className="count">{files.length}</span>
                       <span className="toolbar-spacer" />
-                      <FileViewToggle compact />
+                      <FileViewToggle />
                       <button className="link" onClick={() => setCheckedFiles(new Set(files.map((f) => f.path)))}>
                         {t('common.all')}
                       </button>

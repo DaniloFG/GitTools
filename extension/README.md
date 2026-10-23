@@ -46,8 +46,9 @@ sends nothing anywhere.
 - 🌳 **History graph** with colored branch lanes, search, tags and resizable columns.
 - 🧭 **Better diffs**: line selection, whole-file view, side-by-side mode, `F7`/`F8` to jump between changes and files.
 - 📁 **File list or folder tree** everywhere, with `+added −removed` line counts.
-- 🎨 **Looks native**: follows your VS Code theme, fonts and the same colors VS Code uses for modified, added and deleted files, with file-type icons in the Material Icon Theme style (can be turned off in Settings → Appearance).
-- 🧩 **Arrange the workspace your way**: drag tabs and panels to any side, like in VS Code.
+- 🎨 **Looks native**: follows your VS Code theme, fonts and the same colors VS Code uses for modified, added and deleted files, with file-type icons (can be turned off in Settings → Appearance).
+- 🧩 **Arrange the workspace your way**: every panel is independent — drag any panel to any side of any other panel.
+- ☑️ **Focus on a few branches**: tick the checkboxes in the branch sidebar and the history shows only those branches.
 - 📜 **Live git log**: see every command GitTools runs, in real time.
 - 🌍 **6 languages** (English, Português, Español, 中文, हिन्दी, العربية) and a theme that follows VS Code.
 
@@ -89,8 +90,12 @@ next / previous change and `F8` / `Shift+F8` to the next / previous file.
 
 ## Arrange the workspace
 
-History, Changes, Files, Compare and the Git log are tabs you can drag to the left, right or bottom — or between
-panels — and the ⊞ button puts everything back.
+No panel is a "parent" of another: the commit list, the commit message, the commit's files and diff, the *Unstaged* and
+*Staged* lists, the commit box, the changes diff, the file browser, blame, the comparison and the Git log are all
+independent panels. Drag a panel's tab onto the middle of another panel to make it a tab there, next to one of its
+edges to split that panel on that side, or onto the window edge — any panel, anywhere. The **History / Changes /
+Files / Compare** buttons bring a screen's panels to the front wherever you left them, **▦** shows or hides any
+panel, and *Restore default layout* puts everything back.
 
 ![Dragging the Changes tab to the right side and restoring the layout](media/readme/custom-layout.gif)
 
@@ -117,7 +122,10 @@ Compare any two branches, tags or commits and bring over lines or whole files; s
 | **Open this folder in GitTools** | Explorer context menu on a folder. |
 | **Show this file's changes in GitTools** | Opens the diff of the current file in a panel beside it (editor title button). |
 
-Files that GitTools opens (*Open in editor*, file menus) open in **VS Code's own editor**, beside the panel.
+Right-click a commit in the history for **Copy message ▸** (full message, title only or description only).
+
+Files that GitTools opens (*Open in editor*, file menus, conflict files) open in **VS Code's own editor**, beside the panel;
+*Open in editor* on the project reveals it in VS Code's Explorer (or opens it in a new window if it isn't the open folder).
 
 ## Keyboard shortcuts (inside the panel)
 
@@ -136,7 +144,8 @@ Every shortcut can be changed in **⚙ Settings → Keyboard shortcuts**.
 
 ## Settings
 
-Open **⚙** in the panel's top bar: language, theme, diff layout, notification position and size, your git identity
+Open **⚙** in the panel's top bar: language, theme, file icons and change letters (M, A, D…), diff layout and whether
+diffs show only the changed parts or the whole file, notification position and size, your git identity
 (`user.name` / `user.email`, global or per repository) and **remotes** (add, rename, change URL, remove).
 
 ## Requirements
@@ -158,4 +167,4 @@ Released under the [MIT License](https://github.com/DaniloFG/GitTools/blob/main/
 
 ## Credits
 
-File-type icons are a subset of the [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT) — see `THIRD_PARTY_NOTICES.md`.
+File-type icons are a subset of an open-source icon set (MIT) — credits and license in `THIRD_PARTY_NOTICES.md`.

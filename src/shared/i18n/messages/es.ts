@@ -122,6 +122,10 @@ export const es: Messages = {
     tags: 'Etiquetas',
     stashes: 'Stashes',
     dropHere: 'soltar aquí',
+    showInHistory: 'Mostrar solo en el historial (marca varias para ver solo su historia)',
+    toggleGroup: 'Marcar todas / desmarcar todas',
+    filterActive: { one: 'Historial solo de esta rama marcada', other: 'Historial solo de las {count} ramas marcadas' },
+    filterClear: 'Mostrar todas',
     branchTooltip: 'Doble clic: checkout · Clic derecho: más acciones',
     menu: {
       deleteTag: 'Eliminar etiqueta',
@@ -178,7 +182,7 @@ export const es: Messages = {
       stagedTag: 'stage',
       partialTag: 'parcial'
     },
-    scope: { all: 'Todas las ramas', head: 'Rama actual', ref: 'Rama: {ref}' },
+    scope: { all: 'Todas las ramas', head: 'Rama actual', ref: 'Rama: {ref}', refs: { one: '1 rama marcada', other: '{count} ramas marcadas' } },
     badge: { remote: 'Rama remota', local: 'Rama local — arrástrala o suelta elementos aquí' },
     search: {
       placeholder: 'Buscar rama, mensaje, autor, fecha, hora o hash…',
@@ -205,19 +209,17 @@ export const es: Messages = {
       revert: 'Revertir commit…',
       reset: 'Mover {branch} aquí (reset)…',
       copySha: 'Copiar SHA',
+      copyMessage: 'Copiar mensaje',
+      copyMessageFull: 'Mensaje completo (título y descripción)',
+      copyMessageSubject: 'Solo el título (primera línea)',
+      copyMessageBody: 'Solo la descripción',
+      messageCopied: { one: 'Mensaje copiado.', other: '{count} mensajes copiados.' },
+      noBody: 'Este commit no tiene descripción, solo el título.',
       showFiles: 'Mostrar los archivos debajo del commit',
       hideFiles: 'Contraer los archivos del commit'
     }
   },
   details: {
-    view: {
-      label: 'Mostrar',
-      both: 'Ambos',
-      message: 'Descripción',
-      files: 'Archivos',
-      stacked: 'Arriba y abajo',
-      side: 'Lado a lado'
-    },
     tips: {
       title: 'Consejos rápidos',
       dragCommit: 'Arrastra un commit (o varios, con Ctrl/Shift) a una rama de la barra lateral para hacer cherry-pick.',
@@ -227,6 +229,7 @@ export const es: Messages = {
     },
     multiTitle: { one: '{count} commit seleccionado', other: '{count} commits seleccionados' },
     multiHelp: 'Arrastra la selección a una rama, o:',
+    pickOne: 'Elige un único commit en el Historial para verlo aquí.',
     cherryPickInto: 'Cherry-pick en {target}',
     chooseFilesOrLines: 'Elegir archivos o líneas de estos commits…',
     linesContext: 'De {path} en el commit {sha} — "{subject}"',
@@ -311,19 +314,6 @@ export const es: Messages = {
       marked: '{marked} de {total} marcados',
       all: 'Marcar o desmarcar todos',
       include: 'Incluir en el commit'
-    },
-    layout: {
-      restore: 'Restaurar disposición',
-      restoreConfirm: {
-        title: '¿Restaurar la disposición de esta pestaña?',
-        message: 'Los paneles de la pestaña Cambios vuelven a su disposición original.'
-      },
-      moveUp: 'Mover arriba',
-      moveDown: 'Mover abajo',
-      moveLeft: 'Mover a la izquierda',
-      moveRight: 'Mover a la derecha',
-      drag: 'Arrastra la cabecera para mover este panel (clic derecho: más opciones)',
-      newColumn: 'Nueva columna'
     }
   },
   actions: {
@@ -547,7 +537,7 @@ export const es: Messages = {
       classic: 'Clásica',
       classicHelp: 'Las dos versiones lado a lado arriba y el resultado abajo',
       columns: 'Columnas',
-      columnsHelp: 'Tres columnas lado a lado, como en SmartGit',
+      columnsHelp: 'Tres columnas lado a lado',
       swapSides: 'Invertir versiones',
       swapSidesHelp: 'Intercambia los paneles de la versión actual y la entrante',
       reset: 'disposición predeterminada',
@@ -647,13 +637,16 @@ export const es: Messages = {
     hidePanel: 'Contraer este panel',
     showPanel: 'Mostrar el panel contraído',
     maximize: 'Maximizar',
-    restoreWindow: 'Restaurar tamaño',
-    collapse: 'Contraer',
-    expand: 'Expandir'
+    restoreWindow: 'Restaurar tamaño'
   },
   settings: {
     editor: {
       diffLayoutHelp: 'Todo diff se abre en este modo; los botones de la cabecera lo cambian solo mientras está abierto.',
+      diffContent: 'Contenido del diff',
+      diffContentHelp: 'Elige si el diff se abre solo con la parte que cambió o con el archivo completo y los cambios resaltados. El botón ⇕ del encabezado del diff lo cambia al instante.',
+      diffContentLabel: 'El diff muestra',
+      diffContentChanges: 'Solo el fragmento modificado',
+      diffContentFull: 'Archivo completo',
       diffLayout: 'Modo predeterminado del diff',
       clear: 'No usar ninguno',
       browse: 'Buscar ejecutable…',
@@ -685,7 +678,9 @@ export const es: Messages = {
       themeLight: 'Claro',
       themeVscode: 'Igual que VS Code',
       fileIcons: 'Iconos de archivo',
-      fileIconsHelp: 'Muestra junto a cada nombre un icono del tipo de archivo (estilo Material Icon Theme).',
+      fileIconsHelp: 'Muestra junto a cada nombre un icono del tipo de archivo.',
+      statusLetters: 'Letras de modificación (M, A, D…)',
+      statusLettersHelp: 'Muestra junto a cada archivo la letra de lo que cambió: M modificado, A añadido, D eliminado, R renombrado. Desactivado, solo el color del nombre lo indica.',
       zoom: 'Tamaño de la interfaz',
       default: '(predeterminado)',
       layout: 'Paneles y ventanas',
@@ -863,17 +858,30 @@ export const es: Messages = {
     noRepository: 'No hay ningún repositorio abierto.'
   },
   workbench: {
-    views: { branches: 'Ramas' },
-    panes: { commits: 'Lista de commits', details: 'Detalles del commit' },
-    area: { left: 'Izquierda', center: 'Centro', right: 'Derecha', bottom: 'Abajo' },
+    views: {
+      branches: 'Ramas',
+      commitMessage: 'Descripción del commit',
+      commitFiles: 'Archivos del commit',
+      commitDiff: 'Diff del commit',
+      changesDiff: 'Diff de los cambios',
+      filesHistory: 'Versiones del archivo',
+      filesDiff: 'Diff de la versión',
+      compareFiles: 'Archivos distintos',
+      compareDiff: 'Diff de la comparación'
+    },
     side: { left: 'A la izquierda', right: 'A la derecha', top: 'Arriba', bottom: 'Abajo' },
     dragPanel: 'Arrastra para mover este panel (izquierda, derecha, arriba o abajo)',
-    tabsHelp: 'Arrastra una pestaña para reordenarla o llevarla a otra área (borde izquierdo, derecho o inferior). Clic derecho: más opciones.',
-    moveTo: 'Mover a: {area}',
-    dropInto: 'Soltar en: {area}',
-    emptyArea: 'Arrastra una pestaña aquí.',
+    tabsHelp: 'Arrastra la pestaña al centro de otro panel (se vuelve pestaña de él), junto a un borde del panel (divide el panel) o al borde de la ventana. Clic derecho: más opciones.',
+    dropTabs: 'Soltar aquí como pestaña',
+    splitMenu: 'Separar hacia un lado',
+    edgeMenu: 'Acoplar al borde de la ventana',
+    hide: 'Ocultar este panel',
+    allHidden: 'Todos los paneles están ocultos.',
+    screens: 'Pantallas',
+    screensHelp: 'Trae al frente los paneles de cada pantalla, donde los hayas dejado.',
+    panels: 'Paneles',
+    panelsHelp: 'Mostrar u ocultar cualquier panel',
     resetLayout: 'Restablecer diseño predeterminado',
-    resetLayoutHelp: 'Restablecer diseño predeterminado: devuelve pestañas, paneles, columnas y tamaños a su posición original',
     layoutRestored: 'Diseño restablecido.',
     resizeColumn: 'Arrastra para ajustar el ancho (doble clic restablece el predeterminado)'
   },

@@ -7,9 +7,9 @@ import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
 import { t } from '../i18n'
-import { useLayout } from '../layout'
 import { DiffView, useFullFile } from './DiffView'
-import { revealPane, Split } from './Split'
+import { revealView } from '../dockStore'
+import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
@@ -27,89 +27,71 @@ export interface WipFocus {
   n: number
 }
 
-type InfoShow = 'both' | 'message' | 'files'
-type InfoOrientation = 'column' | 'row'
-const parseShow = (v: unknown): InfoShow => (v === 'message' || v === 'files' ? v : 'both')
-const parseOrientation = (v: unknown): InfoOrientation => (v === 'row' ? 'row' : 'column')
-
-/** O que o painel de cima mostra (descrição e/ou arquivos) e como (um sobre o outro ou lado a lado); fica lembrado. */
-function useInfoView() {
-  const [show, setShow] = useLayout<InfoShow>('pref.details.show', parseShow)
-  const [orientation, setOrientation] = useLayout<InfoOrientation>('pref.details.orientation', parseOrientation)
-  return { show, orientation, setShow: (v: InfoShow) => setShow(v === 'both' ? undefined : v), setOrientation: (v: InfoOrientation) => setOrientation(v === 'column' ? undefined : v) }
-}
-
-function InfoControls({ view, children }: { view: ReturnType<typeof useInfoView>; children?: React.ReactNode }) {
-  const shows: { id: InfoShow; label: string }[] = [
-    { id: 'both', label: t('details.view.both') },
-    { id: 'message', label: t('details.view.message') },
-    { id: 'files', label: t('details.view.files') }
-  ]
-  const directions: { id: InfoOrientation; label: string; icon: string }[] = [
-    { id: 'column', label: t('details.view.stacked'), icon: '⬒' },
-    { id: 'row', label: t('details.view.side'), icon: '◫' }
-  ]
-  return (
-    <div className="details-bar">
-      <div className="segmented" role="group" aria-label={t('details.view.label')} title={t('details.view.label')} dir="ltr">
-        {shows.map((o) => (
-          <button key={o.id} className={view.show === o.id ? 'active' : ''} aria-pressed={view.show === o.id} onClick={() => view.setShow(o.id)}>
-            {o.label}
-          </button>
-        ))}
-      </div>
-      {view.show === 'both' && (
-        <div className="segmented" role="group" dir="ltr">
-          {directions.map((o) => (
-            <button key={o.id} className={view.orientation === o.id ? 'active' : ''} aria-pressed={view.orientation === o.id} title={o.label} onClick={() => view.setOrientation(o.id)}>
-              {o.icon} {o.label}
-            </button>
-          ))}
-        </div>
-      )}
-      <span className="toolbar-spacer" />
-      {children}
-    </div>
-  )
-}
-
-export function CommitDetailsPanel({ selected, focus, wip }: { selected: string[]; focus?: FileFocus | null; wip?: WipFocus | null }) {
-  if (selected.length === 0 && wip) return <WipDetails focus={wip} />
+/**
+ * Descrição, arquivos e diff do commit escolhido. São três painéis independentes (`commit.message`,
+ * `commit.files` e `commit.diff`): cada um pode ficar em qualquer lugar da janela, junto de qualquer outro.
+ */
+export function CommitPanes({ selected, focus, wip }: { selected: string[]; focus?: FileFocus | null; wip?: WipFocus | null }) {
+  if (selected.length === 0 && wip) return <WipPanes focus={wip} />
   if (selected.length === 0) {
     return (
-      <section className="details empty-details">
-        <h3>{t('details.tips.title')}</h3>
-        <ul className="tips">
-          <li>{t('details.tips.dragCommit')}</li>
-          <li>{t('details.tips.dragBranch')}</li>
-          <li>{t('details.tips.clickCommit')}</li>
-          <li>{t('details.tips.studio')}</li>
-        </ul>
-      </section>
+      <>
+        <PaneSlot id="commit.message">
+          <section className="details empty-details">
+            <h3>{t('details.tips.title')}</h3>
+            <ul className="tips">
+              <li>{t('details.tips.dragCommit')}</li>
+              <li>{t('details.tips.dragBranch')}</li>
+              <li>{t('details.tips.clickCommit')}</li>
+              <li>{t('details.tips.studio')}</li>
+            </ul>
+          </section>
+        </PaneSlot>
+        <NothingToShow />
+      </>
     )
   }
   if (selected.length > 1) return <MultiSelection shas={selected} />
   return <SingleCommit key={selected[0]} sha={selected[0]} focus={focus?.sha === selected[0] ? focus : null} />
 }
 
+/** Painéis de arquivos e de diff quando não há um único commit (ou as alterações) para mostrar. */
+function NothingToShow() {
+  return (
+    <>
+      <PaneSlot id="commit.files">
+        <p className="empty">{t('details.pickOne')}</p>
+      </PaneSlot>
+      <PaneSlot id="commit.diff">
+        <p className="empty">{t('details.pickOne')}</p>
+      </PaneSlot>
+    </>
+  )
+}
+
 function MultiSelection({ shas }: { shas: string[] }) {
   const { openStudio } = useApp()
   const actions = useActions()
   return (
-    <section className="details">
-      <h3>{t('details.multiTitle', { count: shas.length })}</h3>
-      <p className="muted">{t('details.multiHelp')}</p>
-      <div className="button-column">
-        {actions.head && (
-          <button className="primary" onClick={() => actions.cherryPickCommits(actions.head!, shas)}>
-            🍒 {t('details.cherryPickInto', { target: actions.head })}
-          </button>
-        )}
-        <button onClick={() => openStudio({ target: actions.head ?? undefined, commits: shas, mode: 'files' })}>
-          {t('details.chooseFilesOrLines')}
-        </button>
-      </div>
-    </section>
+    <>
+      <PaneSlot id="commit.message">
+        <section className="details">
+          <h3>{t('details.multiTitle', { count: shas.length })}</h3>
+          <p className="muted">{t('details.multiHelp')}</p>
+          <div className="button-column">
+            {actions.head && (
+              <button className="primary" onClick={() => actions.cherryPickCommits(actions.head!, shas)}>
+                🍒 {t('details.cherryPickInto', { target: actions.head })}
+              </button>
+            )}
+            <button onClick={() => openStudio({ target: actions.head ?? undefined, commits: shas, mode: 'files' })}>
+              {t('details.chooseFilesOrLines')}
+            </button>
+          </div>
+        </section>
+      </PaneSlot>
+      <NothingToShow />
+    </>
   )
 }
 
@@ -123,7 +105,6 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()
-  const view = useInfoView()
 
   useEffect(() => {
     git.commitDetails(sha).then(
@@ -135,10 +116,10 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     )
   }, [sha, toast])
 
-  /** Mostra o diff do arquivo no painel de baixo (expandindo-o, se estiver recolhido). */
+  /** Mostra o diff do arquivo no painel do diff (trazendo-o à frente, se estiver escondido). */
   const showDiff = (file: ChangedFile) => {
     setActive(file)
-    revealPane('commit-details', 'second')
+    revealView('commit.diff')
   }
 
   const openWindow = (file: ChangedFile) =>
@@ -175,7 +156,18 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     )
   }, [sha, active, toast, fullFile])
 
-  if (!details) return <section className="details"><span className="spinner" /></section>
+  if (!details) {
+    return (
+      <>
+        <PaneSlot id="commit.message">
+          <section className="details">
+            <span className="spinner" />
+          </section>
+        </PaneSlot>
+        <NothingToShow />
+      </>
+    )
+  }
 
   const fileNav = {
     index: Math.max(0, details.files.findIndex((f) => f.path === active?.path)),
@@ -206,6 +198,13 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
 
   const messagePane = (
     <section className="details">
+      {head && (
+        <div className="commit-actions sticky-actions">
+          <button className="primary" onClick={() => actions.cherryPickCommits(head, [sha], details.subject)}>
+            🍒 {t('details.cherryPickInto', { target: head })}
+          </button>
+        </div>
+      )}
       <div className="commit-header">
         <h3>{details.subject}</h3>
         {details.body && <p className="commit-body pre-line">{details.body}</p>}
@@ -286,61 +285,45 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   )
 
   return (
-    // Em cima, a descrição e/ou os arquivos (um sobre o outro ou lado a lado, à escolha); embaixo, o diff.
-    <Split id="commit-details" direction="column" initial={0.4} min={[80, 120]}>
-      <div className="details-info">
-        <InfoControls view={view}>
-          {head && (
-            <button className="primary" onClick={() => actions.cherryPickCommits(head, [sha], details.subject)}>
-              🍒 {t('details.cherryPickInto', { target: head })}
-            </button>
-          )}
-        </InfoControls>
-        {view.show === 'message' ? (
-          messagePane
-        ) : view.show === 'files' ? (
-          filesPane
-        ) : (
-          <Split id="commit-info" direction={view.orientation} initial={0.5} min={[110, 110]} arrangeable={false}>
-            {messagePane}
-            {filesPane}
-          </Split>
-        )}
-      </div>
-      <section className="details">
-        {diff ? (
-          <div className="diff-panel">
-            {!head && (
-              <div className="selection-bar">
-                <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
-                  ⧉ {t('diffExtra.openWindow')}
-                </button>
-              </div>
-            )}
-            {head && (
-              <div className="selection-bar">
-                <span className="muted">{t('details.selectLinesHelp')}</span>
-                <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
-                  ⧉ {t('diffExtra.openWindow')}
-                </button>
-                <button className="primary" disabled={!selection.size} onClick={applyLines}>
-                  {t('common.applyLinesInto', { count: selection.size, target: head })}
-                </button>
-                <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>{t('details.takeWholeFile')}</button>
-                <button onClick={() => openFileView(diff.path)}>{t('common.blameHistory')}</button>
-              </div>
-            )}
-            <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} fileNav={fileNav} />
-          </div>
-        ) : (
-          active && (
+    <>
+      <PaneSlot id="commit.message">{messagePane}</PaneSlot>
+      <PaneSlot id="commit.files">{filesPane}</PaneSlot>
+      <PaneSlot id="commit.diff">
+        <section className="details">
+          {diff ? (
+            <div className="diff-panel">
+              {!head && (
+                <div className="selection-bar">
+                  <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
+                    ⧉ {t('diffExtra.openWindow')}
+                  </button>
+                </div>
+              )}
+              {head && (
+                <div className="selection-bar">
+                  <span className="muted">{t('details.selectLinesHelp')}</span>
+                  <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
+                    ⧉ {t('diffExtra.openWindow')}
+                  </button>
+                  <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                    {t('common.applyLinesInto', { count: selection.size, target: head })}
+                  </button>
+                  <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>{t('details.takeWholeFile')}</button>
+                  <button onClick={() => openFileView(diff.path)}>{t('common.blameHistory')}</button>
+                </div>
+              )}
+              <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} fileNav={fileNav} />
+            </div>
+          ) : active ? (
             <p className="empty">
               <span className="spinner" />
             </p>
-          )
-        )}
-      </section>
-    </Split>
+          ) : (
+            <p className="empty">{t('changes.selectFile')}</p>
+          )}
+        </section>
+      </PaneSlot>
+    </>
   )
 }
 
@@ -348,7 +331,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
  * Detalhes das alterações ainda não commitadas (aberto ao clicar num arquivo da primeira linha do
  * histórico): a lista dos arquivos e, embaixo, o diff do escolhido — igual ao de um commit.
  */
-function WipDetails({ focus }: { focus: WipFocus }) {
+function WipPanes({ focus }: { focus: WipFocus }) {
   const { data, toast, setView, openConflict, openDiffWindow } = useApp()
   const { status } = data
   const [fullFile] = useFullFile()
@@ -357,6 +340,11 @@ function WipDetails({ focus }: { focus: WipFocus }) {
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const entries: ChangeEntry[] = buildEntries(status)
   const areaOf = (e: ChangeEntry): Area => (e.unstaged ? 'unstaged' : 'staged')
+  /** Escolhe o arquivo e traz o painel do diff à frente, se estava escondido. */
+  const select = (next: { area: Area; path: string }) => {
+    setActive(next)
+    revealView('commit.diff')
+  }
 
   // Abre o arquivo pedido de fora (cada clique no histórico traz um `n` novo).
   useEffect(() => {
@@ -407,90 +395,104 @@ function WipDetails({ focus }: { focus: WipFocus }) {
   const openWindow = (path: string, area: Area) => openDiffWindow({ source: { kind: area }, path, title: `${path} · ${t('history.wip.title')}` })
   const codeOf = (e: ChangeEntry) => (e.unstaged ? (e.unstaged.untracked ? '?' : e.unstaged.worktree) : e.staged!.index)
 
+  const files = (
+    <section className="details">
+      <div className="group-header">
+        <strong>{t('common.fileList')}</strong> <span className="count">{entries.length + status.conflicted.length}</span>
+        <span className="toolbar-spacer" />
+        <FileViewToggle />
+      </div>
+      {status.conflicted.length > 0 && (
+        <ul className="file-list">
+          {status.conflicted.map((f) => (
+            <li key={f.path} className="file-item" onClick={() => openConflict(f.path)} title={t('changes.conflictedHint')}>
+              <span className="status status-U">U</span>
+              <span className="file-label" data-status="U">
+                <span className="file-name">{f.path}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {entries.length === 0 && status.conflicted.length === 0 ? (
+        <p className="empty small">{t('history.wip.clean')}</p>
+      ) : (
+        <ul className="file-list">
+          <FileEntries
+            items={entries}
+            pathOf={(e) => e.path}
+            oldPathOf={(e) => e.origPath}
+            statusOf={codeOf}
+            render={(e, { label, style }) => {
+              const code = codeOf(e)
+              return (
+                <li
+                  key={e.path}
+                  style={style}
+                  className={`file-item ${active?.path === e.path ? 'active' : ''}`}
+                  onClick={() => select({ area: areaOf(e), path: e.path })}
+                  onDoubleClick={() => openWindow(e.path, areaOf(e))}
+                  title={t('history.wip.fileHelp')}
+                >
+                  <span className={`status status-${code}`} title={statusLabel(code)}>
+                    {code === '?' ? 'N' : code}
+                  </span>
+                  {label}
+                  <LineStats stats={sumStats(e.staged, e.unstaged)} />
+                  {e.staged && !e.unstaged && <span className="wip-chip ok">{t('history.wip.stagedTag')}</span>}
+                  {e.staged && e.unstaged && <span className="wip-chip">{t('history.wip.partialTag')}</span>}
+                </li>
+              )
+            }}
+          />
+        </ul>
+      )}
+    </section>
+  )
+
   return (
-    <Split id="wip-details" direction="column" initial={0.4} min={[80, 120]}>
-      <section className="details">
-        <div className="group-header">
-          <strong>{t('history.wip.title')}</strong> <span className="count">{entries.length + status.conflicted.length}</span>
-          <span className="toolbar-spacer" />
-          <button onClick={() => setView('changes')} title={t('history.wip.openHelp')}>
-            {t('history.wip.open')} →
-          </button>
-          <FileViewToggle />
-        </div>
-        {status.conflicted.length > 0 && (
-          <ul className="file-list">
-            {status.conflicted.map((f) => (
-              <li key={f.path} className="file-item" onClick={() => openConflict(f.path)} title={t('changes.conflictedHint')}>
-                <span className="status status-U">U</span>
-                <span className="file-label" data-status="U">
-                  <span className="file-name">{f.path}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {entries.length === 0 && status.conflicted.length === 0 ? (
-          <p className="empty small">{t('history.wip.clean')}</p>
-        ) : (
-          <ul className="file-list">
-            <FileEntries
-              items={entries}
-              pathOf={(e) => e.path}
-              oldPathOf={(e) => e.origPath}
-              statusOf={codeOf}
-              render={(e, { label, style }) => {
-                const code = codeOf(e)
-                return (
-                  <li
-                    key={e.path}
-                    style={style}
-                    className={`file-item ${active?.path === e.path ? 'active' : ''}`}
-                    onClick={() => setActive({ area: areaOf(e), path: e.path })}
-                    onDoubleClick={() => openWindow(e.path, areaOf(e))}
-                    title={t('history.wip.fileHelp')}
-                  >
-                    <span className={`status status-${code}`} title={statusLabel(code)}>
-                      {code === '?' ? 'N' : code}
-                    </span>
-                    {label}
-                    <LineStats stats={sumStats(e.staged, e.unstaged)} />
-                    {e.staged && !e.unstaged && <span className="wip-chip ok">{t('history.wip.stagedTag')}</span>}
-                    {e.staged && e.unstaged && <span className="wip-chip">{t('history.wip.partialTag')}</span>}
-                  </li>
-                )
-              }}
-            />
-          </ul>
-        )}
-      </section>
-      <section className="details">
-        {diff && active ? (
-          <div className="diff-panel">
-            <div className="selection-bar">
-              {both && (
-                <div className="segmented" role="group" dir="ltr">
-                  {(['unstaged', 'staged'] as const).map((area) => (
-                    <button key={area} className={active.area === area ? 'active' : ''} aria-pressed={active.area === area} onClick={() => setActive({ area, path: active.path })}>
-                      {t(area === 'staged' ? 'changes.sections.staged' : 'changes.sections.unstaged')}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <button onClick={() => openWindow(active.path, active.area)} title={t('diffExtra.openWindowHelp')}>
-                ⧉ {t('diffExtra.openWindow')}
-              </button>
+    <>
+      <PaneSlot id="commit.message">
+        <section className="details">
+          <div className="commit-header">
+            <h3>{t('history.wip.title')}</h3>
+            <p className="muted">{t('history.wip.openHelp')}</p>
+            <div className="commit-actions">
+              <button onClick={() => setView('changes')}>{t('history.wip.open')} →</button>
             </div>
-            <DiffView file={diff} fileNav={fileNav} />
           </div>
-        ) : (
-          active && (
+        </section>
+      </PaneSlot>
+      <PaneSlot id="commit.files">{files}</PaneSlot>
+      <PaneSlot id="commit.diff">
+        <section className="details">
+          {diff && active ? (
+            <div className="diff-panel">
+              <div className="selection-bar">
+                {both && (
+                  <div className="segmented" role="group" dir="ltr">
+                    {(['unstaged', 'staged'] as const).map((area) => (
+                      <button key={area} className={active.area === area ? 'active' : ''} aria-pressed={active.area === area} onClick={() => setActive({ area, path: active.path })}>
+                        {t(area === 'staged' ? 'changes.sections.staged' : 'changes.sections.unstaged')}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => openWindow(active.path, active.area)} title={t('diffExtra.openWindowHelp')}>
+                  ⧉ {t('diffExtra.openWindow')}
+                </button>
+              </div>
+              <DiffView file={diff} fileNav={fileNav} />
+            </div>
+          ) : active ? (
             <p className="empty">
               <span className="spinner" />
             </p>
-          )
-        )}
-      </section>
-    </Split>
+          ) : (
+            <p className="empty">{t('changes.selectFile')}</p>
+          )}
+        </section>
+      </PaneSlot>
+    </>
   )
 }

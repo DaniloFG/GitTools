@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from 'react'
 import type { BranchInfo, StashInfo } from '../../../shared/types'
-import type { HistoryScope } from '../App'
+import { ALL_SCOPE, checkedRefs, toggleGroup, toggleRef, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
 import { useApp } from '../context'
@@ -12,18 +12,45 @@ import { useDrop } from '../useDrop'
 import { useLayout } from '../layout'
 import { moveItem, parseOrder, startReorder } from '../reorder'
 import { t } from '../i18n'
+import { PaneSlot } from '../slots'
 
 interface Props {
   scope: HistoryScope
   onScope(scope: HistoryScope): void
 }
 
-export function Sidebar({ scope, onScope }: Props) {
+/**
+ * Branches (locais e remotas), tags e stashes são três painéis independentes: cada um pode ficar em
+ * qualquer lugar da janela, junto de qualquer outro painel.
+ */
+export function SidebarPanes({ scope, onScope }: Props) {
+  return (
+    <>
+      <PaneSlot id="branches">
+        <BranchesPanel scope={scope} onScope={onScope} />
+      </PaneSlot>
+      <PaneSlot id="tags">
+        <TagsPanel />
+      </PaneSlot>
+      <PaneSlot id="stashes">
+        <StashesPanel />
+      </PaneSlot>
+    </>
+  )
+}
+
+function BranchesPanel({ scope, onScope }: Props) {
   const { data } = useApp()
-  const actions = useActions()
   // Cada branch usa a cor da sua trilha no grafo do histórico.
   const colors = commitColors(data.log, data.status.headSha)
   const colorOf = (b: BranchInfo) => colors.get(b.sha)
+  const checked = checkedRefs(scope)
+  const toggle = (name: string) => onScope(toggleRef(scope, name))
+  const groupAction = (list: BranchInfo[]) => ({
+    label: '☑',
+    title: t('sidebar.toggleGroup'),
+    run: () => onScope(toggleGroup(scope, list.map((b) => b.name)))
+  })
   const local = data.branches.filter((b) => !b.remote)
   const remotes = new Map<string, BranchInfo[]>()
   for (const b of data.branches.filter((b) => b.remote)) {
@@ -34,9 +61,9 @@ export function Sidebar({ scope, onScope }: Props) {
     {
       id: 'branches',
       node: (
-        <Section id="branches" title={t('sidebar.branches')} count={local.length} onReorder={move}>
+        <Section id="branches" title={t('sidebar.branches')} count={local.length} onReorder={move} action={groupAction(local)}>
           {local.map((b) => (
-            <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
+            <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} checked={checked.includes(b.name)} onToggle={toggle} onScope={onScope} />
           ))}
         </Section>
       )
@@ -44,40 +71,13 @@ export function Sidebar({ scope, onScope }: Props) {
     ...[...remotes.entries()].map(([remote, list]) => ({
       id: `remote.${remote}`,
       node: (
-        <Section id={`remote.${remote}`} title={t('sidebar.remote', { remote })} count={list.length} collapsed onReorder={move}>
+        <Section id={`remote.${remote}`} title={t('sidebar.remote', { remote })} count={list.length} collapsed onReorder={move} action={groupAction(list)}>
           {list.map((b) => (
-            <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} onScope={onScope} />
+            <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} checked={checked.includes(b.name)} onToggle={toggle} onScope={onScope} />
           ))}
         </Section>
       )
-    })),
-    {
-      id: 'tags',
-      node: (
-        <Section
-          id="tags"
-          title={t('sidebar.tags')}
-          count={data.tags.length}
-          collapsed
-          onReorder={move}
-          action={{ label: '＋', title: t('actions.newTag.title'), run: () => actions.createTag() }}
-        >
-          {data.tags.map((t) => (
-            <TagItem key={t.name} name={t.name} sha={t.sha} />
-          ))}
-        </Section>
-      )
-    },
-    {
-      id: 'stashes',
-      node: (
-        <Section id="stashes" title={t('sidebar.stashes')} count={data.stashes.length} onReorder={move}>
-          {data.stashes.map((s) => (
-            <StashItem key={s.ref} stash={s} />
-          ))}
-        </Section>
-      )
-    }
+    }))
   ]
   const ids = sections.map((s) => s.id)
   const [order, setOrder] = useLayout('order.sidebar', (value) => parseOrder(value, ids))
@@ -88,9 +88,44 @@ export function Sidebar({ scope, onScope }: Props) {
   return (
     <aside className="sidebar">
       <p className="sidebar-hint">{t('sidebar.hint')}</p>
+      {checked.length > 0 && (
+        <div className="sidebar-filter" role="status">
+          <span>{t('sidebar.filterActive', { count: checked.length })}</span>
+          <button className="link" onClick={() => onScope(ALL_SCOPE)}>
+            {t('sidebar.filterClear')}
+          </button>
+        </div>
+      )}
       {order.map((id) => (
         <Fragment key={id}>{sections.find((s) => s.id === id)?.node}</Fragment>
       ))}
+    </aside>
+  )
+}
+
+function TagsPanel() {
+  const { data } = useApp()
+  const actions = useActions()
+  return (
+    <aside className="sidebar">
+      <Section id="tags" title={t('sidebar.tags')} count={data.tags.length} action={{ label: '＋', title: t('actions.newTag.title'), run: () => actions.createTag() }}>
+        {data.tags.map((tag) => (
+          <TagItem key={tag.name} name={tag.name} sha={tag.sha} />
+        ))}
+      </Section>
+    </aside>
+  )
+}
+
+function StashesPanel() {
+  const { data } = useApp()
+  return (
+    <aside className="sidebar">
+      <Section id="stashes" title={t('sidebar.stashes')} count={data.stashes.length}>
+        {data.stashes.map((s) => (
+          <StashItem key={s.ref} stash={s} />
+        ))}
+      </Section>
     </aside>
   )
 }
@@ -102,8 +137,8 @@ interface SectionProps {
   count: number
   children: ReactNode
   collapsed?: boolean
-  /** Arrastar o cabeçalho sobre outra seção troca a ordem delas. */
-  onReorder(id: string, target: string): void
+  /** Arrastar o cabeçalho sobre outra seção troca a ordem delas (só quando há mais de uma no painel). */
+  onReorder?(id: string, target: string): void
   /** Botão no cabeçalho (ex.: criar tag). */
   action?: { label: string; title: string; run(): void }
 }
@@ -111,13 +146,13 @@ interface SectionProps {
 function Section({ id, title, count, children, collapsed = false, onReorder, action }: SectionProps) {
   const [open, setOpen] = useLayout(`sidebar.${id}.open`, (value) => (typeof value === 'boolean' ? value : !collapsed))
   return (
-    <section className="sidebar-section" data-reorder="sidebar" data-reorder-id={id}>
+    <section className="sidebar-section" data-reorder={onReorder ? 'sidebar' : undefined} data-reorder-id={onReorder ? id : undefined}>
       <div className="section-header-row">
         <button
           className="section-header"
-          title={t('layout.reorderHelp')}
+          title={onReorder ? t('layout.reorderHelp') : undefined}
           onClick={() => setOpen(!open)}
-          onPointerDown={(e) => startReorder(e, 'sidebar', id, onReorder)}
+          onPointerDown={onReorder ? (e) => startReorder(e, 'sidebar', id, onReorder) : undefined}
         >
           <span>{open ? '▾' : '▸'}</span> {title} <span className="count">{count}</span>
         </button>
@@ -137,10 +172,13 @@ interface BranchItemProps {
   /** Cor da trilha da branch no grafo (ausente quando o commit não está no histórico carregado). */
   color: number | undefined
   active: boolean
+  /** Marcada na caixa de seleção: o histórico lista só as branches marcadas. */
+  checked: boolean
+  onToggle(name: string): void
   onScope(s: HistoryScope): void
 }
 
-function BranchItem({ branch, color, active, onScope }: BranchItemProps) {
+function BranchItem({ branch, color, active, checked, onToggle, onScope }: BranchItemProps) {
   const { showMenu } = useApp()
   const actions = useActions()
   const branchMenu = useBranchMenu(onScope)
@@ -166,6 +204,17 @@ function BranchItem({ branch, color, active, onScope }: BranchItemProps) {
       style={color === undefined ? undefined : ({ '--branch-color': laneColor(color) } as React.CSSProperties)}
       {...drop.props}
     >
+      <input
+        type="checkbox"
+        className="branch-check"
+        checked={checked}
+        title={t('sidebar.showInHistory')}
+        aria-label={t('sidebar.showInHistory')}
+        draggable={false}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        onChange={() => onToggle(branch.name)}
+      />
       <span className="branch-icon">{branch.current ? '✓' : '⎇'}</span>
       <span className="branch-name">{label}</span>
       {(branch.ahead > 0 || branch.behind > 0) && (

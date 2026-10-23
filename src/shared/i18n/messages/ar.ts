@@ -130,6 +130,10 @@ export const ar: Messages = {
     tags: 'الوسوم',
     stashes: 'التخبئات',
     dropHere: 'أفلت هنا',
+    showInHistory: 'عرض في السجل فقط (حدّد عدة فروع لرؤية تاريخها فقط)',
+    toggleGroup: 'تحديد الكل / إلغاء تحديد الكل',
+    filterActive: { zero: 'السجل لا يعرض أي فرع محدد', one: 'السجل لهذا الفرع المحدد فقط', two: 'السجل للفرعين المحددين فقط', few: 'السجل للفروع المحددة ({count}) فقط', many: 'السجل للفروع المحددة ({count}) فقط', other: 'السجل للفروع المحددة ({count}) فقط' },
+    filterClear: 'عرض الكل',
     branchTooltip: 'نقر مزدوج: انتقال · نقر أيمن: إجراءات أخرى',
     menu: {
       deleteTag: 'حذف الوسم',
@@ -186,7 +190,7 @@ export const ar: Messages = {
       stagedTag: 'مجهّز',
       partialTag: 'جزئي'
     },
-    scope: { all: 'كل الفروع', head: 'الفرع الحالي', ref: 'الفرع: {ref}' },
+    scope: { all: 'كل الفروع', head: 'الفرع الحالي', ref: 'الفرع: {ref}', refs: { zero: 'لا فروع محددة', one: 'فرع محدد واحد', two: 'فرعان محددان', few: '{count} فروع محددة', many: '{count} فرعاً محدداً', other: '{count} فرع محدد' } },
     badge: { remote: 'فرع بعيد', local: 'فرع محلي — اسحبه أو أفلت العناصر هنا' },
     search: {
       placeholder: 'ابحث عن فرع أو رسالة أو مؤلف أو تاريخ أو وقت أو معرّف…',
@@ -213,19 +217,17 @@ export const ar: Messages = {
       revert: 'التراجع عن الإيداع…',
       reset: 'نقل {branch} إلى هنا (reset)…',
       copySha: 'نسخ SHA',
+      copyMessage: 'نسخ الرسالة',
+      copyMessageFull: 'الرسالة كاملة (العنوان والوصف)',
+      copyMessageSubject: 'العنوان فقط (السطر الأول)',
+      copyMessageBody: 'الوصف فقط',
+      messageCopied: { zero: 'لم تُنسخ أي رسالة.', one: 'تم نسخ الرسالة.', two: 'تم نسخ الرسالتين.', few: 'تم نسخ {count} رسائل.', many: 'تم نسخ {count} رسالة.', other: 'تم نسخ {count} رسالة.' },
+      noBody: 'ليس لهذا الالتزام وصف، بل عنوان فقط.',
       showFiles: 'عرض الملفات أسفل الإيداع',
       hideFiles: 'طي ملفات الإيداع'
     }
   },
   details: {
-    view: {
-      label: 'عرض',
-      both: 'الاثنان',
-      message: 'الوصف',
-      files: 'الملفات',
-      stacked: 'فوق وتحت',
-      side: 'جنبًا إلى جنب'
-    },
     tips: {
       title: 'نصائح سريعة',
       dragCommit: 'اسحب إيداعًا (أو عدة إيداعات باستخدام Ctrl/Shift) إلى فرع في الشريط الجانبي لانتقائه.',
@@ -235,6 +237,7 @@ export const ar: Messages = {
     },
     multiTitle: { one: 'تم تحديد إيداع واحد', two: 'تم تحديد إيداعين', other: 'الإيداعات المحددة: {count}' },
     multiHelp: 'اسحب التحديد إلى فرع، أو:',
+    pickOne: 'اختر التزاماً واحداً في السجل لعرضه هنا.',
     cherryPickInto: 'انتقاء إلى {target}',
     chooseFilesOrLines: 'اختيار ملفات أو أسطر من هذه الإيداعات…',
     linesContext: 'من {path} في الإيداع {sha} — "{subject}"',
@@ -320,19 +323,6 @@ export const ar: Messages = {
       marked: 'تم تحديد {marked} من {total}',
       all: 'تحديد الكل أو إلغاؤه',
       include: 'تضمين في الإيداع'
-    },
-    layout: {
-      restore: 'استعادة الترتيب',
-      restoreConfirm: {
-        title: 'استعادة ترتيب هذا التبويب؟',
-        message: 'ستعود لوحات تبويب التغييرات إلى ترتيبها الأصلي.'
-      },
-      moveUp: 'نقل لأعلى',
-      moveDown: 'نقل لأسفل',
-      moveLeft: 'نقل لليسار',
-      moveRight: 'نقل لليمين',
-      drag: 'اسحب الترويسة لنقل هذه اللوحة (زر الفأرة الأيمن: مزيد من الخيارات)',
-      newColumn: 'عمود جديد'
     }
   },
   actions: {
@@ -559,7 +549,7 @@ export const ar: Messages = {
       classic: 'كلاسيكي',
       classicHelp: 'النسختان جنبًا إلى جنب في الأعلى والنتيجة في الأسفل',
       columns: 'أعمدة',
-      columnsHelp: 'ثلاثة أعمدة متجاورة، كما في SmartGit',
+      columnsHelp: 'ثلاثة أعمدة متجاورة',
       swapSides: 'تبديل النسختين',
       swapSidesHelp: 'يبدّل مكاني لوحتي النسخة الحالية والواردة',
       reset: 'الترتيب الافتراضي',
@@ -659,13 +649,16 @@ export const ar: Messages = {
     hidePanel: 'طيّ هذه اللوحة',
     showPanel: 'إظهار اللوحة المطوية',
     maximize: 'تكبير',
-    restoreWindow: 'استعادة الحجم',
-    collapse: 'طيّ',
-    expand: 'توسيع'
+    restoreWindow: 'استعادة الحجم'
   },
   settings: {
     editor: {
       diffLayoutHelp: 'يُفتح كل فرق بهذه الطريقة؛ أزرار رأس الفرق تغيّرها فقط ما دام مفتوحًا.',
+      diffContent: 'محتوى عرض الفروقات',
+      diffContentHelp: 'اختر هل يُفتح عرض الفروقات بالجزء المتغيّر فقط أم بالملف كاملاً مع إبراز التغييرات. زر ⇕ في رأس العرض يبدّل ذلك فوراً.',
+      diffContentLabel: 'يعرض الفروقات',
+      diffContentChanges: 'الجزء المتغيّر فقط',
+      diffContentFull: 'الملف كاملاً',
       diffLayout: 'طريقة عرض الفروق الافتراضية',
       clear: 'بدون محرر',
       browse: 'استعراض الملف التنفيذي…',
@@ -697,7 +690,9 @@ export const ar: Messages = {
       themeLight: 'فاتحة',
       themeVscode: 'مثل VS Code',
       fileIcons: 'أيقونات الملفات',
-      fileIconsHelp: 'يعرض بجانب كل اسم أيقونة لنوع الملف (بنمط Material Icon Theme).',
+      fileIconsHelp: 'يعرض بجانب كل اسم أيقونة لنوع الملف.',
+      statusLetters: 'حروف التعديلات (M, A, D…)',
+      statusLettersHelp: 'يعرض بجانب كل ملف حرف ما تغيّر: M معدَّل، A مضاف، D محذوف، R أُعيدت تسميته. عند الإيقاف يدل لون الاسم فقط.',
       zoom: 'حجم الواجهة',
       default: '(افتراضي)',
       layout: 'اللوحات والنوافذ',
@@ -872,17 +867,30 @@ export const ar: Messages = {
     noRepository: 'لا يوجد مستودع مفتوح.'
   },
   workbench: {
-    views: { branches: 'الفروع' },
-    panes: { commits: 'قائمة الإيداعات', details: 'تفاصيل الإيداع' },
-    area: { left: 'اليسار', center: 'الوسط', right: 'اليمين', bottom: 'الأسفل' },
+    views: {
+      branches: 'الفروع',
+      commitMessage: 'وصف الالتزام',
+      commitFiles: 'ملفات الالتزام',
+      commitDiff: 'فروقات الالتزام',
+      changesDiff: 'فروقات التغييرات',
+      filesHistory: 'إصدارات الملف',
+      filesDiff: 'فروقات الإصدار',
+      compareFiles: 'الملفات المختلفة',
+      compareDiff: 'فروقات المقارنة'
+    },
     side: { left: 'إلى اليسار', right: 'إلى اليمين', top: 'في الأعلى', bottom: 'في الأسفل' },
     dragPanel: 'اسحب لنقل هذه اللوحة (يسار أو يمين أو أعلى أو أسفل)',
-    tabsHelp: 'اسحب علامة تبويب لإعادة ترتيبها أو لنقلها إلى منطقة أخرى (الحافة اليسرى أو اليمنى أو السفلى). نقر أيمن: خيارات أخرى.',
-    moveTo: 'نقل إلى: {area}',
-    dropInto: 'إفلات في: {area}',
-    emptyArea: 'اسحب علامة تبويب إلى هنا.',
+    tabsHelp: 'اسحب علامة التبويب إلى منتصف لوحة أخرى (تصبح تبويباً فيها) أو بجوار حافة اللوحة (تقسيم اللوحة) أو إلى حافة النافذة. زر الفأرة الأيمن: خيارات أخرى.',
+    dropTabs: 'أفلت هنا كتبويب',
+    splitMenu: 'فصل إلى جانب',
+    edgeMenu: 'تثبيت عند حافة النافذة',
+    hide: 'إخفاء هذه اللوحة',
+    allHidden: 'جميع اللوحات مخفية.',
+    screens: 'الشاشات',
+    screensHelp: 'يُحضر لوحات كل شاشة إلى الأمام أينما وضعتها.',
+    panels: 'اللوحات',
+    panelsHelp: 'إظهار أو إخفاء أي لوحة',
     resetLayout: 'استعادة التخطيط الافتراضي',
-    resetLayoutHelp: 'استعادة التخطيط الافتراضي: يعيد علامات التبويب واللوحات والأعمدة والأحجام إلى أماكنها الأصلية',
     layoutRestored: 'تمت استعادة التخطيط الافتراضي.',
     resizeColumn: 'اسحب لضبط العرض (النقر المزدوج يعيد الافتراضي)'
   },

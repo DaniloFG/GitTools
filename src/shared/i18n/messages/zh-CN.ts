@@ -121,6 +121,10 @@ export const zhCN: Messages = {
     tags: '标签',
     stashes: '贮藏',
     dropHere: '放到这里',
+    showInHistory: '仅在历史中显示（勾选多个以只查看它们的历史）',
+    toggleGroup: '全选 / 取消全选',
+    filterActive: '历史仅显示已勾选的 {count} 个分支',
+    filterClear: '显示全部',
     branchTooltip: '双击：检出 · 右键：更多操作',
     menu: {
       deleteTag: '删除标签',
@@ -177,7 +181,7 @@ export const zhCN: Messages = {
       stagedTag: '已暂存',
       partialTag: '部分'
     },
-    scope: { all: '所有分支', head: '当前分支', ref: '分支：{ref}' },
+    scope: { all: '所有分支', head: '当前分支', ref: '分支：{ref}', refs: '已勾选 {count} 个分支' },
     badge: { remote: '远程分支', local: '本地分支 — 可拖动，也可把项目拖放到这里' },
     search: {
       placeholder: '搜索分支、消息、作者、日期、时间或哈希…',
@@ -204,19 +208,17 @@ export const zhCN: Messages = {
       revert: '还原提交…',
       reset: '将 {branch} 移到这里（重置）…',
       copySha: '复制 SHA',
+      copyMessage: '复制提交信息',
+      copyMessageFull: '完整信息（标题和说明）',
+      copyMessageSubject: '仅标题（第一行）',
+      copyMessageBody: '仅说明',
+      messageCopied: '已复制 {count} 条提交信息。',
+      noBody: '此提交没有说明，只有标题。',
       showFiles: '在提交下方显示文件',
       hideFiles: '收起提交的文件'
     }
   },
   details: {
-    view: {
-      label: '显示',
-      both: '两者',
-      message: '描述',
-      files: '文件',
-      stacked: '上下',
-      side: '左右'
-    },
     tips: {
       title: '快速提示',
       dragCommit: '将一个提交（或用 Ctrl/Shift 选中的多个）拖到侧边栏的分支上即可拣选。',
@@ -226,6 +228,7 @@ export const zhCN: Messages = {
     },
     multiTitle: { other: '已选择 {count} 个提交' },
     multiHelp: '将所选内容拖到分支上，或：',
+    pickOne: '在历史中选择单个提交即可在此查看。',
     cherryPickInto: '拣选到 {target}',
     chooseFilesOrLines: '从这些提交中选择文件或行…',
     linesContext: '来自提交 {sha} 中的 {path} — “{subject}”',
@@ -304,19 +307,6 @@ export const zhCN: Messages = {
       marked: '已勾选 {marked}/{total}',
       all: '全选或取消全选',
       include: '加入提交'
-    },
-    layout: {
-      restore: '恢复布局',
-      restoreConfirm: {
-        title: '恢复此标签页的排列？',
-        message: '“更改”标签页的面板将恢复为原始排列。'
-      },
-      moveUp: '上移',
-      moveDown: '下移',
-      moveLeft: '左移',
-      moveRight: '右移',
-      drag: '拖动标题可移动此面板（右键查看更多选项）',
-      newColumn: '新列'
     }
   },
   actions: {
@@ -525,7 +515,7 @@ export const zhCN: Messages = {
       classic: '经典',
       classicHelp: '两个版本在上方并排，结果在下方',
       columns: '三栏',
-      columnsHelp: '三栏并排，类似 SmartGit',
+      columnsHelp: '三栏并排',
       swapSides: '交换版本',
       swapSidesHelp: '交换当前版本和传入版本面板的位置',
       reset: '默认布局',
@@ -625,13 +615,16 @@ export const zhCN: Messages = {
     hidePanel: '折叠此面板',
     showPanel: '显示已折叠的面板',
     maximize: '最大化',
-    restoreWindow: '还原大小',
-    collapse: '折叠',
-    expand: '展开'
+    restoreWindow: '还原大小'
   },
   settings: {
     editor: {
       diffLayoutHelp: '所有差异都以此方式打开；差异标题中的按钮只在其打开期间切换方式。',
+      diffContent: '差异内容',
+      diffContentHelp: '选择差异只显示修改的部分，还是显示整个文件并高亮改动。差异标题栏中的 ⇕ 按钮可立即切换。',
+      diffContentLabel: '差异显示',
+      diffContentChanges: '仅修改的部分',
+      diffContentFull: '整个文件',
       diffLayout: '默认差异显示方式',
       clear: '不使用',
       browse: '浏览可执行文件…',
@@ -663,7 +656,9 @@ export const zhCN: Messages = {
       themeLight: '浅色',
       themeVscode: '与 VS Code 相同',
       fileIcons: '文件图标',
-      fileIconsHelp: '在每个文件名旁显示文件类型图标（Material Icon Theme 风格）。',
+      fileIconsHelp: '在每个文件名旁显示文件类型图标。',
+      statusLetters: '变更字母（M、A、D…）',
+      statusLettersHelp: '在每个文件旁显示变更类型字母：M 已修改、A 已添加、D 已删除、R 已重命名。关闭后仅用名称颜色表示。',
       zoom: '界面大小',
       default: '（默认）',
       layout: '面板和窗口',
@@ -838,17 +833,30 @@ export const zhCN: Messages = {
     noRepository: '没有打开的仓库。'
   },
   workbench: {
-    views: { branches: '分支' },
-    panes: { commits: '提交列表', details: '提交详情' },
-    area: { left: '左侧', center: '中间', right: '右侧', bottom: '底部' },
+    views: {
+      branches: '分支',
+      commitMessage: '提交说明',
+      commitFiles: '提交的文件',
+      commitDiff: '提交差异',
+      changesDiff: '更改差异',
+      filesHistory: '文件版本',
+      filesDiff: '版本差异',
+      compareFiles: '有差异的文件',
+      compareDiff: '比较差异'
+    },
     side: { left: '放在左侧', right: '放在右侧', top: '放在上方', bottom: '放在下方' },
     dragPanel: '拖动以移动此面板（左、右、上或下）',
-    tabsHelp: '拖动标签页可调整顺序，或拖到其他区域（左、右或底部边缘）。右键：更多选项。',
-    moveTo: '移到：{area}',
-    dropInto: '放到：{area}',
-    emptyArea: '把标签页拖到这里。',
+    tabsHelp: '把标签拖到另一个面板中央（成为它的标签页）、面板边缘旁（拆分面板）或窗口边缘。右键：更多选项。',
+    dropTabs: '在此放下为标签页',
+    splitMenu: '拆分到一侧',
+    edgeMenu: '停靠到窗口边缘',
+    hide: '隐藏此面板',
+    allHidden: '所有面板都已隐藏。',
+    screens: '界面',
+    screensHelp: '把每个界面的面板调到前面，无论你把它们放在哪里。',
+    panels: '面板',
+    panelsHelp: '显示或隐藏任意面板',
     resetLayout: '恢复默认布局',
-    resetLayoutHelp: '恢复默认布局：把标签页、面板、列和尺寸恢复到初始位置',
     layoutRestored: '布局已恢复为默认。',
     resizeColumn: '拖动以调整宽度（双击恢复默认）'
   },

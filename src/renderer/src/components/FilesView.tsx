@@ -8,7 +8,8 @@ import { git } from '../git'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
 import { DiffView, useFullFile } from './DiffView'
-import { revealPane, Split } from './Split'
+import { revealView } from '../dockStore'
+import { PaneSlot, useAnyShown } from '../slots'
 import { LineStats } from './LineStats'
 import { FileEntries, FileViewToggle } from './FileList'
 
@@ -19,19 +20,65 @@ const GUTTER_MIN = 120
 const GUTTER_MAX = 640
 const parseGutter = (value: unknown) => (typeof value === 'number' && value >= GUTTER_MIN && value <= GUTTER_MAX ? value : GUTTER_DEFAULT)
 
-/** Explorador de arquivos com blame por linha e histórico de cada arquivo. */
-export function FilesView({ path, onPath }: { path: string | null; onPath(path: string): void }) {
-  const { data, toast, openInEditor } = useApp()
+/**
+ * Explorador de arquivos com blame por linha e histórico de cada arquivo. São painéis independentes:
+ * a lista de arquivos (`files.list`), o blame (`files.blame`), as versões do arquivo (`files.history`) e o
+ * diff da versão escolhida (`files.diff`) — cada um pode ficar em qualquer lugar da janela.
+ */
+export function FilesPanes({ path, onPath }: { path: string | null; onPath(path: string): void }) {
+  const [blameRev, setBlameRev] = useState<string | undefined>(undefined)
+  useEffect(() => setBlameRev(undefined), [path])
+
+  return (
+    <>
+      <PaneSlot id="files.list">
+        <FilesList path={path} onPath={onPath} />
+      </PaneSlot>
+      <PaneSlot id="files.blame">
+        <section className="details file-details">
+          {!path ? (
+            <p className="empty">{t('files.empty')}</p>
+          ) : (
+            <>
+              <FileHeader path={path} title={blameRev ? t('files.blameAt', { sha: shortSha(blameRev) }) : t('files.blame')} />
+              <div className="file-details-body">
+                <BlameView path={path} rev={blameRev} onClearRev={() => setBlameRev(undefined)} />
+              </div>
+            </>
+          )}
+        </section>
+      </PaneSlot>
+      <FileHistoryPanes
+        path={path}
+        onBlameAt={(sha) => {
+          setBlameRev(sha)
+          revealView('files.blame')
+        }}
+      />
+    </>
+  )
+}
+
+function FileHeader({ path, title }: { path: string; title: string }) {
+  const { openInEditor } = useApp()
+  return (
+    <div className="file-header">
+      <strong>{title}</strong>
+      <code className="diff-path">{path}</code>
+      <span className="toolbar-spacer" />
+      <button onClick={() => openInEditor(path)}>{t('common.openInEditor')}</button>
+    </div>
+  )
+}
+
+function FilesList({ path, onPath }: { path: string | null; onPath(path: string): void }) {
+  const { data, toast } = useApp()
   const [files, setFiles] = useState<string[]>([])
   const [filter, setFilter] = useState('')
-  const [tab, setTab] = useState<'blame' | 'history'>('blame')
-  const [blameRev, setBlameRev] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     git.listFiles().then(setFiles, (e) => toast('error', errorMessage(e)))
   }, [data.status.headSha, toast])
-
-  useEffect(() => setBlameRev(undefined), [path])
 
   const filtered = useMemo(() => {
     const terms = filter.toLowerCase().split(/\s+/).filter(Boolean)
@@ -40,69 +87,33 @@ export function FilesView({ path, onPath }: { path: string | null; onPath(path: 
   const shown = useMemo(() => filtered.slice(0, MAX_LISTED), [filtered])
 
   return (
-    <Split id="files" initial={0.34} min={[200, 320]}>
-      <div className="files-list">
-        <div className="files-list-header">
-          <input className="files-filter" placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
-          <FileViewToggle />
-        </div>
-        <ul className="file-list">
-          <FileEntries
-            items={shown}
-            pathOf={(f) => f}
-            render={(f, { label, style }) => (
-              <li
-                key={f}
-                className={`file-item ${f === path ? 'active' : ''}`}
-                style={style}
-                onClick={() => {
-                  onPath(f)
-                  revealPane('files', 'second')
-                }}
-                title={f}
-              >
-                {label}
-              </li>
-            )}
-          />
-        </ul>
-        {filtered.length > MAX_LISTED && <p className="muted small">{t('files.truncated', { shown: MAX_LISTED, count: filtered.length })}</p>}
+    <div className="files-list">
+      <div className="files-list-header">
+        <input className="files-filter" placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
+        <FileViewToggle />
       </div>
-      <section className="details file-details">
-        {!path ? (
-          <p className="empty">{t('files.empty')}</p>
-        ) : (
-          <>
-            <div className="file-header">
-              <code className="diff-path">{path}</code>
-              <span className="toolbar-spacer" />
-              <button onClick={() => openInEditor(path)}>{t('common.openInEditor')}</button>
-            </div>
-            <nav className="tabs">
-              <button className={tab === 'blame' ? 'active' : ''} onClick={() => setTab('blame')}>
-                {blameRev ? t('files.blameAt', { sha: shortSha(blameRev) }) : t('files.blame')}
-              </button>
-              <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')}>
-                {t('files.history')}
-              </button>
-            </nav>
-            {tab === 'blame' ? (
-              <div className="file-details-body">
-                <BlameView path={path} rev={blameRev} onClearRev={() => setBlameRev(undefined)} />
-              </div>
-            ) : (
-              <FileHistory
-                path={path}
-                onBlameAt={(sha) => {
-                  setBlameRev(sha)
-                  setTab('blame')
-                }}
-              />
-            )}
-          </>
-        )}
-      </section>
-    </Split>
+      <ul className="file-list">
+        <FileEntries
+          items={shown}
+          pathOf={(f) => f}
+          render={(f, { label, style }) => (
+            <li
+              key={f}
+              className={`file-item ${f === path ? 'active' : ''}`}
+              style={style}
+              onClick={() => {
+                onPath(f)
+                revealView('files.blame')
+              }}
+              title={f}
+            >
+              {label}
+            </li>
+          )}
+        />
+      </ul>
+      {filtered.length > MAX_LISTED && <p className="muted small">{t('files.truncated', { shown: MAX_LISTED, count: filtered.length })}</p>}
+    </div>
   )
 }
 
@@ -200,7 +211,27 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
   )
 }
 
-function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string): void }) {
+function FileHistoryPanes({ path, onBlameAt }: { path: string | null; onBlameAt(sha: string): void }) {
+  // As versões só são lidas enquanto algum dos dois painéis está na tela.
+  const shown = useAnyShown(['files.history', 'files.diff'])
+  return shown && path ? <FileHistoryLoaded key={path} path={path} onBlameAt={onBlameAt} /> : <HistoryMessage>{path ? <span className="spinner" /> : t('files.empty')}</HistoryMessage>
+}
+
+/** Mensagem nos dois painéis do histórico do arquivo (nada escolhido, carregando, sem commits). */
+function HistoryMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <PaneSlot id="files.history">
+        <p className="empty">{children}</p>
+      </PaneSlot>
+      <PaneSlot id="files.diff">
+        <p className="empty">{children}</p>
+      </PaneSlot>
+    </>
+  )
+}
+
+function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: string): void }) {
   const { data, run, confirm, toast, selectCommit, openDiffWindow } = useApp()
   const actions = useActions()
   const head = currentBranch(data)
@@ -231,8 +262,8 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
     )
   }, [active, toast, fullFile])
 
-  if (!entries) return <p className="empty"><span className="spinner" /></p>
-  if (entries.length === 0) return <p className="empty">{t('files.noCommits')}</p>
+  if (!entries) return <HistoryMessage><span className="spinner" /></HistoryMessage>
+  if (entries.length === 0) return <HistoryMessage>{t('files.noCommits')}</HistoryMessage>
 
   const restore = async (entry: FileHistoryEntry) => {
     const ok = await confirm({
@@ -257,50 +288,57 @@ function FileHistory({ path, onBlameAt }: { path: string; onBlameAt(sha: string)
   }
 
   return (
-    <Split id="file-history" className="file-history" direction="column" fixed initial={220} min={[60, 120]}>
-      <ul className="compare-commits history-list">
-        {entries.map((e) => (
-          <li
-            key={e.sha}
-            className={active?.sha === e.sha ? 'active' : ''}
-            onClick={() => {
-              setActive(e)
-              revealPane('file-history', 'second')
-            }}
-          >
-            <code>{shortSha(e.sha)}</code>
-            <span className="commit-subject">{e.subject}</span>
-            {e.path !== path && <span className="tag" title={t('files.nameAtCommit')}>{e.path}</span>}
-            <LineStats stats={e} />
-            <small className="muted">
-              {e.author} · {relativeDate(e.date)}
-            </small>
-          </li>
-        ))}
-      </ul>
-      {active ? (
-        <div className="diff-panel file-history-diff">
-          <div className="selection-bar">
-            <button
-              onClick={() => openDiffWindow({ source: { kind: 'commit', sha: active.sha }, path: active.path, title: `${active.path} · ${shortSha(active.sha)}` })}
-              title={t('diffExtra.openWindowHelp')}
-            >
-              ⧉ {t('diffExtra.openWindow')}
-            </button>
-            <button onClick={() => selectCommit(active.sha)}>{t('files.viewCommit')}</button>
-            <button onClick={() => onBlameAt(active.sha)}>{t('files.blameThisVersion')}</button>
-            <button onClick={() => restore(active)}>{t('files.restoreThisVersion')}</button>
-            {head && (
-              <button className="primary" disabled={!selection.size} onClick={applyLines}>
-                {t('common.applyLinesInto', { count: selection.size, target: head })}
+    <>
+      <PaneSlot id="files.history">
+        <section className="details file-details">
+          <FileHeader path={path} title={t('files.history')} />
+          <ul className="compare-commits history-list">
+            {entries.map((e) => (
+              <li
+                key={e.sha}
+                className={active?.sha === e.sha ? 'active' : ''}
+                onClick={() => {
+                  setActive(e)
+                  revealView('files.diff')
+                }}
+              >
+                <code>{shortSha(e.sha)}</code>
+                <span className="commit-subject">{e.subject}</span>
+                {e.path !== path && <span className="tag" title={t('files.nameAtCommit')}>{e.path}</span>}
+                <LineStats stats={e} />
+                <small className="muted">
+                  {e.author} · {relativeDate(e.date)}
+                </small>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </PaneSlot>
+      <PaneSlot id="files.diff">
+        {active ? (
+          <div className="diff-panel file-history-diff">
+            <div className="selection-bar">
+              <button
+                onClick={() => openDiffWindow({ source: { kind: 'commit', sha: active.sha }, path: active.path, title: `${active.path} · ${shortSha(active.sha)}` })}
+                title={t('diffExtra.openWindowHelp')}
+              >
+                ⧉ {t('diffExtra.openWindow')}
               </button>
-            )}
+              <button onClick={() => selectCommit(active.sha)}>{t('files.viewCommit')}</button>
+              <button onClick={() => onBlameAt(active.sha)}>{t('files.blameThisVersion')}</button>
+              <button onClick={() => restore(active)}>{t('files.restoreThisVersion')}</button>
+              {head && (
+                <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                  {t('common.applyLinesInto', { count: selection.size, target: head })}
+                </button>
+              )}
+            </div>
+            {diff ? <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} /> : <p className="empty"><span className="spinner" /></p>}
           </div>
-          {diff ? <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} /> : <p className="empty"><span className="spinner" /></p>}
-        </div>
-      ) : (
-        <div />
-      )}
-    </Split>
+        ) : (
+          <p className="empty">{t('files.noCommits')}</p>
+        )}
+      </PaneSlot>
+    </>
   )
 }

@@ -56,6 +56,9 @@ export function applySettings(settings: Settings, locale: LocaleId, title = 'Git
   root.dataset.theme = settings.theme === 'system' ? (vsCodeTheme() ?? 'system') : settings.theme
   root.lang = locale
   root.dir = textDirection()
+  // As letras de status (M, A, D…) somem pelo CSS, em todas as listas de uma vez.
+  if (settings.statusLetters) delete root.dataset.statusLetters
+  else root.dataset.statusLetters = 'off'
   root.style.setProperty('--divider-size', `${settings.dividerWidth}px`)
   root.style.setProperty('--pane-button-scale', String(settings.paneButtonScale))
   // Posição e tamanho das notificações (o CSS usa estes valores).

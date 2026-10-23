@@ -2,7 +2,7 @@
 //
 // Há três painéis — versão atual (ours), resultado e versão que entra (theirs) — e duas visões:
 //  - "classic": dois painéis em cima, lado a lado, e o terceiro embaixo (o resultado, por padrão);
-//  - "columns": os três lado a lado (como no SmartGit), na ordem que o usuário quiser.
+//  - "columns": os três lado a lado, na ordem que o usuário quiser.
 // O usuário pode arrastar os painéis para trocá-los de lugar. As setas dos botões ("usar esta →") e os
 // atalhos "pegar da esquerda/direita" são calculados a partir da posição real de cada painel na tela.
 
