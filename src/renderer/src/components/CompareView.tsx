@@ -187,7 +187,7 @@ export function CompareView({ request, onRequest }: Props) {
       <div className="group-header">
         <strong>{t('compare.differentFiles')}</strong> <span className="count">{comparison.files.length}</span>
         <span className="toolbar-spacer" />
-        <FileViewToggle compact />
+        <FileViewToggle />
       </div>
       {comparison.files.length === 0 ? (
         <p className="empty small">{t('compare.identical')}</p>

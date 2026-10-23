@@ -226,6 +226,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
           </div>
         )}
       </div>
+      <div className="diff-body">
       {file.binary ? (
         <p className="empty">{t('diff.binary')}</p>
       ) : file.hunks.length === 0 ? (
@@ -354,6 +355,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
           </tbody>
         </table>
       )}
+      </div>
     </div>
   )
 }

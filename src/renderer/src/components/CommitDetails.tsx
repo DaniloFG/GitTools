@@ -198,6 +198,13 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
 
   const messagePane = (
     <section className="details">
+      {head && (
+        <div className="commit-actions sticky-actions">
+          <button className="primary" onClick={() => actions.cherryPickCommits(head, [sha], details.subject)}>
+            🍒 {t('details.cherryPickInto', { target: head })}
+          </button>
+        </div>
+      )}
       <div className="commit-header">
         <h3>{details.subject}</h3>
         {details.body && <p className="commit-body pre-line">{details.body}</p>}
@@ -211,13 +218,6 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
           </code>
           {details.parents.length > 1 && <span className="tag">merge</span>}
         </div>
-        {head && (
-          <div className="commit-actions">
-            <button className="primary" onClick={() => actions.cherryPickCommits(head, [sha], details.subject)}>
-              🍒 {t('details.cherryPickInto', { target: head })}
-            </button>
-          </div>
-        )}
       </div>
     </section>
   )

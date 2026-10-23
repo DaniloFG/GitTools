@@ -185,7 +185,7 @@ export function ChangesView() {
           </button>
         ))}
       </div>
-      <FileViewToggle compact />
+      <FileViewToggle />
     </>
   )
 
@@ -202,7 +202,7 @@ export function ChangesView() {
               {t('changes.unstageAll')} ↑
             </button>
           )}
-          <FileViewToggle compact />
+          <FileViewToggle />
         </>
       ) : (
         <>

@@ -306,7 +306,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
           ⓘ <code>{t('history.log.chip')}</code>
         </span>
         <span className="muted hint">{t('history.hint')}</span>
-        <FileViewToggle compact />
+        <FileViewToggle />
       </div>
       <div className="commit-columns" title={t('history.columns.help')} style={{ gridTemplateColumns: template }}>
         <span className="row-toggle" />
