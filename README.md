@@ -4,6 +4,43 @@ Ferramenta com interface gráfica para usar o Git **arrastando e clicando**.
 O foco é deixar simples o que costuma ser difícil no terminal, em especial o **cherry-pick**:
 da branch inteira, de commits escolhidos, de **arquivos específicos** ou até de **linhas específicas** de um arquivo.
 
+![Dashboards: visão geral com indicadores, série temporal, contribuições, calendário de atividade e arquivos mais alterados](docs/screenshots/dashboards-visao-geral.png)
+
+## 📊 Dashboards — o histórico do projeto em números
+
+A aba **Dashboards** (`Ctrl+5`), no topo, ocupa a janela inteira e transforma o `git log` em painéis de gestão,
+governança e auditoria — sem exportar nada, sem BI, sem sair do repositório. Cada dashboard já abre com vários
+gráficos distintos e **todo gráfico muda de forma com um clique** (área, linhas, barras, rosca, treemap, mapa de calor,
+radar, dispersão, funil, medidor, calendário…) ou vira tabela.
+
+| Dashboard | O que mostra |
+| --------- | ------------ |
+| **Visão geral** | Indicadores com variação sobre o período anterior, commits ao longo do tempo, quem mais contribui, calendário de atividade, arquivos mais alterados, dia × hora, pastas e tipos de commit. |
+| **Pessoas** | Ranking por commits, linhas, arquivos ou dias ativos; contribuição de cada pessoa no tempo, esforço, perfil (radar), novos e recorrentes, *fator de ônibus* (quanto do trabalho depende de poucas pessoas), quem mexe em quê e tabela completa. |
+| **Código** | Arquivos mais alterados, mapa de pastas, linhas adicionadas/removidas, crescimento do código, tamanho dos commits, tipos de arquivo, *hotspots* de risco e arquivos que mudam juntos. |
+| **Cadência** | Calendário de atividade, dia da semana × hora, commits por hora e por mês, ritmo (média móvel), sequências e pausas e a linha do tempo das releases. |
+| **Governança** | Padrão de mensagens (*Conventional Commits*), horário comercial × fora dele × fim de semana, commits diretos × merges × reverts, funil de qualidade, **sinalizações de auditoria** (sem *Signed-off-by*, sem descrição, autor ≠ quem commitou, commits enormes…) e a lista de commits para revisar. |
+| **Repositório** | Branches (idade, saúde, à frente/atrás do remoto), tags e releases, composição do projeto por pasta e tamanho. |
+| **GitTools** | O que você fez *aqui*: saúde dos comandos git executados, os mais usados, duração, linha do tempo e os mais lentos. |
+
+![Dashboards: governança e auditoria](docs/screenshots/dashboards-governanca.png)
+
+- 🎛️ **Filtros numa linha só**: período (7 dias … tudo, ou datas), pessoa, todas as branches ou só a atual, incluir merges e ocultar bots.
+- ➕ **Galeria com 46 gráficos**: *Adicionar gráfico* abre o catálogo por categoria; monte **dashboards próprios**, renomeie, reordene e redimensione os cartões arrastando.
+- 🧾 **Auditoria**: cada gráfico tem visão em **tabela** e *Copiar CSV* para levar os números a uma planilha ou a um relatório.
+- 🌗 **Claro e escuro**, 6 idiomas, paleta acessível (cores com contraste e distinguíveis para daltônicos) e dicas ao passar o mouse em todos os gráficos.
+
+![Dashboards: pessoas](docs/screenshots/dashboards-pessoas.png)
+![Dashboards: código](docs/screenshots/dashboards-codigo.png)
+![Dashboards: cadência](docs/screenshots/dashboards-cadencia.png)
+![Dashboards: repositório](docs/screenshots/dashboards-repositorio.png)
+![Dashboards: o que foi feito no GitTools](docs/screenshots/dashboards-gittools.png)
+![Dashboards: galeria de gráficos](docs/screenshots/dashboards-galeria.png)
+![Dashboards no tema claro](docs/screenshots/dashboards-claro.png)
+
+Os números vêm direto do histórico local, lidos com um único `git log --numstat` (respeita o `.mailmap`),
+e nada sai do seu computador.
+
 ![Histórico com grafo de branches](docs/screenshots/historico.png)
 
 ## Por que o GitTools?
@@ -322,7 +359,7 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 
 | Ação | Padrão |
 | --- | --- |
-| Histórico / Alterações / Arquivos / Comparar | `Ctrl+1` … `Ctrl+4` |
+| Histórico / Alterações / Arquivos / Comparar / Dashboards | `Ctrl+1` … `Ctrl+5` |
 | Mostrar/ocultar a barra lateral | `Ctrl+B` |
 | Pesquisar no histórico | `Ctrl+F` |
 | Cherry-pick Studio | `Ctrl+Shift+P` |
@@ -396,6 +433,7 @@ interface real, com repositórios de exemplo criados na hora — `scripts/readme
 npm run build:extension                      # a interface empacotada que o roteiro abre
 node scripts/readme-media/capture.mjs local  # prints do README (pt-BR); `extension` gera os da extensão (en)
 node scripts/readme-media/gifs.mjs           # GIFs da extensão (precisa do ffmpeg)
+node scripts/readme-media/dashboards.mjs local      # prints dos Dashboards (pt-BR) num repositório de exemplo grande; `extension` (en) e `gif` também
 ```
 
 Precisam do [Playwright](https://playwright.dev/) instalado (`PLAYWRIGHT_MODULE` e `CHROMIUM` indicam onde,
