@@ -3,6 +3,9 @@ import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import type { LogOptions, RepoApi } from '../shared/api'
 import type {
+  Analytics,
+  AnalyticsCommit,
+  AnalyticsOptions,
   BlameResult,
   BranchCommit,
   BranchInfo,
@@ -55,8 +58,29 @@ const diffArgs = (fullFile = false) => (fullFile ? DIFF_ARGS.map((a) => (a === '
 /** Maior arquivo que o editor embutido abre (acima disso, o editor externo é o caminho). */
 const EDITABLE_MAX_BYTES = 2 * 1024 * 1024
 const FS = '\x1f'
+/** Separador (0x1d) entre a mensagem do commit e a lista de arquivos do `--numstat`. */
+const GS = '\x1d'
+/** Máximo de commits que os dashboards leem por vez (os mais recentes) e de arquivos da árvore atual. */
+const ANALYTICS_LIMIT = 20_000
+const ANALYTICS_TREE_LIMIT = 100_000
 const RS = '\x1e'
+const ANALYTICS_FORMAT = '%x1e%H%x1f%P%x1f%aN%x1f%aE%x1f%cN%x1f%cE%x1f%at%x1f%ct%x1f%s%x1f%D%x1f%b%x1d'
 const COMMIT_FORMAT = ['%H', '%P', '%an', '%ae', '%at', '%s', '%D'].join('%x1f') + '%x1e'
+
+/** Separa o texto da mensagem dos trailers ("Signed-off-by:", "Co-authored-by:"…) no fim dela. */
+function splitTrailers(body: string): { text: string; signedOff: boolean; coAuthors: number } {
+  let signedOff = false
+  let coAuthors = 0
+  const lines = body.replace(/\s+$/, '').split('\n')
+  while (lines.length) {
+    const line = lines[lines.length - 1]
+    if (/^signed-off-by:/i.test(line)) signedOff = true
+    else if (/^co-authored-by:/i.test(line)) coAuthors++
+    else if (line.trim() !== '' && !/^[A-Za-z][A-Za-z-]*: /.test(line)) break
+    lines.pop()
+  }
+  return { text: lines.join('\n').trim(), signedOff, coAuthors }
+}
 
 type RefKind = 'ref' | 'commit' | 'branch' | 'branchName' | 'tagName'
 
@@ -1077,6 +1101,81 @@ export class GitRepository implements RepoApi {
     const info = await lstat(full)
     if (!info.isFile()) throw new Error(t('core.notAFile', { path }))
     await writeFile(full, content, 'utf8')
+  }
+
+  // ------------------------------------------------------------ dashboards
+
+  async analytics(options: AnalyticsOptions = {}): Promise<Analytics> {
+    const scope = options.scope === 'head' ? 'head' : 'all'
+    const limit = Math.max(1, Math.min(Math.floor(options.limit ?? ANALYTICS_LIMIT), 200_000))
+    const generatedAt = Date.now()
+    const hasHead = (await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })).exitCode === 0
+    const args = ['log', '--no-renames', '--numstat', `--format=${ANALYTICS_FORMAT}`, '--date-order', `-n${limit + 1}`]
+    if (scope === 'all') {
+      args.push('--branches', '--remotes', '--tags')
+      if (hasHead) args.push('HEAD')
+    } else if (hasHead) args.push('HEAD')
+    else return { scope, commits: [], paths: [], truncated: false, tree: [], generatedAt }
+    args.push('--')
+    const { stdout } = await this.git(args)
+    const records = stdout.split(RS).filter((r) => r.trim())
+    const truncated = records.length > limit
+    const pathIndex = new Map<string, number>()
+    const paths: string[] = []
+    const commits: AnalyticsCommit[] = []
+    for (const record of records.slice(0, limit)) {
+      const end = record.indexOf(GS)
+      const head = (end === -1 ? record : record.slice(0, end)).replace(/^\n/, '').split(FS)
+      const numstat = end === -1 ? '' : record.slice(end + 1)
+      if (head.length < 11) continue
+      const [sha, parents, author, email, committer, committerEmail, at, ct, subject, decoration] = head
+      const body = head.slice(10).join(FS)
+      const { text, signedOff, coAuthors } = splitTrailers(body)
+      const files: [number, number, number][] = []
+      for (const line of numstat.split('\n')) {
+        const m = /^(-|\d+)\t(-|\d+)\t(.+)$/.exec(line)
+        if (!m) continue
+        let index = pathIndex.get(m[3])
+        if (index === undefined) {
+          index = paths.length
+          paths.push(m[3])
+          pathIndex.set(m[3], index)
+        }
+        files.push(m[1] === '-' ? [index, -1, -1] : [index, Number(m[1]), Number(m[2])])
+      }
+      commits.push({
+        sha,
+        parents: parents.trim() ? parents.trim().split(' ').length : 0,
+        author,
+        email,
+        committer,
+        committerEmail,
+        time: Number(at) * 1000,
+        commitTime: Number(ct) * 1000,
+        subject,
+        bodyLength: text.length,
+        signedOff,
+        coAuthors,
+        tags: decoration
+          .split(', ')
+          .filter((d) => d.startsWith('tag: '))
+          .map((d) => d.slice(5)),
+        files
+      })
+    }
+    return { scope, commits, paths, truncated, tree: hasHead ? await this.treeSizes() : [], generatedAt }
+  }
+
+  /** Arquivos da versão atual com o tamanho em bytes (não segue submódulos). */
+  private async treeSizes(): Promise<{ path: string; size: number }[]> {
+    const { stdout } = await this.git(['ls-tree', '-r', '-l', '-z', 'HEAD'])
+    const out: { path: string; size: number }[] = []
+    for (const entry of stdout.split('\0')) {
+      const m = /^\d+ blob [0-9a-f]+\s+(\d+)\t(.+)$/s.exec(entry)
+      if (m) out.push({ path: m[2], size: Number(m[1]) })
+      if (out.length >= ANALYTICS_TREE_LIMIT) break
+    }
+    return out
   }
 
   async blame(path: string, rev?: string): Promise<BlameResult> {

@@ -256,6 +256,17 @@ code {
   flex-direction: column;
   height: 100%;
 }
+.app > .dock-wrap {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.dashboards-tab {
+  margin-inline-start: 6px;
+  border-inline-start: 1px solid var(--border);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
 
 .toolbar {
   display: flex;

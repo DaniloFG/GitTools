@@ -1,5 +1,7 @@
 import type { Settings } from './settings'
 import type {
+  Analytics,
+  AnalyticsOptions,
   BlameResult,
   GitCommandEntry,
   GitConfigScope,
@@ -124,6 +126,10 @@ export interface RepoApi {
   conflictDetails(path: string): Promise<ConflictDetails>
   saveConflictResolution(path: string, content: string): Promise<void>
 
+  // Dashboards
+  /** Lê o histórico inteiro (commits, autores, arquivos e linhas) para os dashboards de métricas. */
+  analytics(options?: AnalyticsOptions): Promise<Analytics>
+
   // Comparação, arquivos, blame e histórico
   compare(from: string, to: string, sinceMergeBase?: boolean): Promise<Comparison>
   listFiles(): Promise<string[]>
@@ -195,6 +201,7 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'listFiles',
   'readFile',
   'writeFile',
+  'analytics',
   'blame',
   'fileHistory',
   'restoreFile',

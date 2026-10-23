@@ -36,6 +36,7 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         'view.changes': () => app.setView('changes'),
         'view.files': () => app.setView('files'),
         'view.compare': () => app.setView('compare'),
+        'view.dashboards': () => app.setDashboards(true),
         'layout.sidebar': () => toggleScreenShown('branches'),
         'history.search': () => {
           app.setView('history')

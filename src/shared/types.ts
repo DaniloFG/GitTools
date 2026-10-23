@@ -238,6 +238,54 @@ export interface BlameResult {
   commits: Record<string, BlameCommit>
 }
 
+// ---------------------------------------------------------------- análises (dashboards)
+
+/** Um commit com tudo o que os dashboards precisam (autor, committer, tamanho da mensagem, arquivos alterados). */
+export interface AnalyticsCommit {
+  sha: string
+  /** Quantidade de pais (2 ou mais = merge). */
+  parents: number
+  /** Autor e e-mail já resolvidos pelo .mailmap do repositório. */
+  author: string
+  email: string
+  committer: string
+  committerEmail: string
+  /** Data do autor, em ms. */
+  time: number
+  /** Data do commit (committer), em ms. */
+  commitTime: number
+  subject: string
+  /** Tamanho do corpo da mensagem (sem o título e sem os trailers), em caracteres. */
+  bodyLength: number
+  /** Há "Signed-off-by:" nos trailers. */
+  signedOff: boolean
+  /** Quantidade de "Co-authored-by:" nos trailers. */
+  coAuthors: number
+  /** Tags que apontam para o commit. */
+  tags: string[]
+  /** Arquivos alterados: [índice em `Analytics.paths`, linhas adicionadas, linhas removidas]; binários têm -1 nas duas. */
+  files: [number, number, number][]
+}
+
+export interface AnalyticsOptions {
+  /** O que ler: todas as branches e tags (padrão) ou só o histórico do HEAD. */
+  scope?: 'all' | 'head'
+  /** Máximo de commits lidos (os mais recentes). */
+  limit?: number
+}
+
+export interface Analytics {
+  scope: 'all' | 'head'
+  commits: AnalyticsCommit[]
+  /** Caminhos dos arquivos citados em `commits[].files`. */
+  paths: string[]
+  /** Havia mais commits do que o limite. */
+  truncated: boolean
+  /** Arquivos da versão atual (HEAD) com o tamanho em bytes. */
+  tree: { path: string; size: number }[]
+  generatedAt: number
+}
+
 /** Conteúdo de um arquivo da pasta do projeto, para o editor embutido. */
 export interface FileContent {
   path: string
