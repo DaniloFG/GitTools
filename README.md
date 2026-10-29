@@ -192,6 +192,24 @@ Marque as caixas das branches que interessam: o histórico (e as linhas do tempo
 delas, enquanto a lista de branches fica exatamente como estava — mesma altura, mesmas cores, mesmo painel à
 frente. *Mostrar todas* (na faixa de filtro, que tem sempre o mesmo tamanho) volta a listar tudo.
 
+### Vários repositórios abertos ao mesmo tempo
+
+Cada repositório aberto ganha uma **aba** com a cor dele (sempre a mesma para o mesmo caminho). A faixa no topo
+da janela e o nome na barra de ferramentas mostram de qual repositório é a tela. Abrir outro repositório (menu
+*Repositório* ou **＋**) cria uma nova aba; clique do meio ou **×** tiram a aba da sessão (nada é apagado, e
+quem tem alterações não commitadas ou operação em andamento é avisado antes).
+
+Para não misturar repositórios:
+
+- ao trocar de aba, a tela é montada de novo: seleção, diff, filtros e rascunhos não passam de um para o outro;
+- antes de trocar, as operações em andamento do repositório que sai terminam (com botão para trocar mesmo assim);
+- os diálogos de confirmação mostram o nome do repositório, e os avisos o citam quando há mais de um aberto;
+- o log de comandos diz de qual repositório é cada comando.
+
+Para trazer commits de um repositório para outro, arraste-os para a aba do destino ou use o menu de contexto
+*Aplicar em outro repositório aberto*. Antes de aplicar, o GitTools mostra origem e destino (com a branch atual
+do destino) e só então faz o cherry-pick. **Ctrl+Tab** / **Ctrl+Shift+Tab** alternam as abas e **Ctrl+W** fecha a aba atual.
+
 ### Clonar e identidade git
 
 | Clonar repositório | Identidade e remotes |
@@ -300,6 +318,12 @@ janela, junto de qualquer outro. A lista de commits, a descrição, os arquivos 
 *Não staged* e *Staged* (ou a lista com caixas de seleção), a caixa de commit, o diff das alterações, os
 arquivos, o blame, as versões de um arquivo, a comparação e o log do git são painéis separados.
 
+**Organização por menus:** a barra logo abaixo da ferramenta tem um menu por área (Histórico, Alterações,
+Arquivos, Comparar, Branches e Log do git), e cada um mostra só os painéis dele, sem os de outras áreas.
+Um painel de outra área aparece num menu só se você o fixou ali (▦ Painéis → *Painéis de outras telas*); o
+menu indica quantos estão fixados (ex.: *+2*). Ações que levam a outra área (como *Mostrar alterações* de um
+conflito) abrem o menu certo. Layouts salvos antes dessa organização mantêm posições e painéis escondidos.
+
 | Soltar no meio de outro painel: vira aba dele | Soltar junto de uma borda: divide o painel nesse lado |
 | --- | --- |
 | ![Arrastando a aba do diff para o meio da lista de commits](docs/screenshots/layout-arrastar-aba.png) | ![Arrastando a aba do diff para o lado direito da lista de commits](docs/screenshots/layout-arrastar-painel.png) |
@@ -313,15 +337,15 @@ arquivos, o blame, as versões de um arquivo, a comparação e o log do git são
   direita, em cima ou embaixo) ou na *borda da janela* (ocupa toda a altura ou a largura). Um destaque
   mostra onde ela vai ficar; soltar entre as abas de um painel só as reordena. Quando um painel fica sem
   abas ele some e os vizinhos ocupam o espaço.
-- **Telas**: os botões **Histórico / Alterações / Arquivos / Comparar** da barra superior (e
-  `Ctrl+1` … `Ctrl+4`) trazem à frente os painéis de cada tela, onde quer que você os tenha deixado —
-  são atalhos, não amarras. Clicar num arquivo ou commit também mostra o painel do diff, se ele estava
+- **Telas**: os menus da barra de menus (e `Ctrl+1` … `Ctrl+4`) mostram só os painéis de cada tela. Clicar
+  num arquivo ou commit mostra o painel do diff dentro do menu em que você está, mesmo que ele estivesse
   escondido ou atrás de outra aba.
 - **Botão direito numa aba**: *Separar para o lado* (esquerda, direita, em cima, embaixo), *Encaixar na
   borda da janela*, *Ocultar este painel* e *Restaurar layout padrão* — os mesmos movimentos do arrastar,
   para quem prefere o menu.
-- **▦ Painéis** (barra superior): mostra ou esconde qualquer painel, um a um. `Ctrl+B` mostra/oculta a
-  barra de Branches. Os painéis escondidos voltam para o lugar onde estavam.
+- **▦ Painéis** (barra de menus, à direita): mostra ou esconde os painéis do menu aberto, um a um, e fixa
+  painéis de outros menus nele. `Ctrl+B` mostra/oculta a barra de Branches no menu aberto. Os painéis
+  escondidos voltam para o lugar onde estavam.
 - **Divisórias**: arraste para redimensionar; duplo clique (ou `Enter`) deixa os dois lados iguais; com o
   foco na divisória, as setas ajustam o tamanho. Em janelas pequenas os painéis encolhem juntos.
 - **Restaurar layout**: ▦ Painéis → *Restaurar layout padrão* (ou ⚙ Configurações → Aparência), com
@@ -362,6 +386,7 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 | Histórico / Alterações / Arquivos / Comparar / Dashboards | `Ctrl+1` … `Ctrl+5` |
 | Mostrar/ocultar a barra lateral | `Ctrl+B` |
 | Pesquisar no histórico | `Ctrl+F` |
+| Próxima / anterior aba de repositório; fechar a aba | `Ctrl+Tab` / `Ctrl+Shift+Tab`; `Ctrl+W` |
 | Cherry-pick Studio | `Ctrl+Shift+P` |
 | Nova branch / Stash | `Ctrl+Shift+N` / `Ctrl+Shift+S` |
 | Fetch / Pull / Push | `Ctrl+Shift+F` / `Ctrl+Shift+L` / `Ctrl+Shift+K` |
@@ -375,6 +400,8 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 | Editor de conflitos: navegar / usar o painel da esquerda ou direita | `Alt+↑` `Alt+↓` / `Alt+←` `Alt+→` |
 
 No macOS, `Ctrl` corresponde a `⌘`. Todos podem ser trocados em ⚙ Configurações.
+
+**Copiar texto**: selecione com o mouse e use `Ctrl+C`, ou o botão direito (*Copiar linha*, *Copiar caminho*, *Copiar SHA*…). Num diff, as colunas de números e sinais não entram na cópia. Em linhas que se arrastam (commits, branches, arquivos), **segure `Alt`** enquanto arrasta para selecionar o texto.
 
 ## Extensão do VS Code
 

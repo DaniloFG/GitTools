@@ -14,6 +14,7 @@ import { LineStats } from './LineStats'
 import { FileEditor } from './FileEditor'
 import { draftPaths, useDraftsVersion } from '../editorDrafts'
 import { FileEntries, FileViewToggle } from './FileList'
+import { Loader, LoaderPane } from './Loader'
 
 const MAX_LISTED = 500
 const UNCOMMITTED = /^0+$/
@@ -162,7 +163,7 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
   }, [blame])
 
   if (error) return <p className="empty">{error}</p>
-  if (!blame) return <p className="empty"><span className="spinner" /></p>
+  if (!blame) return <LoaderPane label={t('loader.blame')} />
 
   const resizeGutter = (e: React.PointerEvent) => {
     const start = gutter
@@ -227,7 +228,7 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
 function FileHistoryPanes({ path, onBlameAt }: { path: string | null; onBlameAt(sha: string): void }) {
   // As versões só são lidas enquanto algum dos dois painéis está na tela.
   const shown = useAnyShown(['files.history', 'files.diff'])
-  return shown && path ? <FileHistoryLoaded key={path} path={path} onBlameAt={onBlameAt} /> : <HistoryMessage>{path ? <span className="spinner" /> : t('files.empty')}</HistoryMessage>
+  return shown && path ? <FileHistoryLoaded key={path} path={path} onBlameAt={onBlameAt} /> : <HistoryMessage>{path ? <Loader size="sm" label={t('loader.fileHistory')} /> : t('files.empty')}</HistoryMessage>
 }
 
 /** Mensagem nos dois painéis do histórico do arquivo (nada escolhido, carregando, sem commits). */
@@ -275,7 +276,7 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
     )
   }, [active, toast, fullFile])
 
-  if (!entries) return <HistoryMessage><span className="spinner" /></HistoryMessage>
+  if (!entries) return <HistoryMessage><Loader size="sm" label={t('loader.fileHistory')} /></HistoryMessage>
   if (entries.length === 0) return <HistoryMessage>{t('files.noCommits')}</HistoryMessage>
 
   const restore = async (entry: FileHistoryEntry) => {
@@ -341,12 +342,12 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
               <button onClick={() => onBlameAt(active.sha)}>{t('files.blameThisVersion')}</button>
               <button onClick={() => restore(active)}>{t('files.restoreThisVersion')}</button>
               {head && (
-                <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
                   {t('common.applyLinesInto', { count: selection.size, target: head })}
                 </button>
               )}
             </div>
-            {diff ? <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} /> : <p className="empty"><span className="spinner" /></p>}
+            {diff ? <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} /> : <LoaderPane label={t('loader.diff')} />}
           </div>
         ) : (
           <p className="empty">{t('files.noCommits')}</p>

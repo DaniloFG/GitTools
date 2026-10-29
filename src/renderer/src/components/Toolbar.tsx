@@ -2,31 +2,33 @@ import { useRecentRepos } from '../recent'
 import { useActions } from '../actions'
 import type { RecentRepo } from '../../../shared/api'
 import { useApp } from '../context'
+import { errorMessage } from '../format'
 import { git } from '../git'
 import { t } from '../i18n'
+import { normalizeRoot, repoColor } from '../workspace'
 
 interface ToolbarProps {
   onOpenRepository(path?: string, create?: boolean): void
   onClone(): void
-  /** Atalhos das telas (Histórico, Alterações…), ao lado do nome do repositório. */
-  screens?: React.ReactNode
-  /** Menu dos painéis e restaurar layout, junto das configurações. */
-  panels?: React.ReactNode
 }
 
-export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarProps) {
-  const { repo, data, run, showMenu, openStudio, openSettings, openInEditor } = useApp()
-  const { head, createBranch, createTag, stash, push, pushDialog } = useActions()
+/** Barra de ferramentas do repositório. Os menus do topo (telas e painéis) ficam na barra logo abaixo, em `App`. */
+export function Toolbar({ onOpenRepository, onClone }: ToolbarProps) {
+  const { repo, data, toast, showMenu, openStudio, openSettings, openInEditor, workspace } = useApp()
+  const { head, createBranch, createTag, stash, push, pushDialog, fetchRemote, pullRemote } = useActions()
   const { status } = data
 
   const { favorites, others, setFavorite, remove } = useRecentRepos(repo)
+  const showError = (error: unknown) => toast('error', errorMessage(error))
+  /** Repositórios já abertos nesta sessão aparecem marcados (abrir um deles só ativa a aba). */
+  const openRoots = new Set(workspace.repos.map((r) => normalizeRoot(r.root)))
   const repoItem = (r: RecentRepo) => ({
-    label: `${r.favorite ? '★ ' : ''}${r.name}`,
+    label: `${r.favorite ? '★ ' : ''}${r.name}${openRoots.has(normalizeRoot(r.path)) ? ` · ${t('repoTabs.openBadge')}` : ''}`,
     hint: r.path,
     onClick: () => onOpenRepository(r.path),
     actions: [
-      { icon: r.favorite ? '★' : '☆', title: r.favorite ? t('welcome.unfavorite') : t('welcome.favorite'), onClick: () => void setFavorite(r.path, !r.favorite) },
-      { icon: '✕', title: t('welcome.removeRecent'), onClick: () => void remove(r.path) }
+      { icon: r.favorite ? '★' : '☆', title: r.favorite ? t('welcome.unfavorite') : t('welcome.favorite'), onClick: () => setFavorite(r.path, !r.favorite).catch(showError) },
+      { icon: '✕', title: t('welcome.removeRecent'), onClick: () => remove(r.path).catch(showError) }
     ]
   })
   const otherFavorites = favorites.filter((r) => r.path !== repo.root)
@@ -36,7 +38,10 @@ export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarP
       { label: t('toolbar.openRepository'), onClick: () => onOpenRepository() },
       { label: t('toolbar.createRepository'), onClick: () => onOpenRepository(undefined, true) },
       { label: t('clone.menu'), onClick: onClone },
-      { label: t('toolbar.openFolder'), onClick: () => window.gittools.openFile('.') },
+      { label: t('toolbar.openFolder'), onClick: () => window.gittools.openFile('.', repo.root) },
+      'separator',
+      { label: t('repoTabs.closeThis'), onClick: () => workspace.close(repo.root) },
+      { label: t('repoTabs.closeOthers'), onClick: () => workspace.closeOthers(repo.root), disabled: workspace.repos.length < 2 },
       ...(otherFavorites.length ? (['separator'] as const) : []),
       ...otherFavorites.map(repoItem),
       ...(otherRecent.length ? (['separator'] as const) : []),
@@ -46,7 +51,10 @@ export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarP
   /** Seta ao lado de Enviar (ou botão direito nele): force push, outro remote, opções e remotes. */
   const pushMenu = async (e: React.MouseEvent) => {
     e.preventDefault()
-    const remotes = await git.remotes().catch(() => [])
+    const remotes = await git.remotes().catch((error) => {
+      showError(error)
+      return []
+    })
     showMenu(e, [
       { label: t('toolbar.push'), onClick: () => push() },
       { label: t('toolbar.pushForceLease'), onClick: () => push({ force: 'lease' }) },
@@ -62,20 +70,20 @@ export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarP
 
   return (
     <header className="toolbar">
-      <button className="repo-button" onClick={repoMenu} title={repo.root}>
+      <button className="repo-button" onClick={repoMenu} title={repo.root} style={{ '--repo': repoColor(repo.root) } as React.CSSProperties}>
+        <span className="repo-button-dot" aria-hidden />
         <span className="logo-mark">⑂</span>
         <strong>{repo.name}</strong> ▾
       </button>
       <span className="current-branch" title={t('toolbar.currentBranch')}>
         ⎇ {head ?? t('toolbar.detached', { sha: status.headSha?.slice(0, 7) ?? t('toolbar.noCommits') })}
       </span>
-      {screens}
       <div className="toolbar-spacer" />
       <div className="toolbar-group">
-        <button onClick={() => run(t('busy.fetch'), () => git.fetch())} title={t('toolbar.fetchHelp')}>
+        <button onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')}>
           ⟳ {t('toolbar.fetch')}
         </button>
-        <button onClick={() => run(t('busy.pull'), () => git.pull())} title={t('toolbar.pullHelp')}>
+        <button onClick={() => pullRemote()} title={t('toolbar.pullHelp')}>
           ↓ {t('toolbar.pull')} {status.behind > 0 && <span className="badge">{status.behind}</span>}
         </button>
         <span className="split-button">
@@ -102,7 +110,6 @@ export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarP
       <button className="primary" onClick={() => openStudio({ target: head ?? undefined })}>
         🍒 {t('studio.name')}
       </button>
-      {panels}
       <button className="icon-button settings-button" onClick={() => openSettings()} title={t('toolbar.settings')}>
         ⚙
       </button>

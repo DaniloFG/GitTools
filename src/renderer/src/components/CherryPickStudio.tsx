@@ -10,6 +10,7 @@ import { ResizableBox } from './ResizableBox'
 import { Split } from './Split'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
+import { LoaderPane } from './Loader'
 
 type Mode = 'branch' | 'commits' | 'files' | 'lines'
 
@@ -289,9 +290,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
               )}
             </div>
             {commits === null ? (
-              <p className="empty">
-                <span className="spinner" /> {t('studio.comparing')}
-              </p>
+              <LoaderPane label={t('studio.comparing')} />
             ) : source === target ? (
               <p className="empty">{t('studio.sameBranch')}</p>
             ) : commits.length === 0 ? (
@@ -449,9 +448,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                     {lineDiff ? (
                       <DiffView file={lineDiff} selection={lineSelection} onSelectionChange={setLineSelection} />
                     ) : (
-                      <p className="empty">
-                        <span className="spinner" />
-                      </p>
+                      <LoaderPane label={t('loader.diff')} />
                     )}
                   </>
                 )}

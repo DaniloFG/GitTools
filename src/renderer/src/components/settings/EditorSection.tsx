@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import type { EditorInfo } from '../../../../shared/api'
 import type { DiffLayout } from '../../../../shared/settings'
 import { t, type MessageKey } from '../../i18n'
+import { getActiveRoot } from '../../git'
 import type { SettingsSectionProps } from './sections'
 import { useAppInfo } from './useAppInfo'
+import { Loader } from '../Loader'
 
 const DIFF_LAYOUTS: { id: DiffLayout; label: MessageKey; help: MessageKey }[] = [
   { id: 'inline', label: 'diff.inline', help: 'diff.inlineHelp' },
@@ -30,7 +32,7 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
   const runTest = async () => {
     setTest('running')
     try {
-      await window.gittools.testEditor(draft.editor)
+      await window.gittools.testEditor(draft.editor, getActiveRoot() ?? undefined)
       setTest({ ok: true, message: t('editorSetup.testOk') })
     } catch (error) {
       setTest({ ok: false, message: error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(error) })
@@ -48,7 +50,7 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
       <p className="muted small">{t('settings.editor.editorHelp')}</p>
       {!editors ? (
         <p className="muted">
-          <span className="spinner" /> {t('settings.editor.detecting')}
+          <Loader size="sm" label={t('settings.editor.detecting')} />
         </p>
       ) : (
         <div className="language-list" role="radiogroup" aria-label={t('settings.editor.editor')}>
@@ -90,7 +92,7 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
       <div className="button-row">
         <button onClick={browse}>{t('settings.editor.browse')}</button>
         <button disabled={!draft.editor.trim() || test === 'running'} onClick={runTest}>
-          {test === 'running' ? <span className="spinner" /> : '▶'} {t('editorSetup.test')}
+          {test === 'running' ? <Loader size="sm" /> : '▶'} {t('editorSetup.test')}
         </button>
         {draft.editor && <button onClick={() => update({ editor: '' })}>{t('settings.editor.clear')}</button>}
       </div>

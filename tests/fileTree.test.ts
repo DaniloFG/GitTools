@@ -31,6 +31,14 @@ describe('fileTree', () => {
     expect(dir.kind === 'dir' && dir.children[0].kind === 'file' && dir.children[0].item).toBe(items[0])
   })
 
+  it('uma lista grande (5 000 arquivos) entra inteira na árvore, sem perder nenhum', () => {
+    const many = Array.from({ length: 5000 }, (_, i) => `pasta-${i % 40}/sub-${Math.floor(i / 40) % 25}/arquivo-${i}.ts`)
+    const big = buildTree(many, (f) => f)
+    const rows = flattenTree(big, new Set())
+    expect(big.reduce((n, node) => n + (node.kind === 'dir' ? node.fileCount : 1), 0)).toBe(5000)
+    expect(rows.filter((r) => r.kind === 'file').length).toBe(5000)
+  })
+
   it('valida o modo guardado', () => {
     expect(parseFileViewMode('tree')).toBe('tree')
     expect(parseFileViewMode('x')).toBe('list')

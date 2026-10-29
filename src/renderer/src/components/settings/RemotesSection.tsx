@@ -4,6 +4,7 @@ import { AppContext } from '../../context'
 import { errorMessage } from '../../format'
 import { git } from '../../git'
 import { t } from '../../i18n'
+import { Loader } from '../Loader'
 
 /**
  * Remotes (servidores) do repositório aberto: ver as URLs, adicionar outro remote — por exemplo o
@@ -89,7 +90,7 @@ export function RemotesSection() {
 
       {remotes === null ? (
         <p className="muted">
-          <span className="spinner" />
+          <Loader size="sm" label={t('loader.loading')} />
         </p>
       ) : remotes.length === 0 ? (
         <p className="empty small">{t('remotes.none')}</p>
@@ -162,7 +163,7 @@ export function RemotesSection() {
       </label>
       <div className="button-row">
         <button className="primary" disabled={busy || !name.trim() || !url.trim()} onClick={add}>
-          {busy ? <span className="spinner" /> : t('remotes.add')}
+          {busy ? <Loader size="sm" /> : t('remotes.add')}
         </button>
       </div>
       {message && <p className={message.ok ? 'success-text' : 'warning-text pre-line'}>{message.text}</p>}

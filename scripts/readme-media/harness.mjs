@@ -47,18 +47,24 @@ const BRIDGE = String.raw`
 (() => {
   const listeners = { cmd: new Set(), changed: new Set() }
   const call = (channel, ...args) => window.__gt(channel, args)
-  window.__emit = (channel, payload) => (channel === 'git:command' ? listeners.cmd : listeners.changed).forEach((l) => l(payload))
+  // Mesmo contrato do preload: "repo:changed" chega como o root (ou nada, quando a janela ganha o foco).
+  window.__emit = (channel, payload) => {
+    if (channel === 'git:command') listeners.cmd.forEach((l) => l(payload))
+    else listeners.changed.forEach((l) => l(payload && payload.root))
+  }
   const bridge = {
-    openRepository: (p) => call('app:openRepository', p), currentRepository: () => call('app:currentRepository'), initRepository: () => call('app:initRepository'),
+    openRepository: (p) => call('app:openRepository', p), openRepositories: () => call('app:openRepositories'), switchRepository: (r) => call('app:switchRepository', r),
+    closeRepository: (r) => call('app:closeRepository', r), cherryPickAcross: (s, t, shas, o) => call('app:cherryPickAcross', s, t, shas, o),
+    currentRepository: () => call('app:currentRepository'), initRepository: () => call('app:initRepository'),
     recentRepositories: () => call('app:recentRepositories'), removeRecentRepository: (p) => call('app:removeRecentRepository', p),
-    setRepositoryFavorite: (p, f) => call('app:setRepositoryFavorite', p, f), openFile: (p) => call('app:openFile', p),
-    detectEditors: () => call('app:detectEditors'), chooseEditor: () => call('app:chooseEditor'), openInEditor: (p) => call('app:openInEditor', p),
-    testEditor: (s) => call('app:testEditor', s), getSettings: () => call('app:getSettings'), saveSettings: (s) => call('app:saveSettings', s),
+    setRepositoryFavorite: (p, f) => call('app:setRepositoryFavorite', p, f), openFile: (p, r) => call('app:openFile', p, r),
+    detectEditors: () => call('app:detectEditors'), chooseEditor: () => call('app:chooseEditor'), openInEditor: (p, r) => call('app:openInEditor', p, r),
+    testEditor: (s, r) => call('app:testEditor', s, r), getSettings: () => call('app:getSettings'), saveSettings: (s) => call('app:saveSettings', s),
     appInfo: () => call('app:info'), gitLog: () => call('app:gitLog'),
     onGitCommand: (l) => { listeners.cmd.add(l); return () => listeners.cmd.delete(l) },
     openDiffWindow: (r) => call('app:openDiffWindow', r), chooseFolder: (t) => call('app:chooseFolder', t), defaultCloneFolder: () => call('app:defaultCloneFolder'),
-    cloneRepository: (u, p, n) => call('app:cloneRepository', u, p, n), gitIdentity: () => call('app:gitIdentity'), setGitIdentity: (s, i) => call('app:setGitIdentity', s, i),
-    setZoom: () => undefined, invoke: (m, ...a) => call('repo:invoke', m, a),
+    cloneRepository: (u, p, n) => call('app:cloneRepository', u, p, n), gitIdentity: (r) => call('app:gitIdentity', r), setGitIdentity: (s, i, r) => call('app:setGitIdentity', s, i, r), runGitCommand: (l, r) => call('app:runGit', l, r),
+    setZoom: () => undefined, invoke: (m, ...a) => call('repo:invoke', m, a), invokeOn: (r, m, ...a) => call('repo:invoke', m, a, r),
     onRepositoryChanged: (l) => { listeners.changed.add(l); return () => listeners.changed.delete(l) }
   }
   window.gittools = bridge
@@ -99,7 +105,7 @@ export async function launch(options) {
     homeDir: () => work,
     documentsDir: () => '/home/ana/Projects',
     systemLocales: () => [language],
-    versions: () => ({ host: options.host ?? 'electron', version: '0.7.0', electron: '38.0.0', chrome: '140.0.0', node: process.versions.node, platform: 'linux', ...(options.host === 'vscode' ? { vscode: '1.105.0' } : {}) }),
+    versions: () => ({ host: options.host ?? 'electron', version: '0.8.0', electron: '38.0.0', chrome: '140.0.0', node: process.versions.node, platform: 'linux', ...(options.host === 'vscode' ? { vscode: '1.105.0' } : {}) }),
     emit: (channel, payload) => events.push([channel, payload]),
     pickFolder: async () => null,
     openPath: async () => undefined,
@@ -111,7 +117,10 @@ export async function launch(options) {
     settingsChanged: () => undefined
   }
   const backend = new Backend(host)
-  await backend.invoke('app:openRepository', [options.repo])
+  // `more`: outros repositórios abertos junto (o primeiro, `repo`, fica ativo).
+  const more = options.more ?? []
+  for (const path of [options.repo, ...more]) await backend.invoke('app:openRepository', [path])
+  if (more.length) await backend.invoke('app:switchRepository', [options.repo])
 
   const { server, port } = await serve(join(root, 'extension/dist/webview'))
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] })

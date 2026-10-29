@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { isLightTheme, subscribeTheme } from '../appearance'
 import { AppContext } from '../context'
 import { folderIconSvg, iconNameFor, iconSvg } from '../fileIcons'
@@ -61,10 +61,16 @@ export interface FileRowContext {
 }
 
 const INDENT = 14
+/**
+ * Linhas montadas de cada vez. O resto entra conforme a lista rola: a lista inteira continua na
+ * memória, e "todos" / a seleção valem para todos os itens (só o desenho é adiado).
+ */
+export const ROW_BATCH = 300
 
 /**
  * Linhas (`<li>`) de uma lista de arquivos no modo escolhido. A tela decide o que cada linha tem
- * (checkbox, status, ações…) em `render`; aqui ficam a ordem, as pastas e o recolher/expandir.
+ * (checkbox, status, ações…) em `render`; aqui ficam a ordem, as pastas, o recolher/expandir e o
+ * carregamento por partes (com milhares de arquivos, montar todas as linhas trava a tela).
  */
 export function FileEntries<T>({
   items,
@@ -82,10 +88,47 @@ export function FileEntries<T>({
 }) {
   const [mode] = useFileViewMode()
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
+  const [shown, setShown] = useState(ROW_BATCH)
+  const sentinel = useRef<HTMLLIElement>(null)
   const tree = useMemo(() => (mode === 'tree' ? buildTree(items, pathOf) : []), [mode, items]) // eslint-disable-line react-hooks/exhaustive-deps
+  const treeRows = useMemo(() => (mode === 'tree' ? flattenTree(tree, collapsed) : []), [mode, tree, collapsed])
+  const total = mode === 'list' ? items.length : treeRows.length
+
+  // Ao chegar o marcador do fim (ou a lista ser rolada até ele), monta o lote seguinte. Refaz o
+  // observador a cada lote, para que um marcador que continue visível dispare de novo.
+  const observable = typeof IntersectionObserver !== 'undefined'
+  useEffect(() => {
+    const el = sentinel.current
+    if (!el || !observable || shown >= total) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setShown((n) => n + ROW_BATCH)
+      },
+      { rootMargin: '300px 0px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [shown, total, observable])
+
+  const more =
+    shown < total ? (
+      <li ref={sentinel} className="file-more" aria-live="polite">
+        {observable ? <span className="spinner" /> : null} {t('longList.loading')}
+        {!observable && (
+          <button className="link" onClick={() => setShown((n) => n + ROW_BATCH)}>
+            {t('longList.showMore')}
+          </button>
+        )}
+      </li>
+    ) : null
 
   if (mode === 'list') {
-    return <>{items.map((item) => render(item, { mode, label: <FileLabel path={pathOf(item)} oldPath={oldPathOf?.(item)} status={statusOf?.(item)} /> }))}</>
+    return (
+      <>
+        {items.slice(0, shown).map((item) => render(item, { mode, label: <FileLabel path={pathOf(item)} oldPath={oldPathOf?.(item)} status={statusOf?.(item)} /> }))}
+        {more}
+      </>
+    )
   }
 
   const toggle = (path: string) =>
@@ -97,7 +140,7 @@ export function FileEntries<T>({
 
   return (
     <>
-      {flattenTree(tree, collapsed).map((row) => {
+      {treeRows.slice(0, shown).map((row) => {
         if (row.kind === 'file') {
           const item = row.node.item
           const from = oldPathOf?.(item)
@@ -126,6 +169,7 @@ export function FileEntries<T>({
           </li>
         )
       })}
+      {more}
     </>
   )
 }

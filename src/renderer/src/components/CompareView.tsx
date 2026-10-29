@@ -11,6 +11,7 @@ import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
+import { Loader, LoaderPane, LoadingOverlay } from './Loader'
 
 interface Props {
   request: CompareRequest
@@ -155,7 +156,7 @@ export function CompareView({ request, onRequest }: Props) {
           {t('compare.sinceBase')}
         </label>
         <button className="primary" onClick={() => onRequest({ from, to })} disabled={loading}>
-          {loading ? <span className="spinner" /> : t('compare.compare')}
+          {loading ? <Loader size="sm" /> : t('compare.compare')}
         </button>
       </div>
       {!comparison ? (
@@ -180,46 +181,50 @@ export function CompareView({ request, onRequest }: Props) {
     </div>
   )
 
-  const filesPane = !comparison ? (
-    <p className="empty">{t('compare.empty')}</p>
-  ) : (
-    <div className="compare-side">
-      <div className="group-header">
-        <strong>{t('compare.differentFiles')}</strong> <span className="count">{comparison.files.length}</span>
-        <span className="toolbar-spacer" />
-        <FileViewToggle />
+  const filesPane = (
+    <LoadingOverlay active={loading} label={t('loader.compare')} className="loading-fill">
+      {!comparison ? (
+      <p className="empty">{t('compare.empty')}</p>
+    ) : (
+      <div className="compare-side">
+        <div className="group-header">
+          <strong>{t('compare.differentFiles')}</strong> <span className="count">{comparison.files.length}</span>
+          <span className="toolbar-spacer" />
+          <FileViewToggle />
+        </div>
+        {comparison.files.length === 0 ? (
+          <p className="empty small">{t('compare.identical')}</p>
+        ) : (
+          <ul className="file-list">
+            <FileEntries
+              items={comparison.files}
+              pathOf={(f) => f.path}
+              oldPathOf={(f) => f.oldPath}
+              statusOf={(f) => f.status}
+              render={(f, { label, style }) => (
+                <li
+                  key={f.path}
+                  style={style}
+                  className={`file-item ${active?.path === f.path ? 'active' : ''}`}
+                  onClick={() => {
+                    setCommit(null)
+                    setActive(f)
+                    revealView('compare.diff')
+                  }}
+                >
+                  <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
+                    {f.status}
+                  </span>
+                  {label}
+                  <LineStats stats={f} />
+                </li>
+              )}
+            />
+          </ul>
+        )}
       </div>
-      {comparison.files.length === 0 ? (
-        <p className="empty small">{t('compare.identical')}</p>
-      ) : (
-        <ul className="file-list">
-          <FileEntries
-            items={comparison.files}
-            pathOf={(f) => f.path}
-            oldPathOf={(f) => f.oldPath}
-            statusOf={(f) => f.status}
-            render={(f, { label, style }) => (
-              <li
-                key={f.path}
-                style={style}
-                className={`file-item ${active?.path === f.path ? 'active' : ''}`}
-                onClick={() => {
-                  setCommit(null)
-                  setActive(f)
-                  revealView('compare.diff')
-                }}
-              >
-                <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
-                  {f.status}
-                </span>
-                {label}
-                <LineStats stats={f} />
-              </li>
-            )}
-          />
-        </ul>
-      )}
-    </div>
+    )}
+    </LoadingOverlay>
   )
 
   const diffPane = (
@@ -227,9 +232,7 @@ export function CompareView({ request, onRequest }: Props) {
       {!comparison || !active ? (
         <p className="empty">{t('compare.selectFile')}</p>
       ) : !diff ? (
-        <p className="empty">
-          <span className="spinner" />
-        </p>
+        <LoaderPane label={t('loader.diff')} />
       ) : (
         <div className="diff-panel">
           <div className="selection-bar">
@@ -244,7 +247,7 @@ export function CompareView({ request, onRequest }: Props) {
             </button>
             {head && (
               <>
-                <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
                   {t('common.applyLinesInto', { count: selection.size, target: head })}
                 </button>
                 <button onClick={() => copyVersion(active)} title={t('compare.copyVersionHelp', { target: head, ref: comparison.to })}>

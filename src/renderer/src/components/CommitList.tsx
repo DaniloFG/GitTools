@@ -6,6 +6,7 @@ import { useBranchMenu } from '../branchMenu'
 import type { MenuItem } from './ContextMenu'
 import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
 import { useApp } from '../context'
+import { copyText } from '../copy'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, relativeDate, shortSha, statusLabel } from '../format'
 import { startReorder, useOrder } from '../reorder'
@@ -18,6 +19,7 @@ import { useDrop } from '../useDrop'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
 import type { FileStatus } from '../../../shared/types'
+import { Loader } from './Loader'
 
 const ROW = 30
 const LANE = 14
@@ -74,7 +76,7 @@ interface Props {
 type FilesState = ChangedFile[] | 'loading' | { error: string }
 
 export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onOpenFileWindow, onOpenWipFile }: Props) {
-  const { data, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
+  const { data, repo, workspace, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
   const [query, setQuery] = useState('')
@@ -230,6 +232,14 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
       })),
       { label: t('history.menu.checkout'), onClick: () => actions.checkout(commit.sha) }
     ]
+    // Outros repositórios abertos: os commits vão para a branch atual deles (com confirmação, no nível do app).
+    const otherRepos = workspace.repos.filter((r) => r.root !== repo.root)
+    const summary = (root: string) => workspace.summaries[root]
+    const branchOf = (root: string) => {
+      const s = summary(root)
+      if (!s) return '…'
+      return s.detached ? (s.headSha?.slice(0, 7) ?? t('repoTabs.noBranch')) : (s.branch ?? t('repoTabs.noBranch'))
+    }
     showMenu(e, [
       ...checkouts,
       'separator',
@@ -238,6 +248,17 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
             {
               label: t('history.menu.cherryPick', { count: shas.length, target: head }),
               onClick: () => actions.cherryPickCommits(head, shas, shas.length === 1 ? commit.subject : undefined)
+            }
+          ]
+        : []),
+      ...(otherRepos.length > 0
+        ? [
+            {
+              label: t('repoTabs.applyAcross'),
+              submenu: otherRepos.map((r) => ({
+                label: `${r.name} (${branchOf(r.root)})`,
+                onClick: () => workspace.applyAcross(repo.root, r.root, shas)
+              }))
             }
           ]
         : []),
@@ -255,7 +276,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
       { label: t('history.menu.reset', { branch: head ?? 'HEAD' }), onClick: () => actions.reset(commit) },
       'separator',
       actions.copyMessageMenu(shas),
-      { label: t('history.menu.copySha'), onClick: () => navigator.clipboard.writeText(commit.sha) }
+      { label: t('history.menu.copySha'), onClick: () => copyText(commit.sha) }
     ])
   }
 
@@ -421,8 +442,14 @@ const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, te
     <div
       className={`commit-row ${selected ? 'selected' : ''} ${open ? 'expanded' : ''}`}
       style={{ gridTemplateColumns: template }}
+      tabIndex={-1}
+      data-copy={commit.subject}
+      data-copy-what="message"
       onClick={(e) => handlers.current.click(e, pos)}
-      onDoubleClick={() => handlers.current.toggle(commit.sha)}
+      onDoubleClick={(e) => {
+        // Duplo clique num texto da linha seleciona a palavra (para copiar); fora dele, abre ou fecha os arquivos.
+        if (!(e.target as HTMLElement).closest('.commit-subject, .commit-author, .commit-date, .commit-sha')) handlers.current.toggle(commit.sha)
+      }}
       onContextMenu={(e) => handlers.current.menu(e, commit)}
       draggable
       onDragStart={(e) => {
@@ -729,7 +756,7 @@ function CommitFiles({
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
       { label: t('common.openInEditor'), onClick: () => openInEditor(file.path) },
       'separator',
-      { label: t('history.files.copyPath'), onClick: () => navigator.clipboard.writeText(file.path) }
+      { label: t('history.files.copyPath'), onClick: () => copyText(file.path) }
     ])
 
   return (
@@ -743,7 +770,7 @@ function CommitFiles({
       <ul style={{ paddingInlineStart: indent ? GRAPH_OFFSET + graphWidth + 8 : GRAPH_OFFSET }}>
         {files === 'loading' ? (
           <li className="muted">
-            <span className="spinner" />
+            <Loader size="sm" label={t('loader.files')} />
           </li>
         ) : 'error' in files ? (
           <li className="warning-text">{files.error}</li>
@@ -760,6 +787,9 @@ function CommitFiles({
                 key={file.path}
                 className="commit-file"
                 style={style}
+                tabIndex={-1}
+                data-copy={file.path}
+                data-copy-what="path"
                 title={`${file.oldPath ? `${file.oldPath} → ` : ''}${file.path}\n${t('history.files.help')}`}
                 onClick={() => onOpenFile(file.path)}
                 onDoubleClick={() => onOpenFileWindow(file.path)}
