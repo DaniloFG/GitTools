@@ -3,6 +3,7 @@ import type {
   Analytics,
   AnalyticsOptions,
   BlameResult,
+  BulkResolutionResult,
   GitCommandEntry,
   GitConfigScope,
   GitIdentities,
@@ -97,6 +98,8 @@ export interface RepoApi {
 
   // Conflitos e operações em andamento
   resolveConflict(path: string, resolution: ConflictResolution): Promise<void>
+  /** Resolve vários arquivos em conflito em lotes; a falha de um arquivo não interrompe os outros. */
+  resolveConflicts(paths: string[], resolution: ConflictResolution): Promise<BulkResolutionResult>
   continueOperation(): Promise<OperationResult>
   skipOperation(): Promise<OperationResult>
   abortOperation(): Promise<void>
@@ -179,6 +182,7 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'cherryPickFiles',
   'cherryPickLines',
   'resolveConflict',
+  'resolveConflicts',
   'continueOperation',
   'skipOperation',
   'abortOperation',

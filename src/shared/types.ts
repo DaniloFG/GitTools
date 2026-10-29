@@ -170,6 +170,14 @@ export interface OperationResult {
 
 export type ConflictResolution = 'ours' | 'theirs' | 'resolved'
 
+/** Resultado de resolver vários arquivos em conflito de uma vez. */
+export interface BulkResolutionResult {
+  /** Quantos arquivos deixaram de estar em conflito. */
+  resolved: number
+  /** Arquivos que continuam em conflito (ou nem estavam), com o motivo. */
+  failed: { path: string; message: string }[]
+}
+
 export type LineAction = 'stage' | 'unstage' | 'discard' | 'apply'
 
 export interface CherryPickOptions {

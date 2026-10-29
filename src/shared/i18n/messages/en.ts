@@ -506,6 +506,42 @@ export const en: Messages = {
     cumulative: 'Showing the cumulative difference from {from} to {to}.',
     includesIntermediate: '(includes the commits in between)'
   },
+  conflictBulk: {
+    title: 'Resolve all',
+    resolveAllLabel: 'Resolve all:',
+    keepOurs: 'Keep all local (ours)',
+    keepOursHelp: 'Keeps the current branch version (HEAD) in every conflicted file',
+    takeTheirs: 'Accept all incoming (theirs)',
+    takeTheirsHelp: 'Keeps the version being applied in every conflicted file',
+    markResolved: 'Mark all as resolved',
+    markResolvedHelp: 'Marks as resolved the files that no longer have <<<<<<< markers (the others are left out)',
+    menuLabel: 'Resolve all files',
+    menuHelp: 'Applies the resolution to every conflicted file in the repository',
+    confirmOursTitle: 'Keep the current version in all files?',
+    confirmTheirsTitle: 'Accept the incoming version in all files?',
+    confirmResolvedTitle: 'Mark all as resolved?',
+    confirmOurs: {
+      one: 'This resolves {count} conflicted file by keeping the current version (HEAD). Manual edits in it will be discarded.',
+      other: 'This resolves {count} conflicted files by keeping the current version (HEAD). Manual edits in them will be discarded.'
+    },
+    confirmTheirs: {
+      one: 'This resolves {count} conflicted file by keeping the incoming version. Manual edits in it will be discarded.',
+      other: 'This resolves {count} conflicted files by keeping the incoming version. Manual edits in them will be discarded.'
+    },
+    confirmResolved: {
+      one: 'This marks {count} file as resolved. If it still has <<<<<<< markers, it will be skipped.',
+      other: 'This marks {count} files as resolved. Those that still have <<<<<<< markers will be skipped.'
+    },
+    done: { one: '1 file resolved.', other: '{count} files resolved.' },
+    partial: 'Resolved: {resolved}. Not resolved: {failed} ({list}).',
+    filterLabel: 'Filter conflicted files',
+    filterPlaceholder: 'Filter files…',
+    showing: 'Showing {shown} of {count}',
+    noMatch: 'No file matches the filter.',
+    notConflicted: 'Not in conflict',
+    hasMarkers: 'Still has conflict markers',
+    stillConflicted: 'Still in conflict'
+  },
   conflict: {
     titleShort: 'Conflict in {path}',
     title: 'Resolve conflict — {path}',

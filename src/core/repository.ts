@@ -9,6 +9,7 @@ import type {
   BlameResult,
   BranchCommit,
   BranchInfo,
+  BulkResolutionResult,
   ChangedFile,
   CherryPickOptions,
   CommitDetails,
@@ -255,6 +256,12 @@ function checkRemote(name: string, url: string): { name: string; url: string } {
   if (!cleanUrl || cleanUrl.startsWith('-') || /[\0\r\n]/.test(cleanUrl)) throw new Error(t('remotes.invalidUrl'))
   return { name: cleanName, url: cleanUrl }
 }
+
+/** Caminhos por comando git ao resolver vários conflitos: a linha de comando tem limite de tamanho. */
+const CONFLICT_BATCH = 100
+
+/** Mensagem legível de um erro qualquer (para o resultado de operações em lote). */
+const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
 export class GitRepository implements RepoApi {
   private emptyTreeSha: string | null = null
@@ -873,6 +880,97 @@ export class GitRepository implements RepoApi {
         await this.git(['rm', '-q', '--', path])
       } else throw error
     }
+  }
+
+  /**
+   * Resolve vários arquivos em conflito de uma vez, em lotes de CONFLICT_BATCH caminhos. Um arquivo que falha
+   * não interrompe os demais: o resultado diz quantos foram resolvidos e o motivo de cada falha.
+   * A semântica de ours/theirs é a de resolveConflict (estágios 2 = HEAD e 3 = que entra).
+   */
+  async resolveConflicts(paths: string[], resolution: ConflictResolution): Promise<BulkResolutionResult> {
+    const stages = await this.unmergedStages()
+    const unique = [...new Set(paths)]
+    const errors = new Map<string, string>()
+    let todo = unique.filter((p) => stages.has(p))
+
+    // Marcar como resolvido com marcadores no texto deixaria <<<<<<< no commit: esses arquivos ficam de fora.
+    if (resolution === 'resolved') {
+      const ready: string[] = []
+      for (const path of todo) {
+        try {
+          if (await this.hasConflictMarkers(path)) errors.set(path, t('conflictBulk.hasMarkers'))
+          else ready.push(path)
+        } catch (error) {
+          errors.set(path, reasonOf(error))
+        }
+      }
+      todo = ready
+    }
+
+    for (let i = 0; i < todo.length; i += CONFLICT_BATCH) {
+      const batch = todo.slice(i, i + CONFLICT_BATCH)
+      try {
+        await this.applyBulkResolution(batch, resolution, stages)
+      } catch {
+        // Um caminho problemático não pode derrubar o lote: tenta um a um para descobrir quais falham.
+        for (const path of batch) {
+          try {
+            await this.applyBulkResolution([path], resolution, stages)
+          } catch (error) {
+            errors.set(path, reasonOf(error))
+          }
+        }
+      }
+    }
+
+    // O resultado vem do estado final do índice: o que ainda está em conflito conta como falha.
+    const after = await this.unmergedStages()
+    const result: BulkResolutionResult = { resolved: 0, failed: [] }
+    for (const path of unique) {
+      if (!stages.has(path)) result.failed.push({ path, message: t('conflictBulk.notConflicted') })
+      else if (after.has(path)) result.failed.push({ path, message: errors.get(path) ?? t('conflictBulk.stillConflicted') })
+      else result.resolved++
+    }
+    return result
+  }
+
+  /** Arquivos em conflito no índice e os estágios de cada um (1 = ancestral, 2 = HEAD, 3 = que entra). */
+  private async unmergedStages(): Promise<Map<string, Set<number>>> {
+    const { stdout } = await this.git(['ls-files', '-u', '-z'])
+    const stages = new Map<string, Set<number>>()
+    for (const entry of stdout.split('\0')) {
+      // Formato de cada entrada: "<modo> <objeto> <estágio>\t<caminho>"
+      const tab = entry.indexOf('\t')
+      if (tab < 0) continue
+      const path = entry.slice(tab + 1)
+      const set = stages.get(path) ?? new Set<number>()
+      set.add(Number(entry.slice(0, tab).split(' ')[2]))
+      stages.set(path, set)
+    }
+    return stages
+  }
+
+  /** Aplica a resolução a um lote de caminhos que estão em conflito (mesma regra de resolveConflict). */
+  private async applyBulkResolution(paths: string[], resolution: ConflictResolution, stages: Map<string, Set<number>>): Promise<void> {
+    if (resolution === 'resolved') {
+      await this.git(['add', '--', ...paths])
+      return
+    }
+    const stage = resolution === 'ours' ? 2 : 3
+    const withSide = paths.filter((p) => stages.get(p)?.has(stage))
+    // O lado escolhido removeu o arquivo: resolver = remover.
+    const withoutSide = paths.filter((p) => !stages.get(p)?.has(stage))
+    if (withSide.length) {
+      await this.git(['checkout', `--${resolution}`, '--', ...withSide])
+      await this.git(['add', '--', ...withSide])
+    }
+    if (withoutSide.length) await this.git(['rm', '-q', '--ignore-unmatch', '--', ...withoutSide])
+  }
+
+  /** O arquivo ainda tem marcadores <<<<<<< no início de uma linha. Arquivo ausente conta como sem marcadores. */
+  private async hasConflictMarkers(path: string): Promise<boolean> {
+    const text = await readFile(resolveInside(this.root, path), 'utf8').catch(() => '')
+    return /^<{7}(?: |$)/m.test(text)
   }
 
   async continueOperation(): Promise<OperationResult> {

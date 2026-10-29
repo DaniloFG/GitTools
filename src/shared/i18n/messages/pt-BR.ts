@@ -507,6 +507,42 @@ export const ptBR = {
     cumulative: 'Mostrando a diferença acumulada de {from} até {to}.',
     includesIntermediate: '(inclui os commits intermediários)'
   },
+  conflictBulk: {
+    title: 'Resolver todos',
+    resolveAllLabel: 'Resolver todos:',
+    keepOurs: 'Manter todos locais (ours)',
+    keepOursHelp: 'Mantém a versão da branch atual (HEAD) em todos os arquivos em conflito',
+    takeTheirs: 'Aceitar todos os recebidos (theirs)',
+    takeTheirsHelp: 'Mantém a versão que está sendo aplicada em todos os arquivos em conflito',
+    markResolved: 'Marcar todos como resolvidos',
+    markResolvedHelp: 'Marca como resolvidos os arquivos que já não têm marcadores <<<<<<< (os demais ficam de fora)',
+    menuLabel: 'Resolver todos os arquivos',
+    menuHelp: 'Aplica a resolução a todos os arquivos em conflito do repositório',
+    confirmOursTitle: 'Manter a versão atual em todos?',
+    confirmTheirsTitle: 'Aceitar a versão recebida em todos?',
+    confirmResolvedTitle: 'Marcar todos como resolvidos?',
+    confirmOurs: {
+      one: 'Isto resolve {count} arquivo em conflito mantendo a versão atual (HEAD). Edições feitas à mão nele serão descartadas.',
+      other: 'Isto resolve {count} arquivos em conflito mantendo a versão atual (HEAD). Edições feitas à mão neles serão descartadas.'
+    },
+    confirmTheirs: {
+      one: 'Isto resolve {count} arquivo em conflito mantendo a versão recebida. Edições feitas à mão nele serão descartadas.',
+      other: 'Isto resolve {count} arquivos em conflito mantendo a versão recebida. Edições feitas à mão neles serão descartadas.'
+    },
+    confirmResolved: {
+      one: 'Isto marca {count} arquivo como resolvido. Se ele ainda tiver marcadores <<<<<<<, será pulado.',
+      other: 'Isto marca {count} arquivos como resolvidos. Os que ainda tiverem marcadores <<<<<<< serão pulados.'
+    },
+    done: { one: '1 arquivo resolvido.', other: '{count} arquivos resolvidos.' },
+    partial: 'Resolvidos: {resolved}. Não resolvidos: {failed} ({list}).',
+    filterLabel: 'Filtrar arquivos em conflito',
+    filterPlaceholder: 'Filtrar arquivos…',
+    showing: 'Mostrando {shown} de {count}',
+    noMatch: 'Nenhum arquivo corresponde ao filtro.',
+    notConflicted: 'Não está em conflito',
+    hasMarkers: 'Ainda tem marcadores de conflito',
+    stillConflicted: 'Continua em conflito'
+  },
   conflict: {
     titleShort: 'Conflito em {path}',
     title: 'Resolver conflito — {path}',

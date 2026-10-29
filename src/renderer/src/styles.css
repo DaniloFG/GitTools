@@ -1474,14 +1474,18 @@ button.ghost.danger-text:hover:not(:disabled) {
   margin-inline-start: auto;
 }
 .conflict-list {
-  flex-basis: 100%;
-  order: 3;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 4px 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  /* Com dezenas de arquivos a lista rola dentro do próprio box, sem tomar a tela. */
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .conflict-list li {
   display: flex;
@@ -1494,6 +1498,40 @@ button.ghost.danger-text:hover:not(:disabled) {
   font-size: 12px;
 }
 .conflict-list button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* ------------------------------------------ conflitos: filtro e resolver todos */
+
+/* O painel ocupa uma linha própria do banner; a lista de arquivos rola dentro dele. */
+.conflict-panel {
+  flex-basis: 100%;
+  order: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+/* Filtro e ações em lote ficam acima da lista, fora da rolagem. */
+.conflict-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.conflict-filter {
+  flex: 1 1 180px;
+  max-width: 320px;
+}
+.conflict-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+.conflict-tools button {
   padding: 2px 8px;
   font-size: 12px;
 }

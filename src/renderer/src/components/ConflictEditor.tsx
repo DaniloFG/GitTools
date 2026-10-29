@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { ConflictDetails } from '../../../shared/types'
 import { buildResult, parseConflicts, resolveChunk, type ChunkResolution, type MergeChunk } from '../../../shared/conflicts'
 import { useApp } from '../context'
+import { BULK_RESOLUTIONS, bulkHelp, bulkLabel, useResolveAll } from '../bulkConflicts'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { t, textDirection } from '../i18n'
@@ -41,6 +42,7 @@ const withArrow = (label: string, arrow: string) => (LEADING_ARROWS.has(arrow) ?
  */
 export function ConflictEditor({ path, onClose }: { path: string; onClose(): void }) {
   const { run, toast, showMenu } = useApp()
+  const resolveAll = useResolveAll()
   const [details, setDetails] = useState<ConflictDetails | null>(null)
   const [resolutions, setResolutions] = useState<(ChunkResolution | undefined)[]>([])
   const [showFinal, setShowFinal] = useState(false)
@@ -385,6 +387,25 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
           <span className="footer-summary">
             {conflicts.length === 0 ? t('conflict.noMarkers') : t('conflict.progress', { resolved: resolvedCount, count: conflicts.length })}
           </span>
+          <button
+            title={t('conflictBulk.menuHelp')}
+            onClick={(e) =>
+              showMenu(
+                e,
+                BULK_RESOLUTIONS.map((resolution) => ({
+                  label: t(bulkLabel(resolution)),
+                  hint: t(bulkHelp(resolution)),
+                  onClick: async () => {
+                    const result = await resolveAll(resolution)
+                    // Se este arquivo saiu do conflito, a janela já não tem o que mostrar.
+                    if (result && !result.failed.some((f) => f.path === path)) onClose()
+                  }
+                }))
+              )
+            }
+          >
+            {t('conflictBulk.menuLabel')} ▾
+          </button>
           <button onClick={() => window.gittools.openFile(path)}>{t('common.openInEditor')}</button>
           <button onClick={onClose}>{t('common.cancel')}</button>
           <button className="primary" disabled={resolvedCount < conflicts.length} onClick={save}>
