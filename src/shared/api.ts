@@ -25,6 +25,7 @@ import type {
   FileHistoryEntry,
   LineAction,
   LineKey,
+  OpenRepositories,
   OperationResult,
   OperationState,
   PartialApplyOptions,
@@ -255,10 +256,28 @@ export interface RecentRepo {
   favorite?: boolean
 }
 
-/** API exposta pelo preload em `window.gittools`. */
+/**
+ * API exposta pelo preload em `window.gittools`.
+ *
+ * Vários repositórios podem estar abertos ao mesmo tempo. Um deles é o ativo: `invoke`, `currentRepository`
+ * e os pedidos sem `root` usam o ativo. Quem recebe `root` (opcional, no fim dos argumentos) usa o
+ * repositório aberto com esse caminho; se ele não estiver aberto, a chamada falha.
+ */
 export interface GitToolsBridge {
+  /** Abre (ou só ativa, se já estiver aberto) o repositório; null se cancelar a escolha de pasta. */
   openRepository(path?: string): Promise<RepoInfo | null>
-  /** Repositório já aberto no processo principal (ex.: passado pela linha de comando). */
+  /** Repositórios abertos nesta sessão e o ativo. Ao iniciar, reabre os da última sessão que ainda existem. */
+  openRepositories(): Promise<OpenRepositories>
+  /** Torna ativo um repositório já aberto. */
+  switchRepository(root: string): Promise<RepoInfo>
+  /** Fecha o repositório só nesta sessão (nada é apagado). Se era o ativo, ativa o vizinho ou nenhum. */
+  closeRepository(root: string): Promise<OpenRepositories>
+  /**
+   * Traz commits do repositório `sourceRoot` e os aplica na branch atual de `targetRoot` (ambos abertos
+   * e diferentes). Conflitos voltam em `conflicts`, com a operação em andamento no destino.
+   */
+  cherryPickAcross(sourceRoot: string, targetRoot: string, shas: string[], options?: CherryPickOptions): Promise<OperationResult>
+  /** Repositório ativo (já aberto no processo principal, ex.: passado pela linha de comando). */
   currentRepository(): Promise<RepoInfo | null>
   initRepository(): Promise<RepoInfo | null>
   recentRepositories(): Promise<RecentRepo[]>
@@ -266,15 +285,16 @@ export interface GitToolsBridge {
   removeRecentRepository(path: string): Promise<void>
   /** Move um repositório para o grupo de favoritos, ou o tira de lá. */
   setRepositoryFavorite(path: string, favorite: boolean): Promise<void>
-  openFile(relativePath: string): Promise<void>
+  /** Abre o arquivo do repositório `root` (ou do ativo) com o programa padrão. */
+  openFile(relativePath: string, root?: string): Promise<void>
   /** Editores de código instalados neste computador. */
   detectEditors(): Promise<EditorInfo[]>
   /** Pede ao usuário o executável de um editor; null se cancelar. */
   chooseEditor(): Promise<string | null>
   /** Abre um arquivo (ou a pasta do repositório, com ".") no editor escolhido nas configurações. */
-  openInEditor(relativePath: string): Promise<void>
+  openInEditor(relativePath: string, root?: string): Promise<void>
   /** Abre a pasta do repositório com o editor informado (sem precisar salvar), para testá-lo. */
-  testEditor(setting: string): Promise<void>
+  testEditor(setting: string, root?: string): Promise<void>
   getSettings(): Promise<Settings>
   saveSettings(settings: Settings): Promise<void>
   /** Comandos git executados até agora (os mais recentes por último). */
@@ -288,16 +308,20 @@ export interface GitToolsBridge {
   defaultCloneFolder(): Promise<string>
   /** Clona e abre o repositório. */
   cloneRepository(url: string, parent: string, name: string): Promise<RepoInfo>
-  gitIdentity(): Promise<GitIdentities>
-  setGitIdentity(scope: GitConfigScope, identity: GitIdentity): Promise<void>
+  gitIdentity(root?: string): Promise<GitIdentities>
+  setGitIdentity(scope: GitConfigScope, identity: GitIdentity, root?: string): Promise<void>
   /**
-   * Roda uma linha de comando git no repositório aberto (terminal integrado ao log). Sem shell: pipes,
+   * Roda uma linha de comando git no repositório ativo (terminal integrado ao log). Sem shell: pipes,
    * redirecionamentos e programas arbitrários são recusados; a saída vem em stdout/stderr.
    */
   runGitCommand(commandLine: string): Promise<TerminalCommandResult>
   appInfo(): Promise<AppInfo>
   /** Aplica a escala da interface imediatamente. */
   setZoom(factor: number): void
+  /** Chama um método do repositório ativo. */
   invoke<M extends RepoMethod>(method: M, ...args: Parameters<RepoApi[M]>): ReturnType<RepoApi[M]>
-  onRepositoryChanged(listener: () => void): () => void
+  /** Chama um método de um repositório aberto específico (`root`), sem depender do ativo. */
+  invokeOn<M extends RepoMethod>(root: string, method: M, ...args: Parameters<RepoApi[M]>): ReturnType<RepoApi[M]>
+  /** Avisa quando algo mudou num repositório; `root` é o repositório (ausente quando a janela ganhou foco). */
+  onRepositoryChanged(listener: (root?: string) => void): () => void
 }

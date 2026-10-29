@@ -967,6 +967,13 @@ export const en: Messages = {
     unknownOperation: 'Unknown operation: {method}',
     noRepository: 'No repository is open.'
   },
+  multiRepo: {
+    notOpen: 'The repository "{root}" is not open in GitTools.',
+    sameRepository: 'Source and target must be different repositories.',
+    targetDetached: 'The repository "{root}" has no branch (detached HEAD). Choose a branch before bringing in commits.',
+    targetDirty: 'The repository "{root}" has uncommitted changes. Commit or stash them before bringing in commits.',
+    targetBusy: 'The repository "{root}" has an operation in progress. Finish or abort it before bringing in commits.'
+  },
   dash: {
     title: 'Dashboards',
     tabHelp: 'Metrics, charts and audit of the git history',

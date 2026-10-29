@@ -5,6 +5,13 @@ export interface RepoInfo {
   name: string
 }
 
+/** Repositórios abertos nesta sessão e qual deles é o ativo (o que a interface mostra). */
+export interface OpenRepositories {
+  repos: RepoInfo[]
+  /** Root do ativo, ou null se nenhum estiver aberto. */
+  active: string | null
+}
+
 export type LineKind = 'context' | 'add' | 'del'
 
 export interface DiffLine {

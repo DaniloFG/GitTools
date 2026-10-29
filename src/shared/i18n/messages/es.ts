@@ -967,6 +967,13 @@ export const es: Messages = {
     unknownOperation: 'Operación desconocida: {method}',
     noRepository: 'No hay ningún repositorio abierto.'
   },
+  multiRepo: {
+    notOpen: 'El repositorio "{root}" no está abierto en GitTools.',
+    sameRepository: 'El origen y el destino deben ser repositorios distintos.',
+    targetDetached: 'El repositorio "{root}" no tiene rama (HEAD separado). Elige una rama antes de traer commits.',
+    targetDirty: 'El repositorio "{root}" tiene cambios sin confirmar. Confirma o guarda esos cambios antes de traer commits.',
+    targetBusy: 'El repositorio "{root}" tiene una operación en curso. Termina o aborta esa operación antes de traer commits.'
+  },
   dash: {
     title: 'Paneles',
     tabHelp: 'Métricas, gráficos y auditoría del historial de git',

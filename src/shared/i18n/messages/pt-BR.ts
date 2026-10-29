@@ -968,6 +968,13 @@ export const ptBR = {
     unknownOperation: 'Operação desconhecida: {method}',
     noRepository: 'Nenhum repositório aberto.'
   },
+  multiRepo: {
+    notOpen: 'O repositório "{root}" não está aberto no GitTools.',
+    sameRepository: 'Origem e destino precisam ser repositórios diferentes.',
+    targetDetached: 'O repositório "{root}" está sem branch (HEAD destacado). Escolha uma branch antes de trazer commits.',
+    targetDirty: 'O repositório "{root}" tem alterações que não foram commitadas. Faça commit ou guarde essas alterações antes de trazer commits.',
+    targetBusy: 'O repositório "{root}" tem uma operação em andamento. Conclua ou aborte essa operação antes de trazer commits.'
+  },
   dash: {
     title: 'Dashboards',
     tabHelp: 'Métricas, gráficos e auditoria do histórico do git',

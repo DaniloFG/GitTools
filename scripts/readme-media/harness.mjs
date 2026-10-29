@@ -49,16 +49,18 @@ const BRIDGE = String.raw`
   const call = (channel, ...args) => window.__gt(channel, args)
   window.__emit = (channel, payload) => (channel === 'git:command' ? listeners.cmd : listeners.changed).forEach((l) => l(payload))
   const bridge = {
-    openRepository: (p) => call('app:openRepository', p), currentRepository: () => call('app:currentRepository'), initRepository: () => call('app:initRepository'),
+    openRepository: (p) => call('app:openRepository', p), openRepositories: () => call('app:openRepositories'), switchRepository: (r) => call('app:switchRepository', r),
+    closeRepository: (r) => call('app:closeRepository', r), cherryPickAcross: (s, t, shas, o) => call('app:cherryPickAcross', s, t, shas, o),
+    currentRepository: () => call('app:currentRepository'), initRepository: () => call('app:initRepository'),
     recentRepositories: () => call('app:recentRepositories'), removeRecentRepository: (p) => call('app:removeRecentRepository', p),
-    setRepositoryFavorite: (p, f) => call('app:setRepositoryFavorite', p, f), openFile: (p) => call('app:openFile', p),
-    detectEditors: () => call('app:detectEditors'), chooseEditor: () => call('app:chooseEditor'), openInEditor: (p) => call('app:openInEditor', p),
-    testEditor: (s) => call('app:testEditor', s), getSettings: () => call('app:getSettings'), saveSettings: (s) => call('app:saveSettings', s),
+    setRepositoryFavorite: (p, f) => call('app:setRepositoryFavorite', p, f), openFile: (p, r) => call('app:openFile', p, r),
+    detectEditors: () => call('app:detectEditors'), chooseEditor: () => call('app:chooseEditor'), openInEditor: (p, r) => call('app:openInEditor', p, r),
+    testEditor: (s, r) => call('app:testEditor', s, r), getSettings: () => call('app:getSettings'), saveSettings: (s) => call('app:saveSettings', s),
     appInfo: () => call('app:info'), gitLog: () => call('app:gitLog'),
     onGitCommand: (l) => { listeners.cmd.add(l); return () => listeners.cmd.delete(l) },
     openDiffWindow: (r) => call('app:openDiffWindow', r), chooseFolder: (t) => call('app:chooseFolder', t), defaultCloneFolder: () => call('app:defaultCloneFolder'),
-    cloneRepository: (u, p, n) => call('app:cloneRepository', u, p, n), gitIdentity: () => call('app:gitIdentity'), setGitIdentity: (s, i) => call('app:setGitIdentity', s, i), runGitCommand: (l) => call('app:runGit', l),
-    setZoom: () => undefined, invoke: (m, ...a) => call('repo:invoke', m, a),
+    cloneRepository: (u, p, n) => call('app:cloneRepository', u, p, n), gitIdentity: (r) => call('app:gitIdentity', r), setGitIdentity: (s, i, r) => call('app:setGitIdentity', s, i, r), runGitCommand: (l) => call('app:runGit', l),
+    setZoom: () => undefined, invoke: (m, ...a) => call('repo:invoke', m, a), invokeOn: (r, m, ...a) => call('repo:invoke', m, a, r),
     onRepositoryChanged: (l) => { listeners.changed.add(l); return () => listeners.changed.delete(l) }
   }
   window.gittools = bridge

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
@@ -295,18 +296,21 @@ export class GitRepository implements RepoApi {
     return results
   }
 
-  /** Só o git 2.25+ aceita `--pathspec-from-file`. A versão é consultada uma vez por processo. */
-  private static pathspecFileSupport: Promise<boolean> | null = null
+  /**
+   * Só o git 2.25+ aceita `--pathspec-from-file`. A versão é consultada uma vez por instância (não
+   * por processo: cada repositório aberto tem o seu próprio estado).
+   */
+  private pathspecFileSupport: Promise<boolean> | null = null
 
   private supportsPathspecFile(): Promise<boolean> {
-    GitRepository.pathspecFileSupport ??= this.git(['--version']).then(
+    this.pathspecFileSupport ??= this.git(['--version']).then(
       ({ stdout }) => {
         const [, major, minor] = /(\d+)\.(\d+)/.exec(stdout) ?? []
         return Number(major) > 2 || (Number(major) === 2 && Number(minor) >= 25)
       },
       () => false
     )
-    return GitRepository.pathspecFileSupport
+    return this.pathspecFileSupport
   }
 
   /**
@@ -841,6 +845,58 @@ export class GitRepository implements RepoApi {
       commits.map((c) => c.sha),
       options
     )
+  }
+
+  /**
+   * Traz commits de outro repositório (`sourceRoot`, já aberto no GitTools) e os aplica na branch
+   * atual deste. Antes de tocar em qualquer coisa confere: há branch, não há operação em andamento e
+   * não há alterações pendentes. Os objetos vêm pelo fetch (ver `fetchFrom`).
+   */
+  async cherryPickFrom(sourceRoot: string, shas: string[], options: CherryPickOptions = {}): Promise<OperationResult> {
+    if (!shas.length) throw new Error(t('core.selectCommit'))
+    shas.forEach((s) => assertRef(s, 'commit'))
+    const unique = [...new Set(shas)]
+    const status = await this.status()
+    if (status.detached || !status.branch) throw new Error(t('multiRepo.targetDetached', { root: this.root }))
+    // Antes das alterações: com uma operação em andamento, os conflitos também deixariam o destino "sujo".
+    const op = await this.operationState()
+    if (op.kind !== 'none') throw new Error(t('multiRepo.targetBusy', { root: this.root }))
+    // Arquivos não rastreados não impedem o cherry-pick: só o que está (ou ficaria) misturado com os commits.
+    if (status.staged.length || status.conflicted.length || status.unstaged.some((f) => !f.untracked)) {
+      throw new Error(t('multiRepo.targetDirty', { root: this.root }))
+    }
+    await this.fetchFrom(sourceRoot, unique)
+    return this.cherryPickCommits(status.branch, unique, options)
+  }
+
+  /**
+   * Copia para este repositório os objetos dos `shas` do repositório `sourceRoot`. Se o git não aceitar
+   * pedir commits pelo sha, cai para as refs da origem numa área temporária (`fetchByRefs`).
+   */
+  private async fetchFrom(sourceRoot: string, shas: string[]): Promise<void> {
+    try {
+      await this.fetchBySha(sourceRoot, shas)
+    } catch {
+      await this.fetchByRefs(sourceRoot)
+    }
+  }
+
+  /** `git fetch <origem> <sha>...` em lotes. Sem criar refs: o fetch não recebe nenhum destino. */
+  private async fetchBySha(sourceRoot: string, shas: string[]): Promise<void> {
+    // O protocolo v2 aceita pedir qualquer objeto pelo sha; a versão é fixada para não depender do padrão do git.
+    await this.gitInBatches(['-c', 'protocol.version=2', 'fetch', '--no-tags', sourceRoot], shas)
+  }
+
+  /** Plano B: traz as refs da origem para `refs/gittools-tmp/<id>/` e apaga essas refs ao fim, mesmo com erro. */
+  private async fetchByRefs(sourceRoot: string): Promise<void> {
+    const namespace = `refs/gittools-tmp/${randomUUID()}`
+    try {
+      await this.git(['fetch', '--no-tags', sourceRoot, `refs/*:${namespace}/*`])
+    } finally {
+      const { stdout } = await this.git(['for-each-ref', '--format=%(refname)', namespace])
+      const refs = stdout.split('\n').filter(Boolean)
+      if (refs.length) await this.git(['update-ref', '--stdin'], { input: refs.map((r) => `delete ${r}\n`).join('') })
+    }
   }
 
   private async assertCanCommitAfter(options: PartialApplyOptions): Promise<void> {

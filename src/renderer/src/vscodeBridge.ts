@@ -44,7 +44,7 @@ export function installVsCodeBridge(): boolean {
   let nextId = 0
   const pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void }>()
   const commandListeners = new Set<(entry: GitCommandEntry) => void>()
-  const changeListeners = new Set<() => void>()
+  const changeListeners = new Set<(root?: string) => void>()
 
   window.addEventListener('message', (event: MessageEvent<HostToWebview>) => {
     const message = event.data
@@ -57,7 +57,11 @@ export function installVsCodeBridge(): boolean {
       else waiting.reject(new Error(message.error))
     } else if (message.type === 'event') {
       if (message.channel === 'git:command') commandListeners.forEach((l) => l(message.payload as GitCommandEntry))
-      else changeListeners.forEach((l) => l())
+      else {
+        // O aviso do watcher traz `{ root }`; quem não traz (ou ganhou foco) avisa sem repositório.
+        const root = (message.payload as { root?: string } | undefined)?.root
+        changeListeners.forEach((l) => l(root))
+      }
     }
   })
   // O painel voltou a ser mostrado ou ganhou o foco: o repositório pode ter mudado por fora.
@@ -75,16 +79,20 @@ export function installVsCodeBridge(): boolean {
 
   const bridge: GitToolsBridge = {
     openRepository: (path) => call('app:openRepository', path),
+    openRepositories: () => call('app:openRepositories'),
+    switchRepository: (root) => call('app:switchRepository', root),
+    closeRepository: (root) => call('app:closeRepository', root),
+    cherryPickAcross: (sourceRoot, targetRoot, shas, options) => call('app:cherryPickAcross', sourceRoot, targetRoot, shas, options),
     currentRepository: () => call('app:currentRepository'),
     initRepository: () => call('app:initRepository'),
     recentRepositories: () => call('app:recentRepositories'),
     removeRecentRepository: (path) => call('app:removeRecentRepository', path),
     setRepositoryFavorite: (path, favorite) => call('app:setRepositoryFavorite', path, favorite),
-    openFile: (relativePath) => call('app:openFile', relativePath),
+    openFile: (relativePath, root) => call('app:openFile', relativePath, root),
     detectEditors: () => call('app:detectEditors'),
     chooseEditor: () => call('app:chooseEditor'),
-    openInEditor: (relativePath) => call('app:openInEditor', relativePath),
-    testEditor: (setting) => call('app:testEditor', setting),
+    openInEditor: (relativePath, root) => call('app:openInEditor', relativePath, root),
+    testEditor: (setting, root) => call('app:testEditor', setting, root),
     getSettings: () => call('app:getSettings'),
     saveSettings: (settings) => call('app:saveSettings', settings),
     appInfo: () => call('app:info'),
@@ -97,12 +105,13 @@ export function installVsCodeBridge(): boolean {
     chooseFolder: (title) => call('app:chooseFolder', title),
     defaultCloneFolder: () => call('app:defaultCloneFolder'),
     cloneRepository: (url, parent, name) => call('app:cloneRepository', url, parent, name),
-    gitIdentity: () => call('app:gitIdentity'),
-    setGitIdentity: (scope, identity) => call('app:setGitIdentity', scope, identity),
+    gitIdentity: (root) => call('app:gitIdentity', root),
+    setGitIdentity: (scope, identity, root) => call('app:setGitIdentity', scope, identity, root),
     runGitCommand: (commandLine) => call('app:runGit', commandLine),
     // O zoom do webview segue o do VS Code.
     setZoom: () => undefined,
     invoke: ((method: string, ...args: unknown[]) => call('repo:invoke', method, args)) as GitToolsBridge['invoke'],
+    invokeOn: ((root: string, method: string, ...args: unknown[]) => call('repo:invoke', method, args, root)) as GitToolsBridge['invokeOn'],
     onRepositoryChanged: (listener) => {
       changeListeners.add(listener)
       return () => void changeListeners.delete(listener)

@@ -3,6 +3,10 @@
 /** Nomes dos canais, iguais aos usados entre a interface e o processo principal. */
 export const BRIDGE_CHANNELS = [
   'app:openRepository',
+  'app:openRepositories',
+  'app:switchRepository',
+  'app:closeRepository',
+  'app:cherryPickAcross',
   'app:currentRepository',
   'app:initRepository',
   'app:recentRepositories',

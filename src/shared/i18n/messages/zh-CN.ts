@@ -933,6 +933,13 @@ export const zhCN: Messages = {
     unknownOperation: '未知操作：{method}',
     noRepository: '没有打开的仓库。'
   },
+  multiRepo: {
+    notOpen: '仓库 "{root}" 未在 GitTools 中打开。',
+    sameRepository: '源仓库和目标仓库必须不同。',
+    targetDetached: '仓库 "{root}" 没有分支（HEAD 处于分离状态）。请先选择一个分支，再引入提交。',
+    targetDirty: '仓库 "{root}" 有未提交的更改。请先提交或暂存这些更改，再引入提交。',
+    targetBusy: '仓库 "{root}" 有正在进行的操作。请先完成或中止该操作，再引入提交。'
+  },
   dash: {
     title: '仪表盘',
     tabHelp: 'git 历史的指标、图表与审计',

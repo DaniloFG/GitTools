@@ -976,6 +976,13 @@ export const ar: Messages = {
     unknownOperation: 'عملية غير معروفة: {method}',
     noRepository: 'لا يوجد مستودع مفتوح.'
   },
+  multiRepo: {
+    notOpen: 'المستودع "{root}" غير مفتوح في GitTools.',
+    sameRepository: 'يجب أن يكون المصدر والوجهة مستودعين مختلفين.',
+    targetDetached: 'المستودع "{root}" بلا فرع (HEAD منفصل). اختر فرعًا قبل جلب الإيداعات.',
+    targetDirty: 'المستودع "{root}" يحتوي تغييرات غير مُودَعة. أودِعها أو احفظها مؤقتًا قبل جلب الإيداعات.',
+    targetBusy: 'المستودع "{root}" فيه عملية قيد التنفيذ. أكملها أو ألغها قبل جلب الإيداعات.'
+  },
   dash: {
     title: 'لوحات المعلومات',
     tabHelp: 'مقاييس ومخططات وتدقيق لسجل git',
