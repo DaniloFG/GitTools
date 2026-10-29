@@ -221,6 +221,8 @@ export interface DiffWindowRequest {
   path: string
   /** Título da janela (padrão: o caminho do arquivo). */
   title?: string
+  /** Repositório do diff: a janela só fala com ele, mesmo que a aba ativa mude depois. */
+  root?: string
 }
 
 export interface AppInfo {
@@ -311,10 +313,10 @@ export interface GitToolsBridge {
   gitIdentity(root?: string): Promise<GitIdentities>
   setGitIdentity(scope: GitConfigScope, identity: GitIdentity, root?: string): Promise<void>
   /**
-   * Roda uma linha de comando git no repositório ativo (terminal integrado ao log). Sem shell: pipes,
-   * redirecionamentos e programas arbitrários são recusados; a saída vem em stdout/stderr.
+   * Roda uma linha de comando git no repositório `root` (ou no ativo, sem `root`), no terminal integrado ao log.
+   * Sem shell: pipes, redirecionamentos e programas arbitrários são recusados; a saída vem em stdout/stderr.
    */
-  runGitCommand(commandLine: string): Promise<TerminalCommandResult>
+  runGitCommand(commandLine: string, root?: string): Promise<TerminalCommandResult>
   appInfo(): Promise<AppInfo>
   /** Aplica a escala da interface imediatamente. */
   setZoom(factor: number): void

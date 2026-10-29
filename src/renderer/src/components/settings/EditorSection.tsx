@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { EditorInfo } from '../../../../shared/api'
 import type { DiffLayout } from '../../../../shared/settings'
 import { t, type MessageKey } from '../../i18n'
+import { getActiveRoot } from '../../git'
 import type { SettingsSectionProps } from './sections'
 import { useAppInfo } from './useAppInfo'
 import { Loader } from '../Loader'
@@ -31,7 +32,7 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
   const runTest = async () => {
     setTest('running')
     try {
-      await window.gittools.testEditor(draft.editor)
+      await window.gittools.testEditor(draft.editor, getActiveRoot() ?? undefined)
       setTest({ ok: true, message: t('editorSetup.testOk') })
     } catch (error) {
       setTest({ ok: false, message: error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(error) })

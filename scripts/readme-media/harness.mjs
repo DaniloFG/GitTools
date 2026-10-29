@@ -47,7 +47,11 @@ const BRIDGE = String.raw`
 (() => {
   const listeners = { cmd: new Set(), changed: new Set() }
   const call = (channel, ...args) => window.__gt(channel, args)
-  window.__emit = (channel, payload) => (channel === 'git:command' ? listeners.cmd : listeners.changed).forEach((l) => l(payload))
+  // Mesmo contrato do preload: "repo:changed" chega como o root (ou nada, quando a janela ganha o foco).
+  window.__emit = (channel, payload) => {
+    if (channel === 'git:command') listeners.cmd.forEach((l) => l(payload))
+    else listeners.changed.forEach((l) => l(payload && payload.root))
+  }
   const bridge = {
     openRepository: (p) => call('app:openRepository', p), openRepositories: () => call('app:openRepositories'), switchRepository: (r) => call('app:switchRepository', r),
     closeRepository: (r) => call('app:closeRepository', r), cherryPickAcross: (s, t, shas, o) => call('app:cherryPickAcross', s, t, shas, o),
@@ -59,7 +63,7 @@ const BRIDGE = String.raw`
     appInfo: () => call('app:info'), gitLog: () => call('app:gitLog'),
     onGitCommand: (l) => { listeners.cmd.add(l); return () => listeners.cmd.delete(l) },
     openDiffWindow: (r) => call('app:openDiffWindow', r), chooseFolder: (t) => call('app:chooseFolder', t), defaultCloneFolder: () => call('app:defaultCloneFolder'),
-    cloneRepository: (u, p, n) => call('app:cloneRepository', u, p, n), gitIdentity: (r) => call('app:gitIdentity', r), setGitIdentity: (s, i, r) => call('app:setGitIdentity', s, i, r), runGitCommand: (l) => call('app:runGit', l),
+    cloneRepository: (u, p, n) => call('app:cloneRepository', u, p, n), gitIdentity: (r) => call('app:gitIdentity', r), setGitIdentity: (s, i, r) => call('app:setGitIdentity', s, i, r), runGitCommand: (l, r) => call('app:runGit', l, r),
     setZoom: () => undefined, invoke: (m, ...a) => call('repo:invoke', m, a), invokeOn: (r, m, ...a) => call('repo:invoke', m, a, r),
     onRepositoryChanged: (l) => { listeners.changed.add(l); return () => listeners.changed.delete(l) }
   }
@@ -113,7 +117,10 @@ export async function launch(options) {
     settingsChanged: () => undefined
   }
   const backend = new Backend(host)
-  await backend.invoke('app:openRepository', [options.repo])
+  // `more`: outros repositórios abertos junto (o primeiro, `repo`, fica ativo).
+  const more = options.more ?? []
+  for (const path of [options.repo, ...more]) await backend.invoke('app:openRepository', [path])
+  if (more.length) await backend.invoke('app:switchRepository', [options.repo])
 
   const { server, port } = await serve(join(root, 'extension/dist/webview'))
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] })

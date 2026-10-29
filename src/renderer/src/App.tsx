@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
-import type { RepoInfo } from '../../shared/types'
+import type { OpenRepositories, RepoInfo } from '../../shared/types'
+import type { RecentRepo } from '../../shared/api'
 import { applySettings, resolveLocale } from './appearance'
 import { insideVsCode } from './vscodeBridge'
 import {
@@ -9,8 +10,10 @@ import {
   type CompareRequest,
   type RepoData,
   type StudioRequest,
+  type ToastAction,
   type ToastKind,
-  type View
+  type View,
+  type WorkspaceApi
 } from './context'
 import { CherryPickStudio } from './components/CherryPickStudio'
 import { ChangesView } from './components/ChangesView'
@@ -20,7 +23,7 @@ import { CommitList } from './components/CommitList'
 import { CompareView } from './components/CompareView'
 import { ConflictEditor } from './components/ConflictEditor'
 import { ContextMenu, type MenuItem, type MenuState } from './components/ContextMenu'
-import { DialogHost, type DialogState } from './components/Dialogs'
+import { DialogHost, type ConfirmRequest, type DialogScope, type DialogState } from './components/Dialogs'
 import { FilesPanes } from './components/FilesView'
 import { GitLogView } from './components/GitLogView'
 import { KeyboardShortcuts } from './components/KeyboardShortcuts'
@@ -37,11 +40,13 @@ import { addToast, type Toast } from './feedback'
 import { useUnhandledErrors } from './useUnhandledErrors'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
+import { RepoTabs } from './components/RepoTabs'
 import { Dock, type ViewMeta } from './components/Dock'
 import { installCopy } from './copy'
 import { errorMessage, shortSha } from './format'
-import { git } from './git'
-import { getLocale, setLocale, t } from './i18n'
+import { gitCalls, git, setActiveRoot } from './git'
+import { draftPaths } from './editorDrafts'
+import { getLocale, setLocale, t, type MessageKey } from './i18n'
 import { resetLayout as clearLayout, useLayout } from './layout'
 import { historySignature, mergeData, type LogCache } from './stable'
 import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
@@ -49,6 +54,19 @@ import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
 import { openScreen, useDock, useScreen } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
 import { PaneSlot, WhenShown } from './slots'
+import {
+  cycleIndex,
+  normalizeRoot,
+  prefixToast,
+  repoColor,
+  sameRoot,
+  summarize,
+  SWITCH_FORCE_HINT_MS,
+  SWITCH_WAIT_MS,
+  unsavedWork,
+  type RepoSummary,
+  type UnsavedReason
+} from './workspace'
 
 export type { HistoryScope }
 
@@ -65,46 +83,51 @@ const COMPARE_VIEWS: ViewId[] = ['compare.setup', 'compare.files', 'compare.diff
 /** Nenhum painel atingido (valor fixo, para o contexto não mudar a cada desenho quando não há operação). */
 const NO_VIEWS: readonly ViewId[] = []
 
+/** Texto do trabalho em aberto ("3 alterações não commitadas, uma operação em andamento"). */
+function describeWork(work: UnsavedReason[]): string {
+  return work
+    .map((r) => (r.kind === 'changes' ? t('repoTabs.close.changes', { count: r.count }) : r.kind === 'operation' ? t('repoTabs.close.operation') : t('repoTabs.close.drafts', { count: r.count })))
+    .join(', ')
+}
+
+/** Mesma lista (mesmos repositórios, na mesma ordem e com o mesmo ativo)? */
+function sameOpened(a: OpenRepositories, b: OpenRepositories): boolean {
+  return a.active === b.active && a.repos.length === b.repos.length && a.repos.every((r, i) => r.root === b.repos[i].root)
+}
+
+/**
+ * Nível do app: as abas dos repositórios abertos, configurações, avisos e os diálogos do próprio app.
+ * Cada aba é um `RepoView` com `key` do repositório: ao trocar de aba, ele é remontado do zero, e nenhum estado
+ * (seleção, diff, filtros, rascunhos, caches) passa de um repositório para o outro.
+ */
 export function App() {
-  const [repo, setRepo] = useState<RepoInfo | null>(null)
-  const [data, setData] = useState<RepoData | null>(null)
-  const [dock, setDock] = useDock()
-  const [screen] = useScreen()
-  const [changesMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
-  const [scope, setScope] = useState<HistoryScope>({ kind: 'all' })
-  const [selected, setSelected] = useState<string[]>([])
-  const [fileFocus, setFileFocus] = useState<FileFocus | null>(null)
-  const [wipFocus, setWipFocus] = useState<WipFocus | null>(null)
-  /** Operação em andamento: o rótulo e os painéis que ela atinge (ver `run`). */
-  const [operation, setOperation] = useState<{ label: string; scope: readonly ViewId[] } | null>(null)
-  const busy = operation?.label ?? null
-  const busyScope = operation?.scope ?? NO_VIEWS
-  /** O indicador compacto fica na tela um pouco depois de a operação acabar: mantém o rótulo dela nesse tempo. */
-  const busyVisible = useDelayedLoading(busy !== null)
-  const busyLabel = useLastDefined(busy)
-  const [toasts, setToasts] = useState<Toast[]>([])
-  const [dialog, setDialog] = useState<DialogState | null>(null)
-  const [menu, setMenu] = useState<MenuState | null>(null)
-  const [studio, setStudio] = useState<StudioRequest | null>(null)
-  const [conflict, setConflict] = useState<string | null>(null)
-  const [compare, setCompare] = useState<CompareRequest>({})
-  const [filePath, setFilePath] = useState<string | null>(null)
-  const [rebaseFrom, setRebaseFrom] = useState<string | null>(null)
-  const [cloneOpen, setCloneOpen] = useState(false)
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   /** Configurações em edição, aplicadas na hora para pré-visualização. */
   const [preview, setPreview] = useState<Settings | null>(null)
   const [settingsOpen, setSettingsOpen] = useState<string | null>(null)
-  const [systemLocales, setSystemLocales] = useState<readonly string[]>(navigator.languages)
   const [helpOpen, setHelpOpen] = useState(false)
-  /** A tela de Dashboards está aberta (no lugar dos painéis, que continuam montados por trás). */
-  const [dashboardsOpen, setDashboards] = useState(false)
+  const [cloneOpen, setCloneOpen] = useState(false)
+  const [systemLocales, setSystemLocales] = useState<readonly string[]>(navigator.languages)
+  const [toasts, setToasts] = useState<Toast[]>([])
   const toastId = useRef(0)
-  const scopeRef = useRef(scope)
-  scopeRef.current = scope
-  const refreshing = useRef<Promise<void> | null>(null)
-  const refreshAgain = useRef(false)
-  const logCache = useRef<LogCache | null>(null)
+  const [dialog, setDialog] = useState<{ state: DialogState; scope: DialogScope | null } | null>(null)
+  const [menu, setMenu] = useState<MenuState | null>(null)
+  /** Repositórios abertos e o ativo, como o processo principal os tem. */
+  const [opened, setOpened] = useState<OpenRepositories>({ repos: [], active: null })
+  const openedRef = useRef(opened)
+  const [loaded, setLoaded] = useState(false)
+  const [summaries, setSummaries] = useState<Record<string, RepoSummary>>({})
+  const summariesRef = useRef(summaries)
+  summariesRef.current = summaries
+  /** Troca de aba esperando as operações do repositório que sai ("aguardando a operação em …"). */
+  const [waiting, setWaiting] = useState<{ repo: string; canForce: boolean } | null>(null)
+  /** Commits sendo aplicados em outro repositório (rótulo do indicador). */
+  const [crossBusy, setCrossBusy] = useState<string | null>(null)
+  /** Trocas de repositório e aberturas/fechamentos rodam em fila, uma de cada vez. */
+  const chain = useRef<Promise<unknown>>(Promise.resolve())
+  const transitioning = useRef(false)
+  /** Resolve quando o usuário escolhe "Trocar mesmo assim" na espera. */
+  const forceWait = useRef<(() => void) | null>(null)
 
   const effective = preview ?? settings
   const locale = resolveLocale(effective, systemLocales)
@@ -115,21 +138,10 @@ export function App() {
     applySettings(effective, locale)
   }, [effective, locale])
 
-  useEffect(() => {
-    window.gittools.getSettings().then(setSettings, () => undefined)
-    window.gittools.appInfo().then((info) => setSystemLocales(info.systemLocales), () => undefined)
-    window.gittools.currentRepository().then((info) => info && setRepo((prev) => prev ?? info))
-  }, [])
-
-  const saveSettings = useCallback(async (next: Settings) => {
-    setSettings(next)
-    await window.gittools.saveSettings(next)
-  }, [])
-
   /** Mostra um aviso; a mesma mensagem repetida logo em seguida vira um contador "×N" (ver `addToast`). */
-  const toast = useCallback((kind: ToastKind, text: string) => {
+  const toast = useCallback((kind: ToastKind, text: string, action?: ToastAction) => {
     const id = ++toastId.current
-    setToasts((list) => addToast(list, { kind, text }, Date.now(), id))
+    setToasts((list) => addToast(list, { kind, text, action }, Date.now(), id))
   }, [])
 
   useUnhandledErrors(toast)
@@ -146,6 +158,460 @@ export function App() {
 
   // Copiar em toda a tela: Ctrl+C copia a linha focada, e o botão direito onde não há menu próprio oferece copiar.
   useEffect(() => installCopy({ show: setMenu, notify: toast }), [toast])
+
+  const askConfirm = useCallback(
+    (request: ConfirmRequest, scope: DialogScope | null = null) =>
+      new Promise<boolean>((resolve) => setDialog({ state: { kind: 'confirm', ...request, resolve }, scope })),
+    []
+  )
+
+  const commit = useCallback((next: OpenRepositories) => {
+    openedRef.current = next
+    setOpened(next)
+    const roots = new Set(next.repos.map((r) => r.root))
+    setSummaries((prev) => {
+      const kept = Object.entries(prev).filter(([root]) => roots.has(root))
+      return kept.length === Object.keys(prev).length ? prev : Object.fromEntries(kept)
+    })
+  }, [])
+
+  /** Atualiza o resumo de um repositório (branch, alterações, conflito, operação) sem trocar para ele. */
+  const refreshSummary = useCallback(async (root: string) => {
+    try {
+      const [status, operation] = await Promise.all([window.gittools.invokeOn(root, 'status'), window.gittools.invokeOn(root, 'operationState')])
+      const next = summarize(status, operation.kind)
+      setSummaries((prev) => (JSON.stringify(prev[root]) === JSON.stringify(next) ? prev : { ...prev, [root]: next }))
+    } catch {
+      // Repositório que sumiu da pasta ou da sessão: a aba fica sem indicadores.
+    }
+  }, [])
+
+  const refreshAll = useCallback(
+    (roots?: string[]) => Promise.all((roots ?? openedRef.current.repos.map((r) => r.root)).map((root) => refreshSummary(root))),
+    [refreshSummary]
+  )
+
+  /**
+   * Muda a lista aberta ou o ativo. Se o ativo vai mudar, segura as chamadas novas do repositório que sai e espera
+   * as em andamento terminarem (com botão para trocar mesmo assim): assim, nenhuma operação de vários passos
+   * continua no outro repositório. Cada chamada já saiu com o root em que foi pedida, então não há mistura.
+   */
+  const transition = useCallback(
+    (changesActive: boolean, change: () => Promise<OpenRepositories | null>): Promise<void> => {
+      const job = chain.current.then(async () => {
+        // Só o repositório que sai (se a ativa muda) precisa ter as chamadas esperadas.
+        const leaving = changesActive ? openedRef.current.active : null
+        transitioning.current = true
+        let hint: ReturnType<typeof setTimeout> | undefined
+        try {
+          if (leaving !== null) {
+            gitCalls.close(leaving)
+            const name = openedRef.current.repos.find((r) => r.root === leaving)?.name ?? ''
+            const forced = new Promise<void>((resolve) => (forceWait.current = resolve))
+            setWaiting({ repo: name, canForce: false })
+            hint = setTimeout(() => setWaiting((w) => (w ? { ...w, canForce: true } : w)), SWITCH_FORCE_HINT_MS)
+            const drained = await gitCalls.idle(leaving, { timeoutMs: SWITCH_WAIT_MS, forced })
+            if (!drained) toast('warning', t('repoTabs.wait.forced', { repo: name }))
+          }
+          const next = await change()
+          if (next) {
+            commit(next)
+            // Os indicadores das abas atualizam em segundo plano: não seguram a troca.
+            void refreshAll(next.repos.map((r) => r.root))
+          }
+        } catch (error) {
+          toast('error', errorMessage(error))
+        } finally {
+          if (hint !== undefined) clearTimeout(hint)
+          forceWait.current = null
+          if (leaving !== null) gitCalls.open(leaving)
+          setWaiting(null)
+          transitioning.current = false
+        }
+      })
+      chain.current = job.catch(() => undefined)
+      return job
+    },
+    [commit, refreshAll, toast]
+  )
+
+  const activate = useCallback(
+    (root: string) => {
+      if (root === openedRef.current.active) return
+      void transition(true, async () => {
+        await window.gittools.switchRepository(root)
+        return window.gittools.openRepositories()
+      })
+    },
+    [transition]
+  )
+
+  /** Abre (ou só ativa, se já está aberto) um repositório numa aba; sem caminho, pergunta a pasta. */
+  const openRepo = useCallback(
+    async (path?: string, create = false) => {
+      let info: RepoInfo | null
+      try {
+        info = create ? await window.gittools.initRepository() : await window.gittools.openRepository(path)
+      } catch (error) {
+        toast('error', errorMessage(error))
+        return
+      }
+      if (!info || info.root === openedRef.current.active) return
+      await transition(true, () => window.gittools.openRepositories())
+    },
+    [toast, transition]
+  )
+
+  const closeRepo = useCallback(
+    async (root: string) => {
+      const repo = openedRef.current.repos.find((r) => r.root === root)
+      if (!repo) return
+      const work = unsavedWork(summariesRef.current[root], draftPaths(root).length)
+      if (work.length > 0) {
+        const ok = await askConfirm(
+          {
+            title: t('repoTabs.close.title', { repo: repo.name }),
+            message: t('repoTabs.close.message', { details: describeWork(work) }),
+            confirmLabel: t('repoTabs.close.confirm')
+          },
+          { repo, several: openedRef.current.repos.length > 1 }
+        )
+        if (!ok) return
+      }
+      await transition(root === openedRef.current.active, () => window.gittools.closeRepository(root))
+    },
+    [askConfirm, transition]
+  )
+
+  const closeOthers = useCallback(
+    async (keep: string) => {
+      const others = openedRef.current.repos.filter((r) => r.root !== keep)
+      const withWork = others.filter((r) => unsavedWork(summariesRef.current[r.root], draftPaths(r.root).length).length > 0)
+      if (withWork.length > 0) {
+        const ok = await askConfirm({
+          title: t('repoTabs.closeOthersDialog.title'),
+          message: t('repoTabs.closeOthersDialog.message', { details: t('repoTabs.closeOthersDialog.hasWork', { names: withWork.map((r) => r.name).join(', ') }) }),
+          confirmLabel: t('repoTabs.close.confirm')
+        })
+        if (!ok) return
+      }
+      // Quem fica precisa ser o ativo antes de os outros saírem (o processo principal ativa o vizinho ao fechar o ativo).
+      if (openedRef.current.active !== keep) {
+        await transition(true, async () => {
+          await window.gittools.switchRepository(keep)
+          return window.gittools.openRepositories()
+        })
+      }
+      for (const repo of others) await transition(false, () => window.gittools.closeRepository(repo.root))
+    },
+    [askConfirm, transition]
+  )
+
+  const cycle = useCallback(
+    (delta: 1 | -1) => {
+      const { repos, active } = openedRef.current
+      const next = cycleIndex(repos.length, repos.findIndex((r) => r.root === active), delta)
+      if (next >= 0 && repos[next].root !== active) activate(repos[next].root)
+    },
+    [activate]
+  )
+
+  /**
+   * Aplica commits do repositório `sourceRoot` na branch atual de `targetRoot`. Só depois de confirmar, com origem e
+   * destino escritos. Antes, mostra o motivo se o destino não aceita (sujo, sem branch, operação em andamento).
+   */
+  const applyAcross = useCallback(
+    async (sourceRoot: string, targetRoot: string, shas: string[]) => {
+      const { repos } = openedRef.current
+      const source = repos.find((r) => sameRoot(r.root, sourceRoot))
+      const target = repos.find((r) => sameRoot(r.root, targetRoot))
+      if (!source || !target || shas.length === 0) return
+      if (source.root === target.root) return toast('warning', t('multiRepo.sameRepository'))
+      const s = summariesRef.current[target.root]
+      const blocked: MessageKey | null = !s
+        ? null
+        : s.detached
+          ? 'multiRepo.targetDetached'
+          : s.changes > 0
+            ? 'multiRepo.targetDirty'
+            : s.operation !== 'none'
+              ? 'multiRepo.targetBusy'
+              : null
+      if (blocked) return toast('warning', t(blocked, { root: target.name }))
+
+      const branch = !s ? '…' : s.detached ? (s.headSha?.slice(0, 7) ?? t('repoTabs.noBranch')) : (s.branch ?? t('repoTabs.noBranch'))
+      const ok = await askConfirm(
+        {
+          title: t('repoTabs.cross.title', { target: target.name }),
+          message: [
+            t('repoTabs.cross.origin', { repo: source.name, commits: t('history.count', { count: shas.length }) }),
+            t('repoTabs.cross.destination', { repo: target.name, branch }),
+            '',
+            t('repoTabs.cross.note')
+          ].join('\n'),
+          confirmLabel: t('repoTabs.cross.confirm')
+        },
+        { repo: target, several: true }
+      )
+      if (!ok) return
+
+      setCrossBusy(t('busy.cherryPick'))
+      const goTo: ToastAction = { label: t('repoTabs.cross.goTo', { repo: target.name }), run: () => activate(target.root) }
+      try {
+        const result = await window.gittools.cherryPickAcross(source.root, target.root, shas)
+        if (result.ok) toast('success', prefixToast(result.message || t('repoTabs.cross.done', { target: target.name }), target.name, true), goTo)
+        else toast('warning', prefixToast(t('repoTabs.cross.conflict', { target: target.name }), target.name, true), goTo)
+      } catch (error) {
+        toast('error', prefixToast(errorMessage(error), target.name, true))
+      } finally {
+        setCrossBusy(null)
+        void refreshAll([source.root, target.root])
+      }
+    },
+    [activate, askConfirm, refreshAll, toast]
+  )
+
+  const workspace = useMemo<WorkspaceApi>(
+    () => ({
+      repos: opened.repos,
+      summaries,
+      activate,
+      close: (root) => void closeRepo(root),
+      closeOthers: (root) => void closeOthers(root),
+      cycle,
+      openRepo: (path, create) => void openRepo(path, create),
+      openClone: () => setCloneOpen(true),
+      applyAcross: (sourceRoot, targetRoot, shas) => void applyAcross(sourceRoot, targetRoot, shas)
+    }),
+    [opened.repos, summaries, activate, closeRepo, closeOthers, cycle, openRepo, applyAcross]
+  )
+
+  // Carga inicial: os repositórios reabertos da última sessão (e o ativo, que pode ter vindo da linha de comando).
+  useEffect(() => {
+    window.gittools.getSettings().then(setSettings, () => undefined)
+    window.gittools.appInfo().then((info) => setSystemLocales(info.systemLocales), () => undefined)
+    window.gittools
+      .openRepositories()
+      .then((state) => {
+        commit(state)
+        void refreshAll(state.repos.map((r) => r.root))
+      }, () => undefined)
+      .finally(() => setLoaded(true))
+  }, [commit, refreshAll])
+
+  // Mudanças nos repositórios: o de outra aba só atualiza o indicador dela. Ao ganhar o foco, confere a lista
+  // (ela pode ter mudado por fora, como um repositório aberto pelo VS Code).
+  useEffect(
+    () =>
+      window.gittools.onRepositoryChanged((root) => {
+        if (root !== undefined) {
+          if (openedRef.current.repos.some((r) => r.root === root)) void refreshSummary(root)
+          return
+        }
+        void refreshAll()
+        if (transitioning.current) return
+        void window.gittools.openRepositories().then((next) => {
+          if (!transitioning.current && !sameOpened(next, openedRef.current)) void transition(next.active !== openedRef.current.active, async () => next)
+        }, () => undefined)
+      }),
+    [refreshSummary, refreshAll, transition]
+  )
+
+  const saveSettings = useCallback(async (next: Settings) => {
+    setSettings(next)
+    await window.gittools.saveSettings(next)
+  }, [])
+
+  const tabMenu = (event: React.MouseEvent, root: string) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setMenu({
+      x: event.clientX,
+      y: event.clientY,
+      items: [
+        { label: t('repoTabs.closeThis'), onClick: () => void closeRepo(root) },
+        { label: t('repoTabs.closeOthers'), onClick: () => void closeOthers(root), disabled: opened.repos.length < 2 }
+      ]
+    })
+  }
+
+  /** "+" da barra: abrir, criar, clonar e os recentes (os já abertos aparecem marcados). */
+  const addMenu = async (event: React.MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const { clientX: x, clientY: y } = event
+    const recents: RecentRepo[] = await window.gittools.recentRepositories().catch(() => [])
+    const openRoots = new Set(opened.repos.map((r) => normalizeRoot(r.root)))
+    const recentItem = (r: RecentRepo): MenuItem => ({
+      label: `${r.favorite ? '★ ' : ''}${r.name}${openRoots.has(normalizeRoot(r.path)) ? ` · ${t('repoTabs.openBadge')}` : ''}`,
+      hint: r.path,
+      onClick: () => void openRepo(r.path)
+    })
+    const items: MenuItem[] = [
+      { label: t('toolbar.openRepository'), onClick: () => void openRepo() },
+      { label: t('toolbar.createRepository'), onClick: () => void openRepo(undefined, true) },
+      { label: t('clone.menu'), onClick: () => setCloneOpen(true) },
+      ...(recents.length > 0 ? (['separator' as const, ...recents.slice(0, 10).map(recentItem)] as MenuItem[]) : [])
+    ]
+    setMenu({ x, y, items })
+  }
+
+  const settingsDialogs = (
+    <>
+      {settingsOpen && (
+        <SettingsCenter
+          settings={settings}
+          initialSection={settingsOpen}
+          onPreview={setPreview}
+          onSave={saveSettings}
+          onClose={() => {
+            setPreview(null)
+            setSettingsOpen(null)
+          }}
+          onShowShortcuts={() => setHelpOpen(true)}
+        />
+      )}
+      {helpOpen && <ShortcutsHelp settings={settings} onClose={() => setHelpOpen(false)} />}
+      {cloneOpen && (
+        <CloneDialog
+          onClose={() => setCloneOpen(false)}
+          onCloned={() => {
+            setCloneOpen(false)
+            void transition(true, () => window.gittools.openRepositories())
+          }}
+        />
+      )}
+    </>
+  )
+
+  const activeRepo = opened.repos.find((r) => r.root === opened.active) ?? null
+  const appModalOpen = !!(settingsOpen || helpOpen || cloneOpen || dialog)
+
+  if (!activeRepo) {
+    // Sem repositório na tela, nenhuma chamada git deve ir para o último que saiu.
+    setActiveRoot(null)
+    return (
+      <>
+        <Welcome
+          loading={!loaded}
+          onOpen={(path, create) => void openRepo(path, create)}
+          onClone={() => setCloneOpen(true)}
+          onSettings={() => setSettingsOpen('general')}
+        />
+        {settingsDialogs}
+        {dialog && <DialogHost dialog={dialog.state} scope={dialog.scope} onDone={() => setDialog(null)} />}
+        <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />
+      </>
+    )
+  }
+
+  return (
+    <>
+      <div className="app workspace-app" style={{ '--repo': repoColor(activeRepo.root) } as CSSProperties}>
+        <div className="repo-stripe" aria-hidden />
+        <RepoTabs
+          repos={opened.repos}
+          active={activeRepo.root}
+          summaries={summaries}
+          onActivate={activate}
+          onClose={(root) => void closeRepo(root)}
+          onMenu={tabMenu}
+          onAdd={(e) => void addMenu(e)}
+          onDropCommits={(target, shas) => void applyAcross(activeRepo.root, target, shas)}
+        />
+        <RepoView
+          key={activeRepo.root}
+          repo={activeRepo}
+          several={opened.repos.length > 1}
+          workspace={workspace}
+          settings={settings}
+          notify={toast}
+          appModalOpen={appModalOpen}
+          openSettings={(section) => setSettingsOpen(section ?? 'general')}
+          openShortcuts={() => setHelpOpen(true)}
+        />
+        {crossBusy && (
+          <div className="busy" role="status" aria-live="polite">
+            <Loader size="sm" label={`${crossBusy}…`} />
+          </div>
+        )}
+      </div>
+      {waiting && (
+        <div className="repo-wait" role="status" aria-live="polite">
+          <div className="repo-wait-card">
+            <Loader size="sm" label={t('repoTabs.wait.title', { repo: waiting.repo })} />
+            <p className="muted small">{t('repoTabs.wait.help')}</p>
+            {waiting.canForce && (
+              <button className="primary" onClick={() => forceWait.current?.()}>
+                {t('repoTabs.wait.force')}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {settingsDialogs}
+      {dialog && <DialogHost dialog={dialog.state} scope={dialog.scope} onDone={() => setDialog(null)} />}
+      {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
+      <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />
+    </>
+  )
+}
+
+interface RepoViewProps {
+  repo: RepoInfo
+  /** Há mais de um repositório aberto: os avisos citam o nome deste. */
+  several: boolean
+  workspace: WorkspaceApi
+  settings: Settings
+  /** Avisa no nível do app (o prefixo do repositório já foi acrescentado, quando cabe). */
+  notify(kind: ToastKind, text: string, action?: ToastAction): void
+  /** Configurações, ajuda ou clonagem abertas no nível do app: os atalhos desta aba ficam quietos. */
+  appModalOpen: boolean
+  openSettings(section?: string): void
+  openShortcuts(): void
+}
+
+/**
+ * A tela de um repositório (uma aba). Todo o estado daqui é deste repositório, e a aba é remontada a cada troca.
+ */
+function RepoView({ repo, several, workspace, settings, notify, appModalOpen, openSettings, openShortcuts }: RepoViewProps) {
+  // As chamadas do proxy `git` passam a ir para este repositório (ver git.ts).
+  setActiveRoot(repo.root)
+  const [data, setData] = useState<RepoData | null>(null)
+  const [dock, setDock] = useDock()
+  const [screen] = useScreen()
+  const [changesMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
+  const [scope, setScope] = useState<HistoryScope>({ kind: 'all' })
+  const [selected, setSelected] = useState<string[]>([])
+  const [fileFocus, setFileFocus] = useState<FileFocus | null>(null)
+  const [wipFocus, setWipFocus] = useState<WipFocus | null>(null)
+  /** Operação em andamento: o rótulo e os painéis que ela atinge (ver `run`). */
+  const [operation, setOperation] = useState<{ label: string; scope: readonly ViewId[] } | null>(null)
+  const busy = operation?.label ?? null
+  const busyScope = operation?.scope ?? NO_VIEWS
+  /** O indicador compacto fica na tela um pouco depois de a operação acabar: mantém o rótulo dela nesse tempo. */
+  const busyVisible = useDelayedLoading(busy !== null)
+  const busyLabel = useLastDefined(busy)
+  const [dialog, setDialog] = useState<DialogState | null>(null)
+  const [menu, setMenu] = useState<MenuState | null>(null)
+  const [studio, setStudio] = useState<StudioRequest | null>(null)
+  const [conflict, setConflict] = useState<string | null>(null)
+  const [compare, setCompare] = useState<CompareRequest>({})
+  const [filePath, setFilePath] = useState<string | null>(null)
+  const [rebaseFrom, setRebaseFrom] = useState<string | null>(null)
+  /** A tela de Dashboards está aberta (no lugar dos painéis, que continuam montados por trás). */
+  const [dashboardsOpen, setDashboards] = useState(false)
+  const refreshing = useRef<Promise<void> | null>(null)
+  const refreshAgain = useRef(false)
+  const logCache = useRef<LogCache | null>(null)
+  const scopeRef = useRef(scope)
+  scopeRef.current = scope
+
+  /** Avisos desta aba: citam o repositório quando há mais de um aberto. */
+  const toast = useCallback(
+    (kind: ToastKind, text: string, action?: ToastAction) => notify(kind, prefixToast(text, repo.name, several), action),
+    [notify, repo.name, several]
+  )
 
   /** Quais painéis existem agora (ex.: Conflitos só com conflitos; Staged só na visão de listas separadas). */
   const conflicts = data?.status.conflicted.length ?? 0
@@ -236,17 +702,18 @@ export function App() {
   }, [load])
 
   useEffect(() => {
-    if (repo) void refresh()
-  }, [repo, scope, refresh])
+    void refresh()
+  }, [repo.root, scope, refresh])
 
   useEffect(() => {
-    if (!repo) return
     let timer: ReturnType<typeof setTimeout> | null = null
-    return window.gittools.onRepositoryChanged(() => {
+    return window.gittools.onRepositoryChanged((root) => {
+      // Mudança em outro repositório não mexe nos dados desta aba (o indicador dela fica no nível do app).
+      if (root !== undefined && root !== repo.root) return
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => void refresh(), 150)
     })
-  }, [repo, refresh])
+  }, [repo.root, refresh])
 
   /**
    * Executa uma operação com progresso (indicador no topo e overlay nos painéis do `scope`), mostra o resultado e
@@ -276,44 +743,19 @@ export function App() {
     [refresh, toast, setView]
   )
 
-  /** Passa a mostrar outro repositório (aberto, criado ou clonado). */
-  const showRepository = useCallback(
-    (info: RepoInfo) => {
-      setData(null)
-      logCache.current = null
-      setSelected([])
-      setScope({ kind: 'all' })
-      setFilePath(null)
-      setCompare({})
-      setView('history')
-      setRepo(info)
-    },
-    [setView]
-  )
-
-  const openRepository = useCallback(
-    async (path?: string, create = false) => {
-      try {
-        const info = create ? await window.gittools.initRepository() : await window.gittools.openRepository(path)
-        if (info) showRepository(info)
-      } catch (error) {
-        toast('error', errorMessage(error))
-      }
-    },
-    [toast, showRepository]
-  )
-
   const openDiffWindow = useCallback(
     (request: Parameters<AppContextValue['openDiffWindow']>[0]) => {
-      window.gittools.openDiffWindow(request).catch((error) => toast('error', errorMessage(error)))
+      // A janela de diff guarda o repositório: ela não deve usar o ativo quando a aba mudar.
+      window.gittools.openDiffWindow({ ...request, root: repo.root }).catch((error) => toast('error', errorMessage(error)))
     },
-    [toast]
+    [toast, repo.root]
   )
 
   const context = useMemo<AppContextValue | null>(() => {
-    if (!repo || !data) return null
+    if (!data) return null
     return {
       repo,
+      workspace,
       data,
       busy,
       busyScope,
@@ -360,59 +802,29 @@ export function App() {
         // No VS Code os arquivos abrem no próprio editor dele: não há editor a escolher.
         if (!settings.editor && !insideVsCode()) {
           toast('info', t('editor.chooseFirst'))
-          setSettingsOpen('editor')
+          openSettings('editor')
           return
         }
-        window.gittools.openInEditor(path).catch((error) => toast('error', errorMessage(error)))
+        window.gittools.openInEditor(path, repo.root).catch((error) => toast('error', errorMessage(error)))
       },
       settings,
-      openSettings: (section) => setSettingsOpen(section ?? 'general'),
-      openShortcuts: () => setHelpOpen(true)
+      openSettings,
+      openShortcuts
     }
     // locale: força novos textos nos componentes quando o idioma muda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repo, data, busy, busyScope, refresh, run, toast, settings, locale, setView, dashboardsOpen, openDiffWindow, resetLayout, askConfirm])
+  }, [repo, workspace, data, busy, busyScope, refresh, run, toast, settings, setView, dashboardsOpen, openDiffWindow, resetLayout, askConfirm, openSettings, openShortcuts])
 
-  const settingsDialogs = (
-    <>
-      {settingsOpen && (
-        <SettingsCenter
-          settings={settings}
-          initialSection={settingsOpen}
-          onPreview={setPreview}
-          onSave={saveSettings}
-          onClose={() => {
-            setPreview(null)
-            setSettingsOpen(null)
-          }}
-          onShowShortcuts={() => setHelpOpen(true)}
-        />
-      )}
-      {helpOpen && <ShortcutsHelp settings={settings} onClose={() => setHelpOpen(false)} />}
-      {cloneOpen && (
-        <CloneDialog
-          onClose={() => setCloneOpen(false)}
-          onCloned={(info) => {
-            setCloneOpen(false)
-            showRepository(info)
-          }}
-        />
-      )}
-    </>
-  )
-
-  if (!repo || !context) {
+  if (!context) {
     return (
-      <>
-        <Welcome loading={!!repo} onOpen={openRepository} onClone={() => setCloneOpen(true)} onSettings={() => setSettingsOpen('general')} />
-        {settingsDialogs}
-        <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />
-      </>
+      <div className="repo-loading">
+        <Loader size="sm" label={t('welcome.loading')} />
+      </div>
     )
   }
 
   const changeCount = data!.status.staged.length + data!.status.unstaged.length + data!.status.conflicted.length
-  const modalOpen = !!(studio || conflict || rebaseFrom || dialog || settingsOpen || helpOpen || cloneOpen)
+  const modalOpen = !!(studio || conflict || rebaseFrom || dialog || appModalOpen)
 
   /** Abre o diff de um arquivo no painel do diff do commit, trazendo os painéis do commit se estiverem escondidos. */
   const openFileInDetails = (sha: string, path: string) => {
@@ -457,20 +869,18 @@ export function App() {
 
   return (
     <AppContext.Provider value={context}>
-      <KeyboardShortcuts disabled={modalOpen} onOpenRepository={() => openRepository()} />
-      <div className="app">
-        <Toolbar onOpenRepository={openRepository} onClone={() => setCloneOpen(true)} />
-        <div className="screen-bar">
-          <ScreenTabs state={dock} meta={meta} screen={screen} onScreen={setView} available={available} changeCount={changeCount} dashboards={dashboardsOpen} onDashboards={() => setDashboards(true)} />
-          <div className="toolbar-spacer" />
-          <PanelsButtons state={dock} onChange={setDock} screen={screen} meta={meta} available={available} />
-        </div>
-        <OperationBanner onShowChanges={() => setView('changes')} />
-        <div className={dashboardsOpen ? 'dock-hidden' : 'dock-wrap'}>
-          <Dock state={dock} onChange={setDock} screen={screen} meta={meta} available={available} />
-        </div>
-        {dashboardsOpen && <Dashboards />}
+      <KeyboardShortcuts disabled={modalOpen} onOpenRepository={() => void workspace.openRepo()} />
+      <Toolbar onOpenRepository={(path, create) => void workspace.openRepo(path, create)} onClone={workspace.openClone} />
+      <div className="screen-bar">
+        <ScreenTabs state={dock} meta={meta} screen={screen} onScreen={setView} available={available} changeCount={changeCount} dashboards={dashboardsOpen} onDashboards={() => setDashboards(true)} />
+        <div className="toolbar-spacer" />
+        <PanelsButtons state={dock} onChange={setDock} screen={screen} meta={meta} available={available} />
       </div>
+      <OperationBanner onShowChanges={() => setView('changes')} />
+      <div className={dashboardsOpen ? 'dock-hidden' : 'dock-wrap'}>
+        <Dock state={dock} onChange={setDock} screen={screen} meta={meta} available={available} />
+      </div>
+      {dashboardsOpen && <Dashboards />}
       {/* Cada tela é desenhada aqui e levada, por portais, ao painel onde o usuário a deixou. */}
       <SidebarPanes
         scope={scope}
@@ -511,7 +921,6 @@ export function App() {
       {studio && <CherryPickStudio request={studio} onClose={() => setStudio(null)} />}
       {conflict && <ConflictEditor path={conflict} onClose={() => setConflict(null)} />}
       {rebaseFrom && <RebaseEditor fromSha={rebaseFrom} onClose={() => setRebaseFrom(null)} />}
-      {settingsDialogs}
       {dialog && <DialogHost dialog={dialog} onDone={() => setDialog(null)} />}
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
       {busyVisible && (
@@ -519,7 +928,6 @@ export function App() {
           <Loader size="sm" label={`${busyLabel}…`} />
         </div>
       )}
-      <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />
     </AppContext.Provider>
   )
 }

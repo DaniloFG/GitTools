@@ -3,6 +3,7 @@ import type { MessageKey } from '../../../shared/i18n'
 import type { TerminalCommandResult } from '../../../shared/terminal'
 import { parseCommandLine } from '../../../shared/terminal'
 import { useApp } from '../context'
+import { git } from '../git'
 import { getCurrentLocale, t } from '../i18n'
 import { GIT_COMMANDS, LOCAL_COMMANDS, findCommand, pickText, type GitCommandSpec } from '../terminal/gitCommands'
 import { applySuggestion, suggest, type RepoContext, type Suggestion, type SuggestionKind } from '../terminal/suggest'
@@ -121,7 +122,7 @@ export function GitTerminal() {
   // Remotes do repositório, para completar os argumentos de fetch, push, pull e remote.
   useEffect(() => {
     let cancelled = false
-    window.gittools.invoke('remotes').then(
+    git.remotes().then(
       (list) => !cancelled && setRemotes(list.map((r) => r.name)),
       () => undefined
     )
@@ -260,7 +261,8 @@ export function GitTerminal() {
     setRunning(true)
     let result: TerminalCommandResult
     try {
-      result = await window.gittools.runGitCommand(text)
+      // O comando roda no repositório desta aba (não no ativo do processo principal).
+      result = await window.gittools.runGitCommand(text, repo.root)
     } catch (error) {
       result = { ok: false, exitCode: -1, stdout: '', stderr: error instanceof Error ? error.message : String(error), args: [], durationMs: 0 }
     }

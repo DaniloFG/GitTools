@@ -192,6 +192,24 @@ Marque as caixas das branches que interessam: o histórico (e as linhas do tempo
 delas, enquanto a lista de branches fica exatamente como estava — mesma altura, mesmas cores, mesmo painel à
 frente. *Mostrar todas* (na faixa de filtro, que tem sempre o mesmo tamanho) volta a listar tudo.
 
+### Vários repositórios abertos ao mesmo tempo
+
+Cada repositório aberto ganha uma **aba** com a cor dele (sempre a mesma para o mesmo caminho). A faixa no topo
+da janela e o nome na barra de ferramentas mostram de qual repositório é a tela. Abrir outro repositório (menu
+*Repositório* ou **＋**) cria uma nova aba; clique do meio ou **×** tiram a aba da sessão (nada é apagado, e
+quem tem alterações não commitadas ou operação em andamento é avisado antes).
+
+Para não misturar repositórios:
+
+- ao trocar de aba, a tela é montada de novo: seleção, diff, filtros e rascunhos não passam de um para o outro;
+- antes de trocar, as operações em andamento do repositório que sai terminam (com botão para trocar mesmo assim);
+- os diálogos de confirmação mostram o nome do repositório, e os avisos o citam quando há mais de um aberto;
+- o log de comandos diz de qual repositório é cada comando.
+
+Para trazer commits de um repositório para outro, arraste-os para a aba do destino ou use o menu de contexto
+*Aplicar em outro repositório aberto*. Antes de aplicar, o GitTools mostra origem e destino (com a branch atual
+do destino) e só então faz o cherry-pick. **Ctrl+Tab** / **Ctrl+Shift+Tab** alternam as abas e **Ctrl+W** fecha a aba atual.
+
 ### Clonar e identidade git
 
 | Clonar repositório | Identidade e remotes |
@@ -368,6 +386,7 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 | Histórico / Alterações / Arquivos / Comparar / Dashboards | `Ctrl+1` … `Ctrl+5` |
 | Mostrar/ocultar a barra lateral | `Ctrl+B` |
 | Pesquisar no histórico | `Ctrl+F` |
+| Próxima / anterior aba de repositório; fechar a aba | `Ctrl+Tab` / `Ctrl+Shift+Tab`; `Ctrl+W` |
 | Cherry-pick Studio | `Ctrl+Shift+P` |
 | Nova branch / Stash | `Ctrl+Shift+N` / `Ctrl+Shift+S` |
 | Fetch / Pull / Push | `Ctrl+Shift+F` / `Ctrl+Shift+L` / `Ctrl+Shift+K` |

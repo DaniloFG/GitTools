@@ -940,6 +940,59 @@ export const zhCN: Messages = {
     targetDirty: '仓库 "{root}" 有未提交的更改。请先提交或暂存这些更改，再引入提交。',
     targetBusy: '仓库 "{root}" 有正在进行的操作。请先完成或中止该操作，再引入提交。'
   },
+  repoTabs: {
+    list: '已打开的仓库',
+    addTab: '打开、克隆或新建仓库',
+    noBranch: '无分支',
+    changes: '未提交的更改：{count}',
+    conflicts: '正在进行的冲突',
+    operation: '进行中的操作',
+    closeAria: '关闭 {repo}',
+    closeHelp: '仅将仓库从本次会话中移除，不会删除任何内容。',
+    closeThis: '关闭此仓库',
+    closeOthers: '关闭其他仓库',
+    openBadge: '已打开',
+    applyAcross: '应用到另一个已打开的仓库',
+    close: {
+      title: '关闭 {repo}？',
+      message: '此仓库有未完成的工作：{details}。\n\n关闭只会将仓库从本次会话中移除，磁盘上的内容不会被删除，但这些工作会一直待定，直到你重新打开该仓库。',
+      confirm: '仍然关闭',
+      changes: '{count} 项未提交的更改',
+      operation: '一个进行中的操作',
+      drafts: '{count} 个编辑器中未保存的文件'
+    },
+    closeOthersDialog: {
+      title: '关闭其他仓库？',
+      message: '其他仓库将从本次会话中移除（不会删除任何内容）。{details}',
+      hasWork: '部分仓库有未完成的工作：{names}。'
+    },
+    cross: {
+      title: '将提交应用到 {target}',
+      origin: '来源：{repo} · {commits}',
+      destination: '目标：{repo} · 当前分支：{branch}',
+      note: '提交会像 cherry-pick 一样加到目标的当前分支上。来源不会改变。',
+      confirm: '应用',
+      done: '提交已应用到 {target}。',
+      conflict: '应用到 {target} 时出现冲突。请在其标签页中解决，或在那里中止该操作。',
+      goTo: '前往 {repo}',
+      dropHelp: '放在此处即可将提交应用到该仓库'
+    },
+    wait: {
+      title: '正在等待 {repo} 中的操作…',
+      help: '切换会等待进行中的操作结束，以免任何操作继续在另一个仓库上执行。',
+      force: '仍然切换',
+      forced: '{repo} 中的操作未能及时结束，已强制切换。'
+    },
+    log: {
+      all: '所有仓库',
+      only: '仅此仓库'
+    },
+    shortcuts: {
+      next: '下一个仓库标签',
+      prev: '上一个仓库标签',
+      close: '关闭仓库标签'
+    }
+  },
   dash: {
     title: '仪表盘',
     tabHelp: 'git 历史的指标、图表与审计',

@@ -171,6 +171,30 @@ describe('vários repositórios abertos', () => {
     expect(log.some((e) => e.cwd === b.repo.root && e.args[0] === 'status')).toBe(true)
   })
 
+  it('app:runGit (terminal): com root, roda no repositório informado; sem root, no ativo; root fechado falha', async () => {
+    const a = await createRepo()
+    const b = await createRepo()
+    const fora = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    await b.commit('b', { 'b.txt': 'b\n' })
+    await fora.commit('f', { 'f.txt': 'f\n' })
+    const { backend } = fakeHost()
+    await openRepo(backend, a.dir)
+    await openRepo(backend, b.dir) // ativo: b
+    a.write('so-em-a.txt', 'x\n')
+
+    const saidaA = (await backend.invoke('app:runGit', ['status --porcelain', a.repo.root])) as { ok: boolean; stdout: string }
+    expect(saidaA.ok).toBe(true)
+    expect(saidaA.stdout).toContain('so-em-a.txt')
+    const saidaB = (await backend.invoke('app:runGit', ['status --porcelain', b.repo.root])) as { stdout: string }
+    expect(saidaB.stdout).not.toContain('so-em-a.txt')
+    // Sem root, vale o ativo (B).
+    const semRoot = (await backend.invoke('app:runGit', ['status --porcelain'])) as { stdout: string }
+    expect(semRoot.stdout).not.toContain('so-em-a.txt')
+    // Root que não está aberto: erro claro, e nada roda no ativo.
+    await expect(backend.invoke('app:runGit', ['status --porcelain', fora.repo.root])).rejects.toThrow(/não está aberto/)
+  })
+
   it('root que não está aberto dá erro claro e nunca cai no repositório ativo', async () => {
     const a = await createRepo()
     const fora = await createRepo()

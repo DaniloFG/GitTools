@@ -5,6 +5,7 @@ import { useApp } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { t } from '../i18n'
+import { normalizeRoot, repoColor } from '../workspace'
 
 interface ToolbarProps {
   onOpenRepository(path?: string, create?: boolean): void
@@ -13,14 +14,16 @@ interface ToolbarProps {
 
 /** Barra de ferramentas do repositório. Os menus do topo (telas e painéis) ficam na barra logo abaixo, em `App`. */
 export function Toolbar({ onOpenRepository, onClone }: ToolbarProps) {
-  const { repo, data, toast, showMenu, openStudio, openSettings, openInEditor } = useApp()
+  const { repo, data, toast, showMenu, openStudio, openSettings, openInEditor, workspace } = useApp()
   const { head, createBranch, createTag, stash, push, pushDialog, fetchRemote, pullRemote } = useActions()
   const { status } = data
 
   const { favorites, others, setFavorite, remove } = useRecentRepos(repo)
   const showError = (error: unknown) => toast('error', errorMessage(error))
+  /** Repositórios já abertos nesta sessão aparecem marcados (abrir um deles só ativa a aba). */
+  const openRoots = new Set(workspace.repos.map((r) => normalizeRoot(r.root)))
   const repoItem = (r: RecentRepo) => ({
-    label: `${r.favorite ? '★ ' : ''}${r.name}`,
+    label: `${r.favorite ? '★ ' : ''}${r.name}${openRoots.has(normalizeRoot(r.path)) ? ` · ${t('repoTabs.openBadge')}` : ''}`,
     hint: r.path,
     onClick: () => onOpenRepository(r.path),
     actions: [
@@ -35,7 +38,10 @@ export function Toolbar({ onOpenRepository, onClone }: ToolbarProps) {
       { label: t('toolbar.openRepository'), onClick: () => onOpenRepository() },
       { label: t('toolbar.createRepository'), onClick: () => onOpenRepository(undefined, true) },
       { label: t('clone.menu'), onClick: onClone },
-      { label: t('toolbar.openFolder'), onClick: () => window.gittools.openFile('.') },
+      { label: t('toolbar.openFolder'), onClick: () => window.gittools.openFile('.', repo.root) },
+      'separator',
+      { label: t('repoTabs.closeThis'), onClick: () => workspace.close(repo.root) },
+      { label: t('repoTabs.closeOthers'), onClick: () => workspace.closeOthers(repo.root), disabled: workspace.repos.length < 2 },
       ...(otherFavorites.length ? (['separator'] as const) : []),
       ...otherFavorites.map(repoItem),
       ...(otherRecent.length ? (['separator'] as const) : []),
@@ -64,7 +70,8 @@ export function Toolbar({ onOpenRepository, onClone }: ToolbarProps) {
 
   return (
     <header className="toolbar">
-      <button className="repo-button" onClick={repoMenu} title={repo.root}>
+      <button className="repo-button" onClick={repoMenu} title={repo.root} style={{ '--repo': repoColor(repo.root) } as React.CSSProperties}>
+        <span className="repo-button-dot" aria-hidden />
         <span className="logo-mark">⑂</span>
         <strong>{repo.name}</strong> ▾
       </button>

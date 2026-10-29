@@ -974,6 +974,60 @@ export const es: Messages = {
     targetDirty: 'El repositorio "{root}" tiene cambios sin confirmar. Confirma o guarda esos cambios antes de traer commits.',
     targetBusy: 'El repositorio "{root}" tiene una operación en curso. Termina o aborta esa operación antes de traer commits.'
   },
+  repoTabs: {
+    list: 'Repositorios abiertos',
+    addTab: 'Abrir, clonar o crear un repositorio',
+    noBranch: 'sin rama',
+    changes: 'Cambios sin confirmar: {count}',
+    conflicts: 'Conflictos en curso',
+    operation: 'Operación en curso',
+    closeAria: 'Cerrar {repo}',
+    closeHelp: 'Quita el repositorio de esta sesión. No se borra nada.',
+    closeThis: 'Cerrar este repositorio',
+    closeOthers: 'Cerrar los demás',
+    openBadge: 'abierto',
+    applyAcross: 'Aplicar en otro repositorio abierto',
+    close: {
+      title: '¿Cerrar {repo}?',
+      message:
+        'Este repositorio tiene trabajo pendiente: {details}.\n\nCerrar solo quita el repositorio de esta sesión. No se borra nada del disco, pero el trabajo sigue pendiente hasta que vuelvas a abrir el repositorio.',
+      confirm: 'Cerrar igualmente',
+      changes: '{count} cambio(s) sin confirmar',
+      operation: 'una operación en curso',
+      drafts: '{count} archivo(s) con texto no guardado en el editor'
+    },
+    closeOthersDialog: {
+      title: '¿Cerrar los demás repositorios?',
+      message: 'Los demás repositorios salen de esta sesión (no se borra nada). {details}',
+      hasWork: 'Algunos tienen trabajo pendiente: {names}.'
+    },
+    cross: {
+      title: 'Aplicar commits en {target}',
+      origin: 'Origen: {repo} · {commits}',
+      destination: 'Destino: {repo} · rama actual: {branch}',
+      note: 'Los commits se aplican sobre la rama actual del destino, como un cherry-pick. El origen no cambia.',
+      confirm: 'Aplicar',
+      done: 'Commits aplicados en {target}.',
+      conflict: 'Hay conflictos al aplicar en {target}. Resuélvelos en su pestaña o aborta la operación allí.',
+      goTo: 'Ir a {repo}',
+      dropHelp: 'Suelta aquí para aplicar los commits en este repositorio'
+    },
+    wait: {
+      title: 'Esperando la operación en {repo}…',
+      help: 'El cambio espera a que terminen las operaciones en curso, para que ninguna siga en el otro repositorio.',
+      force: 'Cambiar igualmente',
+      forced: 'La operación en {repo} no terminó a tiempo; el cambio se hizo igualmente.'
+    },
+    log: {
+      all: 'Todos los repositorios',
+      only: 'Solo este repositorio'
+    },
+    shortcuts: {
+      next: 'Siguiente pestaña de repositorio',
+      prev: 'Pestaña de repositorio anterior',
+      close: 'Cerrar pestaña de repositorio'
+    }
+  },
   dash: {
     title: 'Paneles',
     tabHelp: 'Métricas, gráficos y auditoría del historial de git',

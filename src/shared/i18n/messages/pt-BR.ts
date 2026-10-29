@@ -975,6 +975,60 @@ export const ptBR = {
     targetDirty: 'O repositório "{root}" tem alterações que não foram commitadas. Faça commit ou guarde essas alterações antes de trazer commits.',
     targetBusy: 'O repositório "{root}" tem uma operação em andamento. Conclua ou aborte essa operação antes de trazer commits.'
   },
+  repoTabs: {
+    list: 'Repositórios abertos',
+    addTab: 'Abrir, clonar ou criar um repositório',
+    noBranch: 'sem branch',
+    changes: 'Alterações não commitadas: {count}',
+    conflicts: 'Conflitos em andamento',
+    operation: 'Operação em andamento',
+    closeAria: 'Fechar {repo}',
+    closeHelp: 'Tira o repositório desta sessão. Nada é apagado.',
+    closeThis: 'Fechar este repositório',
+    closeOthers: 'Fechar outros',
+    openBadge: 'aberto',
+    applyAcross: 'Aplicar em outro repositório aberto',
+    close: {
+      title: 'Fechar {repo}?',
+      message:
+        'Este repositório tem trabalho em aberto: {details}.\n\nFechar só tira o repositório desta sessão. Nada é apagado do disco, mas o trabalho continua pendente até você abrir o repositório de novo.',
+      confirm: 'Fechar mesmo assim',
+      changes: '{count} alteração(ões) não commitada(s)',
+      operation: 'uma operação em andamento',
+      drafts: '{count} arquivo(s) com texto não salvo no editor'
+    },
+    closeOthersDialog: {
+      title: 'Fechar os outros repositórios?',
+      message: 'Os outros repositórios saem desta sessão (nada é apagado). {details}',
+      hasWork: 'Alguns têm trabalho em aberto: {names}.'
+    },
+    cross: {
+      title: 'Aplicar commits em {target}',
+      origin: 'Origem: {repo} · {commits}',
+      destination: 'Destino: {repo} · branch atual: {branch}',
+      note: 'Os commits entram na branch atual do destino, como um cherry-pick. A origem não muda.',
+      confirm: 'Aplicar',
+      done: 'Commits aplicados em {target}.',
+      conflict: 'Conflitos ao aplicar em {target}. Resolva-os na aba dele, ou aborte a operação lá.',
+      goTo: 'Ir para {repo}',
+      dropHelp: 'Solte aqui para aplicar os commits neste repositório'
+    },
+    wait: {
+      title: 'Aguardando a operação em {repo}…',
+      help: 'A troca espera as operações em andamento terminarem, para que nenhuma continue no outro repositório.',
+      force: 'Trocar mesmo assim',
+      forced: 'A operação em {repo} não terminou a tempo; a troca foi feita mesmo assim.'
+    },
+    log: {
+      all: 'Todos os repositórios',
+      only: 'Só este repositório'
+    },
+    shortcuts: {
+      next: 'Próxima aba de repositório',
+      prev: 'Aba anterior de repositório',
+      close: 'Fechar aba de repositório'
+    }
+  },
   dash: {
     title: 'Dashboards',
     tabHelp: 'Métricas, gráficos e auditoria do histórico do git',

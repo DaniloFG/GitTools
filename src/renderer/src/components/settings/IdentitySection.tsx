@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { GitConfigScope, GitIdentities, GitIdentity } from '../../../../shared/types'
 import { t } from '../../i18n'
+import { getActiveRoot } from '../../git'
 import { RemotesSection } from './RemotesSection'
 import { Loader } from '../Loader'
 
@@ -19,7 +20,8 @@ export function IdentitySection() {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
   const load = () =>
-    window.gittools.gitIdentity().then(
+    // A identidade é a do repositório da aba visível (as Configurações bloqueiam a troca de aba enquanto estão abertas).
+    window.gittools.gitIdentity(getActiveRoot() ?? undefined).then(
       (ids) => setIdentities(ids),
       (e) => setMessage({ ok: false, text: errorText(e) })
     )
@@ -38,7 +40,7 @@ export function IdentitySection() {
     setSaving(true)
     setMessage(null)
     try {
-      await window.gittools.setGitIdentity(scope, form)
+      await window.gittools.setGitIdentity(scope, form, getActiveRoot() ?? undefined)
       await load()
       setMessage({ ok: true, text: t('identity.saved') })
     } catch (e) {

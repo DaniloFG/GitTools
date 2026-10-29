@@ -76,7 +76,7 @@ interface Props {
 type FilesState = ChangedFile[] | 'loading' | { error: string }
 
 export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onOpenFileWindow, onOpenWipFile }: Props) {
-  const { data, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
+  const { data, repo, workspace, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
   const [query, setQuery] = useState('')
@@ -232,6 +232,14 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
       })),
       { label: t('history.menu.checkout'), onClick: () => actions.checkout(commit.sha) }
     ]
+    // Outros repositórios abertos: os commits vão para a branch atual deles (com confirmação, no nível do app).
+    const otherRepos = workspace.repos.filter((r) => r.root !== repo.root)
+    const summary = (root: string) => workspace.summaries[root]
+    const branchOf = (root: string) => {
+      const s = summary(root)
+      if (!s) return '…'
+      return s.detached ? (s.headSha?.slice(0, 7) ?? t('repoTabs.noBranch')) : (s.branch ?? t('repoTabs.noBranch'))
+    }
     showMenu(e, [
       ...checkouts,
       'separator',
@@ -240,6 +248,17 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
             {
               label: t('history.menu.cherryPick', { count: shas.length, target: head }),
               onClick: () => actions.cherryPickCommits(head, shas, shas.length === 1 ? commit.subject : undefined)
+            }
+          ]
+        : []),
+      ...(otherRepos.length > 0
+        ? [
+            {
+              label: t('repoTabs.applyAcross'),
+              submenu: otherRepos.map((r) => ({
+                label: `${r.name} (${branchOf(r.root)})`,
+                onClick: () => workspace.applyAcross(repo.root, r.root, shas)
+              }))
             }
           ]
         : []),

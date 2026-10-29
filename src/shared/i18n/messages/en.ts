@@ -974,6 +974,60 @@ export const en: Messages = {
     targetDirty: 'The repository "{root}" has uncommitted changes. Commit or stash them before bringing in commits.',
     targetBusy: 'The repository "{root}" has an operation in progress. Finish or abort it before bringing in commits.'
   },
+  repoTabs: {
+    list: 'Open repositories',
+    addTab: 'Open, clone or create a repository',
+    noBranch: 'no branch',
+    changes: 'Uncommitted changes: {count}',
+    conflicts: 'Conflicts in progress',
+    operation: 'Operation in progress',
+    closeAria: 'Close {repo}',
+    closeHelp: 'Removes the repository from this session. Nothing is deleted.',
+    closeThis: 'Close this repository',
+    closeOthers: 'Close others',
+    openBadge: 'open',
+    applyAcross: 'Apply to another open repository',
+    close: {
+      title: 'Close {repo}?',
+      message:
+        'This repository has unfinished work: {details}.\n\nClosing only removes the repository from this session. Nothing is deleted from disk, but the work stays pending until you open the repository again.',
+      confirm: 'Close anyway',
+      changes: '{count} uncommitted change(s)',
+      operation: 'an operation in progress',
+      drafts: '{count} file(s) with unsaved editor text'
+    },
+    closeOthersDialog: {
+      title: 'Close the other repositories?',
+      message: 'The other repositories leave this session (nothing is deleted). {details}',
+      hasWork: 'Some have unfinished work: {names}.'
+    },
+    cross: {
+      title: 'Apply commits to {target}',
+      origin: 'Source: {repo} · {commits}',
+      destination: 'Destination: {repo} · current branch: {branch}',
+      note: 'The commits go onto the destination’s current branch, like a cherry-pick. The source does not change.',
+      confirm: 'Apply',
+      done: 'Commits applied to {target}.',
+      conflict: 'Conflicts while applying to {target}. Resolve them in its tab, or abort the operation there.',
+      goTo: 'Go to {repo}',
+      dropHelp: 'Drop here to apply the commits to this repository'
+    },
+    wait: {
+      title: 'Waiting for the operation in {repo}…',
+      help: 'The switch waits for operations in progress to finish, so none keeps running in the other repository.',
+      force: 'Switch anyway',
+      forced: 'The operation in {repo} did not finish in time; the switch was made anyway.'
+    },
+    log: {
+      all: 'All repositories',
+      only: 'This repository only'
+    },
+    shortcuts: {
+      next: 'Next repository tab',
+      prev: 'Previous repository tab',
+      close: 'Close repository tab'
+    }
+  },
   dash: {
     title: 'Dashboards',
     tabHelp: 'Metrics, charts and audit of the git history',

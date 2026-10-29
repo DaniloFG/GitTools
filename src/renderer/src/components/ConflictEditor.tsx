@@ -42,7 +42,7 @@ const withArrow = (label: string, arrow: string) => (LEADING_ARROWS.has(arrow) ?
  * Os painéis rolam juntos, e cada bloco em conflito ocupa a mesma altura nos três.
  */
 export function ConflictEditor({ path, onClose }: { path: string; onClose(): void }) {
-  const { run, toast, showMenu } = useApp()
+  const { run, toast, showMenu, repo } = useApp()
   const resolveAll = useResolveAll()
   const [details, setDetails] = useState<ConflictDetails | null>(null)
   const [resolutions, setResolutions] = useState<(ChunkResolution | undefined)[]>([])
@@ -184,7 +184,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
           <button className="choice" onClick={() => resolveWhole('theirs')}>
             <strong>{details.theirs === null ? t('conflict.deleteFile') : t('conflict.keepTheirs')}</strong>
           </button>
-          <button className="choice" onClick={() => window.gittools.openFile(path)}>
+          <button className="choice" onClick={() => window.gittools.openFile(path, repo.root)}>
             <strong>{t('common.openInEditor')}</strong>
             <span>{t('conflict.editorHelp')}</span>
           </button>
@@ -405,7 +405,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
           >
             {t('conflictBulk.menuLabel')} ▾
           </button>
-          <button onClick={() => window.gittools.openFile(path)}>{t('common.openInEditor')}</button>
+          <button onClick={() => window.gittools.openFile(path, repo.root)}>{t('common.openInEditor')}</button>
           <button onClick={onClose}>{t('common.cancel')}</button>
           <button className="primary" disabled={resolvedCount < conflicts.length} onClick={save}>
             {t('conflict.save')}

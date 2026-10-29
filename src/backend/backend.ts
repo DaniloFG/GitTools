@@ -456,7 +456,8 @@ export class Backend {
         })
       }
       case 'app:runGit': {
-        const repo = this.repo
+        // Argumentos: [linha de comando, root?]; com `root`, só o repositório aberto com ele (nunca cai no ativo).
+        const repo = this.repoAt(args[1])
         if (!repo) throw new Error(t('main.noRepository'))
         return runTerminalCommand(repo.root, String(args[0] ?? ''))
       }

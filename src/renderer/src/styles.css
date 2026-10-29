@@ -2198,6 +2198,212 @@ button.danger .loader {
   text-align: center;
 }
 
+/* ------------------------------------------------------ vários repositórios */
+
+/* Faixa de 3px no topo com a cor do repositório da aba ativa: a tela nunca fica sem a identidade dele. */
+.repo-stripe {
+  flex: none;
+  height: 3px;
+  background: var(--repo, var(--accent));
+}
+.repo-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: none;
+  padding: 4px 8px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+.repo-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 300px;
+  padding: 5px 6px 5px 10px;
+  border: 1px solid transparent;
+  border-top: 3px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.repo-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.repo-tab.active {
+  color: var(--text);
+  background: var(--bg-elevated);
+  border-color: var(--border);
+  border-top-color: var(--repo);
+  margin-bottom: -1px;
+  cursor: default;
+}
+/* Commits arrastados sobre uma aba de outro repositório: a aba acende na cor dele. */
+.repo-tab.drop-over {
+  outline: 2px dashed var(--repo);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--repo) 22%, var(--bg-elevated));
+}
+.repo-tab-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--repo);
+}
+.repo-tab-name {
+  overflow: hidden;
+  max-width: 150px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+.repo-tab-branch {
+  overflow: hidden;
+  max-width: 130px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+.repo-tab-badge {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10.5px;
+  line-height: 16px;
+  text-align: center;
+}
+.repo-tab-flag {
+  font-size: 12px;
+}
+.repo-tab-flag.conflict {
+  color: var(--danger);
+}
+.repo-tab-flag.operation {
+  color: var(--warning);
+}
+.repo-tab-close {
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.repo-tab-close:hover {
+  opacity: 1;
+  background: var(--bg-hover);
+}
+.repo-tab-add {
+  flex: none;
+  align-self: center;
+  width: 26px;
+  height: 26px;
+  margin: 0 4px 3px;
+  padding: 0;
+}
+
+/* Nome do repositório com a cor dele (diálogos, log de comandos). */
+.repo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 220px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--repo) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--repo) 16%, transparent);
+  color: var(--repo);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 18px;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.repo-chip::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--repo);
+}
+.dialog-repo {
+  margin-inline-start: 10px;
+  font-size: 12px;
+}
+.gitlog-repo {
+  font-size: 10.5px;
+  line-height: 16px;
+}
+
+/* Toolbar: a cor do repositório aparece no nome, e a branch em destaque. */
+.repo-button-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--repo);
+}
+.toolbar .current-branch {
+  max-width: 260px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Espera da troca de aba: o repositório que sai termina as operações dele antes de a tela mudar. */
+.repo-wait {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: blur(2px);
+}
+.repo-wait-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 380px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+.repo-wait-card p {
+  margin: 0;
+}
+.repo-loading {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+/* Com a barra de abas, o indicador de operação desce para não cobrir a toolbar. */
+.workspace-app .busy {
+  top: 92px;
+}
+
 /* ------------------------------------------------------------ toasts */
 
 .toasts {

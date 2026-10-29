@@ -59,6 +59,9 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         'push.force': () => actions.push({ force: 'lease' }),
         refresh: () => app.refresh(),
         'repo.open': onOpenRepository,
+        'tab.next': () => app.workspace.cycle(1),
+        'tab.prev': () => app.workspace.cycle(-1),
+        'tab.close': () => app.workspace.close(app.repo.root),
         settings: () => app.openSettings(),
         help: app.openShortcuts
       }

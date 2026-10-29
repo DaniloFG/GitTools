@@ -6,7 +6,7 @@ import { applySettings, resolveLocale } from '../appearance'
 import { AppContext, type AppContextValue, type ToastKind } from '../context'
 import { addToast, type Toast } from '../feedback'
 import { errorMessage } from '../format'
-import { git } from '../git'
+import { git, setActiveRoot } from '../git'
 import { getLocale, setLocale, t } from '../i18n'
 import { closeVsCodePanel } from '../vscodeBridge'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
@@ -54,6 +54,8 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
   const [fullFile] = useFullFile()
   const { source, path } = request
   const title = request.title ?? path
+  // Esta janela é de um repositório só (o da requisição): as chamadas git dela vão para ele, não para o ativo.
+  setActiveRoot(request.root ?? null)
 
   const settingsRef = useRef(settings)
   settingsRef.current = settings
@@ -117,7 +119,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
             {title}
           </strong>
           <span className="toolbar-spacer" />
-          <button onClick={() => window.gittools.openInEditor(path).catch((e) => toast('error', errorMessage(e)))}>{t('common.openInEditor')}</button>
+          <button onClick={() => window.gittools.openInEditor(path, request.root).catch((e) => toast('error', errorMessage(e)))}>{t('common.openInEditor')}</button>
           <button onClick={() => closeWindow()}>{t('common.close')}</button>
         </header>
         <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((item) => item.id !== id))} />

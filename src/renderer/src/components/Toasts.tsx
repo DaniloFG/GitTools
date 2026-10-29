@@ -86,6 +86,18 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss(): void }) {
         {toast.count > 1 && <span className="toast-count">×{toast.count}</span>}
       </span>
       <span className="toast-actions">
+        {toast.action && (
+          <button
+            className="toast-action primary"
+            onClick={(e) => {
+              e.stopPropagation()
+              toast.action?.run()
+              onDismiss()
+            }}
+          >
+            {toast.action.label}
+          </button>
+        )}
         {toast.kind === 'error' && (
           <button className="toast-action" onClick={copy} title={t('feedback.toast.copyHelp')}>
             {copied === 'ok' ? t('feedback.toast.copied') : copied === 'fail' ? t('feedback.toast.copyFailed') : t('feedback.toast.copy')}

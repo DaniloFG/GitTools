@@ -5,6 +5,8 @@ import { getCurrentLocale, t } from '../i18n'
 import { useLayout } from '../layout'
 import { GitTerminal } from './GitTerminal'
 import { Loader } from './Loader'
+import { RepoChip } from './RepoChip'
+import { repoNameOf, sameRoot } from '../workspace'
 
 const LIMIT = 500
 
@@ -41,9 +43,11 @@ export function commandLine(args: string[]): string {
 
 /** Log em tempo real dos comandos git executados pelo GitTools. */
 export function GitLogView() {
-  const { showMenu, toast } = useApp()
+  const { showMenu, toast, repo, workspace } = useApp()
   const [entries, setEntries] = useState<GitCommandEntry[]>([])
   const [onlyChanges, setOnlyChanges] = useLayout<boolean>('gitlog.onlyChanges', (v) => v === true)
+  /** Por padrão, só os comandos do repositório da aba; "todos" mostra os de todos os abertos (cada linha diz de qual). */
+  const [allRepos, setAllRepos] = useState(false)
   const [query, setQuery] = useState('')
   /** Aba mostrada: o log de comandos ou o terminal git. */
   const [tab, setTab] = useState<'log' | 'terminal'>('log')
@@ -83,8 +87,18 @@ export function GitLogView() {
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return entries.filter((e) => (!onlyChanges || !isReadOnly(e)) && (!q || commandLine(e.args).toLowerCase().includes(q)))
-  }, [entries, onlyChanges, query])
+    return entries.filter(
+      (e) => (allRepos || sameRoot(e.cwd, repo.root)) && (!onlyChanges || !isReadOnly(e)) && (!q || commandLine(e.args).toLowerCase().includes(q))
+    )
+  }, [entries, onlyChanges, query, allRepos, repo.root])
+
+  /** Nome do repositório de um comando (pela pasta em que ele rodou); fechado, mostra só a última pasta. */
+  const repoOf = (cwd: string) => {
+    const open = workspace.repos.find((r) => sameRoot(r.root, cwd))
+    return open ?? { root: cwd, name: repoNameOf(cwd) }
+  }
+  // Com mais de um aberto, cada linha diz de qual repositório é o comando.
+  const severalRepos = workspace.repos.length > 1
 
   useLayoutEffect(() => {
     const el = bodyRef.current
@@ -120,6 +134,10 @@ export function GitLogView() {
               {failed > 0 && <span className="warning-text"> · {t('gitlog.failed', { count: failed })}</span>}
             </span>
             <span className="toolbar-spacer" />
+            <label className="checkbox small">
+              <input type="checkbox" checked={allRepos} onChange={(e) => setAllRepos(e.target.checked)} />
+              {t('repoTabs.log.all')}
+            </label>
             <label className="checkbox small" title={t('gitlog.onlyChangesHelp')}>
               <input type="checkbox" checked={onlyChanges} onChange={(e) => setOnlyChanges(e.target.checked || undefined)} />
               {t('gitlog.onlyChanges')}
@@ -160,6 +178,7 @@ export function GitLogView() {
                   }
                 >
                   <span className="gitlog-time">{time(entry.startedAt)}</span>
+                  {severalRepos && <RepoChip repo={repoOf(entry.cwd)} className="gitlog-repo" />}
                   <span className="gitlog-state">
                     {state === 'running' ? <Loader size="sm" /> : state === 'ok' ? (entry.exitCode ? `✓ ${entry.exitCode}` : '✓') : `✕ ${entry.exitCode}`}
                   </span>
