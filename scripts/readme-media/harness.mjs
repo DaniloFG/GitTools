@@ -105,7 +105,7 @@ export async function launch(options) {
     homeDir: () => work,
     documentsDir: () => '/home/ana/Projects',
     systemLocales: () => [language],
-    versions: () => ({ host: options.host ?? 'electron', version: '0.7.0', electron: '38.0.0', chrome: '140.0.0', node: process.versions.node, platform: 'linux', ...(options.host === 'vscode' ? { vscode: '1.105.0' } : {}) }),
+    versions: () => ({ host: options.host ?? 'electron', version: '0.8.0', electron: '38.0.0', chrome: '140.0.0', node: process.versions.node, platform: 'linux', ...(options.host === 'vscode' ? { vscode: '1.105.0' } : {}) }),
     emit: (channel, payload) => events.push([channel, payload]),
     pickFolder: async () => null,
     openPath: async () => undefined,
