@@ -1,4 +1,5 @@
 import type { Settings } from './settings'
+import type { TerminalCommandResult } from './terminal'
 import type {
   Analytics,
   AnalyticsOptions,
@@ -289,6 +290,11 @@ export interface GitToolsBridge {
   cloneRepository(url: string, parent: string, name: string): Promise<RepoInfo>
   gitIdentity(): Promise<GitIdentities>
   setGitIdentity(scope: GitConfigScope, identity: GitIdentity): Promise<void>
+  /**
+   * Roda uma linha de comando git no repositório aberto (terminal integrado ao log). Sem shell: pipes,
+   * redirecionamentos e programas arbitrários são recusados; a saída vem em stdout/stderr.
+   */
+  runGitCommand(commandLine: string): Promise<TerminalCommandResult>
   appInfo(): Promise<AppInfo>
   /** Aplica a escala da interface imediatamente. */
   setZoom(factor: number): void

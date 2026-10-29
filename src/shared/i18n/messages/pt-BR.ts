@@ -1443,6 +1443,68 @@ export const ptBR = {
     copied: 'Comando copiado.',
     copyError: 'Copiar mensagem de erro'
   },
+  gitTerminal: {
+    tabLog: 'Log',
+    tabTerminal: 'Terminal',
+    title: 'Terminal git',
+    placeholder: 'Digite um comando git, por exemplo: git status',
+    run: 'Executar',
+    running: 'Executando…',
+    commands: 'Comandos',
+    commandsHelp: 'Lista os comandos git, com a descrição de cada um (clique para usar)',
+    clear: 'Limpar',
+    clearHelp: 'Limpa a saída (Ctrl+L). Também funciona digitar clear.',
+    suggestions: 'Sugestões',
+    keys: 'Tab aceita a sugestão · ↑↓ escolhe ou repete comandos · Esc fecha as sugestões',
+    syntax: 'Sintaxe',
+    examples: 'Exemplos',
+    options: 'Opções',
+    welcome:
+      'Terminal do repositório. Os comandos rodam na raiz do repositório, sem shell: pipes (|), redirecionamentos (>) e && não funcionam. Digite help para a lista ou help <comando> para ajuda.',
+    exitCode: 'código de saída {code}',
+    detached: 'sem branch',
+    listTitle: 'Comandos git disponíveis (clique para inserir)',
+    unknownHelp: 'Não há ajuda para "{command}". Digite help para ver a lista de comandos.',
+    noOutput: 'Sem saída.',
+    timeout: 'Tempo esgotado ({seconds} s): o comando foi interrompido.',
+    truncated: 'Saída cortada em {size}: o restante não foi mostrado.',
+    kind: {
+      command: 'Comando',
+      flag: 'Opção',
+      op: 'Ação',
+      branch: 'Branch',
+      tag: 'Tag',
+      remote: 'Remote',
+      path: 'Arquivo',
+      local: 'Comando local'
+    },
+    err: {
+      empty: 'Digite um comando git, por exemplo: git status',
+      noSubcommand: 'Falta o subcomando do git, por exemplo: status, log ou commit.',
+      notGit: 'Este terminal só executa comandos git. Escreva "git <subcomando>", por exemplo: git status',
+      unclosedQuote: 'Aspas sem fechar.',
+      trailingBackslash: 'Barra invertida (\\) no fim da linha.',
+      operator:
+        'Não é possível usar "{op}": o terminal roda um comando git por vez, sem pipes, redirecionamentos ou encadeamento (&&, ;).',
+      tooLong: 'Comando longo demais (máximo de {max} caracteres).',
+      globalOption: 'A opção "{option}" não é permitida: o terminal sempre roda na raiz do repositório aberto.',
+      execOption: 'A opção "{option}" faria o git executar outro programa; não é permitida aqui.',
+      shellAlias: 'O alias "{name}" executa um comando de shell (começa com "!"), o que não é permitido aqui.',
+      shellConfig: 'A configuração "{key}" faria o git executar outro programa; não é permitida aqui.',
+      interactive: 'O comando "git {command}" precisa de resposta interativa, que o terminal não tem. {hint}',
+      editor: 'O comando "git {command}" abriria um editor de texto, que o terminal não tem. {hint}'
+    },
+    hint: {
+      tools: 'Use as telas do GitTools (Alterações, Conflitos e diff) no lugar de ferramentas externas.',
+      rebase: 'Use Histórico → Rebase interativo, ou "git rebase <base>" sem -i.',
+      add: 'Escolha arquivos e linhas na aba Alterações, ou use "git add <arquivo>".',
+      clean: 'Use "git clean -n" para ver o que seria apagado e "git clean -f <caminho>" para apagar.',
+      patch: 'Escolha o que mudar na aba Alterações, ou passe os caminhos sem -p.',
+      commit: 'Passe a mensagem na linha: git commit -m "sua mensagem" (ou --no-edit).',
+      tag: 'Passe a mensagem na linha: git tag -a <nome> -m "sua mensagem".',
+      config: 'Grave a opção direto: git config <chave> <valor>.'
+    }
+  },
   clone: {
     menu: 'Clonar repositório…',
     title: 'Clonar repositório',

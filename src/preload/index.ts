@@ -28,6 +28,7 @@ const bridge: GitToolsBridge = {
   cloneRepository: (url, parent, name) => ipcRenderer.invoke('app:cloneRepository', url, parent, name),
   gitIdentity: () => ipcRenderer.invoke('app:gitIdentity'),
   setGitIdentity: (scope, identity) => ipcRenderer.invoke('app:setGitIdentity', scope, identity),
+  runGitCommand: (commandLine) => ipcRenderer.invoke('app:runGit', commandLine),
   setZoom: (factor) => webFrame.setZoomFactor(Math.min(2, Math.max(0.5, factor))),
   invoke: ((method: string, ...args: unknown[]) => ipcRenderer.invoke('repo:invoke', method, args)) as GitToolsBridge['invoke'],
   onRepositoryChanged: (listener) => {

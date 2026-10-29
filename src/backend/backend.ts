@@ -14,6 +14,7 @@ import { cloneRepository, getIdentities, setIdentity } from '../core/config'
 import { onGitCommand, runGit } from '../core/exec'
 import { resolveInside } from '../core/paths'
 import { GitRepository } from '../core/repository'
+import { runTerminalCommand } from '../core/terminal'
 
 /** O que cada ambiente (Electron, VS Code) precisa fornecer. */
 export interface BackendHost {
@@ -256,6 +257,10 @@ export class Backend {
           name: String(identity?.name ?? ''),
           email: String(identity?.email ?? '')
         })
+      }
+      case 'app:runGit': {
+        if (!repo) throw new Error(t('main.noRepository'))
+        return runTerminalCommand(repo.root, String(args[0] ?? ''))
       }
       case 'repo:invoke': {
         const method = args[0] as RepoMethod

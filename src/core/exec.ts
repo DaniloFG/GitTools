@@ -33,7 +33,9 @@ export class GitError extends Error {
     readonly args: string[],
     readonly exitCode: number,
     readonly stdout: string,
-    readonly stderr: string
+    readonly stderr: string,
+    /** A saída foi cortada no limite (RunOptions.maxOutputBytes). */
+    readonly truncated = false
   ) {
     super(message)
     this.name = 'GitError'
@@ -46,12 +48,20 @@ export interface RunOptions {
   /** Códigos de saída considerados sucesso (padrão: [0]). */
   okExitCodes?: number[]
   env?: NodeJS.ProcessEnv
+  /** Tempo máximo em ms: passado, o git é interrompido e o comando falha. */
+  timeoutMs?: number
+  /** Bytes guardados de cada saída (stdout e stderr); o excedente é descartado e `truncated` fica verdadeiro. */
+  maxOutputBytes?: number
+  /** Não aparece no log de comandos (consultas internas do próprio GitTools). */
+  silent?: boolean
 }
 
 export interface RunResult {
   stdout: string
   stderr: string
   exitCode: number
+  /** Alguma saída foi cortada em RunOptions.maxOutputBytes. */
+  truncated?: boolean
 }
 
 /** Remove as dicas ("hint: ...") do git, que só fazem sentido no terminal. */
@@ -71,9 +81,12 @@ const BASE_ARGS = ['-c', 'core.quotepath=false', '-c', 'color.ui=false', '-c', '
  */
 export function runGit(cwd: string, args: string[], options: RunOptions = {}): Promise<RunResult> {
   const entry: GitCommandEntry = { id: nextCommandId++, args, cwd, startedAt: Date.now() }
-  emitCommand(entry)
+  const announce = (e: GitCommandEntry) => {
+    if (!options.silent) emitCommand(e)
+  }
+  announce(entry)
   const finish = (exitCode: number, error?: string) =>
-    emitCommand({
+    announce({
       ...entry,
       exitCode,
       durationMs: Date.now() - entry.startedAt,
@@ -100,25 +113,55 @@ export function runGit(cwd: string, args: string[], options: RunOptions = {}): P
         ...options.env
       }
     })
+    // Guarda no máximo `maxOutputBytes` de cada saída; o resto é lido e descartado (o git termina normalmente).
+    const limit = options.maxOutputBytes ?? Infinity
+    const kept = { out: 0, err: 0 }
+    let truncated = false
+    const collect = (chunks: Buffer[], key: 'out' | 'err') => (d: Buffer) => {
+      const room = limit - kept[key]
+      if (d.length <= room) {
+        chunks.push(d)
+        kept[key] += d.length
+        return
+      }
+      truncated = true
+      if (room > 0) {
+        chunks.push(d.subarray(0, room))
+        kept[key] += room
+      }
+    }
     const out: Buffer[] = []
     const err: Buffer[] = []
-    child.stdout.on('data', (d: Buffer) => out.push(d))
-    child.stderr.on('data', (d: Buffer) => err.push(d))
+    child.stdout.on('data', collect(out, 'out'))
+    child.stderr.on('data', collect(err, 'err'))
+    let timedOut = false
+    const timer = options.timeoutMs
+      ? setTimeout(() => {
+          timedOut = true
+          child.kill('SIGTERM')
+        }, options.timeoutMs)
+      : null
     child.on('error', (e) => {
+      if (timer) clearTimeout(timer)
       finish(-1, e.message)
       reject(new GitError(t('core.gitNotFound', { error: e.message }), args, -1, '', ''))
     })
     child.on('close', (code) => {
+      if (timer) clearTimeout(timer)
       const stdout = Buffer.concat(out).toString('utf8')
       const stderr = Buffer.concat(err).toString('utf8')
       const exitCode = code ?? -1
-      if ((options.okExitCodes ?? [0]).includes(exitCode)) {
+      if (timedOut) {
+        const message = t('gitTerminal.timeout', { seconds: Math.round((options.timeoutMs ?? 0) / 1000) })
+        finish(-1, message)
+        reject(new GitError(message, args, -1, stdout, stderr, truncated))
+      } else if ((options.okExitCodes ?? [0]).includes(exitCode)) {
         finish(exitCode)
-        resolve({ stdout, stderr, exitCode })
+        resolve({ stdout, stderr, exitCode, truncated })
       } else {
         const message = cleanMessage(stderr) || cleanMessage(stdout) || t('core.gitFailed', { command: args[0], code: exitCode })
         finish(exitCode, message)
-        reject(new GitError(message, args, exitCode, stdout, stderr))
+        reject(new GitError(message, args, exitCode, stdout, stderr, truncated))
       }
     })
     child.stdin.on('error', () => {
