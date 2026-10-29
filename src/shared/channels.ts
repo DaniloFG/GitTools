@@ -23,6 +23,7 @@ export const BRIDGE_CHANNELS = [
   'app:cloneRepository',
   'app:gitIdentity',
   'app:setGitIdentity',
+  'app:runGit',
   'repo:invoke'
 ] as const
 export type BridgeChannel = (typeof BRIDGE_CHANNELS)[number]

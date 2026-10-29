@@ -99,6 +99,7 @@ export function installVsCodeBridge(): boolean {
     cloneRepository: (url, parent, name) => call('app:cloneRepository', url, parent, name),
     gitIdentity: () => call('app:gitIdentity'),
     setGitIdentity: (scope, identity) => call('app:setGitIdentity', scope, identity),
+    runGitCommand: (commandLine) => call('app:runGit', commandLine),
     // O zoom do webview segue o do VS Code.
     setZoom: () => undefined,
     invoke: ((method: string, ...args: unknown[]) => call('repo:invoke', method, args)) as GitToolsBridge['invoke'],

@@ -3130,6 +3130,231 @@ body.docking .pane-grip {
   word-break: break-word;
 }
 
+/* ------------------------------------------------- terminal git (aba do log) */
+
+/* Abas Log | Terminal na barra do log; a aba ativa fica sublinhada na cor de destaque. */
+.gitlog-tabs {
+  display: inline-flex;
+  gap: 2px;
+}
+.gitlog-tabs button {
+  padding: 2px 10px;
+  font-size: 12px;
+  border-bottom: 2px solid transparent;
+}
+.gitlog-tabs button.active {
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.gt {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.gt-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  font-family: inherit;
+}
+.gt-toolbar button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.gt-toolbar button.active {
+  background: var(--bg-active);
+}
+.gt-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 4px;
+  max-height: 40%;
+  overflow: auto;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.gt-list-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+.gt-list-item .muted {
+  font-family: inherit;
+  white-space: normal;
+}
+.gt-list-local {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.gt-output {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 10px;
+  user-select: text;
+}
+.gt-welcome {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: inherit;
+  white-space: pre-wrap;
+}
+.gt-entry {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+.gt-command {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.gt-prompt {
+  color: var(--accent);
+  font-weight: 600;
+  white-space: pre;
+}
+.gt-stdout,
+.gt-stderr,
+.gt-stderr-info {
+  margin: 2px 0 0;
+  padding: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.gt-stderr {
+  color: var(--danger);
+}
+.gt-stderr-info {
+  color: var(--text-muted);
+}
+.gt-exit {
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+.gt-exit.error {
+  color: var(--danger);
+}
+.gt-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.gt-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+/* Linha de entrada: prompt, campo e botão Executar; as sugestões abrem acima dela. */
+.gt-input-area {
+  position: relative;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.gt-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+}
+.gt-input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  font: inherit;
+}
+.gt-run {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+.gt-suggest-wrap {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 100%;
+  z-index: 5;
+  max-height: 55vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.18);
+}
+.gt-suggest {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  max-height: 260px;
+  overflow: auto;
+}
+.gt-suggest li {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 80px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: baseline;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.gt-suggest li.active {
+  background: var(--bg-active);
+}
+.gt-kind {
+  color: var(--text-muted);
+  font-family: inherit;
+}
+.gt-detail {
+  color: var(--text-muted);
+  font-family: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gt-hint {
+  padding: 3px 10px;
+  border-top: 1px solid var(--border);
+  font-family: inherit;
+}
+.gt-help {
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.gt-help-title {
+  margin-bottom: 2px;
+}
+.gt-examples {
+  margin: 0 0 4px;
+  padding-inline-start: 18px;
+}
+.gt-flags {
+  margin: 0;
+}
+.gt-flags > div {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+  column-gap: 10px;
+}
+.gt-flags dd {
+  margin: 0;
+  color: var(--text-muted);
+}
+
 /* ------------------------------------------ linhas adicionadas/removidas */
 
 .line-stats {

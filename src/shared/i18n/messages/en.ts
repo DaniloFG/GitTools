@@ -1370,6 +1370,68 @@ export const en: Messages = {
     copied: 'Command copied.',
     copyError: 'Copy error message'
   },
+  gitTerminal: {
+    tabLog: 'Log',
+    tabTerminal: 'Terminal',
+    title: 'Git terminal',
+    placeholder: 'Type a git command, e.g. git status',
+    run: 'Run',
+    running: 'Running…',
+    commands: 'Commands',
+    commandsHelp: 'List the git commands with a description of each (click to use one)',
+    clear: 'Clear',
+    clearHelp: 'Clears the output (Ctrl+L). Typing clear works too.',
+    suggestions: 'Suggestions',
+    keys: 'Tab accepts the suggestion · ↑↓ picks or repeats commands · Esc closes the suggestions',
+    syntax: 'Syntax',
+    examples: 'Examples',
+    options: 'Options',
+    welcome:
+      'Repository terminal. Commands run at the repository root, without a shell: pipes (|), redirects (>) and && do not work. Type help for the list or help <command> for details.',
+    exitCode: 'exit code {code}',
+    detached: 'no branch',
+    listTitle: 'Available git commands (click to insert)',
+    unknownHelp: 'There is no help for "{command}". Type help to see the list of commands.',
+    noOutput: 'No output.',
+    timeout: 'Timed out ({seconds} s): the command was stopped.',
+    truncated: 'Output cut at {size}: the rest was not shown.',
+    kind: {
+      command: 'Command',
+      flag: 'Option',
+      op: 'Action',
+      branch: 'Branch',
+      tag: 'Tag',
+      remote: 'Remote',
+      path: 'File',
+      local: 'Local command'
+    },
+    err: {
+      empty: 'Type a git command, for example: git status',
+      noSubcommand: 'The git subcommand is missing, for example: status, log or commit.',
+      notGit: 'This terminal only runs git commands. Type "git <subcommand>", for example: git status',
+      unclosedQuote: 'Unclosed quote.',
+      trailingBackslash: 'Backslash (\\) at the end of the line.',
+      operator:
+        'Cannot use "{op}": the terminal runs one git command at a time, without pipes, redirects or chaining (&&, ;).',
+      tooLong: 'Command too long (maximum {max} characters).',
+      globalOption: 'The option "{option}" is not allowed: the terminal always runs at the root of the open repository.',
+      execOption: 'The option "{option}" would make git run another program; it is not allowed here.',
+      shellAlias: 'The alias "{name}" runs a shell command (it starts with "!"), which is not allowed here.',
+      shellConfig: 'The setting "{key}" would make git run another program; it is not allowed here.',
+      interactive: 'The command "git {command}" needs an interactive answer, which this terminal does not have. {hint}',
+      editor: 'The command "git {command}" would open a text editor, which this terminal does not have. {hint}'
+    },
+    hint: {
+      tools: 'Use the GitTools screens (Changes, Conflicts and diff) instead of external tools.',
+      rebase: 'Use History → Interactive rebase, or "git rebase <base>" without -i.',
+      add: 'Pick files and lines in the Changes tab, or use "git add <file>".',
+      clean: 'Use "git clean -n" to see what would be deleted and "git clean -f <path>" to delete it.',
+      patch: 'Pick what to change in the Changes tab, or pass the paths without -p.',
+      commit: 'Pass the message on the line: git commit -m "your message" (or --no-edit).',
+      tag: 'Pass the message on the line: git tag -a <name> -m "your message".',
+      config: 'Set the option directly: git config <key> <value>.'
+    }
+  },
   clone: {
     menu: 'Clone repository…',
     title: 'Clone repository',

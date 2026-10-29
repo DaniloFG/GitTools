@@ -57,7 +57,7 @@ const BRIDGE = String.raw`
     appInfo: () => call('app:info'), gitLog: () => call('app:gitLog'),
     onGitCommand: (l) => { listeners.cmd.add(l); return () => listeners.cmd.delete(l) },
     openDiffWindow: (r) => call('app:openDiffWindow', r), chooseFolder: (t) => call('app:chooseFolder', t), defaultCloneFolder: () => call('app:defaultCloneFolder'),
-    cloneRepository: (u, p, n) => call('app:cloneRepository', u, p, n), gitIdentity: () => call('app:gitIdentity'), setGitIdentity: (s, i) => call('app:setGitIdentity', s, i),
+    cloneRepository: (u, p, n) => call('app:cloneRepository', u, p, n), gitIdentity: () => call('app:gitIdentity'), setGitIdentity: (s, i) => call('app:setGitIdentity', s, i), runGitCommand: (l) => call('app:runGit', l),
     setZoom: () => undefined, invoke: (m, ...a) => call('repo:invoke', m, a),
     onRepositoryChanged: (l) => { listeners.changed.add(l); return () => listeners.changed.delete(l) }
   }
