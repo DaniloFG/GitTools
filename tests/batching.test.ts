@@ -4,9 +4,24 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { ARG_BUDGET, MAX_COMMAND_CHARS, chunkArgs, commandChars } from '../src/core/chunk'
 import { runGit } from '../src/core/exec'
 import { createRepo, type TestRepo } from './helpers'
+import { scale } from './support/scale'
 
+// Tamanhos: no Windows são menores, mas continuam acima dos limiares de lote (ARG_BUDGET) e de 2 MB.
 /** Quantidade de arquivos do repositório grande: o caso que estourava a linha de comando. */
-const FILES = 3000
+const FILES = scale(3000, 700)
+/** Arquivos alterados, removidos e novos no repositório grande (proporções fixas do total). */
+const CHANGED = FILES / 2
+const REMOVED = FILES / 20
+const ADDED = FILES / 10
+/** Commits e arquivos em conflito dos testes de muitos commits e de conflitos. */
+const COMMITS = scale(800, 300)
+const CONFLICTS = scale(1200, 400)
+/** Arquivos novos (não rastreados) no teste de preparar/desfazer em lote. */
+const NEW_FILES = scale(1000, 350)
+/** Linhas do arquivo grande: acima de 2 MB nas duas escalas (limite do terminal e do editor). */
+const BIG_LINES = scale(60_000, 40_000)
+const bigContent = () => Array.from({ length: BIG_LINES }, (_, i) => `linha ${i} do arquivo grande com texto de preenchimento`).join('\n') + '\n'
+
 /** Caminho longo (~100 caracteres) em 30 subpastas: juntos eles passam de 300 KB de argumentos. */
 const pathOf = (i: number) =>
   `modulo-com-nome-comprido-${Math.floor(i / 100)}/subpasta-de-arquivos-${Math.floor(i / 100)}/arquivo-com-nome-bem-comprido-numero-${String(i).padStart(4, '0')}-revisao.txt`
@@ -54,8 +69,8 @@ afterEach(() => {
 })
 
 /**
- * Repositório com 3 000 arquivos. A branch `feature` altera 1 500 deles, remove 150 e adiciona 300
- * novos, e depois adiciona um arquivo de ~3 MB. A `main` ganha um arquivo próprio, para divergir.
+ * Repositório com FILES arquivos. A branch `feature` altera CHANGED deles, remove REMOVED e adiciona ADDED
+ * novos, e depois adiciona um arquivo grande (acima de 2 MB). A `main` ganha um arquivo próprio, para divergir.
  */
 async function bigRepo(): Promise<{ t: TestRepo; c1: string; c2: string; c3: string }> {
   const t = await createRepo()
@@ -65,45 +80,42 @@ async function bigRepo(): Promise<{ t: TestRepo; c1: string; c2: string; c3: str
   await t.commit('base', base)
   await t.git('checkout', '-q', '-b', 'feature')
   const changed: Record<string, string> = {}
-  for (let i = 0; i < 1500; i++) changed[pathOf(i)] = `linha original ${i}\nlinha nova ${i}\n`
+  for (let i = 0; i < CHANGED; i++) changed[pathOf(i)] = `linha original ${i}\nlinha nova ${i}\n`
   datarCommit(2)
-  const c1 = await t.commit('altera 1500 arquivos', changed)
-  for (let i = 1500; i < 1650; i++) rmSync(join(t.dir, pathOf(i)))
+  const c1 = await t.commit(`altera ${CHANGED} arquivos`, changed)
+  for (let i = CHANGED; i < CHANGED + REMOVED; i++) rmSync(join(t.dir, pathOf(i)))
   const added: Record<string, string> = {}
-  for (let i = 0; i < 300; i++) added[novoPath(i)] = `novo ${i}\n`
+  for (let i = 0; i < ADDED; i++) added[novoPath(i)] = `novo ${i}\n`
   datarCommit(3)
-  const c2 = await t.commit('remove 150 e adiciona 300', added)
-  const big = Array.from({ length: 60_000 }, (_, i) => `linha ${i} do arquivo grande com texto de preenchimento`).join('\n') + '\n'
+  const c2 = await t.commit(`remove ${REMOVED} e adiciona ${ADDED}`, added)
   datarCommit(4)
-  const c3 = await t.commit('arquivo grande', { 'grande/dados.txt': big })
+  const c3 = await t.commit('arquivo grande', { 'grande/dados.txt': bigContent() })
   await t.git('checkout', '-q', 'main')
   datarCommit(5)
   await t.commit('main', { 'outro.txt': 'só no main\n' })
   return { t, c1, c2, c3 }
 }
 
-const everyPath = () => [...allPaths, ...Array.from({ length: 300 }, (_, i) => novoPath(i)), 'grande/dados.txt']
+const everyPath = () => [...allPaths, ...Array.from({ length: ADDED }, (_, i) => novoPath(i)), 'grande/dados.txt']
 
 describe('cherry-pick de arquivos com milhares de caminhos', () => {
-  it('modo "changes" aplica os patches de todos os caminhos (com patch de ~3 MB)', async () => {
+  it('modo "changes" aplica os patches de todos os caminhos (com arquivo grande)', async () => {
     const { t, c1, c2, c3 } = await bigRepo()
     const result = await t.repo.cherryPickFiles('main', [c1, c2, c3], everyPath(), 'changes')
     expect(result.ok).toBe(true)
     // Depois do cherry-pick, o índice só difere do feature no arquivo que só a main tem.
     expect(await t.git('diff', '--cached', '--name-only', 'feature')).toBe('outro.txt\n')
-    expect(readFileSync(join(t.dir, 'grande/dados.txt'), 'utf8')).toBe(
-      Array.from({ length: 60_000 }, (_, i) => `linha ${i} do arquivo grande com texto de preenchimento`).join('\n') + '\n'
-    )
-    expect(existsSync(join(t.dir, pathOf(1500)))).toBe(false)
-  }, 60_000)
+    expect(readFileSync(join(t.dir, 'grande/dados.txt'), 'utf8')).toBe(bigContent())
+    expect(existsSync(join(t.dir, pathOf(CHANGED)))).toBe(false)
+  })
 
-  it('filesChangedBy junta os arquivos de vários commits (1 951 caminhos)', async () => {
+  it('filesChangedBy junta os arquivos de vários commits', async () => {
     const { t, c1, c2, c3 } = await bigRepo()
     const files = await t.repo.filesChangedBy([c1, c2, c3])
-    // 1 500 alterados, 150 removidos, 300 novos e o arquivo grande.
-    expect(files.length).toBe(1500 + 150 + 300 + 1)
-    expect(files.filter((f) => f.status === 'D').length).toBe(150)
-  }, 60_000)
+    // Alterados, removidos, novos e o arquivo grande.
+    expect(files.length).toBe(CHANGED + REMOVED + ADDED + 1)
+    expect(files.filter((f) => f.status === 'D').length).toBe(REMOVED)
+  })
 
   it('modo "version" copia a versão mais nova e remove os que sumiram', async () => {
     const { t, c1, c2, c3 } = await bigRepo()
@@ -111,28 +123,29 @@ describe('cherry-pick de arquivos com milhares de caminhos', () => {
     expect(result.ok).toBe(true)
     expect(await t.git('diff', '--cached', '--name-only', 'feature')).toBe('outro.txt\n')
     expect(readFileSync(join(t.dir, pathOf(7)), 'utf8')).toBe(`linha original 7\nlinha nova 7\n`)
-  }, 60_000)
+  })
 
   it('conflitos em muitos arquivos: abortar volta todos ao HEAD', async () => {
     const t = await createRepo()
+    const conflicting = allPaths.slice(0, CONFLICTS)
     const base: Record<string, string> = {}
-    allPaths.slice(0, 1200).forEach((p) => (base[p] = 'base\n'))
+    conflicting.forEach((p) => (base[p] = 'base\n'))
     await t.commit('base', base)
     await t.git('checkout', '-q', '-b', 'feature')
     const mudados: Record<string, string> = {}
-    allPaths.slice(0, 1200).forEach((p) => (mudados[p] = 'feature\n'))
+    conflicting.forEach((p) => (mudados[p] = 'feature\n'))
     const c = await t.commit('feature', mudados)
     await t.git('checkout', '-q', 'main')
     const outros: Record<string, string> = {}
-    allPaths.slice(0, 1200).forEach((p) => (outros[p] = 'main\n'))
+    conflicting.forEach((p) => (outros[p] = 'main\n'))
     await t.commit('main', outros)
-    const result = await t.repo.cherryPickFiles('main', [c], allPaths.slice(0, 1200), 'changes')
+    const result = await t.repo.cherryPickFiles('main', [c], conflicting, 'changes')
     expect(result.ok).toBe(false)
-    expect(result.conflicts.length).toBe(1200)
+    expect(result.conflicts.length).toBe(CONFLICTS)
     await t.repo.abortOperation()
     expect((await t.repo.status()).conflicted).toEqual([])
     expect(readFileSync(join(t.dir, pathOf(3)), 'utf8')).toBe('main\n')
-  }, 60_000)
+  })
 })
 
 describe('operações de área de trabalho com milhares de arquivos', () => {
@@ -156,23 +169,23 @@ describe('operações de área de trabalho com milhares de arquivos', () => {
     await t.repo.discardFiles(allPaths)
     expect((await t.repo.status()).unstaged.length).toBe(0)
     expect(readFileSync(join(t.dir, pathOf(0)), 'utf8')).toBe('linha original 0\n')
-  }, 60_000)
+  })
 
   it('arquivos novos (não rastreados) são preparados, desfeitos e descartados em lote', async () => {
     const t = await createRepo()
     await t.commit('base', { 'a.txt': 'a\n' })
-    const novos = Array.from({ length: 1000 }, (_, i) => novoPath(i))
+    const novos = Array.from({ length: NEW_FILES }, (_, i) => novoPath(i))
     for (const p of novos) t.write(p, `novo\n`)
     await t.repo.stageFiles(novos)
-    expect((await t.repo.status()).staged.length).toBe(1000)
+    expect((await t.repo.status()).staged.length).toBe(NEW_FILES)
     await t.repo.unstageFiles(novos)
     const depois = await t.repo.status()
     expect(depois.staged.length).toBe(0)
-    expect(depois.unstaged.filter((f) => f.untracked).length).toBe(1000)
+    expect(depois.unstaged.filter((f) => f.untracked).length).toBe(NEW_FILES)
     await t.repo.discardFiles(novos)
     expect((await t.repo.status()).unstaged.length).toBe(0)
     expect(existsSync(join(t.dir, novos[0]))).toBe(false)
-  }, 60_000)
+  })
 
   it('sem nenhum commit, unstage usa o índice e não perde arquivos', async () => {
     const t = await createRepo()
@@ -181,7 +194,7 @@ describe('operações de área de trabalho com milhares de arquivos', () => {
     expect((await t.repo.status()).staged.length).toBe(FILES)
     await t.repo.unstageFiles(allPaths)
     expect((await t.repo.status()).staged.length).toBe(0)
-  }, 60_000)
+  })
 
   it('status com estatísticas e diff da área de trabalho listam todos os arquivos', async () => {
     const { t } = await bigRepo()
@@ -191,14 +204,14 @@ describe('operações de área de trabalho com milhares de arquivos', () => {
     expect(status.unstaged.every((f) => f.additions !== undefined)).toBe(true)
     const diffs = await t.repo.diff({ kind: 'unstaged' })
     expect(diffs.length).toBe(FILES)
-  }, 60_000)
+  })
 
-  it('diff de um commit com arquivo de ~3 MB não é truncado', async () => {
+  it('diff de um commit com arquivo grande não é truncado', async () => {
     const { t, c3 } = await bigRepo()
     const [file] = await t.repo.diff({ kind: 'commit', sha: c3 })
     expect(file.path).toBe('grande/dados.txt')
-    expect(file.additions).toBe(60_000)
-  }, 60_000)
+    expect(file.additions).toBe(BIG_LINES)
+  })
 })
 
 describe('cherry-pick de muitos commits', () => {
@@ -217,28 +230,28 @@ describe('cherry-pick de muitos commits', () => {
     await runGit(t.dir, ['fast-import', '--quiet'], { input: parts.join('') })
   }
 
-  it('cherryPickCommits com 800 shas (acima do limite da linha de comando) mantém a ordem', async () => {
+  it('cherryPickCommits com muitos shas (acima do limite da linha de comando) mantém a ordem', async () => {
     const t = await createRepo()
     await t.commit('base', { 'a.txt': 'a\n' })
-    await manyCommits(t, 'lote', 800)
+    await manyCommits(t, 'lote', COMMITS)
     const shas = (await t.git('rev-list', '--reverse', 'main..lote')).trim().split('\n')
-    expect(shas.length).toBe(800)
+    expect(shas.length).toBe(COMMITS)
     const result = await t.repo.cherryPickCommits('main', shas)
     expect(result.ok).toBe(true)
     const subjects = (await t.git('log', '--reverse', '--format=%s', 'main')).trim().split('\n')
-    expect(subjects.slice(1)).toEqual(Array.from({ length: 800 }, (_, i) => `commit ${i + 1}`))
+    expect(subjects.slice(1)).toEqual(Array.from({ length: COMMITS }, (_, i) => `commit ${i + 1}`))
     expect((await t.repo.status()).staged.length).toBe(0)
-  }, 120_000)
+  })
 
-  it('cherryPickBranch leva a branch inteira, mesmo com 800 commits', async () => {
+  it('cherryPickBranch leva a branch inteira, mesmo com muitos commits', async () => {
     const t = await createRepo()
     await t.commit('base', { 'a.txt': 'a\n' })
-    await manyCommits(t, 'lote', 800)
+    await manyCommits(t, 'lote', COMMITS)
     await t.git('branch', 'destino', 'main')
     const result = await t.repo.cherryPickBranch('lote', 'destino')
     expect(result.ok).toBe(true)
     expect((await t.repo.status()).branch).toBe('destino')
-    expect((await t.git('rev-list', '--count', 'destino')).trim()).toBe('801')
-    expect(readFileSync(join(t.dir, 'lote/item-800.txt'), 'utf8')).toBe('conteudo 800\n')
-  }, 120_000)
+    expect((await t.git('rev-list', '--count', 'destino')).trim()).toBe(String(COMMITS + 1))
+    expect(readFileSync(join(t.dir, `lote/item-${COMMITS}.txt`), 'utf8')).toBe(`conteudo ${COMMITS}\n`)
+  })
 })

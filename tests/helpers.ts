@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach } from 'vitest'
-import { runGit } from '../src/core/exec'
+import { onGitCommand, runGit } from '../src/core/exec'
 import { GitRepository } from '../src/core/repository'
 
 // Os testes verificam mensagens em português.
@@ -11,8 +11,23 @@ setLocale('pt-BR')
 
 const created: string[] = []
 
-afterEach(() => {
-  while (created.length) rmSync(created.pop()!, { recursive: true, force: true })
+/** Comandos git ainda em execução (id -> verdadeiro). Um teste que estourou o tempo limite pode deixar um git rodando. */
+const running = new Set<number>()
+onGitCommand((entry) => {
+  if (entry.exitCode === undefined) running.add(entry.id)
+  else running.delete(entry.id)
+})
+
+/** Espera os comandos git em andamento terminarem: no Windows, um processo com o diretório aberto impede removê-lo. */
+async function waitForGit(limitMs = 60_000) {
+  const start = Date.now()
+  while (running.size && Date.now() - start < limitMs) await new Promise((r) => setTimeout(r, 50))
+}
+
+afterEach(async () => {
+  await waitForGit()
+  // O Windows pode demorar a soltar o diretório (antivírus, indexação): tenta de novo antes de desistir.
+  while (created.length) rmSync(created.pop()!, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
 export interface TestRepo {

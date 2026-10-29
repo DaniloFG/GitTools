@@ -2,9 +2,10 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createRepo, type TestRepo } from './helpers'
+import { scale } from './support/scale'
 
-// Mais que um lote de 100 caminhos, para exercitar a divisão em lotes.
-const N = 250
+// Mais que um lote de 100 caminhos (CONFLICT_BATCH), para exercitar a divisão em lotes nas duas escalas.
+const N = scale(250, 130)
 
 /** Repositório com N arquivos em conflito de conteúdo e um em conflito "modificado × removido". */
 async function manyConflicts(): Promise<TestRepo> {
@@ -34,7 +35,7 @@ describe('resolveConflicts (vários arquivos de uma vez)', () => {
     expect(result).toEqual({ resolved: N + 1, failed: [] })
     expect((await t.repo.status()).conflicted).toEqual([])
     expect(readFileSync(join(t.dir, 'src/f7.txt'), 'utf8')).toBe('main 7\n')
-    expect(readFileSync(join(t.dir, 'src/f240.txt'), 'utf8')).toBe('main 240\n')
+    expect(readFileSync(join(t.dir, `src/f${N - 10}.txt`), 'utf8')).toBe(`main ${N - 10}\n`)
     expect(readFileSync(join(t.dir, 'removido.txt'), 'utf8')).toBe('main mudou\n')
   })
 
@@ -43,7 +44,7 @@ describe('resolveConflicts (vários arquivos de uma vez)', () => {
     const result = await t.repo.resolveConflicts(await conflictedPaths(t), 'theirs')
     expect(result).toEqual({ resolved: N + 1, failed: [] })
     expect((await t.repo.status()).conflicted).toEqual([])
-    expect(readFileSync(join(t.dir, 'src/f200.txt'), 'utf8')).toBe('feature 200\n')
+    expect(readFileSync(join(t.dir, `src/f${Math.floor(N * 0.8)}.txt`), 'utf8')).toBe(`feature ${Math.floor(N * 0.8)}\n`)
     expect(existsSync(join(t.dir, 'removido.txt'))).toBe(false)
     expect((await t.git('ls-files', 'removido.txt')).trim()).toBe('')
   })
