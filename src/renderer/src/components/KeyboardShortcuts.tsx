@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useActions } from '../actions'
 import { useApp } from '../context'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
-import { comboFromEvent, resolveBindings, worksInInputs } from '../shortcuts'
+import { comboFromEvent, keepsNativeEdit, resolveBindings, worksInInputs } from '../shortcuts'
 import { HISTORY_SEARCH_ID } from './CommitList'
 import { toggleScreenShown } from '../dockStore'
 
@@ -25,6 +25,8 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
       const action = Object.keys(bindings).find((id) => bindings[id] === combo)
       if (!action) return
       if (typing && !worksInInputs(combo)) return
+      // Copiar, colar e selecionar tudo ficam com o campo ou com o trecho selecionado, mesmo se um atalho usar a combinação.
+      if (keepsNativeEdit(combo, typing, !!window.getSelection()?.toString())) return
       // Com um diálogo aberto, só a ajuda e as configurações respondem.
       // (A navegação nos diffs funciona também dentro de diálogos, como o Studio.)
       if (disabled && action !== 'help' && action !== 'settings' && !(action in DIFF_NAV_ACTIONS)) return

@@ -382,6 +382,8 @@ do sistema, local do arquivo de configurações e "Restaurar padrões").
 
 No macOS, `Ctrl` corresponde a `⌘`. Todos podem ser trocados em ⚙ Configurações.
 
+**Copiar texto**: selecione com o mouse e use `Ctrl+C`, ou o botão direito (*Copiar linha*, *Copiar caminho*, *Copiar SHA*…). Num diff, as colunas de números e sinais não entram na cópia. Em linhas que se arrastam (commits, branches, arquivos), **segure `Alt`** enquanto arrasta para selecionar o texto.
+
 ## Extensão do VS Code
 
 O GitTools também roda **dentro do VS Code**: a mesma interface (histórico com grafo, Cherry-pick Studio,

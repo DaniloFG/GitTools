@@ -796,6 +796,17 @@ export const es: Messages = {
       resetHelp: 'Devuelve todas las opciones a sus valores originales (guarda para confirmar).'
     }
   },
+  copy: {
+    line: 'Copiar línea',
+    text: 'Copiar texto',
+    selection: 'Copiar selección',
+    path: 'Copiar ruta',
+    sha: 'Copiar SHA',
+    message: 'Copiar mensaje',
+    markedLines: 'Copiar líneas marcadas ({count})',
+    copied: 'Copiado',
+    failed: 'No se pudo copiar.',
+  },
   shortcuts: {
     actions: {
       viewHistory: 'Ir a Historial',

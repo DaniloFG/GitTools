@@ -11,7 +11,9 @@ import { getLocale, setLocale, t } from '../i18n'
 import { closeVsCodePanel } from '../vscodeBridge'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings } from '../shortcuts'
+import { installCopy } from '../copy'
 import { useUnhandledErrors } from '../useUnhandledErrors'
+import { ContextMenu, type MenuItem, type MenuState } from './ContextMenu'
 import { Toasts } from './Toasts'
 import { DiffView, useFullFile } from './DiffView'
 import { LoaderPane } from './Loader'
@@ -92,8 +94,19 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // O diff só lê as preferências (modo cima/baixo ou lado a lado) do contexto do aplicativo.
-  const context = { settings } as AppContextValue
+  const [menu, setMenu] = useState<MenuState | null>(null)
+  useEffect(() => installCopy({ show: setMenu, notify: toast }), [toast])
+
+  // O diff lê as preferências (modo cima/baixo ou lado a lado) e mostra menus e avisos por este contexto.
+  const context = {
+    settings,
+    toast,
+    showMenu: (event: React.MouseEvent, items: MenuItem[]) => {
+      event.preventDefault()
+      event.stopPropagation()
+      setMenu({ x: event.clientX, y: event.clientY, items })
+    }
+  } as AppContextValue
 
   return (
     <AppContext.Provider value={context}>
@@ -117,6 +130,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
             <DiffView file={diff} />
           )}
         </div>
+        {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
       </div>
     </AppContext.Provider>
   )
