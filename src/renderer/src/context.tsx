@@ -4,7 +4,11 @@ import type { BranchInfo, CommitInfo, OperationState, RepoInfo, RepoStatus, Stas
 import type { ChoiceRequest, ChoiceResult, ConfirmRequest, PromptRequest, PushRequest, PushResult } from './components/Dialogs'
 import type { MenuItem } from './components/ContextMenu'
 import type { DiffWindowRequest } from '../../shared/api'
-import type { ScreenId } from './dock'
+import type { ScreenId, ViewId } from './dock'
+import type { ToastAction, ToastKind } from './feedback'
+import type { RepoSummary } from './workspace'
+
+export type { ToastAction } from './feedback'
 
 export interface RepoData {
   status: RepoStatus
@@ -15,7 +19,7 @@ export interface RepoData {
   operation: OperationState
 }
 
-export type ToastKind = 'success' | 'error' | 'warning' | 'info'
+export type { ToastKind } from './feedback'
 
 export interface StudioRequest {
   source?: string
@@ -32,14 +36,45 @@ export interface CompareRequest {
   to?: string
 }
 
+/** Ações sobre as abas de repositórios (feitas pelo nível do app, que sabe de todos os abertos). */
+export interface WorkspaceApi {
+  /** Repositórios abertos nesta sessão, na ordem das abas. */
+  repos: RepoInfo[]
+  /** Resumo de cada um (branch, alterações, conflito, operação) para as abas e os menus. */
+  summaries: Record<string, RepoSummary>
+  /** Torna ativo um repositório aberto (espera as operações do atual terminarem). */
+  activate(root: string): void
+  /** Fecha um repositório só nesta sessão (pergunta antes se tem trabalho em aberto). */
+  close(root: string): void
+  /** Fecha os outros repositórios, mantendo `root`. */
+  closeOthers(root: string): void
+  /** Vai para a aba seguinte (1) ou anterior (-1), circularmente. */
+  cycle(delta: 1 | -1): void
+  /** Abre um repositório em nova aba (ou só ativa, se já está aberto); sem `path`, pergunta a pasta. */
+  openRepo(path?: string, create?: boolean): void
+  /** Abre o diálogo de clonar. */
+  openClone(): void
+  /** Aplica commits do repositório `sourceRoot` na branch atual de `targetRoot`, depois de confirmar. */
+  applyAcross(sourceRoot: string, targetRoot: string, shas: string[]): void
+}
+
 export interface AppContextValue {
   repo: RepoInfo
+  /** Os outros repositórios abertos e as ações sobre as abas. */
+  workspace: WorkspaceApi
   data: RepoData
+  /** Rótulo da operação em andamento (null = nenhuma). */
   busy: string | null
+  /** Painéis que a operação em andamento mexe nos dados: são cobertos pelo indicador de carregamento. */
+  busyScope: readonly ViewId[]
   refresh(): Promise<void>
-  /** Executa uma operação mostrando progresso, erros e resultado, e atualiza a tela no fim. */
-  run<T>(label: string, fn: () => Promise<T>): Promise<T | undefined>
-  toast(kind: ToastKind, text: string): void
+  /**
+   * Executa uma operação mostrando progresso, erros e resultado, e atualiza a tela no fim.
+   * `scope`: painéis que a operação atinge (padrão: todos os que mostram dados do repositório).
+   */
+  run<T>(label: string, fn: () => Promise<T>, scope?: readonly ViewId[]): Promise<T | undefined>
+  /** Aviso; com mais de um repositório aberto, cita o repositório (ver `prefixToast`). */
+  toast(kind: ToastKind, text: string, action?: ToastAction): void
   confirm(request: ConfirmRequest): Promise<boolean>
   prompt(request: PromptRequest): Promise<string | null>
   choose(request: ChoiceRequest): Promise<ChoiceResult | null>

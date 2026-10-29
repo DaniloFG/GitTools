@@ -5,6 +5,13 @@ export interface RepoInfo {
   name: string
 }
 
+/** Repositórios abertos nesta sessão e qual deles é o ativo (o que a interface mostra). */
+export interface OpenRepositories {
+  repos: RepoInfo[]
+  /** Root do ativo, ou null se nenhum estiver aberto. */
+  active: string | null
+}
+
 export type LineKind = 'context' | 'add' | 'del'
 
 export interface DiffLine {
@@ -169,6 +176,14 @@ export interface OperationResult {
 }
 
 export type ConflictResolution = 'ours' | 'theirs' | 'resolved'
+
+/** Resultado de resolver vários arquivos em conflito de uma vez. */
+export interface BulkResolutionResult {
+  /** Quantos arquivos deixaram de estar em conflito. */
+  resolved: number
+  /** Arquivos que continuam em conflito (ou nem estavam), com o motivo. */
+  failed: { path: string; message: string }[]
+}
 
 export type LineAction = 'stage' | 'unstage' | 'discard' | 'apply'
 

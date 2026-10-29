@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useApp } from '../context'
 import { git } from '../git'
 import { shortSha } from '../format'
 import { t, type MessageKey } from '../i18n'
+import { BULK_RESOLUTIONS, bulkHelp, bulkLabel, useResolveAll } from '../bulkConflicts'
 
 const LABEL: Record<'merge' | 'cherry-pick' | 'revert' | 'rebase', MessageKey> = {
   merge: 'operation.merge',
@@ -10,8 +12,13 @@ const LABEL: Record<'merge' | 'cherry-pick' | 'revert' | 'rebase', MessageKey> =
   rebase: 'operation.rebase'
 }
 
+/** Acima deste número de arquivos em conflito aparece o campo de filtro por nome. */
+const FILTER_FROM = 8
+
 export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
   const { data, run, confirm, openConflict, openInEditor } = useApp()
+  const resolveAll = useResolveAll()
+  const [filter, setFilter] = useState('')
   const { operation, status } = data
   const conflicts = status.conflicted
   if (operation.kind === 'none' && conflicts.length === 0) return null
@@ -36,6 +43,9 @@ export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
   const resolve = (path: string, resolution: 'ours' | 'theirs' | 'resolved') =>
     run(t('busy.resolving'), () => git.resolveConflict(path, resolution))
 
+  const needle = filter.trim().toLowerCase()
+  const shown = needle ? conflicts.filter((f) => f.path.toLowerCase().includes(needle)) : conflicts
+
   return (
     <div className={`operation-banner ${conflicts.length ? 'has-conflicts' : ''}`}>
       <div className="operation-title">
@@ -45,31 +55,62 @@ export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
         </span>
       </div>
       {conflicts.length > 0 && (
-        <ul className="conflict-list">
-          {conflicts.map((f) => (
-            <li key={f.path}>
-              <span className="conflict-path">{f.path}</span>
-              <button className="primary" onClick={() => openConflict(f.path)} title={t('operation.sideBySideHelp')}>
-                {t('operation.sideBySide')}
-              </button>
-              <button onClick={() => openInEditor(f.path)}>{t('common.openInEditor')}</button>
-              <button onClick={() => resolve(f.path, 'ours')} title={t('operation.useOursHelp')}>
-                {t('conflict.useOurs')}
-              </button>
-              <button onClick={() => resolve(f.path, 'theirs')} title={t('operation.useTheirsHelp')}>
-                {t('conflict.useTheirs')}
-              </button>
-              <button onClick={() => resolve(f.path, 'resolved')} title={t('operation.resolvedHelp')}>
-                ✓ {t('operation.resolved')}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="conflict-panel">
+          <div className="conflict-tools">
+            {conflicts.length > FILTER_FROM && (
+              <>
+                <input
+                  type="search"
+                  className="conflict-filter"
+                  value={filter}
+                  placeholder={t('conflictBulk.filterPlaceholder')}
+                  aria-label={t('conflictBulk.filterLabel')}
+                  onChange={(e) => setFilter(e.target.value)}
+                />
+                {needle && <span className="muted small">{t('conflictBulk.showing', { shown: shown.length, count: conflicts.length })}</span>}
+              </>
+            )}
+            <div className="conflict-bulk" role="group" aria-label={t('conflictBulk.title')}>
+              <span className="muted small">{t('conflictBulk.resolveAllLabel')}</span>
+              {BULK_RESOLUTIONS.map((resolution) => (
+                <button key={resolution} title={t(bulkHelp(resolution))} onClick={() => resolveAll(resolution)}>
+                  {t(bulkLabel(resolution))}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ul className="conflict-list">
+            {shown.map((f) => (
+              <li key={f.path}>
+                <span className="conflict-path">{f.path}</span>
+                <button className="primary" onClick={() => openConflict(f.path)} title={t('operation.sideBySideHelp')}>
+                  {t('operation.sideBySide')}
+                </button>
+                <button onClick={() => openInEditor(f.path)}>{t('common.openInEditor')}</button>
+                <button onClick={() => resolve(f.path, 'ours')} title={t('operation.useOursHelp')}>
+                  {t('conflict.useOurs')}
+                </button>
+                <button onClick={() => resolve(f.path, 'theirs')} title={t('operation.useTheirsHelp')}>
+                  {t('conflict.useTheirs')}
+                </button>
+                <button onClick={() => resolve(f.path, 'resolved')} title={t('operation.resolvedHelp')}>
+                  ✓ {t('operation.resolved')}
+                </button>
+              </li>
+            ))}
+            {shown.length === 0 && <li className="muted small">{t('conflictBulk.noMatch')}</li>}
+          </ul>
+        </div>
       )}
       <div className="operation-actions">
         {operation.kind !== 'none' ? (
           <>
-            <button className="primary" disabled={conflicts.length > 0} onClick={() => run(t('busy.continuing'), () => git.continueOperation())}>
+            <button
+              className="primary"
+              disabled={conflicts.length > 0}
+              title={conflicts.length > 0 ? t('feedback.blocked.conflicts') : undefined}
+              onClick={() => run(t('busy.continuing'), () => git.continueOperation())}
+            >
               {t('operation.continue')}
             </button>
             {operation.kind !== 'merge' && (

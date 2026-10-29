@@ -1,10 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { useActions } from '../actions'
 import { useApp } from '../context'
-import { git } from '../git'
-import { t } from '../i18n'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
-import { comboFromEvent, resolveBindings, worksInInputs } from '../shortcuts'
+import { comboFromEvent, keepsNativeEdit, resolveBindings, worksInInputs } from '../shortcuts'
 import { HISTORY_SEARCH_ID } from './CommitList'
 import { toggleScreenShown } from '../dockStore'
 
@@ -27,6 +25,8 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
       const action = Object.keys(bindings).find((id) => bindings[id] === combo)
       if (!action) return
       if (typing && !worksInInputs(combo)) return
+      // Copiar, colar e selecionar tudo ficam com o campo ou com o trecho selecionado, mesmo se um atalho usar a combinação.
+      if (keepsNativeEdit(combo, typing, !!window.getSelection()?.toString())) return
       // Com um diálogo aberto, só a ajuda e as configurações respondem.
       // (A navegação nos diffs funciona também dentro de diálogos, como o Studio.)
       if (disabled && action !== 'help' && action !== 'settings' && !(action in DIFF_NAV_ACTIONS)) return
@@ -53,12 +53,15 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         studio: () => app.openStudio({ target: actions.head ?? undefined }),
         'branch.new': () => actions.createBranch(),
         stash: () => actions.stash(),
-        fetch: () => app.run(t('busy.fetch'), () => git.fetch()),
-        pull: () => app.run(t('busy.pull'), () => git.pull()),
+        fetch: () => actions.fetchRemote(),
+        pull: () => actions.pullRemote(),
         push: () => actions.push(),
         'push.force': () => actions.push({ force: 'lease' }),
         refresh: () => app.refresh(),
         'repo.open': onOpenRepository,
+        'tab.next': () => app.workspace.cycle(1),
+        'tab.prev': () => app.workspace.cycle(-1),
+        'tab.close': () => app.workspace.close(app.repo.root),
         settings: () => app.openSettings(),
         help: app.openShortcuts
       }

@@ -487,6 +487,33 @@ export const zhCN: Messages = {
     cumulative: '显示从 {from} 到 {to} 的累计差异。',
     includesIntermediate: '（包括中间的提交）'
   },
+  conflictBulk: {
+    title: '全部解决',
+    resolveAllLabel: '全部解决：',
+    keepOurs: '全部保留本地 (ours)',
+    keepOursHelp: '在所有冲突文件中保留当前分支的版本 (HEAD)',
+    takeTheirs: '全部接受传入内容 (theirs)',
+    takeTheirsHelp: '在所有冲突文件中保留正在应用的版本',
+    markResolved: '全部标记为已解决',
+    markResolvedHelp: '把已没有 <<<<<<< 标记的文件标记为已解决（其余不处理）',
+    menuLabel: '解决全部文件',
+    menuHelp: '把此解决方式应用到仓库中的所有冲突文件',
+    confirmOursTitle: '在所有文件中保留当前版本？',
+    confirmTheirsTitle: '在所有文件中接受传入版本？',
+    confirmResolvedTitle: '全部标记为已解决？',
+    confirmOurs: { other: '这将保留当前版本 (HEAD) 解决 {count} 个冲突文件，其中手动做的编辑将被丢弃。' },
+    confirmTheirs: { other: '这将保留传入版本解决 {count} 个冲突文件，其中手动做的编辑将被丢弃。' },
+    confirmResolved: { other: '这将把 {count} 个文件标记为已解决，仍含 <<<<<<< 标记的文件会被跳过。' },
+    done: { other: '已解决 {count} 个文件。' },
+    partial: '已解决：{resolved}。未解决：{failed}（{list}）。',
+    filterLabel: '筛选冲突文件',
+    filterPlaceholder: '筛选文件…',
+    showing: '显示 {shown} / {count}',
+    noMatch: '没有符合筛选条件的文件。',
+    notConflicted: '不在冲突中',
+    hasMarkers: '仍有冲突标记',
+    stillConflicted: '仍处于冲突中'
+  },
   conflict: {
     titleShort: '{path} 中的冲突',
     title: '解决冲突 — {path}',
@@ -738,6 +765,17 @@ export const zhCN: Messages = {
       resetHelp: '将所有选项恢复为初始值（保存后生效）。'
     }
   },
+  copy: {
+    line: '复制行',
+    text: '复制文本',
+    selection: '复制选中内容',
+    path: '复制路径',
+    sha: '复制 SHA',
+    message: '复制提交信息',
+    markedLines: '复制已勾选的行（{count}）',
+    copied: '已复制',
+    failed: '无法复制。',
+  },
   shortcuts: {
     actions: {
       viewHistory: '转到“历史”',
@@ -784,6 +822,32 @@ export const zhCN: Messages = {
       none: '没有找到快捷键。'
     }
   },
+  feedback: {
+    unknown: '错误没有消息。',
+    unexpected: '意外错误：{message}',
+    toast: {
+      close: '关闭通知',
+      copy: '复制',
+      copyHelp: '复制完整消息',
+      copied: '已复制！',
+      copyFailed: '无法复制',
+      middle: '中间',
+      sizeLabel: '大小',
+      sizeStandard: '标准',
+      sizeLarge: '大',
+      sizeExtra: '特大',
+      sizeWide: '宽屏'
+    },
+    blocked: {
+      noRemote: '此仓库未配置远程仓库。请在设置 → Git 中添加。',
+      noBranch: '当前没有分支（HEAD 处于分离状态）。请先检出一个分支再继续。',
+      noCommits: '此仓库还没有提交。',
+      noSelection: '请在差异中至少选择一行已更改的内容。',
+      conflicts: '存在冲突：请先解决再继续。',
+      commitMessage: '请填写提交信息。',
+      commitNothing: '没有可提交的内容：请先将更改加入暂存区。'
+    }
+  },
   messages: {
     filesFrom: '（文件 {files} 来自提交 {sha}）',
     linesFrom: '（{path} 中的行来自提交 {sha}）',
@@ -792,6 +856,13 @@ export const zhCN: Messages = {
     partialLines: '（通过部分拣选从 {sha} 带来的 {path} 中的行）',
     partialFrom: '从 {origin} 部分拣选',
     sourceCommits: '来源提交：'
+  },
+  longList: {
+    loading: '正在加载更多文件…',
+    showMore: '显示更多文件'
+  },
+  commandLimit: {
+    tooLong: '路径或提交列表过长，无法放入单个 git 命令（{command}）。请减少选择的项目后重试。'
   },
   core: {
     invalidRef: {
@@ -861,6 +932,66 @@ export const zhCN: Messages = {
     fileNotFound: '文件“{path}”在工作目录中不存在（可能只存在于其他提交中）。',
     unknownOperation: '未知操作：{method}',
     noRepository: '没有打开的仓库。'
+  },
+  multiRepo: {
+    notOpen: '仓库 "{root}" 未在 GitTools 中打开。',
+    sameRepository: '源仓库和目标仓库必须不同。',
+    targetDetached: '仓库 "{root}" 没有分支（HEAD 处于分离状态）。请先选择一个分支，再引入提交。',
+    targetDirty: '仓库 "{root}" 有未提交的更改。请先提交或暂存这些更改，再引入提交。',
+    targetBusy: '仓库 "{root}" 有正在进行的操作。请先完成或中止该操作，再引入提交。'
+  },
+  repoTabs: {
+    list: '已打开的仓库',
+    addTab: '打开、克隆或新建仓库',
+    noBranch: '无分支',
+    changes: '未提交的更改：{count}',
+    conflicts: '正在进行的冲突',
+    operation: '进行中的操作',
+    closeAria: '关闭 {repo}',
+    closeHelp: '仅将仓库从本次会话中移除，不会删除任何内容。',
+    closeThis: '关闭此仓库',
+    closeOthers: '关闭其他仓库',
+    openBadge: '已打开',
+    applyAcross: '应用到另一个已打开的仓库',
+    close: {
+      title: '关闭 {repo}？',
+      message: '此仓库有未完成的工作：{details}。\n\n关闭只会将仓库从本次会话中移除，磁盘上的内容不会被删除，但这些工作会一直待定，直到你重新打开该仓库。',
+      confirm: '仍然关闭',
+      changes: '{count} 项未提交的更改',
+      operation: '一个进行中的操作',
+      drafts: '{count} 个编辑器中未保存的文件'
+    },
+    closeOthersDialog: {
+      title: '关闭其他仓库？',
+      message: '其他仓库将从本次会话中移除（不会删除任何内容）。{details}',
+      hasWork: '部分仓库有未完成的工作：{names}。'
+    },
+    cross: {
+      title: '将提交应用到 {target}',
+      origin: '来源：{repo} · {commits}',
+      destination: '目标：{repo} · 当前分支：{branch}',
+      note: '提交会像 cherry-pick 一样加到目标的当前分支上。来源不会改变。',
+      confirm: '应用',
+      done: '提交已应用到 {target}。',
+      conflict: '应用到 {target} 时出现冲突。请在其标签页中解决，或在那里中止该操作。',
+      goTo: '前往 {repo}',
+      dropHelp: '放在此处即可将提交应用到该仓库'
+    },
+    wait: {
+      title: '正在等待 {repo} 中的操作…',
+      help: '切换会等待进行中的操作结束，以免任何操作继续在另一个仓库上执行。',
+      force: '仍然切换',
+      forced: '{repo} 中的操作未能及时结束，已强制切换。'
+    },
+    log: {
+      all: '所有仓库',
+      only: '仅此仓库'
+    },
+    shortcuts: {
+      next: '下一个仓库标签',
+      prev: '上一个仓库标签',
+      close: '关闭仓库标签'
+    }
   },
   dash: {
     title: '仪表盘',
@@ -1284,6 +1415,20 @@ export const zhCN: Messages = {
     replaceMessage: '已存在名为“{name}”的布局。要用当前排布替换它吗？',
     none: '还没有已保存的布局。'
   },
+  loader: {
+    loading: '加载中…',
+    commit: '正在加载提交…',
+    diff: '正在加载差异…',
+    blame: '正在加载 blame…',
+    fileHistory: '正在加载文件历史…',
+    file: '正在加载文件…',
+    files: '正在加载文件列表…',
+    compare: '正在比较…'
+  },
+  screenMenu: {
+    otherScreens: '其他界面的面板',
+    pinnedHelp: '在此固定的其他界面面板（{count}）'
+  },
   workbench: {
     views: {
       branches: '分支',
@@ -1307,7 +1452,7 @@ export const zhCN: Messages = {
     restoreSize: '恢复正常大小',
     allHidden: '所有面板都已隐藏。',
     screens: '界面',
-    screensHelp: '把每个界面的面板调到前面，无论你把它们放在哪里。',
+    screensHelp: '每个界面只显示它自己的面板。其他界面的面板只有在你固定后才会出现在这里（▦ 面板菜单）。',
     panels: '面板',
     panelsHelp: '显示或隐藏任意面板',
     resetLayout: '恢复默认布局',
@@ -1344,6 +1489,67 @@ export const zhCN: Messages = {
     copy: '复制命令',
     copied: '已复制命令。',
     copyError: '复制错误信息'
+  },
+  gitTerminal: {
+    tabLog: '日志',
+    tabTerminal: '终端',
+    title: 'Git 终端',
+    placeholder: '输入 git 命令，例如：git status',
+    run: '执行',
+    running: '正在执行…',
+    commands: '命令',
+    commandsHelp: '列出 git 命令及其说明（点击即可使用）',
+    clear: '清空',
+    clearHelp: '清空输出（Ctrl+L）。输入 clear 也可以。',
+    suggestions: '建议',
+    keys: 'Tab 接受建议 · ↑↓ 选择或重复之前的命令 · Esc 关闭建议',
+    syntax: '语法',
+    examples: '示例',
+    options: '选项',
+    welcome:
+      '仓库终端。命令在仓库根目录运行，不经过 shell：管道（|）、重定向（>）和 && 不可用。输入 help 查看列表，或输入 help <命令> 查看帮助。',
+    exitCode: '退出码 {code}',
+    detached: '无分支',
+    listTitle: '可用的 git 命令（点击插入）',
+    unknownHelp: '没有 "{command}" 的帮助。输入 help 查看命令列表。',
+    noOutput: '无输出。',
+    timeout: '超时（{seconds} 秒）：命令已被停止。',
+    truncated: '输出已截断为 {size}：其余部分未显示。',
+    kind: {
+      command: '命令',
+      flag: '选项',
+      op: '操作',
+      branch: '分支',
+      tag: '标签',
+      remote: '远程',
+      path: '文件',
+      local: '本地命令'
+    },
+    err: {
+      empty: '请输入 git 命令，例如：git status',
+      noSubcommand: '缺少 git 子命令，例如：status、log 或 commit。',
+      notGit: '此终端只能运行 git 命令。请输入 "git <子命令>"，例如：git status',
+      unclosedQuote: '引号未闭合。',
+      trailingBackslash: '行尾有反斜杠（\\）。',
+      operator: '无法使用 "{op}"：终端一次只运行一条 git 命令，不支持管道、重定向或连接符（&&、;）。',
+      tooLong: '命令过长（最多 {max} 个字符）。',
+      globalOption: '不允许选项 "{option}"：终端始终在所打开仓库的根目录运行。',
+      execOption: '选项 "{option}" 会让 git 运行其他程序，此处不允许。',
+      shellAlias: '别名 "{name}" 会运行 shell 命令（以 "!" 开头），此处不允许。',
+      shellConfig: '配置 "{key}" 会让 git 运行其他程序，此处不允许。',
+      interactive: '命令 "git {command}" 需要交互式输入，而此终端不支持。{hint}',
+      editor: '命令 "git {command}" 会打开文本编辑器，而此终端不支持。{hint}'
+    },
+    hint: {
+      tools: '请使用 GitTools 的界面（更改、冲突和差异）代替外部工具。',
+      rebase: '请使用 历史 → 交互式变基，或不带 -i 的 "git rebase <基点>"。',
+      add: '请在“更改”页签中选择文件和行，或使用 "git add <文件>"。',
+      clean: '使用 "git clean -n" 查看将被删除的内容，使用 "git clean -f <路径>" 删除。',
+      patch: '请在“更改”页签中选择要修改的内容，或传入路径且不使用 -p。',
+      commit: '请在命令行中提供消息：git commit -m "你的消息"（或使用 --no-edit）。',
+      tag: '请在命令行中提供消息：git tag -a <名称> -m "你的消息"。',
+      config: '直接设置选项：git config <键> <值>。'
+    }
   },
   clone: {
     menu: '克隆仓库…',

@@ -3,14 +3,20 @@ import type { DiffWindowRequest } from '../../../shared/api'
 import { DEFAULT_SETTINGS, type Settings } from '../../../shared/settings'
 import type { FileDiff } from '../../../shared/types'
 import { applySettings, resolveLocale } from '../appearance'
-import { AppContext, type AppContextValue } from '../context'
+import { AppContext, type AppContextValue, type ToastKind } from '../context'
+import { addToast, type Toast } from '../feedback'
 import { errorMessage } from '../format'
-import { git } from '../git'
+import { git, setActiveRoot } from '../git'
 import { getLocale, setLocale, t } from '../i18n'
 import { closeVsCodePanel } from '../vscodeBridge'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings } from '../shortcuts'
+import { installCopy } from '../copy'
+import { useUnhandledErrors } from '../useUnhandledErrors'
+import { ContextMenu, type MenuItem, type MenuState } from './ContextMenu'
+import { Toasts } from './Toasts'
 import { DiffView, useFullFile } from './DiffView'
+import { LoaderPane } from './Loader'
 
 /** Fecha a janela de diff (no VS Code, o painel). */
 const closeWindow = () => {
@@ -37,9 +43,19 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
   const [systemLocales, setSystemLocales] = useState<readonly string[]>(navigator.languages)
   const [diff, setDiff] = useState<FileDiff | null | { error: string }>(null)
+  // Avisos desta janela (ela não compartilha as notificações da janela principal).
+  const [toasts, setToasts] = useState<Toast[]>([])
+  const toastId = useRef(0)
+  const toast = useCallback((kind: ToastKind, text: string) => {
+    const id = ++toastId.current
+    setToasts((list) => addToast(list, { kind, text }, Date.now(), id))
+  }, [])
+  useUnhandledErrors(toast)
   const [fullFile] = useFullFile()
   const { source, path } = request
   const title = request.title ?? path
+  // Esta janela é de um repositório só (o da requisição): as chamadas git dela vão para ele, não para o ativo.
+  setActiveRoot(request.root ?? null)
 
   const settingsRef = useRef(settings)
   settingsRef.current = settings
@@ -80,8 +96,19 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // O diff só lê as preferências (modo cima/baixo ou lado a lado) do contexto do aplicativo.
-  const context = { settings } as AppContextValue
+  const [menu, setMenu] = useState<MenuState | null>(null)
+  useEffect(() => installCopy({ show: setMenu, notify: toast }), [toast])
+
+  // O diff lê as preferências (modo cima/baixo ou lado a lado) e mostra menus e avisos por este contexto.
+  const context = {
+    settings,
+    toast,
+    showMenu: (event: React.MouseEvent, items: MenuItem[]) => {
+      event.preventDefault()
+      event.stopPropagation()
+      setMenu({ x: event.clientX, y: event.clientY, items })
+    }
+  } as AppContextValue
 
   return (
     <AppContext.Provider value={context}>
@@ -92,20 +119,20 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
             {title}
           </strong>
           <span className="toolbar-spacer" />
-          <button onClick={() => window.gittools.openInEditor(path).catch(() => undefined)}>{t('common.openInEditor')}</button>
+          <button onClick={() => window.gittools.openInEditor(path, request.root).catch((e) => toast('error', errorMessage(e)))}>{t('common.openInEditor')}</button>
           <button onClick={() => closeWindow()}>{t('common.close')}</button>
         </header>
+        <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((item) => item.id !== id))} />
         <div className="diff-window">
           {diff === null ? (
-            <p className="empty">
-              <span className="spinner" />
-            </p>
+            <LoaderPane label={t('loader.diff')} />
           ) : 'error' in diff ? (
             <p className="empty">{diff.error}</p>
           ) : (
             <DiffView file={diff} />
           )}
         </div>
+        {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
       </div>
     </AppContext.Provider>
   )

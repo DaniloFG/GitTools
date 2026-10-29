@@ -3,6 +3,7 @@ import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../sha
 import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
 import { useActions } from '../actions'
 import { useApp } from '../context'
+import { copyText } from '../copy'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
@@ -13,6 +14,7 @@ import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
+import { LoaderPane } from './Loader'
 
 /** Arquivo a abrir no diff (ex.: clicado nos arquivos expandidos do histórico). `n` muda a cada pedido. */
 export interface FileFocus {
@@ -133,7 +135,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
       { label: t('common.openInEditor'), onClick: () => openInEditor(file.path) },
       'separator',
-      { label: t('history.files.copyPath'), onClick: () => navigator.clipboard.writeText(file.path) }
+      { label: t('history.files.copyPath'), onClick: () => copyText(file.path) }
     ])
 
   // Abre o arquivo pedido de fora (lista de arquivos expandida no histórico).
@@ -161,7 +163,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       <>
         <PaneSlot id="commit.message">
           <section className="details">
-            <span className="spinner" />
+            <LoaderPane label={t('loader.commit')} />
           </section>
         </PaneSlot>
         <NothingToShow />
@@ -213,7 +215,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
             {details.author} &lt;{details.email}&gt;
           </span>
           <span>{fullDate(details.date)}</span>
-          <code title={t('common.clickToCopy')} onClick={() => navigator.clipboard.writeText(details.sha)}>
+          <code title={t('common.clickToCopy')} onClick={() => copyText(details.sha)}>
             {shortSha(details.sha)}
           </code>
           {details.parents.length > 1 && <span className="tag">merge</span>}
@@ -245,6 +247,9 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
               key={file.path}
               style={style}
               data-path={file.path}
+              tabIndex={-1}
+              data-copy={file.path}
+              data-copy-what="path"
               className={`file-item ${active?.path === file.path ? 'active' : ''}`}
               onClick={() => showDiff(file)}
               onDoubleClick={() => openWindow(file)}
@@ -305,7 +310,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
                   <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
                     ⧉ {t('diffExtra.openWindow')}
                   </button>
-                  <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                  <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
                     {t('common.applyLinesInto', { count: selection.size, target: head })}
                   </button>
                   <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>{t('details.takeWholeFile')}</button>
@@ -315,9 +320,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
               <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} fileNav={fileNav} />
             </div>
           ) : active ? (
-            <p className="empty">
-              <span className="spinner" />
-            </p>
+            <LoaderPane label={t('loader.diff')} />
           ) : (
             <p className="empty">{t('changes.selectFile')}</p>
           )}
@@ -485,9 +488,7 @@ function WipPanes({ focus }: { focus: WipFocus }) {
               <DiffView file={diff} fileNav={fileNav} />
             </div>
           ) : active ? (
-            <p className="empty">
-              <span className="spinner" />
-            </p>
+            <LoaderPane label={t('loader.diff')} />
           ) : (
             <p className="empty">{t('changes.selectFile')}</p>
           )}

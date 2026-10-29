@@ -39,6 +39,8 @@ class Controller {
   readonly backend: Backend
   private main: vscode.WebviewPanel | null = null
   private readonly panels = new Set<vscode.WebviewPanel>()
+  /** A pasta do VS Code já foi considerada nesta janela (ver `useWorkspaceRepository`). */
+  private workspaceChecked = false
 
   constructor(private readonly context: vscode.ExtensionContext) {
     const host: BackendHost = {
@@ -101,9 +103,14 @@ class Controller {
     else await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(root), { forceNewWindow: true })
   }
 
-  /** Usa a pasta aberta no VS Code se ela for um repositório git (e ainda não há outro aberto). */
+  /**
+   * Usa a pasta aberta no VS Code se ela for um repositório git. Só na primeira vez nesta janela: depois
+   * disso vale a escolha do usuário. Os repositórios reabertos da última sessão continuam abertos.
+   */
   async useWorkspaceRepository(): Promise<void> {
-    if (this.backend.repo) return
+    await this.backend.restoreWorkspace()
+    if (this.workspaceChecked) return
+    this.workspaceChecked = true
     for (const folder of vscode.workspace.workspaceFolders ?? []) {
       try {
         await this.backend.setRepository(await GitRepository.open(folder.uri.fsPath))
@@ -130,7 +137,12 @@ class Controller {
     panel.onDidDispose(() => {
       this.main = null
     })
-    void this.backend.repo?.info().then((info) => (panel.title = `GitTools — ${info.name}`))
+    void this.backend
+      .restoreWorkspace()
+      .then(() => this.backend.repo?.info())
+      .then((info) => {
+        if (info) panel.title = `GitTools — ${info.name}`
+      })
     this.setup(panel)
   }
 
