@@ -3,6 +3,7 @@ import type { RepoInfo } from '../../../shared/types'
 import { errorMessage } from '../format'
 import { t } from '../i18n'
 import { Modal } from './Modal'
+import { Loader } from './Loader'
 
 /** Nome de pasta sugerido a partir da URL (ex.: ".../org/projeto.git" → "projeto"). */
 function nameFromUrl(url: string): string {
@@ -59,7 +60,7 @@ export function CloneDialog({ onClose, onCloned }: { onClose(): void; onCloned(i
             {t('common.cancel')}
           </button>
           <button className="primary" disabled={!ready} onClick={clone}>
-            {cloning ? <span className="spinner" /> : t('clone.clone')}
+            {cloning ? <Loader size="sm" /> : t('clone.clone')}
           </button>
         </>
       }

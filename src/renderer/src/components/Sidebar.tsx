@@ -208,6 +208,9 @@ function BranchItem({ branch, color, active, checked, onToggle, onScope }: Branc
   return (
     <li
       className={`branch-item ${branch.current ? 'current' : ''} ${active ? 'active' : ''} ${drop.over ? 'drop-over' : ''}`}
+      tabIndex={-1}
+      data-copy={branch.name}
+      data-copy-what="text"
       draggable
       onDragStart={(e) => startDrag(e, { type: 'branch', name: branch.name, remote: isRemote }, `⎇ ${branch.name}`)}
       onDragEnd={endDrag}

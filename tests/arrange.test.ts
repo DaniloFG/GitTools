@@ -81,7 +81,7 @@ describe('configuração das notificações', () => {
       height: 120
     })
     expect(normalizeSettings({ toast: { horizontal: 'meio', vertical: 3, width: 'larga', height: null } }).toast).toEqual(DEFAULT_SETTINGS.toast)
-    expect(normalizeSettings({ toast: { width: 10, height: 99999 } }).toast).toMatchObject({ width: 240, height: 480 })
+    expect(normalizeSettings({ toast: { width: 10, height: 99999 } }).toast).toMatchObject({ width: 240, height: 800 })
     expect(normalizeSettings({ toast: { width: 391 } }).toast.width).toBe(400)
     expect(normalizeSettings({}).toast).toEqual(DEFAULT_SETTINGS.toast)
   })

@@ -15,6 +15,7 @@ import { DASHBOARDS, WIDGETS, WIDGET_BY_ID, addCustom, addWidget, parsePrefs, re
 import { tk } from '../analytics/widgets/helpers'
 import { CATEGORIES, type Ctx, type WidgetCategory, type WidgetInstance } from '../analytics/widgets/types'
 import { Modal } from './Modal'
+import { Loader, LoaderPane, LoadingOverlay } from './Loader'
 import '../analytics/dashboard.css'
 
 const PERIOD_LABEL: Record<PeriodId, string> = { '7d': 'dash.filters.p7d', '30d': 'dash.filters.p30d', '90d': 'dash.filters.p90d', '6m': 'dash.filters.p6m', '12m': 'dash.filters.p12m', all: 'dash.filters.pall', custom: 'dash.filters.custom' }
@@ -193,7 +194,7 @@ export function Dashboards() {
         <div className="dash-actions">
           {analytics && (
             <span className="dash-updated muted small" title={new Date(analytics.generatedAt).toLocaleString()}>
-              {loading ? <span className="spinner" /> : t('dash.updated', { time: formatRelative(analytics.generatedAt) })}
+              {loading ? <Loader size="sm" label={t('dash.loading')} /> : t('dash.updated', { time: formatRelative(analytics.generatedAt) })}
             </span>
           )}
           <button className="icon-button" onClick={reload} title={t('dash.refresh')} aria-label={t('dash.refresh')}>
@@ -259,38 +260,40 @@ export function Dashboards() {
       {analytics?.truncated && <p className="dash-banner">{t('dash.truncated', { count: int(analytics.commits.length) })}</p>}
       {error && <p className="dash-banner error">{t('dash.error', { error })}</p>}
 
-      <div className={`dash-scroll ${loading && ctx ? 'refreshing' : ''}`}>
-        {!ctx ? (
-          <p className="dash-loading">{loading ? <><span className="spinner" /> {t('dash.loading')}</> : null}</p>
-        ) : ds && ds.commits.length === 0 ? (
-          <p className="dash-loading">{t('dash.emptyRepo')}</p>
-        ) : (
-          <>
-            {ctx.cs.length === 0 && (
-              <p className="dash-banner">
-                {t('dash.emptyFilters')}{' '}
-                <button className="link" onClick={clearFilters}>
-                  {t('dash.filters.clear')}
-                </button>
-              </p>
-            )}
-            {widgets.length === 0 ? (
-              <div className="dash-loading">
-                <p>{t('dash.add.empty')}</p>
-                <button className="primary" onClick={() => setGallery(true)}>
-                  ＋ {t('dash.add.button')}
-                </button>
-              </div>
-            ) : (
-              <div className="dash-grid">
-                {widgets.map((inst) => (
-                  <WidgetCard key={inst.uid} inst={inst} ctx={ctx} list={widgets} onChange={setWidgets} span={spanOf(inst.cols ?? WIDGET_BY_ID.get(inst.widget)!.cols)} narrow={narrow || medium} />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      <LoadingOverlay active={loading && !!ctx} label={t('dash.loading')} className="loading-fill">
+        <div className="dash-scroll">
+          {!ctx ? (
+            loading ? <LoaderPane label={t('dash.loading')} /> : <p className="dash-loading" />
+          ) : ds && ds.commits.length === 0 ? (
+            <p className="dash-loading">{t('dash.emptyRepo')}</p>
+          ) : (
+            <>
+              {ctx.cs.length === 0 && (
+                <p className="dash-banner">
+                  {t('dash.emptyFilters')}{' '}
+                  <button className="link" onClick={clearFilters}>
+                    {t('dash.filters.clear')}
+                  </button>
+                </p>
+              )}
+              {widgets.length === 0 ? (
+                <div className="dash-loading">
+                  <p>{t('dash.add.empty')}</p>
+                  <button className="primary" onClick={() => setGallery(true)}>
+                    ＋ {t('dash.add.button')}
+                  </button>
+                </div>
+              ) : (
+                <div className="dash-grid">
+                  {widgets.map((inst) => (
+                    <WidgetCard key={inst.uid} inst={inst} ctx={ctx} list={widgets} onChange={setWidgets} span={spanOf(inst.cols ?? WIDGET_BY_ID.get(inst.widget)!.cols)} narrow={narrow || medium} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </LoadingOverlay>
 
       {gallery && (
         <Gallery

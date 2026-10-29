@@ -3,7 +3,7 @@ import type { MenuItem } from './components/ContextMenu'
 import { currentBranch, useApp } from './context'
 import type { DragPayload } from './dnd'
 import { git } from './git'
-import { shortSha } from './format'
+import { errorMessage, shortSha } from './format'
 import { t } from './i18n'
 import { useLayout } from './layout'
 
@@ -63,13 +63,41 @@ export function useActions() {
   }
 
   /**
+   * Diz se o repositório tem algum remote. Sem nenhum, avisa o que fazer; se a lista não puder ser lida,
+   * mostra o erro (em vez de tratar como "sem remote").
+   */
+  async function hasRemote(): Promise<boolean> {
+    const remotes = await git.remotes().catch((error) => {
+      toast('error', errorMessage(error))
+      return null
+    })
+    if (remotes === null) return false
+    if (remotes.length === 0) toast('warning', t('feedback.blocked.noRemote'))
+    return remotes.length > 0
+  }
+
+  /**
    * Envia a branch atual (ou `branch`, sem checkout). `remote` vazio usa o upstream. Com `force`, pede
    * confirmação — a menos que `confirmed` diga que o usuário já escolheu isso de forma explícita.
    */
   async function push(options: { remote?: string; branch?: string; force?: PushForce; confirmed?: boolean } = {}) {
     const { remote, branch, force, confirmed } = options
+    if (!(branch ?? head)) {
+      toast('warning', t('core.pushNeedsBranch'))
+      return
+    }
+    if (!(await hasRemote())) return
     if (force && !confirmed && !(await confirmForce(force, branch ?? head))) return
     return run(t('busy.push'), () => git.push(remote, { force, branch: branch === head ? undefined : branch }))
+  }
+
+  /** Buscar e puxar precisam de um remote: sem ele, o aviso diz o que fazer em vez de um erro do git. */
+  async function fetchRemote() {
+    if (await hasRemote()) await run(t('busy.fetch'), () => git.fetch())
+  }
+
+  async function pullRemote() {
+    if (await hasRemote()) await run(t('busy.pull'), () => git.pull())
   }
 
   /** Diálogo de push: escolher o remote e o modo (normal, force com lease ou force). */
@@ -79,9 +107,14 @@ export function useActions() {
       toast('warning', t('core.pushNeedsBranch'))
       return
     }
-    const remotes = (await git.remotes().catch(() => [])).map((r) => r.name)
+    const remotesFound = await git.remotes().catch((error) => {
+      toast('error', errorMessage(error))
+      return null
+    })
+    if (remotesFound === null) return
+    const remotes = remotesFound.map((r) => r.name)
     if (!remotes.length) {
-      toast('warning', t('core.noRemotes'))
+      toast('warning', t('feedback.blocked.noRemote'))
       return
     }
     const upstream = data.branches.find((b) => !b.remote && b.name === name)?.upstream
@@ -265,7 +298,7 @@ export function useActions() {
       await navigator.clipboard.writeText(kept.join(part === 'subject' ? '\n' : '\n\n'))
       toast('info', t('history.menu.messageCopied', { count: kept.length }))
     } catch (error) {
-      toast('error', error instanceof Error ? error.message : String(error))
+      toast('error', errorMessage(error))
     }
   }
 
@@ -291,6 +324,9 @@ export function useActions() {
     confirmForce,
     push,
     pushDialog,
+    hasRemote,
+    fetchRemote,
+    pullRemote,
     createTag,
     deleteTag,
     deleteBranch,

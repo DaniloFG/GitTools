@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
@@ -9,6 +10,7 @@ import type {
   BlameResult,
   BranchCommit,
   BranchInfo,
+  BulkResolutionResult,
   ChangedFile,
   CherryPickOptions,
   CommitDetails,
@@ -39,7 +41,8 @@ import type {
 } from '../shared/types'
 import { buildPartialPatch, parseDiff, quotePath } from './diff'
 import { t } from '../shared/i18n'
-import { GitError, runGit, type RunOptions } from './exec'
+import { chunkArgs } from './chunk'
+import { GitError, runGit, type RunOptions, type RunResult } from './exec'
 import { resolveInside } from './paths'
 
 const DIFF_ARGS = [
@@ -256,6 +259,12 @@ function checkRemote(name: string, url: string): { name: string; url: string } {
   return { name: cleanName, url: cleanUrl }
 }
 
+/** Caminhos por comando git ao resolver vários conflitos: a linha de comando tem limite de tamanho. */
+const CONFLICT_BATCH = 100
+
+/** Mensagem legível de um erro qualquer (para o resultado de operações em lote). */
+const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
+
 export class GitRepository implements RepoApi {
   private emptyTreeSha: string | null = null
 
@@ -274,6 +283,58 @@ export class GitRepository implements RepoApi {
 
   private git(args: string[], options?: RunOptions) {
     return runGit(this.root, args, options)
+  }
+
+  /**
+   * Roda `git <prefix> <itens...> <suffix>` em lotes: cada chamada leva só os itens que cabem na
+   * linha de comando (com milhares de caminhos ou shas ela estoura o limite do sistema). Os lotes
+   * saem em sequência, na ordem da lista, e cada saída é devolvida na mesma ordem.
+   */
+  private async gitInBatches(prefix: string[], items: readonly string[], suffix: string[] = []): Promise<RunResult[]> {
+    const results: RunResult[] = []
+    for (const batch of chunkArgs(items)) results.push(await this.git([...prefix, ...batch, ...suffix]))
+    return results
+  }
+
+  /**
+   * Só o git 2.25+ aceita `--pathspec-from-file`. A versão é consultada uma vez por instância (não
+   * por processo: cada repositório aberto tem o seu próprio estado).
+   */
+  private pathspecFileSupport: Promise<boolean> | null = null
+
+  private supportsPathspecFile(): Promise<boolean> {
+    this.pathspecFileSupport ??= this.git(['--version']).then(
+      ({ stdout }) => {
+        const [, major, minor] = /(\d+)\.(\d+)/.exec(stdout) ?? []
+        return Number(major) > 2 || (Number(major) === 2 && Number(minor) >= 25)
+      },
+      () => false
+    )
+    return this.pathspecFileSupport
+  }
+
+  /**
+   * Roda `git <command> -- <caminhos>` sem limite de tamanho. Com git 2.25+ e um comando que aceita
+   * `--pathspec-from-file` (`fromFile`), os caminhos vão pela entrada padrão numa chamada só; caso
+   * contrário, em lotes.
+   */
+  private async gitPaths(command: string[], paths: readonly string[], fromFile: boolean): Promise<void> {
+    if (!paths.length) return
+    if (fromFile && (await this.supportsPathspecFile())) {
+      await this.git([...command, '--pathspec-from-file=-', '--pathspec-file-nul'], { input: paths.map((p) => `${p}\0`).join('') })
+      return
+    }
+    await this.gitInBatches([...command, '--'], paths)
+  }
+
+  /**
+   * Patch de `base..sha` só dos caminhos pedidos, gerado em lotes e concatenado: o resultado é o
+   * mesmo de um comando só. `--no-renames` faz com que um par renomeado dê o mesmo patch em qualquer
+   * lote (sem ele, o lote que só tivesse um dos dois lados sairia como remoção ou criação).
+   */
+  private async patchForPaths(base: string, sha: string, paths: string[]): Promise<string> {
+    const results = await this.gitInBatches([...DIFF_ARGS, '--binary', '--no-renames', base, sha, '--'], paths)
+    return results.map((r) => r.stdout).join('')
   }
 
   // ---------------------------------------------------------------- leitura
@@ -568,14 +629,14 @@ export class GitRepository implements RepoApi {
   // ------------------------------------------------------- área de trabalho
 
   async stageFiles(paths: string[]): Promise<void> {
-    if (paths.length) await this.git(['add', '-A', '--', ...paths])
+    await this.gitPaths(['add', '-A'], paths, true)
   }
 
   async unstageFiles(paths: string[]): Promise<void> {
     if (!paths.length) return
     const status = await this.status()
-    if (status.headSha) await this.git(['restore', '--staged', '--', ...paths])
-    else await this.git(['rm', '--cached', '-r', '-q', '--', ...paths])
+    if (status.headSha) await this.gitPaths(['restore', '--staged'], paths, true)
+    else await this.gitPaths(['rm', '--cached', '-r', '-q'], paths, false)
   }
 
   async discardFiles(paths: string[]): Promise<void> {
@@ -584,8 +645,8 @@ export class GitRepository implements RepoApi {
     const untracked = new Set(status.unstaged.filter((f) => f.untracked).map((f) => f.path))
     const tracked = paths.filter((p) => !untracked.has(p))
     const fresh = paths.filter((p) => untracked.has(p))
-    if (tracked.length) await this.git(['restore', '--worktree', '--', ...tracked])
-    if (fresh.length) await this.git(['clean', '-f', '-q', '--', ...fresh])
+    await this.gitPaths(['restore', '--worktree'], tracked, true)
+    await this.gitPaths(['clean', '-f', '-q'], fresh, false)
   }
 
   private async findFile(source: DiffSource, path: string): Promise<FileDiff> {
@@ -736,10 +797,15 @@ export class GitRepository implements RepoApi {
       })
   }
 
-  /** Ordena commits do mais antigo para o mais novo e informa se há merges entre eles. */
+  /**
+   * Ordena commits do mais antigo para o mais novo e informa se há merges entre eles.
+   * Os shas seguem pela entrada padrão (`--stdin`): uma lista grande não cabe na linha de comando.
+   */
   private async orderCommits(shas: string[]): Promise<{ ordered: string[]; parents: Map<string, string[]> }> {
     shas.forEach((s) => assertRef(s, 'commit'))
-    const { stdout } = await this.git(['rev-list', '--no-walk=sorted', '--parents', ...shas, '--'])
+    const { stdout } = await this.git(['rev-list', '--no-walk=sorted', '--parents', '--stdin', '--'], {
+      input: shas.map((s) => `${s}\n`).join('')
+    })
     const parents = new Map<string, string[]>()
     const ordered = stdout
       .split('\n')
@@ -763,7 +829,8 @@ export class GitRepository implements RepoApi {
     if (options.noCommit) args.push('--no-commit')
     if (hasMerge) args.push('-m', '1')
     try {
-      await this.git([...args, ...ordered])
+      // Os commits vão pela entrada padrão (`--stdin`), na ordem em que o cherry-pick os aplica: sem limite de tamanho.
+      await this.git([...args, '--stdin'], { input: ordered.map((s) => `${s}\n`).join('') })
       return { ok: true, message: t('core.commitsApplied', { count: ordered.length, target }), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
@@ -778,6 +845,58 @@ export class GitRepository implements RepoApi {
       commits.map((c) => c.sha),
       options
     )
+  }
+
+  /**
+   * Traz commits de outro repositório (`sourceRoot`, já aberto no GitTools) e os aplica na branch
+   * atual deste. Antes de tocar em qualquer coisa confere: há branch, não há operação em andamento e
+   * não há alterações pendentes. Os objetos vêm pelo fetch (ver `fetchFrom`).
+   */
+  async cherryPickFrom(sourceRoot: string, shas: string[], options: CherryPickOptions = {}): Promise<OperationResult> {
+    if (!shas.length) throw new Error(t('core.selectCommit'))
+    shas.forEach((s) => assertRef(s, 'commit'))
+    const unique = [...new Set(shas)]
+    const status = await this.status()
+    if (status.detached || !status.branch) throw new Error(t('multiRepo.targetDetached', { root: this.root }))
+    // Antes das alterações: com uma operação em andamento, os conflitos também deixariam o destino "sujo".
+    const op = await this.operationState()
+    if (op.kind !== 'none') throw new Error(t('multiRepo.targetBusy', { root: this.root }))
+    // Arquivos não rastreados não impedem o cherry-pick: só o que está (ou ficaria) misturado com os commits.
+    if (status.staged.length || status.conflicted.length || status.unstaged.some((f) => !f.untracked)) {
+      throw new Error(t('multiRepo.targetDirty', { root: this.root }))
+    }
+    await this.fetchFrom(sourceRoot, unique)
+    return this.cherryPickCommits(status.branch, unique, options)
+  }
+
+  /**
+   * Copia para este repositório os objetos dos `shas` do repositório `sourceRoot`. Se o git não aceitar
+   * pedir commits pelo sha, cai para as refs da origem numa área temporária (`fetchByRefs`).
+   */
+  private async fetchFrom(sourceRoot: string, shas: string[]): Promise<void> {
+    try {
+      await this.fetchBySha(sourceRoot, shas)
+    } catch {
+      await this.fetchByRefs(sourceRoot)
+    }
+  }
+
+  /** `git fetch <origem> <sha>...` em lotes. Sem criar refs: o fetch não recebe nenhum destino. */
+  private async fetchBySha(sourceRoot: string, shas: string[]): Promise<void> {
+    // O protocolo v2 aceita pedir qualquer objeto pelo sha; a versão é fixada para não depender do padrão do git.
+    await this.gitInBatches(['-c', 'protocol.version=2', 'fetch', '--no-tags', sourceRoot], shas)
+  }
+
+  /** Plano B: traz as refs da origem para `refs/gittools-tmp/<id>/` e apaga essas refs ao fim, mesmo com erro. */
+  private async fetchByRefs(sourceRoot: string): Promise<void> {
+    const namespace = `refs/gittools-tmp/${randomUUID()}`
+    try {
+      await this.git(['fetch', '--no-tags', sourceRoot, `refs/*:${namespace}/*`])
+    } finally {
+      const { stdout } = await this.git(['for-each-ref', '--format=%(refname)', namespace])
+      const refs = stdout.split('\n').filter(Boolean)
+      if (refs.length) await this.git(['update-ref', '--stdin'], { input: refs.map((r) => `delete ${r}\n`).join('') })
+    }
   }
 
   private async assertCanCommitAfter(options: PartialApplyOptions): Promise<void> {
@@ -803,18 +922,20 @@ export class GitRepository implements RepoApi {
 
     if (mode === 'version') {
       const newest = ordered[ordered.length - 1]
+      // Uma só consulta (`cat-file --batch-check`, uma linha por caminho) em vez de um processo por arquivo.
+      const { stdout: found } = await this.git(['cat-file', '--batch-check'], {
+        input: paths.map((p) => `${newest}:${p}\n`).join('')
+      })
+      const answers = found.split('\n')
       const present: string[] = []
       const removed: string[] = []
-      for (const path of paths) {
-        const { exitCode } = await this.git(['cat-file', '-e', `${newest}:${path}`], { okExitCodes: [0, 1, 128] })
-        ;(exitCode === 0 ? present : removed).push(path)
-      }
-      if (present.length) await this.git(['checkout', newest, '--', ...present])
-      if (removed.length) await this.git(['rm', '-q', '--ignore-unmatch', '--', ...removed])
+      paths.forEach((path, i) => ((answers[i] ?? '').endsWith(' missing') ? removed : present).push(path))
+      await this.gitPaths(['checkout', newest], present, true)
+      await this.gitPaths(['rm', '-q', '--ignore-unmatch'], removed, false)
     } else {
       for (const [i, sha] of ordered.entries()) {
         const base = parents.get(sha)?.[0] ?? (await this.emptyTree())
-        const { stdout: patch } = await this.git([...DIFF_ARGS, '--binary', base, sha, '--', ...paths])
+        const patch = await this.patchForPaths(base, sha, paths)
         if (!patch.trim()) continue
         try {
           await this.git(['apply', '--3way', '--whitespace=nowarn', '-'], { input: patch })
@@ -875,6 +996,97 @@ export class GitRepository implements RepoApi {
     }
   }
 
+  /**
+   * Resolve vários arquivos em conflito de uma vez, em lotes de CONFLICT_BATCH caminhos. Um arquivo que falha
+   * não interrompe os demais: o resultado diz quantos foram resolvidos e o motivo de cada falha.
+   * A semântica de ours/theirs é a de resolveConflict (estágios 2 = HEAD e 3 = que entra).
+   */
+  async resolveConflicts(paths: string[], resolution: ConflictResolution): Promise<BulkResolutionResult> {
+    const stages = await this.unmergedStages()
+    const unique = [...new Set(paths)]
+    const errors = new Map<string, string>()
+    let todo = unique.filter((p) => stages.has(p))
+
+    // Marcar como resolvido com marcadores no texto deixaria <<<<<<< no commit: esses arquivos ficam de fora.
+    if (resolution === 'resolved') {
+      const ready: string[] = []
+      for (const path of todo) {
+        try {
+          if (await this.hasConflictMarkers(path)) errors.set(path, t('conflictBulk.hasMarkers'))
+          else ready.push(path)
+        } catch (error) {
+          errors.set(path, reasonOf(error))
+        }
+      }
+      todo = ready
+    }
+
+    for (let i = 0; i < todo.length; i += CONFLICT_BATCH) {
+      const batch = todo.slice(i, i + CONFLICT_BATCH)
+      try {
+        await this.applyBulkResolution(batch, resolution, stages)
+      } catch {
+        // Um caminho problemático não pode derrubar o lote: tenta um a um para descobrir quais falham.
+        for (const path of batch) {
+          try {
+            await this.applyBulkResolution([path], resolution, stages)
+          } catch (error) {
+            errors.set(path, reasonOf(error))
+          }
+        }
+      }
+    }
+
+    // O resultado vem do estado final do índice: o que ainda está em conflito conta como falha.
+    const after = await this.unmergedStages()
+    const result: BulkResolutionResult = { resolved: 0, failed: [] }
+    for (const path of unique) {
+      if (!stages.has(path)) result.failed.push({ path, message: t('conflictBulk.notConflicted') })
+      else if (after.has(path)) result.failed.push({ path, message: errors.get(path) ?? t('conflictBulk.stillConflicted') })
+      else result.resolved++
+    }
+    return result
+  }
+
+  /** Arquivos em conflito no índice e os estágios de cada um (1 = ancestral, 2 = HEAD, 3 = que entra). */
+  private async unmergedStages(): Promise<Map<string, Set<number>>> {
+    const { stdout } = await this.git(['ls-files', '-u', '-z'])
+    const stages = new Map<string, Set<number>>()
+    for (const entry of stdout.split('\0')) {
+      // Formato de cada entrada: "<modo> <objeto> <estágio>\t<caminho>"
+      const tab = entry.indexOf('\t')
+      if (tab < 0) continue
+      const path = entry.slice(tab + 1)
+      const set = stages.get(path) ?? new Set<number>()
+      set.add(Number(entry.slice(0, tab).split(' ')[2]))
+      stages.set(path, set)
+    }
+    return stages
+  }
+
+  /** Aplica a resolução a um lote de caminhos que estão em conflito (mesma regra de resolveConflict). */
+  private async applyBulkResolution(paths: string[], resolution: ConflictResolution, stages: Map<string, Set<number>>): Promise<void> {
+    if (resolution === 'resolved') {
+      await this.git(['add', '--', ...paths])
+      return
+    }
+    const stage = resolution === 'ours' ? 2 : 3
+    const withSide = paths.filter((p) => stages.get(p)?.has(stage))
+    // O lado escolhido removeu o arquivo: resolver = remover.
+    const withoutSide = paths.filter((p) => !stages.get(p)?.has(stage))
+    if (withSide.length) {
+      await this.git(['checkout', `--${resolution}`, '--', ...withSide])
+      await this.git(['add', '--', ...withSide])
+    }
+    if (withoutSide.length) await this.git(['rm', '-q', '--ignore-unmatch', '--', ...withoutSide])
+  }
+
+  /** O arquivo ainda tem marcadores <<<<<<< no início de uma linha. Arquivo ausente conta como sem marcadores. */
+  private async hasConflictMarkers(path: string): Promise<boolean> {
+    const text = await readFile(resolveInside(this.root, path), 'utf8').catch(() => '')
+    return /^<{7}(?: |$)/m.test(text)
+  }
+
   async continueOperation(): Promise<OperationResult> {
     const [op, status] = await Promise.all([this.operationState(), this.status()])
     if (status.conflicted.length) throw new Error(t('core.stillConflicts'))
@@ -911,7 +1123,7 @@ export class GitRepository implements RepoApi {
       // Conflitos de um "git apply --3way" não deixam operação registrada: volta ao HEAD.
       const status = await this.status()
       if (status.conflicted.length) {
-        await this.git(['checkout', 'HEAD', '--', ...status.conflicted.map((f) => f.path)])
+        await this.gitPaths(['checkout', 'HEAD'], status.conflicted.map((f) => f.path), true)
         return
       }
       throw new Error(t('core.noOperation'))

@@ -506,6 +506,42 @@ export const es: Messages = {
     cumulative: 'Mostrando la diferencia acumulada de {from} a {to}.',
     includesIntermediate: '(incluye los commits intermedios)'
   },
+  conflictBulk: {
+    title: 'Resolver todos',
+    resolveAllLabel: 'Resolver todos:',
+    keepOurs: 'Mantener todos los locales (ours)',
+    keepOursHelp: 'Mantiene la versión de la rama actual (HEAD) en todos los archivos en conflicto',
+    takeTheirs: 'Aceptar todos los entrantes (theirs)',
+    takeTheirsHelp: 'Mantiene la versión que se está aplicando en todos los archivos en conflicto',
+    markResolved: 'Marcar todos como resueltos',
+    markResolvedHelp: 'Marca como resueltos los archivos que ya no tienen marcadores <<<<<<< (los demás se dejan fuera)',
+    menuLabel: 'Resolver todos los archivos',
+    menuHelp: 'Aplica la resolución a todos los archivos en conflicto del repositorio',
+    confirmOursTitle: '¿Mantener la versión actual en todos?',
+    confirmTheirsTitle: '¿Aceptar la versión entrante en todos?',
+    confirmResolvedTitle: '¿Marcar todos como resueltos?',
+    confirmOurs: {
+      one: 'Esto resuelve {count} archivo en conflicto manteniendo la versión actual (HEAD). Las ediciones manuales en él se descartarán.',
+      other: 'Esto resuelve {count} archivos en conflicto manteniendo la versión actual (HEAD). Las ediciones manuales en ellos se descartarán.'
+    },
+    confirmTheirs: {
+      one: 'Esto resuelve {count} archivo en conflicto manteniendo la versión entrante. Las ediciones manuales en él se descartarán.',
+      other: 'Esto resuelve {count} archivos en conflicto manteniendo la versión entrante. Las ediciones manuales en ellos se descartarán.'
+    },
+    confirmResolved: {
+      one: 'Esto marca {count} archivo como resuelto. Si todavía tiene marcadores <<<<<<<, se omitirá.',
+      other: 'Esto marca {count} archivos como resueltos. Los que todavía tengan marcadores <<<<<<< se omitirán.'
+    },
+    done: { one: '1 archivo resuelto.', other: '{count} archivos resueltos.' },
+    partial: 'Resueltos: {resolved}. No resueltos: {failed} ({list}).',
+    filterLabel: 'Filtrar archivos en conflicto',
+    filterPlaceholder: 'Filtrar archivos…',
+    showing: 'Mostrando {shown} de {count}',
+    noMatch: 'Ningún archivo coincide con el filtro.',
+    notConflicted: 'No está en conflicto',
+    hasMarkers: 'Todavía tiene marcadores de conflicto',
+    stillConflicted: 'Sigue en conflicto'
+  },
   conflict: {
     titleShort: 'Conflicto en {path}',
     title: 'Resolver conflicto — {path}',
@@ -760,6 +796,17 @@ export const es: Messages = {
       resetHelp: 'Devuelve todas las opciones a sus valores originales (guarda para confirmar).'
     }
   },
+  copy: {
+    line: 'Copiar línea',
+    text: 'Copiar texto',
+    selection: 'Copiar selección',
+    path: 'Copiar ruta',
+    sha: 'Copiar SHA',
+    message: 'Copiar mensaje',
+    markedLines: 'Copiar líneas marcadas ({count})',
+    copied: 'Copiado',
+    failed: 'No se pudo copiar.',
+  },
   shortcuts: {
     actions: {
       viewHistory: 'Ir a Historial',
@@ -806,6 +853,32 @@ export const es: Messages = {
       none: 'No se encontraron atajos.'
     }
   },
+  feedback: {
+    unknown: 'Error sin mensaje.',
+    unexpected: 'Error inesperado: {message}',
+    toast: {
+      close: 'Cerrar notificación',
+      copy: 'Copiar',
+      copyHelp: 'Copia el mensaje completo',
+      copied: '¡Copiado!',
+      copyFailed: 'No se pudo copiar',
+      middle: 'En medio',
+      sizeLabel: 'Tamaño',
+      sizeStandard: 'Estándar',
+      sizeLarge: 'Grande',
+      sizeExtra: 'Extra grande',
+      sizeWide: 'Pantalla ancha'
+    },
+    blocked: {
+      noRemote: 'Este repositorio no tiene remoto configurado. Agrega uno en Configuración → Git.',
+      noBranch: 'No hay rama actual (HEAD separado). Haz checkout de una rama para continuar.',
+      noCommits: 'El repositorio todavía no tiene commits.',
+      noSelection: 'Selecciona al menos una línea cambiada en el diff.',
+      conflicts: 'Hay conflictos: resuélvelos antes de continuar.',
+      commitMessage: 'Escribe el mensaje del commit.',
+      commitNothing: 'Nada para confirmar: agrega cambios al stage primero.'
+    }
+  },
   messages: {
     filesFrom: '(archivos {files} traídos del commit {sha})',
     linesFrom: '(líneas de {path} traídas del commit {sha})',
@@ -814,6 +887,13 @@ export const es: Messages = {
     partialLines: '(líneas de {path} traídas de {sha} mediante cherry-pick parcial)',
     partialFrom: 'Cherry-pick parcial de {origin}',
     sourceCommits: 'Commits de origen:'
+  },
+  longList: {
+    loading: 'Cargando más archivos…',
+    showMore: 'Mostrar más archivos'
+  },
+  commandLimit: {
+    tooLong: 'La lista de rutas o commits es demasiado grande para un solo comando de git ({command}). Inténtalo de nuevo con menos elementos.'
   },
   core: {
     invalidRef: {
@@ -886,6 +966,67 @@ export const es: Messages = {
     fileNotFound: 'El archivo "{path}" no existe en la carpeta del proyecto (¿solo en otro commit?).',
     unknownOperation: 'Operación desconocida: {method}',
     noRepository: 'No hay ningún repositorio abierto.'
+  },
+  multiRepo: {
+    notOpen: 'El repositorio "{root}" no está abierto en GitTools.',
+    sameRepository: 'El origen y el destino deben ser repositorios distintos.',
+    targetDetached: 'El repositorio "{root}" no tiene rama (HEAD separado). Elige una rama antes de traer commits.',
+    targetDirty: 'El repositorio "{root}" tiene cambios sin confirmar. Confirma o guarda esos cambios antes de traer commits.',
+    targetBusy: 'El repositorio "{root}" tiene una operación en curso. Termina o aborta esa operación antes de traer commits.'
+  },
+  repoTabs: {
+    list: 'Repositorios abiertos',
+    addTab: 'Abrir, clonar o crear un repositorio',
+    noBranch: 'sin rama',
+    changes: 'Cambios sin confirmar: {count}',
+    conflicts: 'Conflictos en curso',
+    operation: 'Operación en curso',
+    closeAria: 'Cerrar {repo}',
+    closeHelp: 'Quita el repositorio de esta sesión. No se borra nada.',
+    closeThis: 'Cerrar este repositorio',
+    closeOthers: 'Cerrar los demás',
+    openBadge: 'abierto',
+    applyAcross: 'Aplicar en otro repositorio abierto',
+    close: {
+      title: '¿Cerrar {repo}?',
+      message:
+        'Este repositorio tiene trabajo pendiente: {details}.\n\nCerrar solo quita el repositorio de esta sesión. No se borra nada del disco, pero el trabajo sigue pendiente hasta que vuelvas a abrir el repositorio.',
+      confirm: 'Cerrar igualmente',
+      changes: '{count} cambio(s) sin confirmar',
+      operation: 'una operación en curso',
+      drafts: '{count} archivo(s) con texto no guardado en el editor'
+    },
+    closeOthersDialog: {
+      title: '¿Cerrar los demás repositorios?',
+      message: 'Los demás repositorios salen de esta sesión (no se borra nada). {details}',
+      hasWork: 'Algunos tienen trabajo pendiente: {names}.'
+    },
+    cross: {
+      title: 'Aplicar commits en {target}',
+      origin: 'Origen: {repo} · {commits}',
+      destination: 'Destino: {repo} · rama actual: {branch}',
+      note: 'Los commits se aplican sobre la rama actual del destino, como un cherry-pick. El origen no cambia.',
+      confirm: 'Aplicar',
+      done: 'Commits aplicados en {target}.',
+      conflict: 'Hay conflictos al aplicar en {target}. Resuélvelos en su pestaña o aborta la operación allí.',
+      goTo: 'Ir a {repo}',
+      dropHelp: 'Suelta aquí para aplicar los commits en este repositorio'
+    },
+    wait: {
+      title: 'Esperando la operación en {repo}…',
+      help: 'El cambio espera a que terminen las operaciones en curso, para que ninguna siga en el otro repositorio.',
+      force: 'Cambiar igualmente',
+      forced: 'La operación en {repo} no terminó a tiempo; el cambio se hizo igualmente.'
+    },
+    log: {
+      all: 'Todos los repositorios',
+      only: 'Solo este repositorio'
+    },
+    shortcuts: {
+      next: 'Siguiente pestaña de repositorio',
+      prev: 'Pestaña de repositorio anterior',
+      close: 'Cerrar pestaña de repositorio'
+    }
   },
   dash: {
     title: 'Paneles',
@@ -1309,6 +1450,20 @@ export const es: Messages = {
     replaceMessage: 'Ya existe un diseño guardado llamado "{name}". ¿Reemplazarlo por la disposición actual?',
     none: 'Aún no hay diseños guardados.'
   },
+  loader: {
+    loading: 'Cargando…',
+    commit: 'Cargando el commit…',
+    diff: 'Cargando el diff…',
+    blame: 'Cargando el blame…',
+    fileHistory: 'Cargando el historial del archivo…',
+    file: 'Cargando el archivo…',
+    files: 'Cargando los archivos…',
+    compare: 'Comparando…'
+  },
+  screenMenu: {
+    otherScreens: 'Paneles de otras pantallas',
+    pinnedHelp: 'Fijados aquí de otras pantallas ({count})'
+  },
   workbench: {
     views: {
       branches: 'Ramas',
@@ -1332,7 +1487,7 @@ export const es: Messages = {
     restoreSize: 'Volver al tamaño normal',
     allHidden: 'Todos los paneles están ocultos.',
     screens: 'Pantallas',
-    screensHelp: 'Trae al frente los paneles de cada pantalla, donde los hayas dejado.',
+    screensHelp: 'Cada pantalla muestra sus propios paneles. Los de otras pantallas aparecen aquí solo si los fijaste (menú ▦ Paneles).',
     panels: 'Paneles',
     panelsHelp: 'Mostrar u ocultar cualquier panel',
     resetLayout: 'Restablecer diseño predeterminado',
@@ -1369,6 +1524,68 @@ export const es: Messages = {
     copy: 'Copiar comando',
     copied: 'Comando copiado.',
     copyError: 'Copiar mensaje de error'
+  },
+  gitTerminal: {
+    tabLog: 'Log',
+    tabTerminal: 'Terminal',
+    title: 'Terminal de git',
+    placeholder: 'Escribe un comando git, por ejemplo: git status',
+    run: 'Ejecutar',
+    running: 'Ejecutando…',
+    commands: 'Comandos',
+    commandsHelp: 'Lista los comandos git con la descripción de cada uno (haz clic para usarlo)',
+    clear: 'Limpiar',
+    clearHelp: 'Limpia la salida (Ctrl+L). También sirve escribir clear.',
+    suggestions: 'Sugerencias',
+    keys: 'Tab acepta la sugerencia · ↑↓ elige o repite comandos · Esc cierra las sugerencias',
+    syntax: 'Sintaxis',
+    examples: 'Ejemplos',
+    options: 'Opciones',
+    welcome:
+      'Terminal del repositorio. Los comandos se ejecutan en la raíz del repositorio, sin shell: las tuberías (|), las redirecciones (>) y && no funcionan. Escribe help para la lista o help <comando> para ayuda.',
+    exitCode: 'código de salida {code}',
+    detached: 'sin rama',
+    listTitle: 'Comandos git disponibles (haz clic para insertar)',
+    unknownHelp: 'No hay ayuda para "{command}". Escribe help para ver la lista de comandos.',
+    noOutput: 'Sin salida.',
+    timeout: 'Tiempo agotado ({seconds} s): el comando se detuvo.',
+    truncated: 'Salida cortada en {size}: el resto no se mostró.',
+    kind: {
+      command: 'Comando',
+      flag: 'Opción',
+      op: 'Acción',
+      branch: 'Rama',
+      tag: 'Etiqueta',
+      remote: 'Remoto',
+      path: 'Archivo',
+      local: 'Comando local'
+    },
+    err: {
+      empty: 'Escribe un comando git, por ejemplo: git status',
+      noSubcommand: 'Falta el subcomando de git, por ejemplo: status, log o commit.',
+      notGit: 'Esta terminal solo ejecuta comandos git. Escribe "git <subcomando>", por ejemplo: git status',
+      unclosedQuote: 'Comillas sin cerrar.',
+      trailingBackslash: 'Barra invertida (\\) al final de la línea.',
+      operator:
+        'No se puede usar "{op}": la terminal ejecuta un comando git a la vez, sin tuberías, redirecciones ni encadenamiento (&&, ;).',
+      tooLong: 'Comando demasiado largo (máximo {max} caracteres).',
+      globalOption: 'La opción "{option}" no está permitida: la terminal siempre se ejecuta en la raíz del repositorio abierto.',
+      execOption: 'La opción "{option}" haría que git ejecute otro programa; no está permitida aquí.',
+      shellAlias: 'El alias "{name}" ejecuta un comando de shell (empieza con "!"), lo que no está permitido aquí.',
+      shellConfig: 'La configuración "{key}" haría que git ejecute otro programa; no está permitida aquí.',
+      interactive: 'El comando "git {command}" necesita una respuesta interactiva, que esta terminal no tiene. {hint}',
+      editor: 'El comando "git {command}" abriría un editor de texto, que esta terminal no tiene. {hint}'
+    },
+    hint: {
+      tools: 'Usa las pantallas de GitTools (Cambios, Conflictos y diferencias) en lugar de herramientas externas.',
+      rebase: 'Usa Historial → Rebase interactivo, o "git rebase <base>" sin -i.',
+      add: 'Elige archivos y líneas en la pestaña Cambios, o usa "git add <archivo>".',
+      clean: 'Usa "git clean -n" para ver qué se borraría y "git clean -f <ruta>" para borrarlo.',
+      patch: 'Elige qué cambiar en la pestaña Cambios, o pasa las rutas sin -p.',
+      commit: 'Pasa el mensaje en la línea: git commit -m "tu mensaje" (o --no-edit).',
+      tag: 'Pasa el mensaje en la línea: git tag -a <nombre> -m "tu mensaje".',
+      config: 'Guarda la opción directamente: git config <clave> <valor>.'
+    }
   },
   clone: {
     menu: 'Clonar repositorio…',

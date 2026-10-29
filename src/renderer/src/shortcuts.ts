@@ -18,6 +18,9 @@ export const SHORTCUT_ACTIONS: ShortcutAction[] = [
   { id: 'view.dashboards', group: 'navigation', defaultKeys: 'Ctrl+5' },
   { id: 'layout.sidebar', group: 'navigation', defaultKeys: 'Ctrl+B' },
   { id: 'history.search', group: 'navigation', defaultKeys: 'Ctrl+F' },
+  { id: 'tab.next', group: 'navigation', defaultKeys: 'Ctrl+Tab' },
+  { id: 'tab.prev', group: 'navigation', defaultKeys: 'Ctrl+Shift+Tab' },
+  { id: 'tab.close', group: 'navigation', defaultKeys: 'Ctrl+W' },
   { id: 'diff.nextChange', group: 'diff', defaultKeys: 'F7' },
   { id: 'diff.prevChange', group: 'diff', defaultKeys: 'Shift+F7' },
   { id: 'diff.nextFile', group: 'diff', defaultKeys: 'F8' },
@@ -44,6 +47,9 @@ export const SHORTCUT_LABELS: Record<string, MessageKey> = {
   'view.dashboards': 'shortcuts.actions.viewDashboards',
   'layout.sidebar': 'shortcuts.actions.toggleSidebar',
   'history.search': 'shortcuts.actions.searchHistory',
+  'tab.next': 'repoTabs.shortcuts.next',
+  'tab.prev': 'repoTabs.shortcuts.prev',
+  'tab.close': 'repoTabs.shortcuts.close',
   'diff.nextChange': 'shortcuts.actions.nextChange',
   'diff.prevChange': 'shortcuts.actions.prevChange',
   'diff.nextFile': 'shortcuts.actions.nextFile',
@@ -118,6 +124,14 @@ export function resolveBindings(overrides: Record<string, string>): Record<strin
 /** Teclas que funcionam mesmo com o foco num campo de texto. */
 export function worksInInputs(combo: string): boolean {
   return /(^|\+)(Ctrl|Alt)\+/.test(combo) || /^(Shift\+)?F\d+$/.test(combo)
+}
+
+/** Edição do sistema (selecionar tudo, copiar, colar, desfazer): não é roubada de campos nem de textos selecionados. */
+const EDIT_COMBOS = new Set(['Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+Z', 'Ctrl+Y'])
+
+/** Com foco num campo de texto, ou com um trecho selecionado, a combinação de edição fica com o próprio texto. */
+export function keepsNativeEdit(combo: string, typing: boolean, hasSelection: boolean): boolean {
+  return EDIT_COMBOS.has(combo) && (typing || hasSelection)
 }
 
 /** Pesquisa na lista de atalhos: por texto (nome da ação ou teclas) e/ou por uma combinação gravada. */

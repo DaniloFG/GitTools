@@ -1,26 +1,35 @@
 import { describe, expect, it } from 'vitest'
 import {
   activateView,
+  DOCK_VERSION,
   defaultDock,
   effectiveActive,
   findGroup,
   groupsOf,
+  hideIn,
   hideView,
+  inScreen,
   logicalSide,
   moveView,
   normalize,
   parseDock,
+  pinnedIn,
   resizePair,
-  screenShown,
+  revealIn,
+  screenOf,
+  SCREEN_IDS,
+  SCREEN_VIEWS,
   setSizes,
   showScreen,
   shownTree,
-  toggleScreen,
+  toggleIn,
+  toggleScreenIn,
   toggleView,
   VIEW_IDS,
   zoneAt,
   type DockNode,
   type DockState,
+  type ScreenId,
   type ShownNode,
   type ViewId
 } from '../src/renderer/src/dock'
@@ -28,10 +37,29 @@ import {
 const viewsOf = (state: DockState) => groupsOf(state.root).flatMap((g) => g.views)
 const allShown = () => true
 
+/** Painéis à vista numa tela (com todos disponíveis), pela árvore que o Dock desenha. */
+function shownIn(state: DockState, screen: ScreenId, available: (view: ViewId) => boolean = allShown): ViewId[] {
+  const tree = shownTree(state, (v) => available(v) && inScreen(state, v, screen))
+  const out: ViewId[] = []
+  const walk = (node: ShownNode) => (node.kind === 'group' ? out.push(...node.views) : node.children.forEach((c) => walk(c.node)))
+  if (tree) walk(tree)
+  return out
+}
+
 describe('arranjo padrão', () => {
   it('tem cada painel exatamente uma vez', () => {
     const views = viewsOf(defaultDock())
     expect([...views].sort()).toEqual([...VIEW_IDS].sort())
+  })
+
+  it('cada painel pertence a exatamente uma tela', () => {
+    const owned = Object.values(SCREEN_VIEWS).flat()
+    expect([...owned].sort()).toEqual([...VIEW_IDS].sort())
+    for (const screen of SCREEN_IDS) for (const view of SCREEN_VIEWS[screen]) expect(screenOf(view)).toBe(screen)
+  })
+
+  it('começa na versão atual, sem nenhum painel fixado', () => {
+    expect(defaultDock()).toMatchObject({ version: DOCK_VERSION, hidden: [], pinned: {} })
   })
 
   it('não repete ids de grupos e divisões', () => {
@@ -272,22 +300,12 @@ describe('mostrar e esconder', () => {
     expect(findGroup(state, 'changes.diff')?.active).toBe('changes.diff')
     // Indisponível: não vira a aba escolhida (o Histórico continua à frente de Descrição).
     expect(findGroup(state, 'changes.staged')?.active).toBe('commit.message')
-    expect(screenShown(state, 'changes', noStaged)).toBe(true)
-    expect(screenShown(state, 'history')).toBe(false)
-    expect(screenShown(showScreen(state, 'history'), 'history')).toBe(true)
+    expect(shownIn(state, 'changes', noStaged)).not.toContain('changes.staged')
   })
 
   it('trazer uma tela mostra os painéis escondidos dela', () => {
     const state = showScreen(hideView(hideView(defaultDock(), 'history'), 'commit.diff'), 'history')
     expect(state.hidden).toEqual([])
-  })
-
-  it('esconde a tela inteira (a barra lateral) e mostra de novo', () => {
-    const hidden = toggleScreen(defaultDock(), 'branches')
-    expect(hidden.hidden.sort()).toEqual(['branches', 'stashes', 'tags'])
-    // Com só alguns escondidos, esconde o resto; só quando todos estão escondidos é que mostra.
-    expect(toggleScreen(hideView(defaultDock(), 'tags'), 'branches').hidden.sort()).toEqual(['branches', 'stashes', 'tags'])
-    expect(toggleScreen(hidden, 'branches').hidden).toEqual([])
   })
 
   it('guarda os pesos de uma divisão válida e recusa os inválidos', () => {
@@ -359,5 +377,126 @@ describe('redimensionar e soltar', () => {
     expect(logicalSide('right', true)).toBe('left')
     expect(logicalSide('top', true)).toBe('top')
     expect(logicalSide('left', false)).toBe('left')
+  })
+})
+
+describe('cada menu mostra os seus painéis', () => {
+  it('no arranjo padrão, cada tela mostra exatamente os próprios painéis', () => {
+    for (const screen of SCREEN_IDS) {
+      expect([...shownIn(defaultDock(), screen)].sort(), screen).toEqual([...SCREEN_VIEWS[screen]].sort())
+    }
+  })
+
+  it('Arquivos não mostra o diff das alterações, o commit nem a comparação', () => {
+    const shown = shownIn(defaultDock(), 'files')
+    expect(shown).toEqual(expect.arrayContaining(['files.list', 'files.diff', 'files.editor', 'files.blame', 'files.history']))
+    for (const alien of ['changes.diff', 'changes.unstaged', 'changes.staged', 'commit.diff', 'compare.diff', 'gitlog', 'branches']) expect(shown).not.toContain(alien)
+  })
+
+  it('um painel de outra tela só aparece onde foi fixado, e o fixado persiste ao trocar de menu', () => {
+    let state = revealIn(defaultDock(), 'changes.diff', 'files')
+    expect(inScreen(state, 'changes.diff', 'files')).toBe(true)
+    expect(inScreen(state, 'changes.diff', 'history')).toBe(false)
+    expect(pinnedIn(state, 'files')).toEqual(['changes.diff'])
+    state = showScreen(state, 'history')
+    expect(shownIn(state, 'history')).not.toContain('changes.diff')
+    state = showScreen(state, 'files')
+    expect(shownIn(state, 'files')).toContain('changes.diff')
+  })
+
+  it('trazer uma tela não fixa painéis de outras telas', () => {
+    const state = showScreen(defaultDock(), 'files')
+    expect(state.pinned).toEqual({})
+  })
+
+  it('desfixar tira o painel só daquela tela; o próprio painel de outra tela não é afetado', () => {
+    const pinned = revealIn(revealIn(defaultDock(), 'changes.diff', 'files'), 'changes.diff', 'compare')
+    const out = hideIn(pinned, 'changes.diff', 'files')
+    expect(pinnedIn(out, 'files')).toEqual([])
+    expect(pinnedIn(out, 'compare')).toEqual(['changes.diff'])
+    expect(out.pinned).not.toHaveProperty('files')
+    // Desfixar algo que não estava fixado não muda nada.
+    expect(hideIn(out, 'changes.diff', 'files')).toBe(out)
+  })
+
+  it('esconder o painel na própria tela não tira o fixado em outra', () => {
+    const state = hideIn(revealIn(defaultDock(), 'changes.diff', 'files'), 'changes.diff', 'changes')
+    expect(state.hidden).toContain('changes.diff')
+    expect(inScreen(state, 'changes.diff', 'changes')).toBe(false)
+    expect(inScreen(state, 'changes.diff', 'files')).toBe(true)
+    // E mostrar de volta na própria tela não desfixa nada.
+    expect(revealIn(state, 'changes.diff', 'changes').hidden).toEqual([])
+  })
+
+  it('esconder na própria tela vale só para ela (o painel continua mostrado em outra onde foi fixado)', () => {
+    const state = hideIn(revealIn(defaultDock(), 'commit.diff', 'files'), 'commit.diff', 'history')
+    expect(inScreen(state, 'commit.diff', 'history')).toBe(false)
+    expect(inScreen(state, 'commit.diff', 'files')).toBe(true)
+  })
+
+  it('mostrar ou esconder um painel alterna na tela dada', () => {
+    const fixed = toggleIn(defaultDock(), 'gitlog', 'history')
+    expect(pinnedIn(fixed, 'history')).toEqual(['gitlog'])
+    expect(inScreen(fixed, 'gitlog', 'gitlog')).toBe(true)
+    expect(toggleIn(fixed, 'gitlog', 'history').pinned).toEqual({})
+    const hidden = toggleIn(defaultDock(), 'gitlog', 'gitlog')
+    expect(hidden.hidden).toEqual(['gitlog'])
+    expect(toggleIn(hidden, 'gitlog', 'gitlog').hidden).toEqual([])
+  })
+
+  it('a barra de Branches entra e sai da tela aberta, sem mexer nas outras telas', () => {
+    const inHistory = toggleScreenIn(defaultDock(), 'branches', 'history')
+    expect(shownIn(inHistory, 'history')).toEqual(expect.arrayContaining(['branches', 'tags', 'stashes', 'history']))
+    expect(pinnedIn(inHistory, 'history')).toEqual(['branches', 'tags', 'stashes'])
+    expect(toggleScreenIn(inHistory, 'branches', 'history').pinned).toEqual({})
+    // Dentro da própria tela, esconder é esconder o menu inteiro; mostrar de novo traz tudo.
+    const hiddenInOwn = toggleScreenIn(defaultDock(), 'branches', 'branches')
+    expect(hiddenInOwn.hidden.sort()).toEqual(['branches', 'stashes', 'tags'])
+    expect(toggleScreenIn(hiddenInOwn, 'branches', 'branches').hidden).toEqual([])
+  })
+
+  it('a barra de Branches ignora painéis indisponíveis', () => {
+    const noTags = (v: ViewId) => v !== 'tags'
+    const state = toggleScreenIn(defaultDock(), 'branches', 'history', noTags)
+    expect(pinnedIn(state, 'history')).toEqual(['branches', 'stashes'])
+  })
+
+  it('mover um painel fixado não o desfixa', () => {
+    const state = moveView(revealIn(defaultDock(), 'changes.diff', 'files'), 'changes.diff', { kind: 'tabs', group: 'g-branches' })
+    expect(pinnedIn(state, 'files')).toEqual(['changes.diff'])
+    expect(inScreen(state, 'changes.diff', 'files')).toBe(true)
+  })
+})
+
+describe('versão do arranjo guardado', () => {
+  it('layout da versão 1 (sem versão nem fixados) é lido sem perder árvore nem escondidos', () => {
+    const d = hideView(defaultDock(), 'gitlog')
+    const { version: _version, pinned: _pinned, ...legacy } = JSON.parse(JSON.stringify(d)) as DockState
+    const state = parseDock({ ...legacy, hidden: ['gitlog'] })
+    expect(state.version).toBe(DOCK_VERSION)
+    expect(state.pinned).toEqual({})
+    expect(state.root).toEqual(d.root)
+    expect(state.hidden).toEqual(['gitlog'])
+    // Nenhuma tela ganha painéis de outra só por causa da migração.
+    expect(shownIn(state, 'history')).not.toContain('changes.diff')
+  })
+
+  it('um arranjo sem versão e sem fixados é o mesmo arranjo padrão', () => {
+    const d = defaultDock()
+    const { version: _version, pinned: _pinned, ...legacy } = JSON.parse(JSON.stringify(d)) as DockState
+    expect(parseDock(legacy)).toEqual(d)
+  })
+
+  it('fixados inválidos são descartados: painel da própria tela, nomes desconhecidos, repetidos e tela inexistente', () => {
+    const state = parseDock({
+      ...JSON.parse(JSON.stringify(defaultDock())),
+      pinned: { files: ['files.list', 'changes.diff', 'changes.diff', 'nada'], nope: ['tags'], history: 'x', compare: ['changes.diff'] }
+    })
+    expect(state.pinned).toEqual({ files: ['changes.diff'], compare: ['changes.diff'] })
+  })
+
+  it('o arranjo com fixados sobrevive a salvar e ler de novo', () => {
+    const state = toggleScreenIn(revealIn(defaultDock(), 'changes.diff', 'files'), 'branches', 'history')
+    expect(parseDock(JSON.parse(JSON.stringify(state)))).toEqual(state)
   })
 })

@@ -78,7 +78,7 @@ body {
   color: var(--text);
   font: 13px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
-  user-select: none;
+  user-select: text;
 }
 
 input,
@@ -210,22 +210,6 @@ code {
 .tag-renamed,
 .tag-copied {
   color: var(--warning);
-}
-
-.spinner {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--text-muted);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  vertical-align: -2px;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .field {
@@ -1114,7 +1098,6 @@ mark {
   font-family: var(--mono);
   font-size: 12px;
   line-height: 18px;
-  user-select: none;
 }
 .diff-table td {
   padding: 0 6px;
@@ -1474,14 +1457,18 @@ button.ghost.danger-text:hover:not(:disabled) {
   margin-inline-start: auto;
 }
 .conflict-list {
-  flex-basis: 100%;
-  order: 3;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 4px 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  /* Com dezenas de arquivos a lista rola dentro do próprio box, sem tomar a tela. */
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .conflict-list li {
   display: flex;
@@ -1494,6 +1481,40 @@ button.ghost.danger-text:hover:not(:disabled) {
   font-size: 12px;
 }
 .conflict-list button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* ------------------------------------------ conflitos: filtro e resolver todos */
+
+/* O painel ocupa uma linha própria do banner; a lista de arquivos rola dentro dele. */
+.conflict-panel {
+  flex-basis: 100%;
+  order: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+/* Filtro e ações em lote ficam acima da lista, fora da rolagem. */
+.conflict-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.conflict-filter {
+  flex: 1 1 180px;
+  max-width: 320px;
+}
+.conflict-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+.conflict-tools button {
   padding: 2px 8px;
   font-size: 12px;
 }
@@ -1937,6 +1958,452 @@ button.ghost.danger-text:hover:not(:disabled) {
   text-overflow: ellipsis;
 }
 
+/* ------------------------------------------------- indicador de carregamento */
+/* Loader animado (SVG e CSS, sem imagens: cores do tema), o overlay translúcido sobre os painéis e o indicador do topo.
+   Com prefers-reduced-motion nada gira: o indicador só pulsa suavemente. */
+.loader {
+  --loader-accent: var(--accent);
+  --loader-alt: var(--success);
+  --loader-size: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  vertical-align: middle;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.loader-sm {
+  --loader-size: 14px;
+}
+.loader-md {
+  --loader-size: 44px;
+}
+.loader-lg {
+  --loader-size: 72px;
+}
+.loader-md,
+.loader-lg {
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+.loader-svg {
+  flex: none;
+  width: var(--loader-size);
+  height: var(--loader-size);
+  overflow: visible;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--loader-accent) 60%, transparent));
+}
+/* Cada parte gira ou pulsa em torno do centro do desenho (24, 24). */
+.loader-svg g,
+.loader-svg circle,
+.loader-svg path {
+  transform-box: view-box;
+  transform-origin: 24px 24px;
+}
+.loader-halo {
+  fill: none;
+  stroke: color-mix(in srgb, var(--loader-accent) 35%, transparent);
+  stroke-width: 1;
+  animation: loader-breathe 2.4s ease-in-out infinite;
+}
+.loader-ring circle {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.loader-ring-outer {
+  animation: loader-spin 1.3s linear infinite;
+}
+.loader-ring-outer circle {
+  stroke: var(--loader-accent);
+  stroke-dasharray: 30 96;
+}
+.loader-ring-inner {
+  animation: loader-spin 0.9s linear infinite reverse;
+}
+.loader-ring-inner circle {
+  stroke: var(--loader-alt);
+  stroke-dasharray: 18 64;
+}
+.loader-scan {
+  animation: loader-spin 2.2s linear infinite;
+}
+.loader-scan path {
+  fill: color-mix(in srgb, var(--loader-accent) 22%, transparent);
+}
+.loader-orbit {
+  animation: loader-spin 2.6s linear infinite;
+}
+.loader-orbit-b {
+  animation-duration: 3.8s;
+  animation-direction: reverse;
+}
+.loader-orbit circle {
+  fill: var(--loader-accent);
+}
+.loader-orbit-b circle {
+  fill: var(--loader-alt);
+}
+.loader-core {
+  fill: var(--loader-accent);
+  animation: loader-pulse 1.6s ease-in-out infinite;
+}
+.loader-label {
+  max-width: 260px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+/* Dentro de botões de cor sólida (ex.: primary), o indicador fica branco para continuar visível. */
+.primary .loader,
+button.danger .loader {
+  --loader-accent: #fff;
+  --loader-alt: #fff;
+  color: #fff;
+}
+
+/* Painel coberto durante uma operação: fica translúcido e desfocado, e bloqueia cliques só nele. */
+.loading-host {
+  position: relative;
+}
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: loader-fade 0.18s ease-out;
+}
+.loader-pane {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  padding: 24px 16px;
+}
+/* Envolve um painel flex (coluna): o conteúdo continua ocupando todo o espaço, com o overlay por cima. */
+.loading-fill {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.loading-fill > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+.loading-overlay .loader-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Indicador compacto no topo da janela, com o nome da operação. */
+.busy {
+  position: fixed;
+  left: 50%;
+  top: 56px;
+  transform: translateX(-50%);
+  z-index: 35;
+  padding: 5px 14px 5px 10px;
+  border-radius: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 22%, transparent);
+  white-space: nowrap;
+  animation: loader-fade 0.18s ease-out;
+}
+.busy .loader {
+  color: var(--text);
+}
+.busy .loader-label {
+  max-width: none;
+}
+
+@keyframes loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes loader-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+@keyframes loader-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes loader-soft {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes loader-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader-ring-outer,
+  .loader-ring-inner,
+  .loader-scan,
+  .loader-orbit,
+  .loader-core,
+  .loader-halo {
+    animation: none;
+  }
+  /* Sem giros: o indicador inteiro só pulsa suavemente. */
+  .loader-svg {
+    animation: loader-soft 2.4s ease-in-out infinite;
+  }
+  .loading-overlay,
+  .busy {
+    animation: none;
+  }
+}
+/* ------------------------------------------------- listas longas de arquivos */
+
+/* Marcador no fim da lista: as linhas seguintes entram quando ele aparece na rolagem (milhares de arquivos). */
+.file-more {
+  list-style: none;
+  padding: 8px 12px;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  text-align: center;
+}
+
+/* ------------------------------------------------------ vários repositórios */
+
+/* Faixa de 3px no topo com a cor do repositório da aba ativa: a tela nunca fica sem a identidade dele. */
+.repo-stripe {
+  flex: none;
+  height: 3px;
+  background: var(--repo, var(--accent));
+}
+.repo-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: none;
+  padding: 4px 8px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: thin;
+}
+.repo-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 300px;
+  padding: 5px 6px 5px 10px;
+  border: 1px solid transparent;
+  border-top: 3px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+.repo-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.repo-tab.active {
+  color: var(--text);
+  background: var(--bg-elevated);
+  border-color: var(--border);
+  border-top-color: var(--repo);
+  margin-bottom: -1px;
+  cursor: default;
+}
+/* Commits arrastados sobre uma aba de outro repositório: a aba acende na cor dele. */
+.repo-tab.drop-over {
+  outline: 2px dashed var(--repo);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--repo) 22%, var(--bg-elevated));
+}
+.repo-tab-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--repo);
+}
+.repo-tab-name {
+  overflow: hidden;
+  max-width: 150px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+.repo-tab-branch {
+  overflow: hidden;
+  max-width: 130px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+.repo-tab-badge {
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10.5px;
+  line-height: 16px;
+  text-align: center;
+}
+.repo-tab-flag {
+  font-size: 12px;
+}
+.repo-tab-flag.conflict {
+  color: var(--danger);
+}
+.repo-tab-flag.operation {
+  color: var(--warning);
+}
+.repo-tab-close {
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.repo-tab-close:hover {
+  opacity: 1;
+  background: var(--bg-hover);
+}
+.repo-tab-add {
+  flex: none;
+  align-self: center;
+  width: 26px;
+  height: 26px;
+  margin: 0 4px 3px;
+  padding: 0;
+}
+
+/* Nome do repositório com a cor dele (diálogos, log de comandos). */
+.repo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 220px;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--repo) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--repo) 16%, transparent);
+  color: var(--repo);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 18px;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.repo-chip::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--repo);
+}
+.dialog-repo {
+  margin-inline-start: 10px;
+  font-size: 12px;
+}
+.gitlog-repo {
+  font-size: 10.5px;
+  line-height: 16px;
+}
+
+/* Toolbar: a cor do repositório aparece no nome, e a branch em destaque. */
+.repo-button-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--repo);
+}
+.toolbar .current-branch {
+  max-width: 260px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Espera da troca de aba: o repositório que sai termina as operações dele antes de a tela mudar. */
+.repo-wait {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: blur(2px);
+}
+.repo-wait-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 380px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+.repo-wait-card p {
+  margin: 0;
+}
+.repo-loading {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+}
+/* Com a barra de abas, o indicador de operação desce para não cobrir a toolbar. */
+.workspace-app .busy {
+  top: 92px;
+}
+
 /* ------------------------------------------------------------ toasts */
 
 .toasts {
@@ -1993,6 +2460,69 @@ button.ghost.danger-text:hover:not(:disabled) {
 .toast-icon {
   font-weight: 700;
 }
+
+/* ------------------------------------------ notificações: meio, fechar, copiar e textos longos */
+
+/* Posição "no meio" na vertical; com "centro" na horizontal, o aviso fica exatamente no centro do app. */
+:root[data-toast-y='middle'] .toasts {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+:root[data-toast-x='center'][data-toast-y='middle'] .toasts {
+  transform: translate(-50%, -50%);
+}
+
+/* Erros não somem sozinhos: muitos avisos de uma vez rolam dentro da pilha em vez de sair da janela. */
+.toasts {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+/* Textos longos: o aviso cabe na janela, quebra palavras sem espaço e rola por dentro (altura máxima). */
+.toast {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.toast-body {
+  flex: 1;
+  min-width: 0;
+  user-select: text;
+}
+.toast-count {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bg-panel);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.toast-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  flex: none;
+}
+.toast-action {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.toast-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0 4px;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.65;
+  cursor: pointer;
+}
+.toast-close:hover,
+.toast-close:focus-visible {
+  opacity: 1;
+}
 .busy {
   position: fixed;
   left: 50%;
@@ -2021,6 +2551,52 @@ button.ghost.danger-text:hover:not(:disabled) {
 
 .warning-text {
   color: var(--warning);
+}
+
+/* ------------------------------------------------ seleção e cópia de texto */
+
+/* Arrastáveis: o navegador marca o texto deles como não selecionável; aqui ele volta a ser selecionável
+   (duplo/triplo clique). O arraste continua valendo: com Alt, ver textSelect.ts. */
+[draggable='true'] {
+  user-select: text;
+}
+
+/* O texto das telas pode ser selecionado e copiado (Ctrl+C ou o menu do botão direito). Ficam de fora só os
+   controles, os cabeçalhos e as colunas de números e sinais de diffs e editores, para o texto copiado de um
+   diff conter só o código, linha a linha. */
+button,
+.toolbar,
+.segmented,
+.diff-nav,
+.context-menu,
+.menu-separator,
+.row-toggle,
+.modal-header,
+.csection-header,
+.commit-columns,
+.blame-bubble,
+.editor-gutter,
+.diff-table td.sel,
+.diff-table td.ln,
+.diff-table td.sign,
+.diff-table tr.hunk-header,
+.no-newline {
+  user-select: none;
+}
+
+/* Com Alt pressionado, as linhas arrastáveis viram texto selecionável (ver textSelect.ts). */
+html[data-alt-select] [draggable] {
+  cursor: text;
+}
+
+/* Linha vazia do diff: a célula mantém a altura sem texto, para o trecho copiado não ganhar um espaço. */
+.diff-table td.code:empty {
+  height: 18px;
+}
+
+/* Linha focada para Ctrl+C: o clique não mostra anel de foco. */
+[data-copy]:focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* ------------------------------------------------------- configurações */
@@ -2581,7 +3157,7 @@ kbd.duplicate {
 .list-body:focus {
   outline: none;
 }
-:root:not([data-toast-y='top']) .modal-backdrop ~ .toasts {
+:root:not([data-toast-y='top']):not([data-toast-y='middle']) .modal-backdrop ~ .toasts {
   bottom: 72px;
 }
 
@@ -2936,6 +3512,33 @@ body.reordering * {
   background: var(--bg-active);
   color: var(--text);
 }
+
+/* ------------------------------------------------------ menus: painéis de outras telas */
+/* Barra dos menus, logo abaixo da barra de ferramentas: telas à esquerda, ▦ Painéis à direita. */
+.screen-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+/* Quantos painéis de outras telas estão fixados num menu do topo: discreto, ao lado do nome do menu. */
+.screen-pinned {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 5px;
+  line-height: 15px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* Aba de um painel fixado numa tela que não é a dele: em itálico, para se distinguir dos painéis da própria tela. */
+.dock-tab.foreign {
+  font-style: italic;
+}
+
 body.docking,
 body.docking * {
   cursor: grabbing !important;
@@ -3128,6 +3731,231 @@ body.docking .pane-grip {
   grid-column: 3 / -1;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ------------------------------------------------- terminal git (aba do log) */
+
+/* Abas Log | Terminal na barra do log; a aba ativa fica sublinhada na cor de destaque. */
+.gitlog-tabs {
+  display: inline-flex;
+  gap: 2px;
+}
+.gitlog-tabs button {
+  padding: 2px 10px;
+  font-size: 12px;
+  border-bottom: 2px solid transparent;
+}
+.gitlog-tabs button.active {
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.gt {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.gt-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  font-family: inherit;
+}
+.gt-toolbar button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.gt-toolbar button.active {
+  background: var(--bg-active);
+}
+.gt-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 4px;
+  max-height: 40%;
+  overflow: auto;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.gt-list-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+.gt-list-item .muted {
+  font-family: inherit;
+  white-space: normal;
+}
+.gt-list-local {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.gt-output {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 6px 10px;
+  user-select: text;
+}
+.gt-welcome {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: inherit;
+  white-space: pre-wrap;
+}
+.gt-entry {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+.gt-command {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.gt-prompt {
+  color: var(--accent);
+  font-weight: 600;
+  white-space: pre;
+}
+.gt-stdout,
+.gt-stderr,
+.gt-stderr-info {
+  margin: 2px 0 0;
+  padding: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.gt-stderr {
+  color: var(--danger);
+}
+.gt-stderr-info {
+  color: var(--text-muted);
+}
+.gt-exit {
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+.gt-exit.error {
+  color: var(--danger);
+}
+.gt-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.gt-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+/* Linha de entrada: prompt, campo e botão Executar; as sugestões abrem acima dela. */
+.gt-input-area {
+  position: relative;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.gt-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+}
+.gt-input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  font: inherit;
+}
+.gt-run {
+  padding: 2px 10px;
+  font-size: 12px;
+}
+.gt-suggest-wrap {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 100%;
+  z-index: 5;
+  max-height: 55vh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.18);
+}
+.gt-suggest {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  max-height: 260px;
+  overflow: auto;
+}
+.gt-suggest li {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) 80px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: baseline;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.gt-suggest li.active {
+  background: var(--bg-active);
+}
+.gt-kind {
+  color: var(--text-muted);
+  font-family: inherit;
+}
+.gt-detail {
+  color: var(--text-muted);
+  font-family: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gt-hint {
+  padding: 3px 10px;
+  border-top: 1px solid var(--border);
+  font-family: inherit;
+}
+.gt-help {
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.gt-help-title {
+  margin-bottom: 2px;
+}
+.gt-examples {
+  margin: 0 0 4px;
+  padding-inline-start: 18px;
+}
+.gt-flags {
+  margin: 0;
+}
+.gt-flags > div {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+  column-gap: 10px;
+}
+.gt-flags dd {
+  margin: 0;
+  color: var(--text-muted);
 }
 
 /* ------------------------------------------ linhas adicionadas/removidas */

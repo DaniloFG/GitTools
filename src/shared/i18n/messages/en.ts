@@ -506,6 +506,42 @@ export const en: Messages = {
     cumulative: 'Showing the cumulative difference from {from} to {to}.',
     includesIntermediate: '(includes the commits in between)'
   },
+  conflictBulk: {
+    title: 'Resolve all',
+    resolveAllLabel: 'Resolve all:',
+    keepOurs: 'Keep all local (ours)',
+    keepOursHelp: 'Keeps the current branch version (HEAD) in every conflicted file',
+    takeTheirs: 'Accept all incoming (theirs)',
+    takeTheirsHelp: 'Keeps the version being applied in every conflicted file',
+    markResolved: 'Mark all as resolved',
+    markResolvedHelp: 'Marks as resolved the files that no longer have <<<<<<< markers (the others are left out)',
+    menuLabel: 'Resolve all files',
+    menuHelp: 'Applies the resolution to every conflicted file in the repository',
+    confirmOursTitle: 'Keep the current version in all files?',
+    confirmTheirsTitle: 'Accept the incoming version in all files?',
+    confirmResolvedTitle: 'Mark all as resolved?',
+    confirmOurs: {
+      one: 'This resolves {count} conflicted file by keeping the current version (HEAD). Manual edits in it will be discarded.',
+      other: 'This resolves {count} conflicted files by keeping the current version (HEAD). Manual edits in them will be discarded.'
+    },
+    confirmTheirs: {
+      one: 'This resolves {count} conflicted file by keeping the incoming version. Manual edits in it will be discarded.',
+      other: 'This resolves {count} conflicted files by keeping the incoming version. Manual edits in them will be discarded.'
+    },
+    confirmResolved: {
+      one: 'This marks {count} file as resolved. If it still has <<<<<<< markers, it will be skipped.',
+      other: 'This marks {count} files as resolved. Those that still have <<<<<<< markers will be skipped.'
+    },
+    done: { one: '1 file resolved.', other: '{count} files resolved.' },
+    partial: 'Resolved: {resolved}. Not resolved: {failed} ({list}).',
+    filterLabel: 'Filter conflicted files',
+    filterPlaceholder: 'Filter files…',
+    showing: 'Showing {shown} of {count}',
+    noMatch: 'No file matches the filter.',
+    notConflicted: 'Not in conflict',
+    hasMarkers: 'Still has conflict markers',
+    stillConflicted: 'Still in conflict'
+  },
   conflict: {
     titleShort: 'Conflict in {path}',
     title: 'Resolve conflict — {path}',
@@ -760,6 +796,17 @@ export const en: Messages = {
       resetHelp: 'Sets every option back to its original value (save to confirm).'
     }
   },
+  copy: {
+    line: 'Copy line',
+    text: 'Copy text',
+    selection: 'Copy selection',
+    path: 'Copy path',
+    sha: 'Copy SHA',
+    message: 'Copy message',
+    markedLines: 'Copy marked lines ({count})',
+    copied: 'Copied',
+    failed: 'Could not copy.',
+  },
   shortcuts: {
     actions: {
       viewHistory: 'Go to History',
@@ -806,6 +853,32 @@ export const en: Messages = {
       none: 'No shortcuts found.'
     }
   },
+  feedback: {
+    unknown: 'Error without a message.',
+    unexpected: 'Unexpected error: {message}',
+    toast: {
+      close: 'Close notification',
+      copy: 'Copy',
+      copyHelp: 'Copies the full message',
+      copied: 'Copied!',
+      copyFailed: 'Could not copy',
+      middle: 'Middle',
+      sizeLabel: 'Size',
+      sizeStandard: 'Standard',
+      sizeLarge: 'Large',
+      sizeExtra: 'Extra large',
+      sizeWide: 'Wide screen'
+    },
+    blocked: {
+      noRemote: 'This repository has no remote configured. Add one in Settings → Git.',
+      noBranch: 'There is no current branch (detached HEAD). Check out a branch to continue.',
+      noCommits: 'The repository has no commits yet.',
+      noSelection: 'Select at least one changed line in the diff.',
+      conflicts: 'There are conflicts: resolve them before continuing.',
+      commitMessage: 'Write the commit message.',
+      commitNothing: 'Nothing to commit: stage some changes first.'
+    }
+  },
   messages: {
     filesFrom: '(files {files} taken from commit {sha})',
     linesFrom: '(lines from {path} taken from commit {sha})',
@@ -814,6 +887,13 @@ export const en: Messages = {
     partialLines: '(lines from {path} taken from {sha} via partial cherry-pick)',
     partialFrom: 'Partial cherry-pick from {origin}',
     sourceCommits: 'Source commits:'
+  },
+  longList: {
+    loading: 'Loading more files…',
+    showMore: 'Show more files'
+  },
+  commandLimit: {
+    tooLong: 'The list of paths or commits is too large for a single git command ({command}). Try again with fewer items.'
   },
   core: {
     invalidRef: {
@@ -886,6 +966,67 @@ export const en: Messages = {
     fileNotFound: 'File "{path}" does not exist in the working folder (only in another commit?).',
     unknownOperation: 'Unknown operation: {method}',
     noRepository: 'No repository is open.'
+  },
+  multiRepo: {
+    notOpen: 'The repository "{root}" is not open in GitTools.',
+    sameRepository: 'Source and target must be different repositories.',
+    targetDetached: 'The repository "{root}" has no branch (detached HEAD). Choose a branch before bringing in commits.',
+    targetDirty: 'The repository "{root}" has uncommitted changes. Commit or stash them before bringing in commits.',
+    targetBusy: 'The repository "{root}" has an operation in progress. Finish or abort it before bringing in commits.'
+  },
+  repoTabs: {
+    list: 'Open repositories',
+    addTab: 'Open, clone or create a repository',
+    noBranch: 'no branch',
+    changes: 'Uncommitted changes: {count}',
+    conflicts: 'Conflicts in progress',
+    operation: 'Operation in progress',
+    closeAria: 'Close {repo}',
+    closeHelp: 'Removes the repository from this session. Nothing is deleted.',
+    closeThis: 'Close this repository',
+    closeOthers: 'Close others',
+    openBadge: 'open',
+    applyAcross: 'Apply to another open repository',
+    close: {
+      title: 'Close {repo}?',
+      message:
+        'This repository has unfinished work: {details}.\n\nClosing only removes the repository from this session. Nothing is deleted from disk, but the work stays pending until you open the repository again.',
+      confirm: 'Close anyway',
+      changes: '{count} uncommitted change(s)',
+      operation: 'an operation in progress',
+      drafts: '{count} file(s) with unsaved editor text'
+    },
+    closeOthersDialog: {
+      title: 'Close the other repositories?',
+      message: 'The other repositories leave this session (nothing is deleted). {details}',
+      hasWork: 'Some have unfinished work: {names}.'
+    },
+    cross: {
+      title: 'Apply commits to {target}',
+      origin: 'Source: {repo} · {commits}',
+      destination: 'Destination: {repo} · current branch: {branch}',
+      note: 'The commits go onto the destination’s current branch, like a cherry-pick. The source does not change.',
+      confirm: 'Apply',
+      done: 'Commits applied to {target}.',
+      conflict: 'Conflicts while applying to {target}. Resolve them in its tab, or abort the operation there.',
+      goTo: 'Go to {repo}',
+      dropHelp: 'Drop here to apply the commits to this repository'
+    },
+    wait: {
+      title: 'Waiting for the operation in {repo}…',
+      help: 'The switch waits for operations in progress to finish, so none keeps running in the other repository.',
+      force: 'Switch anyway',
+      forced: 'The operation in {repo} did not finish in time; the switch was made anyway.'
+    },
+    log: {
+      all: 'All repositories',
+      only: 'This repository only'
+    },
+    shortcuts: {
+      next: 'Next repository tab',
+      prev: 'Previous repository tab',
+      close: 'Close repository tab'
+    }
   },
   dash: {
     title: 'Dashboards',
@@ -1309,6 +1450,20 @@ export const en: Messages = {
     replaceMessage: 'A saved layout named "{name}" already exists. Replace it with the current arrangement?',
     none: 'No saved layouts yet.'
   },
+  loader: {
+    loading: 'Loading…',
+    commit: 'Loading commit…',
+    diff: 'Loading diff…',
+    blame: 'Loading blame…',
+    fileHistory: 'Loading file history…',
+    file: 'Loading file…',
+    files: 'Loading files…',
+    compare: 'Comparing…'
+  },
+  screenMenu: {
+    otherScreens: 'Panels from other screens',
+    pinnedHelp: 'Pinned here from other screens ({count})'
+  },
   workbench: {
     views: {
       branches: 'Branches',
@@ -1332,7 +1487,7 @@ export const en: Messages = {
     restoreSize: 'Back to normal size',
     allHidden: 'All panels are hidden.',
     screens: 'Screens',
-    screensHelp: 'Brings forward the panels of each screen, wherever you left them.',
+    screensHelp: 'Each screen shows its own panels. Panels from other screens appear here only if you pinned them (▦ Panels menu).',
     panels: 'Panels',
     panelsHelp: 'Show or hide any panel',
     resetLayout: 'Restore default layout',
@@ -1369,6 +1524,68 @@ export const en: Messages = {
     copy: 'Copy command',
     copied: 'Command copied.',
     copyError: 'Copy error message'
+  },
+  gitTerminal: {
+    tabLog: 'Log',
+    tabTerminal: 'Terminal',
+    title: 'Git terminal',
+    placeholder: 'Type a git command, e.g. git status',
+    run: 'Run',
+    running: 'Running…',
+    commands: 'Commands',
+    commandsHelp: 'List the git commands with a description of each (click to use one)',
+    clear: 'Clear',
+    clearHelp: 'Clears the output (Ctrl+L). Typing clear works too.',
+    suggestions: 'Suggestions',
+    keys: 'Tab accepts the suggestion · ↑↓ picks or repeats commands · Esc closes the suggestions',
+    syntax: 'Syntax',
+    examples: 'Examples',
+    options: 'Options',
+    welcome:
+      'Repository terminal. Commands run at the repository root, without a shell: pipes (|), redirects (>) and && do not work. Type help for the list or help <command> for details.',
+    exitCode: 'exit code {code}',
+    detached: 'no branch',
+    listTitle: 'Available git commands (click to insert)',
+    unknownHelp: 'There is no help for "{command}". Type help to see the list of commands.',
+    noOutput: 'No output.',
+    timeout: 'Timed out ({seconds} s): the command was stopped.',
+    truncated: 'Output cut at {size}: the rest was not shown.',
+    kind: {
+      command: 'Command',
+      flag: 'Option',
+      op: 'Action',
+      branch: 'Branch',
+      tag: 'Tag',
+      remote: 'Remote',
+      path: 'File',
+      local: 'Local command'
+    },
+    err: {
+      empty: 'Type a git command, for example: git status',
+      noSubcommand: 'The git subcommand is missing, for example: status, log or commit.',
+      notGit: 'This terminal only runs git commands. Type "git <subcommand>", for example: git status',
+      unclosedQuote: 'Unclosed quote.',
+      trailingBackslash: 'Backslash (\\) at the end of the line.',
+      operator:
+        'Cannot use "{op}": the terminal runs one git command at a time, without pipes, redirects or chaining (&&, ;).',
+      tooLong: 'Command too long (maximum {max} characters).',
+      globalOption: 'The option "{option}" is not allowed: the terminal always runs at the root of the open repository.',
+      execOption: 'The option "{option}" would make git run another program; it is not allowed here.',
+      shellAlias: 'The alias "{name}" runs a shell command (it starts with "!"), which is not allowed here.',
+      shellConfig: 'The setting "{key}" would make git run another program; it is not allowed here.',
+      interactive: 'The command "git {command}" needs an interactive answer, which this terminal does not have. {hint}',
+      editor: 'The command "git {command}" would open a text editor, which this terminal does not have. {hint}'
+    },
+    hint: {
+      tools: 'Use the GitTools screens (Changes, Conflicts and diff) instead of external tools.',
+      rebase: 'Use History → Interactive rebase, or "git rebase <base>" without -i.',
+      add: 'Pick files and lines in the Changes tab, or use "git add <file>".',
+      clean: 'Use "git clean -n" to see what would be deleted and "git clean -f <path>" to delete it.',
+      patch: 'Pick what to change in the Changes tab, or pass the paths without -p.',
+      commit: 'Pass the message on the line: git commit -m "your message" (or --no-edit).',
+      tag: 'Pass the message on the line: git tag -a <name> -m "your message".',
+      config: 'Set the option directly: git config <key> <value>.'
+    }
   },
   clone: {
     menu: 'Clone repository…',

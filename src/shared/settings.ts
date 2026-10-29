@@ -10,7 +10,7 @@ export type LanguageSetting = 'system' | LocaleId
 export type DiffLayout = 'inline' | 'split'
 
 export type ToastHorizontal = 'left' | 'center' | 'right'
-export type ToastVertical = 'top' | 'bottom'
+export type ToastVertical = 'top' | 'middle' | 'bottom'
 
 /** Onde e com que tamanho aparecem as notificações (toasts) de sucesso, erro e aviso. */
 export interface ToastSettings {
@@ -22,8 +22,16 @@ export interface ToastSettings {
   height: number
 }
 
-export const TOAST_WIDTH = { min: 240, max: 720, step: 20 }
-export const TOAST_HEIGHT = { min: 60, max: 480, step: 20 }
+export const TOAST_WIDTH = { min: 240, max: 1200, step: 20 }
+export const TOAST_HEIGHT = { min: 60, max: 800, step: 20 }
+
+/** Tamanhos prontos (largura × altura máxima), acima do máximo do controle deslizante inclusive. */
+export const TOAST_SIZES = {
+  standard: { width: 380, height: 240 },
+  large: { width: 560, height: 360 },
+  extra: { width: 800, height: 520 },
+  wide: { width: 1200, height: 640 }
+} as const
 
 export interface Settings {
   /** Idioma da interface; "system" segue o idioma do sistema operacional. */
@@ -72,7 +80,7 @@ function normalizeToast(value: unknown): ToastSettings {
   const d = DEFAULT_SETTINGS.toast
   return {
     horizontal: raw.horizontal === 'left' || raw.horizontal === 'center' || raw.horizontal === 'right' ? raw.horizontal : d.horizontal,
-    vertical: raw.vertical === 'top' || raw.vertical === 'bottom' ? raw.vertical : d.vertical,
+    vertical: raw.vertical === 'top' || raw.vertical === 'middle' || raw.vertical === 'bottom' ? raw.vertical : d.vertical,
     width: clampTo(raw.width, TOAST_WIDTH, d.width),
     height: clampTo(raw.height, TOAST_HEIGHT, d.height)
   }

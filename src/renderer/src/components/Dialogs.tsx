@@ -1,7 +1,19 @@
-import { useState } from 'react'
-import type { PushForce } from '../../../shared/types'
+import { useContext, useState } from 'react'
+import type { PushForce, RepoInfo } from '../../../shared/types'
+import { AppContext } from '../context'
 import { t } from '../i18n'
 import { Modal } from './Modal'
+import { RepoChip } from './RepoChip'
+
+/**
+ * Repositório a que o diálogo se refere. Dentro de um repositório, vem do contexto; no nível do app
+ * (fechar uma aba, aplicar commits em outra) quem abre o diálogo informa.
+ */
+export interface DialogScope {
+  repo: RepoInfo
+  /** Há mais de um repositório aberto: o nome aparece no título, para não confundir de qual é a ação. */
+  several: boolean
+}
 
 export interface ConfirmRequest {
   title: string
@@ -66,21 +78,37 @@ export type DialogState =
   | ({ kind: 'choice'; resolve(v: ChoiceResult | null): void } & ChoiceRequest)
   | ({ kind: 'push'; resolve(v: PushResult | null): void } & PushRequest)
 
-export function DialogHost({ dialog, onDone }: { dialog: DialogState; onDone(): void }) {
-  if (dialog.kind === 'confirm') return <ConfirmDialog dialog={dialog} onDone={onDone} />
-  if (dialog.kind === 'prompt') return <PromptDialog dialog={dialog} onDone={onDone} />
-  if (dialog.kind === 'push') return <PushDialog dialog={dialog} onDone={onDone} />
-  return <ChoiceDialog dialog={dialog} onDone={onDone} />
+/**
+ * Diálogo de confirmação, pergunta ou escolha. Mostra o nome do repositório (chip colorido no título) quando há
+ * mais de um aberto: é aqui, num ponto só, que todo diálogo recebe essa identificação.
+ */
+export function DialogHost({ dialog, onDone, scope }: { dialog: DialogState; onDone(): void; scope?: DialogScope | null }) {
+  const app = useContext(AppContext)
+  const resolved: DialogScope | null = scope !== undefined ? scope : app ? { repo: app.repo, several: app.workspace.repos.length > 1 } : null
+  if (dialog.kind === 'confirm') return <ConfirmDialog dialog={dialog} onDone={onDone} scope={resolved} />
+  if (dialog.kind === 'prompt') return <PromptDialog dialog={dialog} onDone={onDone} scope={resolved} />
+  if (dialog.kind === 'push') return <PushDialog dialog={dialog} onDone={onDone} scope={resolved} />
+  return <ChoiceDialog dialog={dialog} onDone={onDone} scope={resolved} />
 }
 
-function ConfirmDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind: 'confirm' }>; onDone(): void }) {
+/** Título do diálogo com o chip do repositório, quando ele é identificado (há mais de um aberto). */
+function DialogTitle({ title, scope }: { title: string; scope: DialogScope | null }) {
+  return (
+    <>
+      {title}
+      {scope?.several && <RepoChip repo={scope.repo} className="dialog-repo" />}
+    </>
+  )
+}
+
+function ConfirmDialog({ dialog, onDone, scope }: { dialog: Extract<DialogState, { kind: 'confirm' }>; onDone(): void; scope: DialogScope | null }) {
   const close = (value: boolean) => {
     dialog.resolve(value)
     onDone()
   }
   return (
     <Modal
-      title={dialog.title}
+      title={<DialogTitle title={dialog.title} scope={scope} />}
       onClose={() => close(false)}
       footer={
         <>
@@ -96,7 +124,7 @@ function ConfirmDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind
   )
 }
 
-function PromptDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind: 'prompt' }>; onDone(): void }) {
+function PromptDialog({ dialog, onDone, scope }: { dialog: Extract<DialogState, { kind: 'prompt' }>; onDone(): void; scope: DialogScope | null }) {
   const [value, setValue] = useState(dialog.initial ?? '')
   const [detail, setDetail] = useState('')
   const [checked, setChecked] = useState(dialog.check?.checked ?? false)
@@ -110,7 +138,7 @@ function PromptDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind:
   }
   return (
     <Modal
-      title={dialog.title}
+      title={<DialogTitle title={dialog.title} scope={scope} />}
       onClose={() => close(null)}
       footer={
         <>
@@ -154,7 +182,7 @@ const PUSH_MODES: { id: PushForce | 'normal'; label: 'push.normal' | 'push.lease
 ]
 
 /** Push com escolha do remote e do modo (normal, force com lease ou force). */
-function PushDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind: 'push' }>; onDone(): void }) {
+function PushDialog({ dialog, onDone, scope }: { dialog: Extract<DialogState, { kind: 'push' }>; onDone(): void; scope: DialogScope | null }) {
   const [remote, setRemote] = useState(dialog.remote)
   const [mode, setMode] = useState<PushForce | 'normal'>(dialog.force ?? 'normal')
   const close = (v: PushResult | null) => {
@@ -163,7 +191,7 @@ function PushDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind: '
   }
   return (
     <Modal
-      title={t('push.title', { branch: dialog.branch })}
+      title={<DialogTitle title={t('push.title', { branch: dialog.branch })} scope={scope} />}
       onClose={() => close(null)}
       footer={
         <>
@@ -207,7 +235,7 @@ function PushDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind: '
   )
 }
 
-function ChoiceDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind: 'choice' }>; onDone(): void }) {
+function ChoiceDialog({ dialog, onDone, scope }: { dialog: Extract<DialogState, { kind: 'choice' }>; onDone(): void; scope: DialogScope | null }) {
   const [checks, setChecks] = useState<Record<string, boolean>>(
     Object.fromEntries((dialog.checks ?? []).map((c) => [c.id, !!c.checked]))
   )
@@ -216,7 +244,7 @@ function ChoiceDialog({ dialog, onDone }: { dialog: Extract<DialogState, { kind:
     onDone()
   }
   return (
-    <Modal title={dialog.title} onClose={() => close(null)} size="medium">
+    <Modal title={<DialogTitle title={dialog.title} scope={scope} />} onClose={() => close(null)} size="medium">
       {dialog.message && <p className="pre-line muted">{dialog.message}</p>}
       <div className="choice-list">
         {dialog.options.map((option, i) => (

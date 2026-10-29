@@ -1,18 +1,21 @@
-import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { AppContext } from '../context'
 import {
   activateView,
   groupsOf,
-  hideView,
+  hideIn,
+  inScreen,
   logicalSide,
   moveView,
   resizePair,
+  screenOf,
   setSizes,
   shownTree,
   zoneAt,
   type DockNode,
   type DockState,
   type DropTarget,
+  type ScreenId,
   type ShownGroup,
   type ShownNode,
   type ShownSplit,
@@ -22,6 +25,7 @@ import {
 import { t } from '../i18n'
 import { startResize } from '../resize'
 import { slotRef } from '../slots'
+import { LoadingOverlay, useLastDefined } from './Loader'
 
 export interface ViewMeta {
   label: string
@@ -78,6 +82,8 @@ function halfOf(rect: Rect, side: Side): Rect {
 interface DockProps {
   state: DockState
   onChange(next: DockState): void
+  /** Tela aberta: só aparecem os painéis dela e os fixados nela. */
+  screen: ScreenId
   meta: Record<ViewId, ViewMeta>
   /** Painéis que existem agora (ex.: Conflitos só quando há conflitos; Staged só na visão de listas separadas). */
   available(view: ViewId): boolean
@@ -89,7 +95,7 @@ interface DockProps {
  * de uma borda dele (divide o painel nesse lado) ou para a borda da janela — qualquer painel em qualquer
  * lugar. O conteúdo de cada painel é levado até o lugar dele por `PaneSlot` (ver slots.tsx).
  */
-export function Dock({ state, onChange: change, meta, available }: DockProps) {
+export function Dock({ state, onChange: change, screen, meta, available }: DockProps) {
   const app = useContext(AppContext)
   const rootRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ view: ViewId; hit: Hit | null } | null>(null)
@@ -102,7 +108,7 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
     if (next !== latest.current) change(next)
   }
 
-  const isShown = (view: ViewId) => available(view) && !state.hidden.includes(view)
+  const isShown = (view: ViewId) => available(view) && inScreen(state, view, screen)
   const tree = shownTree(state, isShown)
 
   const maximizedGroup = maximized && tree ? findShownGroup(tree, maximized) : null
@@ -237,7 +243,8 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
       },
       'separator',
       { label: maximized === groupId ? t('workbench.restoreSize') : t('workbench.maximize'), onClick: () => setMaximized(maximized === groupId ? null : groupId) },
-      { label: t('workbench.hide'), onClick: () => onChange(hideView(latest.current, view)) },
+      // Num painel de outra tela (fixado aqui), "ocultar" é deixar de fixá-lo nesta tela.
+      { label: t('workbench.hide'), onClick: () => onChange(hideIn(latest.current, view, screen)) },
       { label: t('workbench.resetLayout'), onClick: () => void app.resetLayout() }
     ])
   }
@@ -252,7 +259,7 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
               data-view={view}
               role="tab"
               aria-selected={view === node.active}
-              className={`dock-tab ${view === node.active ? 'active' : ''} ${drag?.view === view ? 'dragging' : ''}`}
+              className={`dock-tab ${view === node.active ? 'active' : ''} ${drag?.view === view ? 'dragging' : ''} ${screenOf(view) !== screen ? 'foreign' : ''}`}
               onPointerDown={(e) => startTabDrag(e, view)}
               onClick={() => onChange(activateView(latest.current, view))}
               onDoubleClick={() => setMaximized(maximized === node.id ? null : node.id)}
@@ -274,9 +281,9 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
           {maximized === node.id ? '⤡' : '⤢'}
         </button>
       </div>
-      <div className="dock-body" data-group={node.id}>
+      <GroupBody group={node.id} view={node.active}>
         <div key={node.active} className="dock-slot" data-slot={node.active} ref={slotRef(node.active)} />
-      </div>
+      </GroupBody>
     </section>
   )
 
@@ -369,6 +376,21 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Corpo de um grupo (onde o painel da aba à frente aparece). Enquanto uma operação mexe nos dados desse painel,
+ * ele é coberto pelo indicador de carregamento, que bloqueia cliques só nesse painel.
+ */
+function GroupBody({ group, view, children }: { group: string; view: ViewId; children: ReactNode }) {
+  const app = useContext(AppContext)
+  const label = useLastDefined(app?.busy ?? null)
+  const covered = app?.busy != null && app.busyScope.includes(view)
+  return (
+    <LoadingOverlay active={covered} label={label ? `${label}…` : undefined} className="dock-body" data-group={group}>
+      {children}
+    </LoadingOverlay>
   )
 }
 

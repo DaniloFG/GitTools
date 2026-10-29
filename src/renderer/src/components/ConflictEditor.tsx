@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { ConflictDetails } from '../../../shared/types'
 import { buildResult, parseConflicts, resolveChunk, type ChunkResolution, type MergeChunk } from '../../../shared/conflicts'
 import { useApp } from '../context'
+import { BULK_RESOLUTIONS, bulkHelp, bulkLabel, useResolveAll } from '../bulkConflicts'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { t, textDirection } from '../i18n'
@@ -21,6 +22,7 @@ import {
 } from '../mergeLayout'
 import { Modal } from './Modal'
 import { Split } from './Split'
+import { LoaderPane } from './Loader'
 
 type Conflict = Extract<MergeChunk, { kind: 'conflict' }>
 const CONTEXT = 3
@@ -40,7 +42,8 @@ const withArrow = (label: string, arrow: string) => (LEADING_ARROWS.has(arrow) ?
  * Os painéis rolam juntos, e cada bloco em conflito ocupa a mesma altura nos três.
  */
 export function ConflictEditor({ path, onClose }: { path: string; onClose(): void }) {
-  const { run, toast, showMenu } = useApp()
+  const { run, toast, showMenu, repo } = useApp()
+  const resolveAll = useResolveAll()
   const [details, setDetails] = useState<ConflictDetails | null>(null)
   const [resolutions, setResolutions] = useState<(ChunkResolution | undefined)[]>([])
   const [showFinal, setShowFinal] = useState(false)
@@ -157,9 +160,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   if (!details) {
     return (
       <Modal title={t('conflict.titleShort', { path })} onClose={onClose} size="medium">
-        <p className="empty">
-          <span className="spinner" /> {t('conflict.loading')}
-        </p>
+        <LoaderPane label={t('conflict.loading')} />
       </Modal>
     )
   }
@@ -183,7 +184,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
           <button className="choice" onClick={() => resolveWhole('theirs')}>
             <strong>{details.theirs === null ? t('conflict.deleteFile') : t('conflict.keepTheirs')}</strong>
           </button>
-          <button className="choice" onClick={() => window.gittools.openFile(path)}>
+          <button className="choice" onClick={() => window.gittools.openFile(path, repo.root)}>
             <strong>{t('common.openInEditor')}</strong>
             <span>{t('conflict.editorHelp')}</span>
           </button>
@@ -385,7 +386,26 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
           <span className="footer-summary">
             {conflicts.length === 0 ? t('conflict.noMarkers') : t('conflict.progress', { resolved: resolvedCount, count: conflicts.length })}
           </span>
-          <button onClick={() => window.gittools.openFile(path)}>{t('common.openInEditor')}</button>
+          <button
+            title={t('conflictBulk.menuHelp')}
+            onClick={(e) =>
+              showMenu(
+                e,
+                BULK_RESOLUTIONS.map((resolution) => ({
+                  label: t(bulkLabel(resolution)),
+                  hint: t(bulkHelp(resolution)),
+                  onClick: async () => {
+                    const result = await resolveAll(resolution)
+                    // Se este arquivo saiu do conflito, a janela já não tem o que mostrar.
+                    if (result && !result.failed.some((f) => f.path === path)) onClose()
+                  }
+                }))
+              )
+            }
+          >
+            {t('conflictBulk.menuLabel')} ▾
+          </button>
+          <button onClick={() => window.gittools.openFile(path, repo.root)}>{t('common.openInEditor')}</button>
           <button onClick={onClose}>{t('common.cancel')}</button>
           <button className="primary" disabled={resolvedCount < conflicts.length} onClick={save}>
             {t('conflict.save')}
