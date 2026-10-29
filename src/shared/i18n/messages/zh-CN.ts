@@ -846,6 +846,13 @@ export const zhCN: Messages = {
     partialFrom: '从 {origin} 部分拣选',
     sourceCommits: '来源提交：'
   },
+  longList: {
+    loading: '正在加载更多文件…',
+    showMore: '显示更多文件'
+  },
+  commandLimit: {
+    tooLong: '路径或提交列表过长，无法放入单个 git 命令（{command}）。请减少选择的项目后重试。'
+  },
   core: {
     invalidRef: {
       tagName: '无效的标签名称：“{ref}”',

@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { t } from '../shared/i18n'
 import type { GitCommandEntry } from '../shared/types'
+import { ARG_BUDGET, MAX_COMMAND_CHARS, commandChars } from './chunk'
 
 type CommandListener = (entry: GitCommandEntry) => void
 const commandListeners = new Set<CommandListener>()
@@ -93,6 +94,14 @@ export function runGit(cwd: string, args: string[], options: RunOptions = {}): P
       ...(error !== undefined ? { failed: true, error: error.split('\n')[0] } : {})
     })
   return new Promise((resolve, reject) => {
+    const commandSize = commandChars([...BASE_ARGS, ...args])
+    if (commandSize > MAX_COMMAND_CHARS) {
+      // Nem inicia o git: a linha de comando estouraria o limite do sistema (o erro seria um ENOENT ou E2BIG cru).
+      const message = t('commandLimit.tooLong', { command: args[0] })
+      finish(-1, message)
+      reject(new GitError(message, args, -1, '', ''))
+      return
+    }
     const child = spawn('git', [...BASE_ARGS, ...args], {
       cwd,
       windowsHide: true,
@@ -141,10 +150,13 @@ export function runGit(cwd: string, args: string[], options: RunOptions = {}): P
           child.kill('SIGTERM')
         }, options.timeoutMs)
       : null
-    child.on('error', (e) => {
+    child.on('error', (e: NodeJS.ErrnoException) => {
       if (timer) clearTimeout(timer)
-      finish(-1, e.message)
-      reject(new GitError(t('core.gitNotFound', { error: e.message }), args, -1, '', ''))
+      // Linha de comando longa demais: o Linux responde E2BIG/ENAMETOOLONG e o Windows, ENOENT.
+      const tooLong = e.code === 'E2BIG' || e.code === 'ENAMETOOLONG' || (e.code === 'ENOENT' && commandSize > ARG_BUDGET)
+      const message = tooLong ? t('commandLimit.tooLong', { command: args[0] }) : t('core.gitNotFound', { error: e.message })
+      finish(-1, message)
+      reject(new GitError(message, args, -1, '', ''))
     })
     child.on('close', (code) => {
       if (timer) clearTimeout(timer)

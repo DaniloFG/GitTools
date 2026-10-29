@@ -877,6 +877,13 @@ export const en: Messages = {
     partialFrom: 'Partial cherry-pick from {origin}',
     sourceCommits: 'Source commits:'
   },
+  longList: {
+    loading: 'Loading more files…',
+    showMore: 'Show more files'
+  },
+  commandLimit: {
+    tooLong: 'The list of paths or commits is too large for a single git command ({command}). Try again with fewer items.'
+  },
   core: {
     invalidRef: {
       tagName: 'Invalid tag name: "{ref}"',
