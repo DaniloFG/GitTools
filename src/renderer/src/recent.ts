@@ -10,17 +10,24 @@ export function useRecentRepos(reloadKey?: unknown) {
   const reload = useCallback(() => window.gittools.recentRepositories().then(setRecent, () => setRecent([])), [])
   useEffect(() => void reload(), [reload, reloadKey])
 
+  // Um erro aqui chega a quem chamou (que mostra o aviso); a lista é recarregada de qualquer jeito.
   const setFavorite = useCallback(
     async (path: string, favorite: boolean) => {
-      await window.gittools.setRepositoryFavorite(path, favorite).catch(() => undefined)
-      await reload()
+      try {
+        await window.gittools.setRepositoryFavorite(path, favorite)
+      } finally {
+        await reload()
+      }
     },
     [reload]
   )
   const remove = useCallback(
     async (path: string) => {
-      await window.gittools.removeRecentRepository(path).catch(() => undefined)
-      await reload()
+      try {
+        await window.gittools.removeRecentRepository(path)
+      } finally {
+        await reload()
+      }
     },
     [reload]
   )

@@ -362,10 +362,10 @@ export function ChangesView() {
             )}
             {active.area === 'unstaged' ? (
               <>
-                <button className="primary" disabled={!selection.size} onClick={() => lineAction('stage')}>
+                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={() => lineAction('stage')}>
                   {t('changes.stageLines', { count: selection.size })}
                 </button>
-                <button className="danger subtle" disabled={!selection.size} onClick={() => lineAction('discard')}>
+                <button className="danger subtle" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={() => lineAction('discard')}>
                   {t('changes.discardLines')}
                 </button>
                 <button onClick={() => run(t('busy.stage'), () => git.stageFiles([active.path]))}>{t('changes.stageFile')}</button>
@@ -374,7 +374,7 @@ export function ChangesView() {
               </>
             ) : (
               <>
-                <button className="primary" disabled={!selection.size} onClick={() => lineAction('unstage')}>
+                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={() => lineAction('unstage')}>
                   {t('changes.unstageLines', { count: selection.size })}
                 </button>
                 <button onClick={() => run(t('busy.unstage'), () => git.unstageFiles([active.path]))}>{t('changes.unstageFile')}</button>

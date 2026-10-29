@@ -809,6 +809,32 @@ export const hi: Messages = {
       none: 'कोई शॉर्टकट नहीं मिला।'
     }
   },
+  feedback: {
+    unknown: 'बिना संदेश की त्रुटि।',
+    unexpected: 'अप्रत्याशित त्रुटि: {message}',
+    toast: {
+      close: 'सूचना बंद करें',
+      copy: 'कॉपी करें',
+      copyHelp: 'पूरा संदेश कॉपी करता है',
+      copied: 'कॉपी हो गया!',
+      copyFailed: 'कॉपी नहीं हो सका',
+      middle: 'बीच में',
+      sizeLabel: 'आकार',
+      sizeStandard: 'सामान्य',
+      sizeLarge: 'बड़ा',
+      sizeExtra: 'बहुत बड़ा',
+      sizeWide: 'चौड़ी स्क्रीन'
+    },
+    blocked: {
+      noRemote: 'इस repository में कोई remote सेट नहीं है। सेटिंग्स → Git में एक जोड़ें।',
+      noBranch: 'कोई मौजूदा branch नहीं है (HEAD अलग है)। आगे बढ़ने के लिए किसी branch का checkout करें।',
+      noCommits: 'इस repository में अभी कोई commit नहीं है।',
+      noSelection: 'diff में बदली हुई कम से कम एक पंक्ति चुनें।',
+      conflicts: 'conflicts हैं: आगे बढ़ने से पहले उन्हें हल करें।',
+      commitMessage: 'commit संदेश लिखें।',
+      commitNothing: 'commit करने के लिए कुछ नहीं: पहले बदलावों को stage करें।'
+    }
+  },
   messages: {
     filesFrom: '(फ़ाइलें {files} commit {sha} से लाई गईं)',
     linesFrom: '({path} की लाइनें commit {sha} से लाई गईं)',

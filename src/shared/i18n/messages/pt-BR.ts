@@ -807,6 +807,32 @@ export const ptBR = {
       none: 'Nenhum atalho encontrado.'
     }
   },
+  feedback: {
+    unknown: 'Erro sem mensagem.',
+    unexpected: 'Erro inesperado: {message}',
+    toast: {
+      close: 'Fechar notificação',
+      copy: 'Copiar',
+      copyHelp: 'Copia a mensagem completa',
+      copied: 'Copiado!',
+      copyFailed: 'Não foi possível copiar',
+      middle: 'No meio',
+      sizeLabel: 'Tamanho',
+      sizeStandard: 'Padrão',
+      sizeLarge: 'Grande',
+      sizeExtra: 'Extra grande',
+      sizeWide: 'Tela larga'
+    },
+    blocked: {
+      noRemote: 'Este repositório não tem remote configurado. Adicione um em Configurações → Git.',
+      noBranch: 'Não há branch atual (HEAD destacado). Faça checkout de uma branch para continuar.',
+      noCommits: 'O repositório ainda não tem commits.',
+      noSelection: 'Selecione ao menos uma linha alterada no diff.',
+      conflicts: 'Há conflitos: resolva-os antes de continuar.',
+      commitMessage: 'Escreva a mensagem do commit.',
+      commitNothing: 'Nada para commitar: adicione alterações ao stage primeiro.'
+    }
+  },
   messages: {
     filesFrom: '(arquivos {files} trazidos do commit {sha})',
     linesFrom: '(linhas de {path} trazidas do commit {sha})',

@@ -806,6 +806,32 @@ export const es: Messages = {
       none: 'No se encontraron atajos.'
     }
   },
+  feedback: {
+    unknown: 'Error sin mensaje.',
+    unexpected: 'Error inesperado: {message}',
+    toast: {
+      close: 'Cerrar notificación',
+      copy: 'Copiar',
+      copyHelp: 'Copia el mensaje completo',
+      copied: '¡Copiado!',
+      copyFailed: 'No se pudo copiar',
+      middle: 'En medio',
+      sizeLabel: 'Tamaño',
+      sizeStandard: 'Estándar',
+      sizeLarge: 'Grande',
+      sizeExtra: 'Extra grande',
+      sizeWide: 'Pantalla ancha'
+    },
+    blocked: {
+      noRemote: 'Este repositorio no tiene remoto configurado. Agrega uno en Configuración → Git.',
+      noBranch: 'No hay rama actual (HEAD separado). Haz checkout de una rama para continuar.',
+      noCommits: 'El repositorio todavía no tiene commits.',
+      noSelection: 'Selecciona al menos una línea cambiada en el diff.',
+      conflicts: 'Hay conflictos: resuélvelos antes de continuar.',
+      commitMessage: 'Escribe el mensaje del commit.',
+      commitNothing: 'Nada para confirmar: agrega cambios al stage primero.'
+    }
+  },
   messages: {
     filesFrom: '(archivos {files} traídos del commit {sha})',
     linesFrom: '(líneas de {path} traídas del commit {sha})',

@@ -818,6 +818,32 @@ export const ar: Messages = {
       none: 'لم يُعثر على اختصارات.'
     }
   },
+  feedback: {
+    unknown: 'خطأ بلا رسالة.',
+    unexpected: 'خطأ غير متوقع: {message}',
+    toast: {
+      close: 'إغلاق الإشعار',
+      copy: 'نسخ',
+      copyHelp: 'ينسخ الرسالة كاملة',
+      copied: 'تم النسخ!',
+      copyFailed: 'تعذّر النسخ',
+      middle: 'في الوسط',
+      sizeLabel: 'الحجم',
+      sizeStandard: 'عادي',
+      sizeLarge: 'كبير',
+      sizeExtra: 'كبير جدًا',
+      sizeWide: 'عريض'
+    },
+    blocked: {
+      noRemote: 'لا يوجد remote مُعدّ لهذا المستودع. أضفه من الإعدادات ← Git.',
+      noBranch: 'لا يوجد فرع حالي (HEAD منفصل). انتقل إلى فرع للمتابعة.',
+      noCommits: 'لا توجد إيداعات في هذا المستودع بعد.',
+      noSelection: 'حدّد سطرًا واحدًا على الأقل من التغييرات في الفرق.',
+      conflicts: 'توجد تعارضات: حلّها قبل المتابعة.',
+      commitMessage: 'اكتب رسالة الإيداع.',
+      commitNothing: 'لا شيء للإيداع: أضف تغييرات إلى الـ stage أولًا.'
+    }
+  },
   messages: {
     filesFrom: '(الملفات {files} مأخوذة من الإيداع {sha})',
     linesFrom: '(أسطر من {path} مأخوذة من الإيداع {sha})',
