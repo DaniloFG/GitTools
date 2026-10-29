@@ -1384,6 +1384,10 @@ export const hi: Messages = {
     files: 'फ़ाइलें लोड हो रही हैं…',
     compare: 'तुलना हो रही है…'
   },
+  screenMenu: {
+    otherScreens: 'अन्य स्क्रीन के पैनल',
+    pinnedHelp: 'यहाँ दूसरी स्क्रीन से पिन किए गए ({count})'
+  },
   workbench: {
     views: {
       branches: 'Branches',
@@ -1407,7 +1411,7 @@ export const hi: Messages = {
     restoreSize: 'सामान्य आकार पर लौटें',
     allHidden: 'सभी पैनल छिपे हैं।',
     screens: 'स्क्रीन',
-    screensHelp: 'हर स्क्रीन के पैनल आगे लाता है, चाहे आपने उन्हें कहीं भी रखा हो।',
+    screensHelp: 'हर स्क्रीन अपने पैनल दिखाती है। दूसरी स्क्रीन के पैनल यहाँ तभी दिखते हैं जब आपने उन्हें पिन किया हो (▦ पैनल मेनू)।',
     panels: 'पैनल',
     panelsHelp: 'कोई भी पैनल दिखाएँ या छिपाएँ',
     resetLayout: 'डिफ़ॉल्ट लेआउट पुनर्स्थापित करें',

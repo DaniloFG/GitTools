@@ -1381,6 +1381,10 @@ export const es: Messages = {
     files: 'Cargando los archivos…',
     compare: 'Comparando…'
   },
+  screenMenu: {
+    otherScreens: 'Paneles de otras pantallas',
+    pinnedHelp: 'Fijados aquí de otras pantallas ({count})'
+  },
   workbench: {
     views: {
       branches: 'Ramas',
@@ -1404,7 +1408,7 @@ export const es: Messages = {
     restoreSize: 'Volver al tamaño normal',
     allHidden: 'Todos los paneles están ocultos.',
     screens: 'Pantallas',
-    screensHelp: 'Trae al frente los paneles de cada pantalla, donde los hayas dejado.',
+    screensHelp: 'Cada pantalla muestra sus propios paneles. Los de otras pantallas aparecen aquí solo si los fijaste (menú ▦ Paneles).',
     panels: 'Paneles',
     panelsHelp: 'Mostrar u ocultar cualquier panel',
     resetLayout: 'Restablecer diseño predeterminado',

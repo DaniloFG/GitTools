@@ -9,13 +9,10 @@ import { t } from '../i18n'
 interface ToolbarProps {
   onOpenRepository(path?: string, create?: boolean): void
   onClone(): void
-  /** Atalhos das telas (Histórico, Alterações…), ao lado do nome do repositório. */
-  screens?: React.ReactNode
-  /** Menu dos painéis e restaurar layout, junto das configurações. */
-  panels?: React.ReactNode
 }
 
-export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarProps) {
+/** Barra de ferramentas do repositório. Os menus do topo (telas e painéis) ficam na barra logo abaixo, em `App`. */
+export function Toolbar({ onOpenRepository, onClone }: ToolbarProps) {
   const { repo, data, toast, showMenu, openStudio, openSettings, openInEditor } = useApp()
   const { head, createBranch, createTag, stash, push, pushDialog, fetchRemote, pullRemote } = useActions()
   const { status } = data
@@ -74,7 +71,6 @@ export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarP
       <span className="current-branch" title={t('toolbar.currentBranch')}>
         ⎇ {head ?? t('toolbar.detached', { sha: status.headSha?.slice(0, 7) ?? t('toolbar.noCommits') })}
       </span>
-      {screens}
       <div className="toolbar-spacer" />
       <div className="toolbar-group">
         <button onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')}>
@@ -107,7 +103,6 @@ export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarP
       <button className="primary" onClick={() => openStudio({ target: head ?? undefined })}>
         🍒 {t('studio.name')}
       </button>
-      {panels}
       <button className="icon-button settings-button" onClick={() => openSettings()} title={t('toolbar.settings')}>
         ⚙
       </button>

@@ -1390,6 +1390,10 @@ export const ar: Messages = {
     files: 'جارٍ تحميل الملفات…',
     compare: 'جارٍ المقارنة…'
   },
+  screenMenu: {
+    otherScreens: 'لوحات من شاشات أخرى',
+    pinnedHelp: 'مثبّتة هنا من شاشات أخرى ({count})'
+  },
   workbench: {
     views: {
       branches: 'الفروع',
@@ -1413,7 +1417,7 @@ export const ar: Messages = {
     restoreSize: 'العودة إلى الحجم العادي',
     allHidden: 'جميع اللوحات مخفية.',
     screens: 'الشاشات',
-    screensHelp: 'يُحضر لوحات كل شاشة إلى الأمام أينما وضعتها.',
+    screensHelp: 'كل شاشة تعرض لوحاتها فقط. لا تظهر لوحات الشاشات الأخرى هنا إلا إذا ثبّتّها (قائمة ▦ اللوحات).',
     panels: 'اللوحات',
     panelsHelp: 'إظهار أو إخفاء أي لوحة',
     resetLayout: 'استعادة التخطيط الافتراضي',
