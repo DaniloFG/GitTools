@@ -2936,6 +2936,33 @@ body.reordering * {
   background: var(--bg-active);
   color: var(--text);
 }
+
+/* ------------------------------------------------------ menus: painéis de outras telas */
+/* Barra dos menus, logo abaixo da barra de ferramentas: telas à esquerda, ▦ Painéis à direita. */
+.screen-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 6px 12px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+/* Quantos painéis de outras telas estão fixados num menu do topo: discreto, ao lado do nome do menu. */
+.screen-pinned {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 5px;
+  line-height: 15px;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* Aba de um painel fixado numa tela que não é a dele: em itálico, para se distinguir dos painéis da própria tela. */
+.dock-tab.foreign {
+  font-style: italic;
+}
+
 body.docking,
 body.docking * {
   cursor: grabbing !important;

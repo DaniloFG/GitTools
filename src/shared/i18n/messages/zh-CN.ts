@@ -1284,6 +1284,10 @@ export const zhCN: Messages = {
     replaceMessage: '已存在名为“{name}”的布局。要用当前排布替换它吗？',
     none: '还没有已保存的布局。'
   },
+  screenMenu: {
+    otherScreens: '其他界面的面板',
+    pinnedHelp: '在此固定的其他界面面板（{count}）'
+  },
   workbench: {
     views: {
       branches: '分支',
@@ -1307,7 +1311,7 @@ export const zhCN: Messages = {
     restoreSize: '恢复正常大小',
     allHidden: '所有面板都已隐藏。',
     screens: '界面',
-    screensHelp: '把每个界面的面板调到前面，无论你把它们放在哪里。',
+    screensHelp: '每个界面只显示它自己的面板。其他界面的面板只有在你固定后才会出现在这里（▦ 面板菜单）。',
     panels: '面板',
     panelsHelp: '显示或隐藏任意面板',
     resetLayout: '恢复默认布局',

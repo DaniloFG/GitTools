@@ -42,7 +42,7 @@ import { resetLayout as clearLayout, useLayout } from './layout'
 import { historySignature, mergeData, type LogCache } from './stable'
 import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
 import { viewAvailable, type ViewId } from './dock'
-import { revealScreen, revealView, useDock } from './dockStore'
+import { openScreen, useDock, useScreen } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
 import { PaneSlot, WhenShown } from './slots'
 
@@ -62,6 +62,7 @@ export function App() {
   const [repo, setRepo] = useState<RepoInfo | null>(null)
   const [data, setData] = useState<RepoData | null>(null)
   const [dock, setDock] = useDock()
+  const [screen] = useScreen()
   const [changesMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
   const [scope, setScope] = useState<HistoryScope>({ kind: 'all' })
   const [selected, setSelected] = useState<string[]>([])
@@ -134,10 +135,13 @@ export function App() {
   const availableRef = useRef(available)
   availableRef.current = available
 
-  /** Mostra uma tela: traz à frente os painéis dela, onde quer que o usuário os tenha deixado. */
+  /**
+   * Troca para um menu do topo: traz os painéis dele. Os de outras telas não entram junto (só os fixados ali).
+   * Quem quer ir a outra tela chama isto, em vez de trazer painéis alheios.
+   */
   const setView = useCallback((view: View) => {
     setDashboards(false)
-    revealScreen(view, (v) => availableRef.current(v))
+    openScreen(view, (v) => availableRef.current(v))
   }, [])
 
   const askConfirm = useCallback((request: Parameters<AppContextValue['confirm']>[0]) => new Promise<boolean>((resolve) => setDialog({ kind: 'confirm', ...request, resolve })), [])
@@ -306,9 +310,10 @@ export function App() {
         setSelected([sha])
       },
       showCommit: (sha) => {
+        // Mostrar um commit é ir ao Histórico (os painéis do commit vêm com a tela).
         setWipFocus(null)
+        setView('history')
         setSelected([sha])
-        for (const view of COMMIT_VIEWS) revealView(view)
       },
       dashboardsOpen,
       setDashboards,
@@ -428,15 +433,15 @@ export function App() {
     <AppContext.Provider value={context}>
       <KeyboardShortcuts disabled={modalOpen} onOpenRepository={() => openRepository()} />
       <div className="app">
-        <Toolbar
-          onOpenRepository={openRepository}
-          onClone={() => setCloneOpen(true)}
-          screens={<ScreenTabs state={dock} onChange={(next) => (setDashboards(false), setDock(next))} available={available} changeCount={changeCount} dashboards={dashboardsOpen} onDashboards={() => setDashboards(true)} />}
-          panels={<PanelsButtons state={dock} onChange={setDock} meta={meta} available={available} />}
-        />
+        <Toolbar onOpenRepository={openRepository} onClone={() => setCloneOpen(true)} />
+        <div className="screen-bar">
+          <ScreenTabs state={dock} meta={meta} screen={screen} onScreen={setView} available={available} changeCount={changeCount} dashboards={dashboardsOpen} onDashboards={() => setDashboards(true)} />
+          <div className="toolbar-spacer" />
+          <PanelsButtons state={dock} onChange={setDock} screen={screen} meta={meta} available={available} />
+        </div>
         <OperationBanner onShowChanges={() => setView('changes')} />
         <div className={dashboardsOpen ? 'dock-hidden' : 'dock-wrap'}>
-          <Dock state={dock} onChange={setDock} meta={meta} available={available} />
+          <Dock state={dock} onChange={setDock} screen={screen} meta={meta} available={available} />
         </div>
         {dashboardsOpen && <Dashboards />}
       </div>

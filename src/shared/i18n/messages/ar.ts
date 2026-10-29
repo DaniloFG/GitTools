@@ -1318,6 +1318,10 @@ export const ar: Messages = {
     replaceMessage: 'يوجد تخطيط محفوظ باسم "{name}" بالفعل. هل تريد استبداله بالترتيب الحالي؟',
     none: 'لا توجد تخطيطات محفوظة بعد.'
   },
+  screenMenu: {
+    otherScreens: 'لوحات من شاشات أخرى',
+    pinnedHelp: 'مثبّتة هنا من شاشات أخرى ({count})'
+  },
   workbench: {
     views: {
       branches: 'الفروع',
@@ -1341,7 +1345,7 @@ export const ar: Messages = {
     restoreSize: 'العودة إلى الحجم العادي',
     allHidden: 'جميع اللوحات مخفية.',
     screens: 'الشاشات',
-    screensHelp: 'يُحضر لوحات كل شاشة إلى الأمام أينما وضعتها.',
+    screensHelp: 'كل شاشة تعرض لوحاتها فقط. لا تظهر لوحات الشاشات الأخرى هنا إلا إذا ثبّتّها (قائمة ▦ اللوحات).',
     panels: 'اللوحات',
     panelsHelp: 'إظهار أو إخفاء أي لوحة',
     resetLayout: 'استعادة التخطيط الافتراضي',

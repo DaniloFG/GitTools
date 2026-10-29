@@ -1309,6 +1309,10 @@ export const en: Messages = {
     replaceMessage: 'A saved layout named "{name}" already exists. Replace it with the current arrangement?',
     none: 'No saved layouts yet.'
   },
+  screenMenu: {
+    otherScreens: 'Panels from other screens',
+    pinnedHelp: 'Pinned here from other screens ({count})'
+  },
   workbench: {
     views: {
       branches: 'Branches',
@@ -1332,7 +1336,7 @@ export const en: Messages = {
     restoreSize: 'Back to normal size',
     allHidden: 'All panels are hidden.',
     screens: 'Screens',
-    screensHelp: 'Brings forward the panels of each screen, wherever you left them.',
+    screensHelp: 'Each screen shows its own panels. Panels from other screens appear here only if you pinned them (▦ Panels menu).',
     panels: 'Panels',
     panelsHelp: 'Show or hide any panel',
     resetLayout: 'Restore default layout',

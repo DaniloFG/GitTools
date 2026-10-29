@@ -11,14 +11,30 @@ type PushMode = 'normal' | PushForce
 const parsePushMode = (v: unknown): PushMode => (v === 'lease' || v === 'force' ? v : 'normal')
 
 /**
+ * Mensagem e "corrigir o último commit" digitados, por repositório. A caixa sai da tela quando o usuário troca de
+ * menu; guardar aqui (e não só no componente) faz o texto continuar lá quando ele voltar.
+ */
+const drafts = new Map<string, { message: string; amend: boolean }>()
+const draftOf = (root: string) => drafts.get(root) ?? { message: '', amend: false }
+
+/**
  * Caixa de commit: as opções se combinam livremente — corrigir o último commit (amend), incluir tudo,
  * e enviar em seguida (normal, force com lease ou force). O botão diz o que vai acontecer.
  */
 export function CommitBox() {
-  const { data, run } = useApp()
+  const { data, run, repo } = useApp()
   const { confirmForce } = useActions()
-  const [message, setMessage] = useState('')
-  const [amend, setAmend] = useState(false)
+  const [message, setMessageState] = useState(() => draftOf(repo.root).message)
+  const [amend, setAmendState] = useState(() => draftOf(repo.root).amend)
+  const keep = (patch: Partial<{ message: string; amend: boolean }>) => drafts.set(repo.root, { ...draftOf(repo.root), ...patch })
+  const setMessage = (text: string) => {
+    setMessageState(text)
+    keep({ message: text })
+  }
+  const setAmend = (on: boolean) => {
+    setAmendState(on)
+    keep({ amend: on })
+  }
   const [stageAll, setStageAll] = useLayout<boolean>('pref.commitStageAll', (v) => v === true)
   const [push, setPush] = useLayout<boolean>('pref.commitPush', (v) => v === true)
   const [chosenMode, setMode] = useLayout<PushMode>('pref.commitPushMode', parsePushMode)

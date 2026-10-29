@@ -1310,6 +1310,10 @@ export const ptBR = {
     replaceMessage: 'Já existe um layout salvo chamado "{name}". Substituir pelo arranjo atual?',
     none: 'Nenhum layout salvo ainda.'
   },
+  screenMenu: {
+    otherScreens: 'Painéis de outras telas',
+    pinnedHelp: 'Fixados aqui de outras telas ({count})'
+  },
   workbench: {
     views: {
       branches: 'Branches',
@@ -1333,7 +1337,7 @@ export const ptBR = {
     restoreSize: 'Voltar ao tamanho normal',
     allHidden: 'Todos os painéis estão ocultos.',
     screens: 'Telas',
-    screensHelp: 'Traz à frente os painéis de cada tela, onde quer que você os tenha deixado.',
+    screensHelp: 'Cada tela mostra os seus painéis. Painéis de outras telas aparecem aqui só se você os fixou (menu ▦ Painéis).',
     panels: 'Painéis',
     panelsHelp: 'Mostrar ou ocultar qualquer painel',
     resetLayout: 'Restaurar layout padrão',

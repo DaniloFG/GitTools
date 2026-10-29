@@ -1,9 +1,13 @@
 // Layout livre das telas (sem React nem DOM, para poder ser testado à parte).
 //
-// Cada tela (Branches, Histórico, Descrição do commit, Arquivos do commit, Diff, Não staged, Staged…) é um
-// painel independente: nenhum é "pai" ou "filho" de outro. Os painéis ficam em grupos de abas, e os grupos
-// ficam numa árvore de divisões (lado a lado ou um sobre o outro). Qualquer painel pode ser solto em qualquer
-// lado de qualquer outro — ou junto dele, como aba — e a árvore se ajusta sozinha.
+// Cada painel (Histórico, Descrição do commit, Não staged, Diff das alterações…) é independente: nenhum é "pai"
+// ou "filho" de outro. Os painéis ficam em grupos de abas, e os grupos ficam numa árvore de divisões (lado a
+// lado ou um sobre o outro). Qualquer painel pode ser solto em qualquer lado de qualquer outro — ou junto dele,
+// como aba — e a árvore se ajusta sozinha.
+//
+// Cada painel pertence a uma tela (um menu do topo: Histórico, Alterações, Arquivos, Comparar, Branches, Log).
+// A tela mostra só os próprios painéis, mais os de outras telas que o usuário fixou nela (`pinned`). A árvore é
+// uma só: posições e tamanhos valem para todas as telas, e o que está escondido numa tela continua escondido só nela.
 
 export type ViewId =
   | 'branches'
@@ -54,25 +58,16 @@ export const VIEW_IDS: readonly ViewId[] = [
   'gitlog'
 ]
 
-/** Conjuntos de painéis que formam uma "tela" (os atalhos e botões que levam a uma tela trazem todos eles). */
+/** Menus do topo. Cada um mostra os próprios painéis (e os de outras telas que o usuário fixou nele). */
 export type ScreenId = 'branches' | 'history' | 'changes' | 'files' | 'compare' | 'gitlog'
 
+/** Painéis de cada tela: a qual menu cada painel pertence. */
 export const SCREEN_VIEWS: Record<ScreenId, readonly ViewId[]> = {
   branches: ['branches', 'tags', 'stashes'],
   history: ['history', 'commit.message', 'commit.files', 'commit.diff'],
   changes: ['changes.conflicts', 'changes.unstaged', 'changes.files', 'changes.staged', 'changes.commit', 'changes.diff'],
   files: ['files.list', 'files.history', 'files.diff', 'files.editor', 'files.blame'],
   compare: ['compare.setup', 'compare.files', 'compare.diff'],
-  gitlog: ['gitlog']
-}
-
-/** Painel principal de cada tela (o primeiro que existir): a tela está à frente quando ele está. */
-const SCREEN_MAIN: Record<ScreenId, readonly ViewId[]> = {
-  branches: ['branches'],
-  history: ['history'],
-  changes: ['changes.unstaged', 'changes.files'],
-  files: ['files.list'],
-  compare: ['compare.setup'],
   gitlog: ['gitlog']
 }
 
@@ -121,10 +116,19 @@ export interface SplitNode {
 
 export type DockNode = GroupNode | SplitNode
 
+/**
+ * Versão do formato guardado. 1: todos os painéis apareciam em todas as telas (layouts antigos, sem `pinned`);
+ * 2: cada tela mostra os próprios painéis e os fixados nela. Versões antigas são lidas sem perda (ver `parseDock`).
+ */
+export const DOCK_VERSION = 2 as const
+
 export interface DockState {
+  version: typeof DOCK_VERSION
   root: DockNode
-  /** Painéis que o usuário escondeu (continuam no lugar deles na árvore, para voltarem para lá). */
+  /** Painéis que o usuário escondeu na tela deles (continuam no lugar deles na árvore, para voltarem para lá). */
   hidden: ViewId[]
+  /** Painéis de outras telas fixados em cada tela (ex.: o diff das alterações, dentro do Histórico). */
+  pinned: Partial<Record<ScreenId, ViewId[]>>
 }
 
 const isView = (v: unknown): v is ViewId => typeof v === 'string' && (VIEW_IDS as readonly string[]).includes(v)
@@ -135,11 +139,14 @@ const split = (id: string, dir: Dir, sizes: number[], children: DockNode[]): Spl
 
 /**
  * Arranjo de partida: Branches à esquerda; no centro, a lista principal de cada tela (Histórico, Alterações,
- * Arquivos, Comparar) com seus painéis de apoio ao lado e o diff embaixo; o Log do git no rodapé.
+ * Arquivos, Comparar) com seus painéis de apoio ao lado e o diff embaixo; o Log do git no rodapé. Cada tela
+ * mostra só os seus painéis, então o mesmo arranjo serve a todas (o que não é da tela some e os outros ocupam o espaço).
  */
 export function defaultDock(): DockState {
   return {
+    version: DOCK_VERSION,
     hidden: [],
+    pinned: {},
     root: split('d1', 'row', [0.17, 0.83], [
       split('d0', 'column', [0.64, 0.36], [group('g-branches', ['branches']), group('g-more', ['tags', 'stashes'])]),
       split('d2', 'column', [0.76, 0.24], [
@@ -164,18 +171,36 @@ export function defaultDock(): DockState {
 
 // ------------------------------------------------------------------------------------ validação
 
-/** Arranjo salvo válido: cada painel aparece exatamente uma vez; painéis que faltam voltam para perto dos da mesma tela. */
+/**
+ * Arranjo salvo válido: cada painel aparece exatamente uma vez; painéis que faltam voltam para perto dos da mesma
+ * tela. Layouts da versão 1 (sem `version` nem `pinned`) são lidos como estão: a árvore e os escondidos são
+ * mantidos e nenhuma tela ganha painéis de outra, até o usuário fixá-los.
+ */
 export function parseDock(value: unknown): DockState {
-  const raw = (value && typeof value === 'object' ? value : {}) as { root?: unknown; hidden?: unknown }
+  const raw = (value && typeof value === 'object' ? value : {}) as { root?: unknown; hidden?: unknown; pinned?: unknown }
   const seen = new Set<ViewId>()
   const ids = new Set<string>()
   const root = normalize(parseNode(raw.root, seen, ids, 0))
   if (!root) return defaultDock()
-  const state: DockState = { root, hidden: [] }
+  const state: DockState = { version: DOCK_VERSION, root, hidden: [], pinned: {} }
   for (const view of VIEW_IDS) if (!seen.has(view)) placeMissing(state, view)
   const hidden = Array.isArray(raw.hidden) ? raw.hidden.filter((v): v is ViewId => isView(v)) : []
   state.hidden = [...new Set(hidden)]
+  state.pinned = parsePinned(raw.pinned)
   return state
+}
+
+/** Fixados válidos: só painéis de outra tela (um painel já é da própria tela), sem repetição. */
+function parsePinned(value: unknown): DockState['pinned'] {
+  const out: DockState['pinned'] = {}
+  if (!value || typeof value !== 'object') return out
+  for (const screen of SCREEN_IDS) {
+    const list = (value as Record<string, unknown>)[screen]
+    if (!Array.isArray(list)) continue
+    const views = [...new Set(list.filter((v): v is ViewId => isView(v) && screenOf(v) !== screen))]
+    if (views.length) out[screen] = views
+  }
+  return out
 }
 
 function uniqueId(wanted: unknown, ids: Set<string>, fallback: string): string {
@@ -246,7 +271,9 @@ function clone<T extends DockNode>(node: T): T {
 }
 
 export function cloneDock(state: DockState): DockState {
-  return { root: clone(state.root), hidden: [...state.hidden] }
+  const pinned: DockState['pinned'] = {}
+  for (const screen of SCREEN_IDS) if (state.pinned[screen]) pinned[screen] = [...state.pinned[screen]!]
+  return { version: DOCK_VERSION, root: clone(state.root), hidden: [...state.hidden], pinned }
 }
 
 /** Todos os grupos, na ordem em que aparecem. */
@@ -384,24 +411,56 @@ export function toggleView(state: DockState, view: ViewId): DockState {
   return state.hidden.includes(view) ? activateView(state, view) : hideView(state, view)
 }
 
-/** Mostra os painéis de uma tela se todos estavam escondidos; senão, esconde todos (ex.: a barra lateral inteira). */
-export function toggleScreen(state: DockState, screen: ScreenId): DockState {
-  const views = SCREEN_VIEWS[screen]
-  if (views.every((v) => state.hidden.includes(v))) return views.reduce(activateView, state)
-  return views.reduce(hideView, state)
+// ------------------------------------------------------------------------- o que cada tela mostra
+
+/** Painel visível numa tela: os da própria tela, se não escondidos; os de outra tela, só se fixados nela. */
+export function inScreen(state: DockState, view: ViewId, screen: ScreenId): boolean {
+  if (screenOf(view) === screen) return !state.hidden.includes(view)
+  return !!state.pinned[screen]?.includes(view)
 }
 
-/** Traz todos os painéis (disponíveis) de uma tela: cada um fica visível, como aba escolhida do seu grupo. */
+/** Painéis de outras telas fixados nesta tela. */
+export const pinnedIn = (state: DockState, screen: ScreenId): ViewId[] => state.pinned[screen] ?? []
+
+/**
+ * Mostra um painel numa tela: o próprio painel volta (se estava escondido) e fica na aba escolhida do seu grupo;
+ * um painel de outra tela passa a ficar fixado nesta, e só nesta.
+ */
+export function revealIn(state: DockState, view: ViewId, screen: ScreenId): DockState {
+  if (screenOf(view) === screen) return activateView(state, view)
+  const list = pinnedIn(state, screen)
+  const next = list.includes(view) ? state : { ...state, pinned: { ...state.pinned, [screen]: [...list, view] } }
+  return activateView(next, view)
+}
+
+/** Esconde um painel numa tela: o próprio painel fica escondido; um de outra tela deixa de ficar fixado nesta. */
+export function hideIn(state: DockState, view: ViewId, screen: ScreenId): DockState {
+  if (screenOf(view) === screen) return hideView(state, view)
+  const list = pinnedIn(state, screen)
+  if (!list.includes(view)) return state
+  const pinned = { ...state.pinned }
+  const rest = list.filter((v) => v !== view)
+  if (rest.length) pinned[screen] = rest
+  else delete pinned[screen]
+  return { ...state, pinned }
+}
+
+/** Mostra ou esconde um painel numa tela. */
+export const toggleIn = (state: DockState, view: ViewId, screen: ScreenId): DockState => (inScreen(state, view, screen) ? hideIn(state, view, screen) : revealIn(state, view, screen))
+
+/**
+ * Mostra ou esconde os painéis de uma tela (ex.: a barra de Branches) dentro de `current`, a tela aberta: se algum
+ * deles está à vista, esconde todos; senão, traz todos (os de outra tela ficam fixados em `current`).
+ */
+export function toggleScreenIn(state: DockState, screen: ScreenId, current: ScreenId, available: (view: ViewId) => boolean = () => true): DockState {
+  const views = SCREEN_VIEWS[screen].filter(available)
+  if (views.some((v) => inScreen(state, v, current))) return views.reduce((s, v) => hideIn(s, v, current), state)
+  return views.reduce((s, v) => revealIn(s, v, current), state)
+}
+
+/** Traz os painéis (disponíveis) de uma tela, cada um como aba escolhida do seu grupo. Os fixados de outras telas não mudam. */
 export function showScreen(state: DockState, screen: ScreenId, available: (view: ViewId) => boolean = () => true): DockState {
   return SCREEN_VIEWS[screen].filter(available).reduce(activateView, state)
-}
-
-/** Esta tela está à frente? (O painel principal dela é a aba escolhida do grupo e está visível.) */
-export function screenShown(state: DockState, screen: ScreenId, available: (view: ViewId) => boolean = () => true): boolean {
-  const main = SCREEN_MAIN[screen].find(available)
-  if (!main || state.hidden.includes(main)) return false
-  const g = findGroup(state, main)
-  return !!g && effectiveActive(g, (v) => !state.hidden.includes(v) && available(v)) === main
 }
 
 /** Guarda os pesos de uma divisão (depois de o usuário arrastar a divisória). */
