@@ -738,6 +738,17 @@ export const zhCN: Messages = {
       resetHelp: '将所有选项恢复为初始值（保存后生效）。'
     }
   },
+  copy: {
+    line: '复制行',
+    text: '复制文本',
+    selection: '复制选中内容',
+    path: '复制路径',
+    sha: '复制 SHA',
+    message: '复制提交信息',
+    markedLines: '复制已勾选的行（{count}）',
+    copied: '已复制',
+    failed: '无法复制。',
+  },
   shortcuts: {
     actions: {
       viewHistory: '转到“历史”',

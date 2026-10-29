@@ -120,6 +120,14 @@ export function worksInInputs(combo: string): boolean {
   return /(^|\+)(Ctrl|Alt)\+/.test(combo) || /^(Shift\+)?F\d+$/.test(combo)
 }
 
+/** Edição do sistema (selecionar tudo, copiar, colar, desfazer): não é roubada de campos nem de textos selecionados. */
+const EDIT_COMBOS = new Set(['Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+Z', 'Ctrl+Y'])
+
+/** Com foco num campo de texto, ou com um trecho selecionado, a combinação de edição fica com o próprio texto. */
+export function keepsNativeEdit(combo: string, typing: boolean, hasSelection: boolean): boolean {
+  return EDIT_COMBOS.has(combo) && (typing || hasSelection)
+}
+
 /** Pesquisa na lista de atalhos: por texto (nome da ação ou teclas) e/ou por uma combinação gravada. */
 export interface ShortcutQuery {
   text: string

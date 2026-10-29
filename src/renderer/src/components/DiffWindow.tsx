@@ -10,7 +10,10 @@ import { getLocale, setLocale, t } from '../i18n'
 import { closeVsCodePanel } from '../vscodeBridge'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings } from '../shortcuts'
+import { installCopy } from '../copy'
+import { ContextMenu, type MenuItem, type MenuState } from './ContextMenu'
 import { DiffView, useFullFile } from './DiffView'
+import { Toasts, useToasts } from './Toasts'
 
 /** Fecha a janela de diff (no VS Code, o painel). */
 const closeWindow = () => {
@@ -80,8 +83,20 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // O diff só lê as preferências (modo cima/baixo ou lado a lado) do contexto do aplicativo.
-  const context = { settings } as AppContextValue
+  const { toasts, toast, dismiss } = useToasts()
+  const [menu, setMenu] = useState<MenuState | null>(null)
+  useEffect(() => installCopy({ show: setMenu, notify: toast }), [toast])
+
+  // O diff lê as preferências (modo cima/baixo ou lado a lado) e mostra menus e avisos por este contexto.
+  const context = {
+    settings,
+    toast,
+    showMenu: (event: React.MouseEvent, items: MenuItem[]) => {
+      event.preventDefault()
+      event.stopPropagation()
+      setMenu({ x: event.clientX, y: event.clientY, items })
+    }
+  } as AppContextValue
 
   return (
     <AppContext.Provider value={context}>
@@ -106,6 +121,8 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
             <DiffView file={diff} />
           )}
         </div>
+        {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
+        <Toasts toasts={toasts} onDismiss={dismiss} />
       </div>
     </AppContext.Provider>
   )

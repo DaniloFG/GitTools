@@ -760,6 +760,17 @@ export const en: Messages = {
       resetHelp: 'Sets every option back to its original value (save to confirm).'
     }
   },
+  copy: {
+    line: 'Copy line',
+    text: 'Copy text',
+    selection: 'Copy selection',
+    path: 'Copy path',
+    sha: 'Copy SHA',
+    message: 'Copy message',
+    markedLines: 'Copy marked lines ({count})',
+    copied: 'Copied',
+    failed: 'Could not copy.',
+  },
   shortcuts: {
     actions: {
       viewHistory: 'Go to History',

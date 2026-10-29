@@ -763,6 +763,17 @@ export const hi: Messages = {
       resetHelp: 'सभी विकल्पों को उनके मूल मानों पर लौटाता है (पुष्टि के लिए सहेजें)।'
     }
   },
+  copy: {
+    line: 'पंक्ति कॉपी करें',
+    text: 'टेक्स्ट कॉपी करें',
+    selection: 'चयन कॉपी करें',
+    path: 'पथ कॉपी करें',
+    sha: 'SHA कॉपी करें',
+    message: 'संदेश कॉपी करें',
+    markedLines: 'चिह्नित पंक्तियाँ कॉपी करें ({count})',
+    copied: 'कॉपी हो गया',
+    failed: 'कॉपी नहीं हो सका।',
+  },
   shortcuts: {
     actions: {
       viewHistory: 'इतिहास पर जाएँ',

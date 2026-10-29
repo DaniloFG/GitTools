@@ -35,6 +35,7 @@ import { Toasts, type Toast } from './components/Toasts'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
 import { Dock, type ViewMeta } from './components/Dock'
+import { installCopy } from './copy'
 import { errorMessage, shortSha } from './format'
 import { git } from './git'
 import { getLocale, setLocale, t } from './i18n'
@@ -127,6 +128,9 @@ export function App() {
     window.addEventListener('gittools:toast', onSample)
     return () => window.removeEventListener('gittools:toast', onSample)
   }, [toast])
+
+  // Copiar em toda a tela: Ctrl+C copia a linha focada, e o botão direito onde não há menu próprio oferece copiar.
+  useEffect(() => installCopy({ show: setMenu, notify: toast }), [toast])
 
   /** Quais painéis existem agora (ex.: Conflitos só com conflitos; Staged só na visão de listas separadas). */
   const conflicts = data?.status.conflicted.length ?? 0

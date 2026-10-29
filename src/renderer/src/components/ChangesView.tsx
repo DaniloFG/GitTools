@@ -481,6 +481,9 @@ function FileRows({ area, files, active, onActivate, fileActions }: RowsProps) {
               key={f.path}
               style={style}
               className={`file-item ${active?.area === area && active.path === f.path ? 'active' : ''} ${picked.has(f.path) ? 'picked' : ''}`}
+              tabIndex={-1}
+              data-copy={f.path}
+              data-copy-what="path"
               onClick={(e) => {
                 if (e.ctrlKey || e.metaKey) {
                   const next = new Set(picked)

@@ -3,6 +3,7 @@ import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../sha
 import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
 import { useActions } from '../actions'
 import { useApp } from '../context'
+import { copyText } from '../copy'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
@@ -133,7 +134,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
       { label: t('common.openInEditor'), onClick: () => openInEditor(file.path) },
       'separator',
-      { label: t('history.files.copyPath'), onClick: () => navigator.clipboard.writeText(file.path) }
+      { label: t('history.files.copyPath'), onClick: () => copyText(file.path) }
     ])
 
   // Abre o arquivo pedido de fora (lista de arquivos expandida no histórico).
@@ -213,7 +214,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
             {details.author} &lt;{details.email}&gt;
           </span>
           <span>{fullDate(details.date)}</span>
-          <code title={t('common.clickToCopy')} onClick={() => navigator.clipboard.writeText(details.sha)}>
+          <code title={t('common.clickToCopy')} onClick={() => copyText(details.sha)}>
             {shortSha(details.sha)}
           </code>
           {details.parents.length > 1 && <span className="tag">merge</span>}
@@ -245,6 +246,9 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
               key={file.path}
               style={style}
               data-path={file.path}
+              tabIndex={-1}
+              data-copy={file.path}
+              data-copy-what="path"
               className={`file-item ${active?.path === file.path ? 'active' : ''}`}
               onClick={() => showDiff(file)}
               onDoubleClick={() => openWindow(file)}

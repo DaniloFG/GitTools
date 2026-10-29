@@ -3,10 +3,13 @@ import type { DiffLine, FileDiff, LineKey } from '../../../shared/types'
 import { changeKeys, hunkKeys, lineKey, splitRows } from '../../../shared/diffKeys'
 import { DEFAULT_SETTINGS, type DiffLayout } from '../../../shared/settings'
 import { AppContext } from '../context'
+import { copyAndNotify, copyItemsAt, selectionText } from '../copy'
+import { diffLinesText, markedDiffLines } from '../copyText'
 import { stepIndex, useDiffNav } from '../diffNav'
 import { t, type MessageKey } from '../i18n'
 import { useLayout } from '../layout'
 import { displayCombo, resolveBindings } from '../shortcuts'
+import type { MenuItem } from './ContextMenu'
 
 /**
  * Escolha entre "cima e baixo" e "lado a lado": todo diff abre no modo padrão das configurações;
@@ -153,6 +156,40 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
     if (dragMode.current) update([key], dragMode.current === 'add')
   }
 
+  const app = useContext(AppContext)
+
+  // O código é texto selecionável: o mouse sobre ele só seleciona. Marcar a linha é clicar nela (sem texto
+  // selecionado) ou usar as colunas à esquerda (caixa, números e sinal), onde o arrastar marca várias.
+  const onCodeDown = (e: React.MouseEvent) => {
+    // Shift+clique marca um intervalo; sem isso o navegador estenderia o texto selecionado.
+    if (selectable && e.shiftKey) e.preventDefault()
+  }
+
+  const onCodeClick = (e: React.MouseEvent, key: LineKey) => {
+    if (!selectable) return
+    if (e.shiftKey && lastClicked.current) {
+      const a = all.indexOf(lastClicked.current)
+      const b = all.indexOf(key)
+      const [from, to] = [a, b].sort((m, n) => m - n)
+      update(all.slice(from, to + 1), true)
+      return
+    }
+    // Com um trecho selecionado, o clique é para copiar, não para marcar a linha.
+    if (selectionText()) return
+    lastClicked.current = key
+    update([key], !selection!.has(key))
+  }
+
+  /** Botão direito no diff: copiar as linhas marcadas e o que estiver na linha ou selecionado. */
+  const onMenu = (e: React.MouseEvent) => {
+    if (!app?.showMenu) return
+    const marked = selection && selection.size ? markedDiffLines(file, selection) : []
+    const items: MenuItem[] = []
+    if (marked.length) items.push({ label: t('copy.markedLines', { count: marked.length }), onClick: () => void copyAndNotify(diffLinesText(marked), app.toast) })
+    items.push(...copyItemsAt(e.target, app.toast))
+    if (items.length) app.showMenu(e, items)
+  }
+
   const allSelected = selectable && all.length > 0 && all.every((k) => selection!.has(k))
 
   return (
@@ -226,7 +263,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
           </div>
         )}
       </div>
-      <div className="diff-body">
+      <div className="diff-body" onContextMenu={onMenu}>
       {file.binary ? (
         <p className="empty">{t('diff.binary')}</p>
       ) : file.hunks.length === 0 ? (
@@ -253,17 +290,18 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
                 const change = line.kind !== 'context'
                 const isSelected = change && selection?.has(key)
                 const cls = `cell-${line.kind} ${isSelected ? 'line-selected' : ''}`
-                const handlers = change ? { onMouseDown: (e: React.MouseEvent) => onLineDown(e, key), onMouseEnter: () => onLineEnter(key) } : {}
+                const gutter = change ? { onMouseDown: (e: React.MouseEvent) => onLineDown(e, key), onMouseEnter: () => onLineEnter(key) } : {}
+                const code = change ? { onMouseDown: onCodeDown, onClick: (e: React.MouseEvent) => onCodeClick(e, key), onMouseEnter: () => onLineEnter(key) } : { onMouseDown: onCodeDown }
                 return (
                   <>
-                    <td className={`sel ${half} ${cls}`} {...handlers}>
+                    <td className={`sel ${half} ${cls}`} {...gutter}>
                       {selectable && change && <span className={`tick ${isSelected ? 'on' : ''}`} />}
                     </td>
-                    <td className={`ln ${cls}`} {...handlers}>
+                    <td className={`ln ${cls}`} {...gutter}>
                       {(which === 'old' ? line.oldLine : line.newLine) ?? ''}
                     </td>
-                    <td className={`code ${cls}`} {...handlers}>
-                      {line.content || ' '}
+                    <td className={`code ${cls}`} tabIndex={-1} data-copy={line.content || undefined} data-copy-what="line" {...code}>
+                      {line.content}
                       {line.noNewline && <span className="no-newline" title={t('diff.noNewline')}>⏎̸</span>}
                     </td>
                   </>
@@ -336,15 +374,29 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
                       key={key}
                       className={`line line-${line.kind} ${isSelected ? 'line-selected' : ''}`}
                       data-change={change || undefined}
-                      onMouseDown={change ? (e) => onLineDown(e, key) : undefined}
                       onMouseEnter={change ? () => onLineEnter(key) : undefined}
                     >
-                      <td className="sel">{selectable && change && <span className={`tick ${isSelected ? 'on' : ''}`} />}</td>
-                      <td className="ln">{line.oldLine ?? ''}</td>
-                      <td className="ln">{line.newLine ?? ''}</td>
-                      <td className="sign">{line.kind === 'add' ? '+' : line.kind === 'del' ? '−' : ''}</td>
-                      <td className="code">
-                        {line.content || ' '}
+                      <td className="sel" onMouseDown={change ? (e) => onLineDown(e, key) : undefined}>
+                        {selectable && change && <span className={`tick ${isSelected ? 'on' : ''}`} />}
+                      </td>
+                      <td className="ln" onMouseDown={change ? (e) => onLineDown(e, key) : undefined}>
+                        {line.oldLine ?? ''}
+                      </td>
+                      <td className="ln" onMouseDown={change ? (e) => onLineDown(e, key) : undefined}>
+                        {line.newLine ?? ''}
+                      </td>
+                      <td className="sign" onMouseDown={change ? (e) => onLineDown(e, key) : undefined}>
+                        {line.kind === 'add' ? '+' : line.kind === 'del' ? '−' : ''}
+                      </td>
+                      <td
+                        className="code"
+                        tabIndex={-1}
+                        data-copy={line.content || undefined}
+                        data-copy-what="line"
+                        onMouseDown={onCodeDown}
+                        onClick={change ? (e) => onCodeClick(e, key) : undefined}
+                      >
+                        {line.content}
                         {line.noNewline && <span className="no-newline" title={t('diff.noNewline')}>⏎̸</span>}
                       </td>
                     </tr>

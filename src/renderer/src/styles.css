@@ -78,7 +78,7 @@ body {
   color: var(--text);
   font: 13px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
-  user-select: none;
+  user-select: text;
 }
 
 input,
@@ -1114,7 +1114,6 @@ mark {
   font-family: var(--mono);
   font-size: 12px;
   line-height: 18px;
-  user-select: none;
 }
 .diff-table td {
   padding: 0 6px;
@@ -2021,6 +2020,52 @@ button.ghost.danger-text:hover:not(:disabled) {
 
 .warning-text {
   color: var(--warning);
+}
+
+/* ------------------------------------------------ seleção e cópia de texto */
+
+/* Arrastáveis: o navegador marca o texto deles como não selecionável; aqui ele volta a ser selecionável
+   (duplo/triplo clique). O arraste continua valendo: com Alt, ver textSelect.ts. */
+[draggable='true'] {
+  user-select: text;
+}
+
+/* O texto das telas pode ser selecionado e copiado (Ctrl+C ou o menu do botão direito). Ficam de fora só os
+   controles, os cabeçalhos e as colunas de números e sinais de diffs e editores, para o texto copiado de um
+   diff conter só o código, linha a linha. */
+button,
+.toolbar,
+.segmented,
+.diff-nav,
+.context-menu,
+.menu-separator,
+.row-toggle,
+.modal-header,
+.csection-header,
+.commit-columns,
+.blame-bubble,
+.editor-gutter,
+.diff-table td.sel,
+.diff-table td.ln,
+.diff-table td.sign,
+.diff-table tr.hunk-header,
+.no-newline {
+  user-select: none;
+}
+
+/* Com Alt pressionado, as linhas arrastáveis viram texto selecionável (ver textSelect.ts). */
+html[data-alt-select] [draggable] {
+  cursor: text;
+}
+
+/* Linha vazia do diff: a célula mantém a altura sem texto, para o trecho copiado não ganhar um espaço. */
+.diff-table td.code:empty {
+  height: 18px;
+}
+
+/* Linha focada para Ctrl+C: o clique não mostra anel de foco. */
+[data-copy]:focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* ------------------------------------------------------- configurações */

@@ -772,6 +772,17 @@ export const ar: Messages = {
       resetHelp: 'يعيد كل الخيارات إلى قيمها الأصلية (احفظ للتأكيد).'
     }
   },
+  copy: {
+    line: 'نسخ السطر',
+    text: 'نسخ النص',
+    selection: 'نسخ التحديد',
+    path: 'نسخ المسار',
+    sha: 'نسخ SHA',
+    message: 'نسخ الرسالة',
+    markedLines: 'نسخ الأسطر المحددة ({count})',
+    copied: 'تم النسخ',
+    failed: 'تعذّر النسخ.',
+  },
   shortcuts: {
     actions: {
       viewHistory: 'الانتقال إلى السجل',

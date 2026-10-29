@@ -761,6 +761,17 @@ export const ptBR = {
       resetHelp: 'Volta todas as configurações para os valores originais (salve para confirmar).'
     }
   },
+  copy: {
+    line: 'Copiar linha',
+    text: 'Copiar texto',
+    selection: 'Copiar seleção',
+    path: 'Copiar caminho',
+    sha: 'Copiar SHA',
+    message: 'Copiar mensagem',
+    markedLines: 'Copiar linhas marcadas ({count})',
+    copied: 'Copiado',
+    failed: 'Não foi possível copiar.',
+  },
   shortcuts: {
     actions: {
       viewHistory: 'Ir para Histórico',
