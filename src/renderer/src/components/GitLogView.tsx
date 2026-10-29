@@ -3,6 +3,7 @@ import type { GitCommandEntry } from '../../../shared/types'
 import { useApp } from '../context'
 import { getCurrentLocale, t } from '../i18n'
 import { useLayout } from '../layout'
+import { Loader } from './Loader'
 
 const LIMIT = 500
 
@@ -144,7 +145,7 @@ export function GitLogView() {
               >
                 <span className="gitlog-time">{time(entry.startedAt)}</span>
                 <span className="gitlog-state">
-                  {state === 'running' ? <span className="spinner" /> : state === 'ok' ? (entry.exitCode ? `✓ ${entry.exitCode}` : '✓') : `✕ ${entry.exitCode}`}
+                  {state === 'running' ? <Loader size="sm" /> : state === 'ok' ? (entry.exitCode ? `✓ ${entry.exitCode}` : '✓') : `✕ ${entry.exitCode}`}
                 </span>
                 <code className="gitlog-command" dir="ltr">
                   {line}

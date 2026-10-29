@@ -1310,6 +1310,16 @@ export const ptBR = {
     replaceMessage: 'Já existe um layout salvo chamado "{name}". Substituir pelo arranjo atual?',
     none: 'Nenhum layout salvo ainda.'
   },
+  loader: {
+    loading: 'Carregando…',
+    commit: 'Carregando o commit…',
+    diff: 'Carregando o diff…',
+    blame: 'Carregando o blame…',
+    fileHistory: 'Carregando o histórico do arquivo…',
+    file: 'Carregando o arquivo…',
+    files: 'Carregando os arquivos…',
+    compare: 'Comparando…'
+  },
   workbench: {
     views: {
       branches: 'Branches',

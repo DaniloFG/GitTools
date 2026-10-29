@@ -31,6 +31,7 @@ import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
 import { SidebarPanes } from './components/Sidebar'
 import { PanelsButtons, ScreenTabs } from './components/Screens'
 import { Dashboards } from './components/Dashboards'
+import { Loader, useDelayedLoading, useLastDefined } from './components/Loader'
 import { Toasts, type Toast } from './components/Toasts'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
@@ -41,7 +42,7 @@ import { getLocale, setLocale, t } from './i18n'
 import { resetLayout as clearLayout, useLayout } from './layout'
 import { historySignature, mergeData, type LogCache } from './stable'
 import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
-import { viewAvailable, type ViewId } from './dock'
+import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
 import { revealScreen, revealView, useDock } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
 import { PaneSlot, WhenShown } from './slots'
@@ -58,6 +59,9 @@ const CHANGES_VIEWS: ViewId[] = ['changes.conflicts', 'changes.unstaged', 'chang
 const FILES_VIEWS: ViewId[] = ['files.list', 'files.history', 'files.diff', 'files.editor', 'files.blame']
 const COMPARE_VIEWS: ViewId[] = ['compare.setup', 'compare.files', 'compare.diff']
 
+/** Nenhum painel atingido (valor fixo, para o contexto não mudar a cada desenho quando não há operação). */
+const NO_VIEWS: readonly ViewId[] = []
+
 export function App() {
   const [repo, setRepo] = useState<RepoInfo | null>(null)
   const [data, setData] = useState<RepoData | null>(null)
@@ -67,7 +71,13 @@ export function App() {
   const [selected, setSelected] = useState<string[]>([])
   const [fileFocus, setFileFocus] = useState<FileFocus | null>(null)
   const [wipFocus, setWipFocus] = useState<WipFocus | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)
+  /** Operação em andamento: o rótulo e os painéis que ela atinge (ver `run`). */
+  const [operation, setOperation] = useState<{ label: string; scope: readonly ViewId[] } | null>(null)
+  const busy = operation?.label ?? null
+  const busyScope = operation?.scope ?? NO_VIEWS
+  /** O indicador compacto fica na tela um pouco depois de a operação acabar: mantém o rótulo dela nesse tempo. */
+  const busyVisible = useDelayedLoading(busy !== null)
+  const busyLabel = useLastDefined(busy)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [menu, setMenu] = useState<MenuState | null>(null)
@@ -223,9 +233,13 @@ export function App() {
     })
   }, [repo, refresh])
 
+  /**
+   * Executa uma operação com progresso (indicador no topo e overlay nos painéis do `scope`), mostra o resultado e
+   * atualiza a tela no fim. O padrão do `scope` são os painéis que mostram dados do repositório.
+   */
   const run = useCallback(
-    async <T,>(label: string, fn: () => Promise<T>): Promise<T | undefined> => {
-      setBusy(label)
+    async <T,>(label: string, fn: () => Promise<T>, scope: readonly ViewId[] = REPO_VIEWS): Promise<T | undefined> => {
+      setOperation({ label, scope })
       try {
         const result = await fn()
         if (isOperationResult(result)) {
@@ -240,7 +254,7 @@ export function App() {
         toast('error', errorMessage(error))
         return undefined
       } finally {
-        setBusy(null)
+        setOperation(null)
         await refresh()
       }
     },
@@ -287,6 +301,7 @@ export function App() {
       repo,
       data,
       busy,
+      busyScope,
       refresh,
       run,
       toast,
@@ -340,7 +355,7 @@ export function App() {
     }
     // locale: força novos textos nos componentes quando o idioma muda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repo, data, busy, refresh, run, toast, settings, locale, setView, dashboardsOpen, openDiffWindow, resetLayout, askConfirm])
+  }, [repo, data, busy, busyScope, refresh, run, toast, settings, locale, setView, dashboardsOpen, openDiffWindow, resetLayout, askConfirm])
 
   const settingsDialogs = (
     <>
@@ -483,9 +498,9 @@ export function App() {
       {settingsDialogs}
       {dialog && <DialogHost dialog={dialog} onDone={() => setDialog(null)} />}
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
-      {busy && (
-        <div className="busy">
-          <span className="spinner" /> {busy}…
+      {busyVisible && (
+        <div className="busy" role="status" aria-live="polite">
+          <Loader size="sm" label={`${busyLabel}…`} />
         </div>
       )}
       <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />

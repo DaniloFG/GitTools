@@ -1309,6 +1309,16 @@ export const es: Messages = {
     replaceMessage: 'Ya existe un diseño guardado llamado "{name}". ¿Reemplazarlo por la disposición actual?',
     none: 'Aún no hay diseños guardados.'
   },
+  loader: {
+    loading: 'Cargando…',
+    commit: 'Cargando el commit…',
+    diff: 'Cargando el diff…',
+    blame: 'Cargando el blame…',
+    fileHistory: 'Cargando el historial del archivo…',
+    file: 'Cargando el archivo…',
+    files: 'Cargando los archivos…',
+    compare: 'Comparando…'
+  },
   workbench: {
     views: {
       branches: 'Ramas',

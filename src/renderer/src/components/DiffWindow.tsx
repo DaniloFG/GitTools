@@ -11,6 +11,7 @@ import { closeVsCodePanel } from '../vscodeBridge'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings } from '../shortcuts'
 import { DiffView, useFullFile } from './DiffView'
+import { LoaderPane } from './Loader'
 
 /** Fecha a janela de diff (no VS Code, o painel). */
 const closeWindow = () => {
@@ -97,9 +98,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
         </header>
         <div className="diff-window">
           {diff === null ? (
-            <p className="empty">
-              <span className="spinner" />
-            </p>
+            <LoaderPane label={t('loader.diff')} />
           ) : 'error' in diff ? (
             <p className="empty">{diff.error}</p>
           ) : (

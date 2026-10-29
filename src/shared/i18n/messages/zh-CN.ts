@@ -1284,6 +1284,16 @@ export const zhCN: Messages = {
     replaceMessage: '已存在名为“{name}”的布局。要用当前排布替换它吗？',
     none: '还没有已保存的布局。'
   },
+  loader: {
+    loading: '加载中…',
+    commit: '正在加载提交…',
+    diff: '正在加载差异…',
+    blame: '正在加载 blame…',
+    fileHistory: '正在加载文件历史…',
+    file: '正在加载文件…',
+    files: '正在加载文件列表…',
+    compare: '正在比较…'
+  },
   workbench: {
     views: {
       branches: '分支',

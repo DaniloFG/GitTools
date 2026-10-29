@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { GitConfigScope, GitIdentities, GitIdentity } from '../../../../shared/types'
 import { t } from '../../i18n'
 import { RemotesSection } from './RemotesSection'
+import { Loader } from '../Loader'
 
 const errorText = (error: unknown) =>
   (error instanceof Error ? error.message : String(error)).replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '')
@@ -50,7 +51,7 @@ export function IdentitySection() {
   if (!identities) {
     return (
       <p className="muted">
-        <span className="spinner" /> {t('identity.loading')}
+        <Loader size="sm" label={t('identity.loading')} />
       </p>
     )
   }
@@ -98,7 +99,7 @@ export function IdentitySection() {
       <p className="muted small">{t('identity.clearHelp')}</p>
       <div className="button-row">
         <button className="primary" disabled={!changed || saving} onClick={save}>
-          {saving ? <span className="spinner" /> : t('identity.save')}
+          {saving ? <Loader size="sm" /> : t('identity.save')}
         </button>
       </div>
       {message && <p className={message.ok ? 'success-text' : 'warning-text'}>{message.text}</p>}

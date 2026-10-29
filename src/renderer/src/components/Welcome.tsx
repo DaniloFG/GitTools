@@ -2,6 +2,7 @@ import type { RecentRepo } from '../../../shared/api'
 import { relativeDate } from '../format'
 import { t } from '../i18n'
 import { useRecentRepos } from '../recent'
+import { Loader } from './Loader'
 
 interface Props {
   loading: boolean
@@ -51,7 +52,7 @@ export function Welcome({ loading, onOpen, onClone, onSettings }: Props) {
         <p className="muted">{t('welcome.tagline')}</p>
         {loading ? (
           <p>
-            <span className="spinner" /> {t('welcome.loading')}
+            <Loader size="sm" label={t('welcome.loading')} />
           </p>
         ) : (
           <>

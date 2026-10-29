@@ -21,6 +21,7 @@ import {
 } from '../mergeLayout'
 import { Modal } from './Modal'
 import { Split } from './Split'
+import { LoaderPane } from './Loader'
 
 type Conflict = Extract<MergeChunk, { kind: 'conflict' }>
 const CONTEXT = 3
@@ -157,9 +158,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   if (!details) {
     return (
       <Modal title={t('conflict.titleShort', { path })} onClose={onClose} size="medium">
-        <p className="empty">
-          <span className="spinner" /> {t('conflict.loading')}
-        </p>
+        <LoaderPane label={t('conflict.loading')} />
       </Modal>
     )
   }

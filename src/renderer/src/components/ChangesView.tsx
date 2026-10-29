@@ -11,7 +11,7 @@ import { t } from '../i18n'
 import { useLayout } from '../layout'
 import { useDrop } from '../useDrop'
 import { revealScreen, revealView } from '../dockStore'
-import { viewAvailable, type ViewId } from '../dock'
+import { SCREEN_VIEWS, viewAvailable, type ViewId } from '../dock'
 import { PaneSlot } from '../slots'
 import { CommitBox } from './CommitBox'
 import { DiffView, useFullFile } from './DiffView'
@@ -62,6 +62,8 @@ const entryCode = (e: Entry) => (e.unstaged ? (e.unstaged.untracked ? '?' : e.un
 
 export function ChangesView() {
   const { data, run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow } = useApp()
+  /** Operações desta tela (stage, descarte, aplicar linhas): o indicador cobre só os painéis dela. */
+  const runChanges = <T,>(label: string, fn: () => Promise<T>) => run(label, fn, SCREEN_VIEWS.changes)
   const { status } = data
   const [mode, setMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
   const [active, setActive] = useState<Active | null>(null)
@@ -111,7 +113,7 @@ export function ChangesView() {
       confirmLabel: t('common.discard'),
       danger: true
     })
-    if (ok) await run('Descartando', () => git.discardFiles(paths))
+    if (ok) await runChanges('Descartando', () => git.discardFiles(paths))
   }
 
   const lineAction = async (action: 'stage' | 'unstage' | 'discard') => {
@@ -125,7 +127,7 @@ export function ChangesView() {
       })
       if (!ok) return
     }
-    await run(t('busy.applyingSelection'), () => git.applyLines({ kind: active.area, fullFile }, active.path, [...selection], action))
+    await runChanges(t('busy.applyingSelection'), () => git.applyLines({ kind: active.area, fullFile }, active.path, [...selection], action))
   }
 
   /** Marca (stage) ou desmarca (unstage) arquivos na visão de caixas, sem a tela de "ocupado" a cada clique. */
@@ -198,7 +200,7 @@ export function ChangesView() {
       actions: staged ? (
         <>
           {files.length > 0 && (
-            <button className="ghost" onClick={() => run(t('busy.unstage'), () => git.unstageFiles(files.map((f) => f.path)))}>
+            <button className="ghost" onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles(files.map((f) => f.path)))}>
               {t('changes.unstageAll')} ↑
             </button>
           )}
@@ -208,7 +210,7 @@ export function ChangesView() {
         <>
           {files.length > 0 && (
             <>
-              <button className="ghost" onClick={() => run(t('busy.stage'), () => git.stageFiles(files.map((f) => f.path)))}>
+              <button className="ghost" onClick={() => runChanges(t('busy.stage'), () => git.stageFiles(files.map((f) => f.path)))}>
                 {t('changes.stageAll')} ↓
               </button>
               <button className="ghost danger-text" onClick={() => discard(files.map((f) => f.path))}>
@@ -222,7 +224,7 @@ export function ChangesView() {
       body: (
         <DropBody
           area={area}
-          onDropFiles={(paths) => (staged ? run(t('busy.stage'), () => git.stageFiles(paths)) : run(t('busy.unstage'), () => git.unstageFiles(paths)))}
+          onDropFiles={(paths) => (staged ? runChanges(t('busy.stage'), () => git.stageFiles(paths)) : runChanges(t('busy.unstage'), () => git.unstageFiles(paths)))}
           trash={!staged ? discard : undefined}
         >
           <FileRows
@@ -232,7 +234,7 @@ export function ChangesView() {
             onActivate={(f) => activate({ area, path: f.path })}
             fileActions={(f) =>
               staged ? (
-                <button title={t('changes.unstage')} onClick={() => run(t('busy.unstage'), () => git.unstageFiles([f.path]))}>
+                <button title={t('changes.unstage')} onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles([f.path]))}>
                   －
                 </button>
               ) : (
@@ -240,7 +242,7 @@ export function ChangesView() {
                   <button title={t('common.discard')} onClick={() => discard([f.path])}>
                     ↺
                   </button>
-                  <button title={t('changes.stage')} onClick={() => run(t('busy.stage'), () => git.stageFiles([f.path]))}>
+                  <button title={t('changes.stage')} onClick={() => runChanges(t('busy.stage'), () => git.stageFiles([f.path]))}>
                     ＋
                   </button>
                 </>
@@ -368,7 +370,7 @@ export function ChangesView() {
                 <button className="danger subtle" disabled={!selection.size} onClick={() => lineAction('discard')}>
                   {t('changes.discardLines')}
                 </button>
-                <button onClick={() => run(t('busy.stage'), () => git.stageFiles([active.path]))}>{t('changes.stageFile')}</button>
+                <button onClick={() => runChanges(t('busy.stage'), () => git.stageFiles([active.path]))}>{t('changes.stageFile')}</button>
                 <button onClick={() => openInEditor(active.path)}>{t('common.openInEditor')}</button>
                 <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
               </>
@@ -377,7 +379,7 @@ export function ChangesView() {
                 <button className="primary" disabled={!selection.size} onClick={() => lineAction('unstage')}>
                   {t('changes.unstageLines', { count: selection.size })}
                 </button>
-                <button onClick={() => run(t('busy.unstage'), () => git.unstageFiles([active.path]))}>{t('changes.unstageFile')}</button>
+                <button onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles([active.path]))}>{t('changes.unstageFile')}</button>
               </>
             )}
           </div>

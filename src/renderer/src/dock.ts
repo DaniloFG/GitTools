@@ -94,6 +94,9 @@ export function viewAvailable(view: ViewId, ctx: Availability): boolean {
 
 export const SCREEN_IDS = Object.keys(SCREEN_VIEWS) as ScreenId[]
 
+/** Painéis que mostram dados do repositório (todos, menos o log de comandos): escopo padrão do indicador de carregamento. */
+export const REPO_VIEWS: readonly ViewId[] = VIEW_IDS.filter((view) => view !== 'gitlog')
+
 /** Tela a que um painel pertence. */
 export const screenOf = (view: ViewId): ScreenId => SCREEN_IDS.find((s) => SCREEN_VIEWS[s].includes(view))!
 

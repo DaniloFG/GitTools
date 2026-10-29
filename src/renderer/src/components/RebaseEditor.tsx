@@ -5,6 +5,7 @@ import { errorMessage, relativeDate, shortSha } from '../format'
 import { t, type MessageKey } from '../i18n'
 import { git } from '../git'
 import { Modal } from './Modal'
+import { LoaderPane } from './Loader'
 
 interface Row {
   sha: string
@@ -98,9 +99,7 @@ export function RebaseEditor({ fromSha, onClose }: { fromSha: string; onClose():
       }
     >
       {!plan ? (
-        <p className="empty">
-          <span className="spinner" /> {t('rebase.loading')}
-        </p>
+        <LoaderPane label={t('rebase.loading')} />
       ) : (
         <>
           <p className="muted">
