@@ -1937,6 +1937,17 @@ button.ghost.danger-text:hover:not(:disabled) {
   text-overflow: ellipsis;
 }
 
+/* ------------------------------------------------- listas longas de arquivos */
+
+/* Marcador no fim da lista: as linhas seguintes entram quando ele aparece na rolagem (milhares de arquivos). */
+.file-more {
+  list-style: none;
+  padding: 8px 12px;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  text-align: center;
+}
+
 /* ------------------------------------------------------------ toasts */
 
 .toasts {

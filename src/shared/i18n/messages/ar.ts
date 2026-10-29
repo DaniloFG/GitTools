@@ -827,6 +827,13 @@ export const ar: Messages = {
     partialFrom: 'انتقاء جزئي من {origin}',
     sourceCommits: 'إيداعات المصدر:'
   },
+  longList: {
+    loading: 'جارٍ تحميل المزيد من الملفات…',
+    showMore: 'عرض المزيد من الملفات'
+  },
+  commandLimit: {
+    tooLong: 'قائمة المسارات أو الإيداعات طويلة جدًا على أمر git واحد ({command}). حاول مرة أخرى بعدد أقل من العناصر.'
+  },
   core: {
     invalidRef: {
       tagName: 'اسم وسم غير صالح: "{ref}"',

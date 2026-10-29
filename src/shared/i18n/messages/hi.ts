@@ -818,6 +818,13 @@ export const hi: Messages = {
     partialFrom: '{origin} से आंशिक cherry-pick',
     sourceCommits: 'स्रोत commits:'
   },
+  longList: {
+    loading: 'और फ़ाइलें लोड हो रही हैं…',
+    showMore: 'और फ़ाइलें दिखाएँ'
+  },
+  commandLimit: {
+    tooLong: 'पथों या commits की सूची एक git कमांड ({command}) के लिए बहुत बड़ी है। कम आइटमों के साथ फिर से कोशिश करें।'
+  },
   core: {
     invalidRef: {
       tagName: 'अमान्य टैग नाम: "{ref}"',

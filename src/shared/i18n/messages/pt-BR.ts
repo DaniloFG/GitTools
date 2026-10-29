@@ -816,6 +816,13 @@ export const ptBR = {
     partialFrom: 'Cherry-pick parcial de {origin}',
     sourceCommits: 'Commits de origem:'
   },
+  longList: {
+    loading: 'Carregando mais arquivos…',
+    showMore: 'Mostrar mais arquivos'
+  },
+  commandLimit: {
+    tooLong: 'A lista de caminhos ou commits é grande demais para um único comando do git ({command}). Tente de novo com menos itens.'
+  },
   core: {
     invalidRef: {
       tagName: 'Nome de tag inválido: "{ref}"',

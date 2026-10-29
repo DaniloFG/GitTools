@@ -815,6 +815,13 @@ export const es: Messages = {
     partialFrom: 'Cherry-pick parcial de {origin}',
     sourceCommits: 'Commits de origen:'
   },
+  longList: {
+    loading: 'Cargando más archivos…',
+    showMore: 'Mostrar más archivos'
+  },
+  commandLimit: {
+    tooLong: 'La lista de rutas o commits es demasiado grande para un solo comando de git ({command}). Inténtalo de nuevo con menos elementos.'
+  },
   core: {
     invalidRef: {
       tagName: 'Nombre de etiqueta no válido: "{ref}"',

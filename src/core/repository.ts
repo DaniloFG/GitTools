@@ -39,7 +39,8 @@ import type {
 } from '../shared/types'
 import { buildPartialPatch, parseDiff, quotePath } from './diff'
 import { t } from '../shared/i18n'
-import { GitError, runGit, type RunOptions } from './exec'
+import { chunkArgs } from './chunk'
+import { GitError, runGit, type RunOptions, type RunResult } from './exec'
 import { resolveInside } from './paths'
 
 const DIFF_ARGS = [
@@ -274,6 +275,55 @@ export class GitRepository implements RepoApi {
 
   private git(args: string[], options?: RunOptions) {
     return runGit(this.root, args, options)
+  }
+
+  /**
+   * Roda `git <prefix> <itens...> <suffix>` em lotes: cada chamada leva só os itens que cabem na
+   * linha de comando (com milhares de caminhos ou shas ela estoura o limite do sistema). Os lotes
+   * saem em sequência, na ordem da lista, e cada saída é devolvida na mesma ordem.
+   */
+  private async gitInBatches(prefix: string[], items: readonly string[], suffix: string[] = []): Promise<RunResult[]> {
+    const results: RunResult[] = []
+    for (const batch of chunkArgs(items)) results.push(await this.git([...prefix, ...batch, ...suffix]))
+    return results
+  }
+
+  /** Só o git 2.25+ aceita `--pathspec-from-file`. A versão é consultada uma vez por processo. */
+  private static pathspecFileSupport: Promise<boolean> | null = null
+
+  private supportsPathspecFile(): Promise<boolean> {
+    GitRepository.pathspecFileSupport ??= this.git(['--version']).then(
+      ({ stdout }) => {
+        const [, major, minor] = /(\d+)\.(\d+)/.exec(stdout) ?? []
+        return Number(major) > 2 || (Number(major) === 2 && Number(minor) >= 25)
+      },
+      () => false
+    )
+    return GitRepository.pathspecFileSupport
+  }
+
+  /**
+   * Roda `git <command> -- <caminhos>` sem limite de tamanho. Com git 2.25+ e um comando que aceita
+   * `--pathspec-from-file` (`fromFile`), os caminhos vão pela entrada padrão numa chamada só; caso
+   * contrário, em lotes.
+   */
+  private async gitPaths(command: string[], paths: readonly string[], fromFile: boolean): Promise<void> {
+    if (!paths.length) return
+    if (fromFile && (await this.supportsPathspecFile())) {
+      await this.git([...command, '--pathspec-from-file=-', '--pathspec-file-nul'], { input: paths.map((p) => `${p}\0`).join('') })
+      return
+    }
+    await this.gitInBatches([...command, '--'], paths)
+  }
+
+  /**
+   * Patch de `base..sha` só dos caminhos pedidos, gerado em lotes e concatenado: o resultado é o
+   * mesmo de um comando só. `--no-renames` faz com que um par renomeado dê o mesmo patch em qualquer
+   * lote (sem ele, o lote que só tivesse um dos dois lados sairia como remoção ou criação).
+   */
+  private async patchForPaths(base: string, sha: string, paths: string[]): Promise<string> {
+    const results = await this.gitInBatches([...DIFF_ARGS, '--binary', '--no-renames', base, sha, '--'], paths)
+    return results.map((r) => r.stdout).join('')
   }
 
   // ---------------------------------------------------------------- leitura
@@ -568,14 +618,14 @@ export class GitRepository implements RepoApi {
   // ------------------------------------------------------- área de trabalho
 
   async stageFiles(paths: string[]): Promise<void> {
-    if (paths.length) await this.git(['add', '-A', '--', ...paths])
+    await this.gitPaths(['add', '-A'], paths, true)
   }
 
   async unstageFiles(paths: string[]): Promise<void> {
     if (!paths.length) return
     const status = await this.status()
-    if (status.headSha) await this.git(['restore', '--staged', '--', ...paths])
-    else await this.git(['rm', '--cached', '-r', '-q', '--', ...paths])
+    if (status.headSha) await this.gitPaths(['restore', '--staged'], paths, true)
+    else await this.gitPaths(['rm', '--cached', '-r', '-q'], paths, false)
   }
 
   async discardFiles(paths: string[]): Promise<void> {
@@ -584,8 +634,8 @@ export class GitRepository implements RepoApi {
     const untracked = new Set(status.unstaged.filter((f) => f.untracked).map((f) => f.path))
     const tracked = paths.filter((p) => !untracked.has(p))
     const fresh = paths.filter((p) => untracked.has(p))
-    if (tracked.length) await this.git(['restore', '--worktree', '--', ...tracked])
-    if (fresh.length) await this.git(['clean', '-f', '-q', '--', ...fresh])
+    await this.gitPaths(['restore', '--worktree'], tracked, true)
+    await this.gitPaths(['clean', '-f', '-q'], fresh, false)
   }
 
   private async findFile(source: DiffSource, path: string): Promise<FileDiff> {
@@ -736,10 +786,15 @@ export class GitRepository implements RepoApi {
       })
   }
 
-  /** Ordena commits do mais antigo para o mais novo e informa se há merges entre eles. */
+  /**
+   * Ordena commits do mais antigo para o mais novo e informa se há merges entre eles.
+   * Os shas seguem pela entrada padrão (`--stdin`): uma lista grande não cabe na linha de comando.
+   */
   private async orderCommits(shas: string[]): Promise<{ ordered: string[]; parents: Map<string, string[]> }> {
     shas.forEach((s) => assertRef(s, 'commit'))
-    const { stdout } = await this.git(['rev-list', '--no-walk=sorted', '--parents', ...shas, '--'])
+    const { stdout } = await this.git(['rev-list', '--no-walk=sorted', '--parents', '--stdin', '--'], {
+      input: shas.map((s) => `${s}\n`).join('')
+    })
     const parents = new Map<string, string[]>()
     const ordered = stdout
       .split('\n')
@@ -763,7 +818,8 @@ export class GitRepository implements RepoApi {
     if (options.noCommit) args.push('--no-commit')
     if (hasMerge) args.push('-m', '1')
     try {
-      await this.git([...args, ...ordered])
+      // Os commits vão pela entrada padrão (`--stdin`), na ordem em que o cherry-pick os aplica: sem limite de tamanho.
+      await this.git([...args, '--stdin'], { input: ordered.map((s) => `${s}\n`).join('') })
       return { ok: true, message: t('core.commitsApplied', { count: ordered.length, target }), conflicts: [] }
     } catch (error) {
       return this.conflictResult(error)
@@ -803,18 +859,20 @@ export class GitRepository implements RepoApi {
 
     if (mode === 'version') {
       const newest = ordered[ordered.length - 1]
+      // Uma só consulta (`cat-file --batch-check`, uma linha por caminho) em vez de um processo por arquivo.
+      const { stdout: found } = await this.git(['cat-file', '--batch-check'], {
+        input: paths.map((p) => `${newest}:${p}\n`).join('')
+      })
+      const answers = found.split('\n')
       const present: string[] = []
       const removed: string[] = []
-      for (const path of paths) {
-        const { exitCode } = await this.git(['cat-file', '-e', `${newest}:${path}`], { okExitCodes: [0, 1, 128] })
-        ;(exitCode === 0 ? present : removed).push(path)
-      }
-      if (present.length) await this.git(['checkout', newest, '--', ...present])
-      if (removed.length) await this.git(['rm', '-q', '--ignore-unmatch', '--', ...removed])
+      paths.forEach((path, i) => ((answers[i] ?? '').endsWith(' missing') ? removed : present).push(path))
+      await this.gitPaths(['checkout', newest], present, true)
+      await this.gitPaths(['rm', '-q', '--ignore-unmatch'], removed, false)
     } else {
       for (const [i, sha] of ordered.entries()) {
         const base = parents.get(sha)?.[0] ?? (await this.emptyTree())
-        const { stdout: patch } = await this.git([...DIFF_ARGS, '--binary', base, sha, '--', ...paths])
+        const patch = await this.patchForPaths(base, sha, paths)
         if (!patch.trim()) continue
         try {
           await this.git(['apply', '--3way', '--whitespace=nowarn', '-'], { input: patch })
@@ -911,7 +969,7 @@ export class GitRepository implements RepoApi {
       // Conflitos de um "git apply --3way" não deixam operação registrada: volta ao HEAD.
       const status = await this.status()
       if (status.conflicted.length) {
-        await this.git(['checkout', 'HEAD', '--', ...status.conflicted.map((f) => f.path)])
+        await this.gitPaths(['checkout', 'HEAD'], status.conflicted.map((f) => f.path), true)
         return
       }
       throw new Error(t('core.noOperation'))
