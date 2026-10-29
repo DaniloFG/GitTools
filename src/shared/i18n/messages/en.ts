@@ -1371,6 +1371,16 @@ export const en: Messages = {
     replaceMessage: 'A saved layout named "{name}" already exists. Replace it with the current arrangement?',
     none: 'No saved layouts yet.'
   },
+  loader: {
+    loading: 'Loading…',
+    commit: 'Loading commit…',
+    diff: 'Loading diff…',
+    blame: 'Loading blame…',
+    fileHistory: 'Loading file history…',
+    file: 'Loading file…',
+    files: 'Loading files…',
+    compare: 'Comparing…'
+  },
   workbench: {
     views: {
       branches: 'Branches',

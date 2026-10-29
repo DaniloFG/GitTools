@@ -4,7 +4,7 @@ import type { BranchInfo, CommitInfo, OperationState, RepoInfo, RepoStatus, Stas
 import type { ChoiceRequest, ChoiceResult, ConfirmRequest, PromptRequest, PushRequest, PushResult } from './components/Dialogs'
 import type { MenuItem } from './components/ContextMenu'
 import type { DiffWindowRequest } from '../../shared/api'
-import type { ScreenId } from './dock'
+import type { ScreenId, ViewId } from './dock'
 import type { ToastKind } from './feedback'
 
 export interface RepoData {
@@ -36,10 +36,16 @@ export interface CompareRequest {
 export interface AppContextValue {
   repo: RepoInfo
   data: RepoData
+  /** Rótulo da operação em andamento (null = nenhuma). */
   busy: string | null
+  /** Painéis que a operação em andamento mexe nos dados: são cobertos pelo indicador de carregamento. */
+  busyScope: readonly ViewId[]
   refresh(): Promise<void>
-  /** Executa uma operação mostrando progresso, erros e resultado, e atualiza a tela no fim. */
-  run<T>(label: string, fn: () => Promise<T>): Promise<T | undefined>
+  /**
+   * Executa uma operação mostrando progresso, erros e resultado, e atualiza a tela no fim.
+   * `scope`: painéis que a operação atinge (padrão: todos os que mostram dados do repositório).
+   */
+  run<T>(label: string, fn: () => Promise<T>, scope?: readonly ViewId[]): Promise<T | undefined>
   toast(kind: ToastKind, text: string): void
   confirm(request: ConfirmRequest): Promise<boolean>
   prompt(request: PromptRequest): Promise<string | null>

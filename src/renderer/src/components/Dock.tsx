@@ -1,4 +1,4 @@
-import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { AppContext } from '../context'
 import {
   activateView,
@@ -22,6 +22,7 @@ import {
 import { t } from '../i18n'
 import { startResize } from '../resize'
 import { slotRef } from '../slots'
+import { LoadingOverlay, useLastDefined } from './Loader'
 
 export interface ViewMeta {
   label: string
@@ -274,9 +275,9 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
           {maximized === node.id ? '⤡' : '⤢'}
         </button>
       </div>
-      <div className="dock-body" data-group={node.id}>
+      <GroupBody group={node.id} view={node.active}>
         <div key={node.active} className="dock-slot" data-slot={node.active} ref={slotRef(node.active)} />
-      </div>
+      </GroupBody>
     </section>
   )
 
@@ -369,6 +370,21 @@ export function Dock({ state, onChange: change, meta, available }: DockProps) {
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Corpo de um grupo (onde o painel da aba à frente aparece). Enquanto uma operação mexe nos dados desse painel,
+ * ele é coberto pelo indicador de carregamento, que bloqueia cliques só nesse painel.
+ */
+function GroupBody({ group, view, children }: { group: string; view: ViewId; children: ReactNode }) {
+  const app = useContext(AppContext)
+  const label = useLastDefined(app?.busy ?? null)
+  const covered = app?.busy != null && app.busyScope.includes(view)
+  return (
+    <LoadingOverlay active={covered} label={label ? `${label}…` : undefined} className="dock-body" data-group={group}>
+      {children}
+    </LoadingOverlay>
   )
 }
 

@@ -7,6 +7,7 @@ import { errorMessage, fullDate, relativeDate, shortSha } from '../format'
 import { git } from '../git'
 import { t } from '../i18n'
 import { CodeEditor } from './CodeEditor'
+import { Loader, LoaderPane } from './Loader'
 
 const UNCOMMITTED = /^0+$/
 
@@ -184,7 +185,7 @@ export function FileEditor({ path }: { path: string }) {
           </button>
         )}
         <button className="primary" disabled={!dirty || saving} onClick={save} title={t('editor.saveHelp')}>
-          {saving ? <span className="spinner" /> : '💾'} {t('editor.save')}
+          {saving ? <Loader size="sm" /> : '💾'} {t('editor.save')}
         </button>
         <button onClick={() => openInEditor(path)}>{t('common.openInEditor')}</button>
       </div>
@@ -197,9 +198,7 @@ export function FileEditor({ path }: { path: string }) {
       {error ? (
         <p className="empty">{error}</p>
       ) : !disk ? (
-        <p className="empty">
-          <span className="spinner" />
-        </p>
+        <LoaderPane label={t('loader.file')} />
       ) : !disk.text ? (
         <p className="empty">{disk.file.binary ? t('editor.binary') : t('editor.tooLarge', { size: formatSize(disk.file.size) })}</p>
       ) : (

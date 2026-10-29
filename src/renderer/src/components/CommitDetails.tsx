@@ -13,6 +13,7 @@ import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
+import { LoaderPane } from './Loader'
 
 /** Arquivo a abrir no diff (ex.: clicado nos arquivos expandidos do histórico). `n` muda a cada pedido. */
 export interface FileFocus {
@@ -161,7 +162,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       <>
         <PaneSlot id="commit.message">
           <section className="details">
-            <span className="spinner" />
+            <LoaderPane label={t('loader.commit')} />
           </section>
         </PaneSlot>
         <NothingToShow />
@@ -315,9 +316,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
               <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} fileNav={fileNav} />
             </div>
           ) : active ? (
-            <p className="empty">
-              <span className="spinner" />
-            </p>
+            <LoaderPane label={t('loader.diff')} />
           ) : (
             <p className="empty">{t('changes.selectFile')}</p>
           )}
@@ -485,9 +484,7 @@ function WipPanes({ focus }: { focus: WipFocus }) {
               <DiffView file={diff} fileNav={fileNav} />
             </div>
           ) : active ? (
-            <p className="empty">
-              <span className="spinner" />
-            </p>
+            <LoaderPane label={t('loader.diff')} />
           ) : (
             <p className="empty">{t('changes.selectFile')}</p>
           )}

@@ -1380,6 +1380,16 @@ export const ar: Messages = {
     replaceMessage: 'يوجد تخطيط محفوظ باسم "{name}" بالفعل. هل تريد استبداله بالترتيب الحالي؟',
     none: 'لا توجد تخطيطات محفوظة بعد.'
   },
+  loader: {
+    loading: 'جارٍ التحميل…',
+    commit: 'جارٍ تحميل الإيداع…',
+    diff: 'جارٍ تحميل الفرق…',
+    blame: 'جارٍ تحميل blame…',
+    fileHistory: 'جارٍ تحميل سجل الملف…',
+    file: 'جارٍ تحميل الملف…',
+    files: 'جارٍ تحميل الملفات…',
+    compare: 'جارٍ المقارنة…'
+  },
   workbench: {
     views: {
       branches: 'الفروع',

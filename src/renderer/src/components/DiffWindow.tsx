@@ -14,6 +14,7 @@ import { comboFromEvent, resolveBindings } from '../shortcuts'
 import { useUnhandledErrors } from '../useUnhandledErrors'
 import { Toasts } from './Toasts'
 import { DiffView, useFullFile } from './DiffView'
+import { LoaderPane } from './Loader'
 
 /** Fecha a janela de diff (no VS Code, o painel). */
 const closeWindow = () => {
@@ -109,9 +110,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
         <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((item) => item.id !== id))} />
         <div className="diff-window">
           {diff === null ? (
-            <p className="empty">
-              <span className="spinner" />
-            </p>
+            <LoaderPane label={t('loader.diff')} />
           ) : 'error' in diff ? (
             <p className="empty">{diff.error}</p>
           ) : (

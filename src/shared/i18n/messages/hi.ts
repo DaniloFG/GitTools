@@ -1374,6 +1374,16 @@ export const hi: Messages = {
     replaceMessage: '"{name}" नाम का लेआउट पहले से सहेजा हुआ है। क्या उसे मौजूदा व्यवस्था से बदलें?',
     none: 'अभी कोई लेआउट सहेजा नहीं गया है।'
   },
+  loader: {
+    loading: 'लोड हो रहा है…',
+    commit: 'कमिट लोड हो रहा है…',
+    diff: 'डिफ़ लोड हो रहा है…',
+    blame: 'blame लोड हो रहा है…',
+    fileHistory: 'फ़ाइल का इतिहास लोड हो रहा है…',
+    file: 'फ़ाइल लोड हो रही है…',
+    files: 'फ़ाइलें लोड हो रही हैं…',
+    compare: 'तुलना हो रही है…'
+  },
   workbench: {
     views: {
       branches: 'Branches',

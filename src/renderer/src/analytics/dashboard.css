@@ -167,9 +167,6 @@
   padding: 14px 18px 28px;
   transition: opacity 0.15s;
 }
-.dash-scroll.refreshing {
-  opacity: 0.72;
-}
 .dash-loading {
   display: flex;
   flex-direction: column;

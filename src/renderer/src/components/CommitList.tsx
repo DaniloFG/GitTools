@@ -18,6 +18,7 @@ import { useDrop } from '../useDrop'
 import { FileEntries, FileViewToggle } from './FileList'
 import { LineStats } from './LineStats'
 import type { FileStatus } from '../../../shared/types'
+import { Loader } from './Loader'
 
 const ROW = 30
 const LANE = 14
@@ -743,7 +744,7 @@ function CommitFiles({
       <ul style={{ paddingInlineStart: indent ? GRAPH_OFFSET + graphWidth + 8 : GRAPH_OFFSET }}>
         {files === 'loading' ? (
           <li className="muted">
-            <span className="spinner" />
+            <Loader size="sm" label={t('loader.files')} />
           </li>
         ) : 'error' in files ? (
           <li className="warning-text">{files.error}</li>
