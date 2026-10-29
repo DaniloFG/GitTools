@@ -2031,6 +2031,69 @@ button.ghost.danger-text:hover:not(:disabled) {
 .toast-icon {
   font-weight: 700;
 }
+
+/* ------------------------------------------ notificações: meio, fechar, copiar e textos longos */
+
+/* Posição "no meio" na vertical; com "centro" na horizontal, o aviso fica exatamente no centro do app. */
+:root[data-toast-y='middle'] .toasts {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+:root[data-toast-x='center'][data-toast-y='middle'] .toasts {
+  transform: translate(-50%, -50%);
+}
+
+/* Erros não somem sozinhos: muitos avisos de uma vez rolam dentro da pilha em vez de sair da janela. */
+.toasts {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+/* Textos longos: o aviso cabe na janela, quebra palavras sem espaço e rola por dentro (altura máxima). */
+.toast {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.toast-body {
+  flex: 1;
+  min-width: 0;
+  user-select: text;
+}
+.toast-count {
+  display: inline-block;
+  margin-inline-start: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bg-panel);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.toast-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  flex: none;
+}
+.toast-action {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.toast-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0 4px;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.65;
+  cursor: pointer;
+}
+.toast-close:hover,
+.toast-close:focus-visible {
+  opacity: 1;
+}
 .busy {
   position: fixed;
   left: 50%;
@@ -2619,7 +2682,7 @@ kbd.duplicate {
 .list-body:focus {
   outline: none;
 }
-:root:not([data-toast-y='top']) .modal-backdrop ~ .toasts {
+:root:not([data-toast-y='top']):not([data-toast-y='middle']) .modal-backdrop ~ .toasts {
   bottom: 72px;
 }
 

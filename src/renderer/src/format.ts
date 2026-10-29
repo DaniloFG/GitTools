@@ -1,3 +1,4 @@
+import { cleanErrorText } from './feedback'
 import { formatDateTime, formatRelative, t, type MessageKey } from './i18n'
 
 export const shortSha = (sha: string) => sha.slice(0, 7)
@@ -6,10 +7,11 @@ export const relativeDate = (ms: number) => formatRelative(ms)
 
 export const fullDate = (ms: number) => formatDateTime(ms)
 
-/** Remove o prefixo que o Electron adiciona a erros vindos do processo principal. */
+/** Texto de um erro para o usuário: sem os prefixos do Electron e do IPC, com a mensagem completa. */
 export function errorMessage(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error)
-  return raw.replace(/^Error invoking remote method '[^']+': /, '').replace(/^\w*Error: /, '')
+  const text = cleanErrorText(raw)
+  return text && text !== 'undefined' && text !== 'null' ? text : t('feedback.unknown')
 }
 
 const STATUS_KEYS: Record<string, MessageKey> = {

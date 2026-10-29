@@ -31,7 +31,9 @@ import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
 import { SidebarPanes } from './components/Sidebar'
 import { PanelsButtons, ScreenTabs } from './components/Screens'
 import { Dashboards } from './components/Dashboards'
-import { Toasts, type Toast } from './components/Toasts'
+import { Toasts } from './components/Toasts'
+import { addToast, type Toast } from './feedback'
+import { useUnhandledErrors } from './useUnhandledErrors'
 import { Toolbar } from './components/Toolbar'
 import { Welcome } from './components/Welcome'
 import { Dock, type ViewMeta } from './components/Dock'
@@ -112,11 +114,13 @@ export function App() {
     await window.gittools.saveSettings(next)
   }, [])
 
+  /** Mostra um aviso; a mesma mensagem repetida logo em seguida vira um contador "×N" (ver `addToast`). */
   const toast = useCallback((kind: ToastKind, text: string) => {
     const id = ++toastId.current
-    setToasts((list) => [...list, { id, kind, text }])
-    setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), kind === 'error' ? 9000 : 5000)
+    setToasts((list) => addToast(list, { kind, text }, Date.now(), id))
   }, [])
+
+  useUnhandledErrors(toast)
 
   // A Central de Configurações pede um aviso de exemplo para ver onde as notificações aparecem.
   useEffect(() => {
@@ -180,7 +184,10 @@ export function App() {
       const key = historySignature(scopeKey(s), status, branches, tags)
       let log = logCache.current?.key === key ? logCache.current.log : null
       if (!log) {
-        log = await git.log(scopeLogOptions(s)).catch(() => null)
+        log = await git.log(scopeLogOptions(s)).catch((e) => {
+          toast('error', errorMessage(e))
+          return null
+        })
         if (log) logCache.current = { key, log }
         else log = logCache.current?.log ?? []
       }

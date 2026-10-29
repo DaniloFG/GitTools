@@ -2,6 +2,7 @@ import { useRecentRepos } from '../recent'
 import { useActions } from '../actions'
 import type { RecentRepo } from '../../../shared/api'
 import { useApp } from '../context'
+import { errorMessage } from '../format'
 import { git } from '../git'
 import { t } from '../i18n'
 
@@ -15,18 +16,19 @@ interface ToolbarProps {
 }
 
 export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarProps) {
-  const { repo, data, run, showMenu, openStudio, openSettings, openInEditor } = useApp()
-  const { head, createBranch, createTag, stash, push, pushDialog } = useActions()
+  const { repo, data, toast, showMenu, openStudio, openSettings, openInEditor } = useApp()
+  const { head, createBranch, createTag, stash, push, pushDialog, fetchRemote, pullRemote } = useActions()
   const { status } = data
 
   const { favorites, others, setFavorite, remove } = useRecentRepos(repo)
+  const showError = (error: unknown) => toast('error', errorMessage(error))
   const repoItem = (r: RecentRepo) => ({
     label: `${r.favorite ? '★ ' : ''}${r.name}`,
     hint: r.path,
     onClick: () => onOpenRepository(r.path),
     actions: [
-      { icon: r.favorite ? '★' : '☆', title: r.favorite ? t('welcome.unfavorite') : t('welcome.favorite'), onClick: () => void setFavorite(r.path, !r.favorite) },
-      { icon: '✕', title: t('welcome.removeRecent'), onClick: () => void remove(r.path) }
+      { icon: r.favorite ? '★' : '☆', title: r.favorite ? t('welcome.unfavorite') : t('welcome.favorite'), onClick: () => setFavorite(r.path, !r.favorite).catch(showError) },
+      { icon: '✕', title: t('welcome.removeRecent'), onClick: () => remove(r.path).catch(showError) }
     ]
   })
   const otherFavorites = favorites.filter((r) => r.path !== repo.root)
@@ -46,7 +48,10 @@ export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarP
   /** Seta ao lado de Enviar (ou botão direito nele): force push, outro remote, opções e remotes. */
   const pushMenu = async (e: React.MouseEvent) => {
     e.preventDefault()
-    const remotes = await git.remotes().catch(() => [])
+    const remotes = await git.remotes().catch((error) => {
+      showError(error)
+      return []
+    })
     showMenu(e, [
       { label: t('toolbar.push'), onClick: () => push() },
       { label: t('toolbar.pushForceLease'), onClick: () => push({ force: 'lease' }) },
@@ -72,10 +77,10 @@ export function Toolbar({ onOpenRepository, onClone, screens, panels }: ToolbarP
       {screens}
       <div className="toolbar-spacer" />
       <div className="toolbar-group">
-        <button onClick={() => run(t('busy.fetch'), () => git.fetch())} title={t('toolbar.fetchHelp')}>
+        <button onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')}>
           ⟳ {t('toolbar.fetch')}
         </button>
-        <button onClick={() => run(t('busy.pull'), () => git.pull())} title={t('toolbar.pullHelp')}>
+        <button onClick={() => pullRemote()} title={t('toolbar.pullHelp')}>
           ↓ {t('toolbar.pull')} {status.behind > 0 && <span className="badge">{status.behind}</span>}
         </button>
         <span className="split-button">

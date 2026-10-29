@@ -842,6 +842,32 @@ export const en: Messages = {
       none: 'No shortcuts found.'
     }
   },
+  feedback: {
+    unknown: 'Error without a message.',
+    unexpected: 'Unexpected error: {message}',
+    toast: {
+      close: 'Close notification',
+      copy: 'Copy',
+      copyHelp: 'Copies the full message',
+      copied: 'Copied!',
+      copyFailed: 'Could not copy',
+      middle: 'Middle',
+      sizeLabel: 'Size',
+      sizeStandard: 'Standard',
+      sizeLarge: 'Large',
+      sizeExtra: 'Extra large',
+      sizeWide: 'Wide screen'
+    },
+    blocked: {
+      noRemote: 'This repository has no remote configured. Add one in Settings → Git.',
+      noBranch: 'There is no current branch (detached HEAD). Check out a branch to continue.',
+      noCommits: 'The repository has no commits yet.',
+      noSelection: 'Select at least one changed line in the diff.',
+      conflicts: 'There are conflicts: resolve them before continuing.',
+      commitMessage: 'Write the commit message.',
+      commitNothing: 'Nothing to commit: stage some changes first.'
+    }
+  },
   messages: {
     filesFrom: '(files {files} taken from commit {sha})',
     linesFrom: '(lines from {path} taken from commit {sha})',

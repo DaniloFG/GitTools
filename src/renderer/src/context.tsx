@@ -5,6 +5,7 @@ import type { ChoiceRequest, ChoiceResult, ConfirmRequest, PromptRequest, PushRe
 import type { MenuItem } from './components/ContextMenu'
 import type { DiffWindowRequest } from '../../shared/api'
 import type { ScreenId } from './dock'
+import type { ToastKind } from './feedback'
 
 export interface RepoData {
   status: RepoStatus
@@ -15,7 +16,7 @@ export interface RepoData {
   operation: OperationState
 }
 
-export type ToastKind = 'success' | 'error' | 'warning' | 'info'
+export type { ToastKind } from './feedback'
 
 export interface StudioRequest {
   source?: string

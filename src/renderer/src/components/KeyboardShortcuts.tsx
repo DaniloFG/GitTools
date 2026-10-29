@@ -1,8 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useActions } from '../actions'
 import { useApp } from '../context'
-import { git } from '../git'
-import { t } from '../i18n'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings, worksInInputs } from '../shortcuts'
 import { HISTORY_SEARCH_ID } from './CommitList'
@@ -53,8 +51,8 @@ export function KeyboardShortcuts({ disabled, onOpenRepository }: { disabled: bo
         studio: () => app.openStudio({ target: actions.head ?? undefined }),
         'branch.new': () => actions.createBranch(),
         stash: () => actions.stash(),
-        fetch: () => app.run(t('busy.fetch'), () => git.fetch()),
-        pull: () => app.run(t('busy.pull'), () => git.pull()),
+        fetch: () => actions.fetchRemote(),
+        pull: () => actions.pullRemote(),
         push: () => actions.push(),
         'push.force': () => actions.push({ force: 'lease' }),
         refresh: () => app.refresh(),

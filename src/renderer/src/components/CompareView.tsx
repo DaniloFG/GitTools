@@ -244,7 +244,7 @@ export function CompareView({ request, onRequest }: Props) {
             </button>
             {head && (
               <>
-                <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
                   {t('common.applyLinesInto', { count: selection.size, target: head })}
                 </button>
                 <button onClick={() => copyVersion(active)} title={t('compare.copyVersionHelp', { target: head, ref: comparison.to })}>

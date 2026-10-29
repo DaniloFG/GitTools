@@ -811,6 +811,32 @@ export const zhCN: Messages = {
       none: '没有找到快捷键。'
     }
   },
+  feedback: {
+    unknown: '错误没有消息。',
+    unexpected: '意外错误：{message}',
+    toast: {
+      close: '关闭通知',
+      copy: '复制',
+      copyHelp: '复制完整消息',
+      copied: '已复制！',
+      copyFailed: '无法复制',
+      middle: '中间',
+      sizeLabel: '大小',
+      sizeStandard: '标准',
+      sizeLarge: '大',
+      sizeExtra: '特大',
+      sizeWide: '宽屏'
+    },
+    blocked: {
+      noRemote: '此仓库未配置远程仓库。请在设置 → Git 中添加。',
+      noBranch: '当前没有分支（HEAD 处于分离状态）。请先检出一个分支再继续。',
+      noCommits: '此仓库还没有提交。',
+      noSelection: '请在差异中至少选择一行已更改的内容。',
+      conflicts: '存在冲突：请先解决再继续。',
+      commitMessage: '请填写提交信息。',
+      commitNothing: '没有可提交的内容：请先将更改加入暂存区。'
+    }
+  },
   messages: {
     filesFrom: '（文件 {files} 来自提交 {sha}）',
     linesFrom: '（{path} 中的行来自提交 {sha}）',

@@ -4,18 +4,26 @@ import { useActions } from '../actions'
 import { useApp } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
+import { commitBlock, type CommitBlock } from '../feedback'
 import { useLayout } from '../layout'
-import { t } from '../i18n'
+import { t, type MessageKey } from '../i18n'
 
 type PushMode = 'normal' | PushForce
 const parsePushMode = (v: unknown): PushMode => (v === 'lease' || v === 'force' ? v : 'normal')
+
+/** Explicação de cada motivo que impede o commit. */
+const BLOCK_TEXT: Record<CommitBlock, MessageKey> = {
+  conflicts: 'feedback.blocked.conflicts',
+  message: 'feedback.blocked.commitMessage',
+  nothing: 'feedback.blocked.commitNothing'
+}
 
 /**
  * Caixa de commit: as opções se combinam livremente — corrigir o último commit (amend), incluir tudo,
  * e enviar em seguida (normal, force com lease ou force). O botão diz o que vai acontecer.
  */
 export function CommitBox() {
-  const { data, run } = useApp()
+  const { data, run, toast } = useApp()
   const { confirmForce } = useActions()
   const [message, setMessage] = useState('')
   const [amend, setAmend] = useState(false)
@@ -25,14 +33,15 @@ export function CommitBox() {
   const { status } = data
   const pending = status.unstaged.length
   const useStageAll = stageAll && pending > 0
-  const canCommit = !!message.trim() && (status.staged.length > 0 || amend || useStageAll) && status.conflicted.length === 0
+  const block = commitBlock({ message, staged: status.staged.length, amend, stageAll: useStageAll, conflicted: status.conflicted.length })
+  const canCommit = block === null
   // Corrigir um commit que já está no remoto reescreve o histórico dele: o push comum seria recusado.
   const needsForce = push && amend && !!status.upstream && status.ahead === 0
   const mode: PushMode = needsForce && chosenMode === 'normal' ? 'lease' : chosenMode
   const forced = push && mode !== 'normal'
 
   const commit = async () => {
-    if (!canCommit) return
+    if (block) return toast('warning', t(BLOCK_TEXT[block]))
     if (push && mode === 'force' && !(await confirmForce('force', status.branch))) return
     let committed = false
     const result = await run(push ? t('busy.commitPush') : amend ? t('busy.amending') : t('busy.commit'), async () => {
@@ -89,6 +98,7 @@ export function CommitBox() {
               }
             }}
             disabled={!status.headSha}
+            title={status.headSha ? undefined : t('feedback.blocked.noCommits')}
           />
           {t('changes.amend')}
         </label>
@@ -99,7 +109,13 @@ export function CommitBox() {
           </label>
         )}
         <label className="checkbox">
-          <input type="checkbox" checked={push} onChange={(e) => setPush(e.target.checked)} disabled={!status.branch} />
+          <input
+            type="checkbox"
+            checked={push}
+            onChange={(e) => setPush(e.target.checked)}
+            disabled={!status.branch}
+            title={status.branch ? undefined : t('feedback.blocked.noBranch')}
+          />
           {t('changes.pushAfter')}
         </label>
         {push && (
@@ -114,7 +130,12 @@ export function CommitBox() {
       </div>
       {needsForce && <p className="muted commit-hint">{t('changes.amendNeedsForce')}</p>}
       <div className="commit-actions">
-        <button className={mode === 'force' && push ? 'danger' : 'primary'} disabled={!canCommit} onClick={commit}>
+        <button
+          className={mode === 'force' && push ? 'danger' : 'primary'}
+          disabled={!canCommit}
+          title={block ? t(BLOCK_TEXT[block]) : undefined}
+          onClick={commit}
+        >
           {label}
         </button>
       </div>

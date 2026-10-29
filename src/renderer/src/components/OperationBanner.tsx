@@ -105,7 +105,12 @@ export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
       <div className="operation-actions">
         {operation.kind !== 'none' ? (
           <>
-            <button className="primary" disabled={conflicts.length > 0} onClick={() => run(t('busy.continuing'), () => git.continueOperation())}>
+            <button
+              className="primary"
+              disabled={conflicts.length > 0}
+              title={conflicts.length > 0 ? t('feedback.blocked.conflicts') : undefined}
+              onClick={() => run(t('busy.continuing'), () => git.continueOperation())}
+            >
               {t('operation.continue')}
             </button>
             {operation.kind !== 'merge' && (

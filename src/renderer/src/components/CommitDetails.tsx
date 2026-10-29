@@ -305,7 +305,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
                   <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
                     ⧉ {t('diffExtra.openWindow')}
                   </button>
-                  <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                  <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
                     {t('common.applyLinesInto', { count: selection.size, target: head })}
                   </button>
                   <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>{t('details.takeWholeFile')}</button>

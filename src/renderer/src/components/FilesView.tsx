@@ -341,7 +341,7 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
               <button onClick={() => onBlameAt(active.sha)}>{t('files.blameThisVersion')}</button>
               <button onClick={() => restore(active)}>{t('files.restoreThisVersion')}</button>
               {head && (
-                <button className="primary" disabled={!selection.size} onClick={applyLines}>
+                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
                   {t('common.applyLinesInto', { count: selection.size, target: head })}
                 </button>
               )}
