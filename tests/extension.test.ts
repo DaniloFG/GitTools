@@ -99,6 +99,8 @@ describe('extensão do VS Code', () => {
     const log = await ask(panel, 'repo:invoke', 'log', [{ all: true }])
     expect((log.result as { subject: string }[]).map((c) => c.subject)).toEqual(['primeiro'])
     expect(panel.title).toContain('GitTools')
+    // A aba do painel mostra o ícone do GitTools (media/icon.png da extensão).
+    expect((panel.iconPath as Uri).fsPath).toMatch(/media[\\/]icon\.png$/)
     // Eventos do git chegam ao painel.
     expect(panel.webview.posted.some((m) => (m as { type: string; channel?: string }).channel === 'git:command')).toBe(true)
   })
@@ -199,6 +201,7 @@ describe('extensão do VS Code', () => {
     Object.assign(panel, createFake())
     await fake.serializers.get('gittools')!.deserializeWebviewPanel(panel, undefined)
     expect(panel.webview.html).toContain('window.__gittoolsBoot')
+    expect((panel.iconPath as Uri).fsPath).toMatch(/media[\\/]icon\.png$/)
     expect((await ask(panel, 'app:currentRepository')).ok).toBe(true)
   })
 })

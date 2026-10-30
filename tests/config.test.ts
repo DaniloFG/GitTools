@@ -100,8 +100,8 @@ describe('remotes', () => {
     expect(await repo.addRemote('origin', 'https://example.com/a.git')).toBe('origin')
     await repo.addRemote('upstream', 'git@example.com:org/a.git')
     expect(await repo.remotes()).toEqual([
-      { name: 'origin', fetchUrl: 'https://example.com/a.git', pushUrl: 'https://example.com/a.git' },
-      { name: 'upstream', fetchUrl: 'git@example.com:org/a.git', pushUrl: 'git@example.com:org/a.git' }
+      { name: 'origin', fetchUrl: 'https://example.com/a.git', pushUrl: 'https://example.com/a.git', pushUrls: ['https://example.com/a.git'], customPush: false },
+      { name: 'upstream', fetchUrl: 'git@example.com:org/a.git', pushUrl: 'git@example.com:org/a.git', pushUrls: ['git@example.com:org/a.git'], customPush: false }
     ])
     await repo.setRemoteUrl('upstream', 'https://example.com/b.git')
     await repo.renameRemote('upstream', 'fork')
@@ -111,6 +111,48 @@ describe('remotes', () => {
     ])
     await repo.removeRemote('fork')
     expect((await repo.remotes()).map((r) => r.name)).toEqual(['origin'])
+  })
+
+  it('lista vários destinos de envio por remote (issue #18) e permite acrescentar e tirar URLs', async () => {
+    const { repo } = await createRepo()
+    await repo.addRemote('origin', 'https://github.com/u/a.git')
+    await repo.addRemote('upstream', 'https://example.com/up.git')
+
+    // Primeira URL de envio extra: a de baixar continua recebendo o push.
+    await repo.addRemoteUrl('origin', 'https://gitlab.com/u/a.git')
+    const origin = (await repo.remotes()).find((r) => r.name === 'origin')!
+    expect(origin.fetchUrl).toBe('https://github.com/u/a.git')
+    expect(origin.pushUrls).toEqual(['https://github.com/u/a.git', 'https://gitlab.com/u/a.git'])
+    expect(origin.pushUrl).toBe('https://github.com/u/a.git')
+    expect(origin.customPush).toBe(true)
+    // O outro remote não foi tocado.
+    expect((await repo.remotes()).find((r) => r.name === 'upstream')).toMatchObject({ pushUrls: ['https://example.com/up.git'], customPush: false })
+
+    await repo.addRemoteUrl('origin', 'ssh://git@example.org/a.git')
+    expect((await repo.remotes())[0].pushUrls).toHaveLength(3)
+    await expect(repo.addRemoteUrl('origin', 'ssh://git@example.org/a.git')).rejects.toThrow()
+
+    await repo.removeRemoteUrl('origin', 'https://gitlab.com/u/a.git')
+    expect((await repo.remotes())[0].pushUrls).toEqual(['https://github.com/u/a.git', 'ssh://git@example.org/a.git'])
+    await expect(repo.removeRemoteUrl('origin', 'https://nao-existe.com/a.git')).rejects.toThrow()
+    await expect(repo.addRemoteUrl('nenhum', 'https://example.com/x.git')).rejects.toThrow()
+    await expect(repo.addRemoteUrl('origin', '--upload-pack=x')).rejects.toThrow()
+  })
+
+  it('o push vai para todas as URLs de envio do remote', async () => {
+    const t = await createRepo()
+    const first = tempDir()
+    const second = tempDir()
+    await runGit(first, ['init', '-q', '--bare'])
+    await runGit(second, ['init', '-q', '--bare'])
+    await t.commit('primeiro', { 'a.txt': 'a\n' })
+    await t.repo.addRemote('origin', first)
+    await t.repo.addRemoteUrl('origin', second)
+    await t.repo.push('origin')
+    for (const dir of [first, second]) {
+      const log = await runGit(dir, ['log', '--format=%s', '--all'])
+      expect(log.stdout.trim()).toBe('primeiro')
+    }
   })
 
   it('recusa nomes e URLs que o git leria como opção', async () => {

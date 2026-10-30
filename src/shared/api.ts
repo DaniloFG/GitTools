@@ -34,6 +34,7 @@ import type {
   RebaseStep,
   RemoteInfo,
   RepoInfo,
+  RepoRefs,
   RepoStatus,
   StashInfo,
   TagInfo
@@ -55,6 +56,8 @@ export interface RepoApi {
   status(withStats?: boolean): Promise<RepoStatus>
   branches(): Promise<BranchInfo[]>
   tags(): Promise<TagInfo[]>
+  /** Branches e tags juntas, num único comando git. */
+  refs(): Promise<RepoRefs>
   stashes(): Promise<StashInfo[]>
   log(options?: LogOptions): Promise<CommitInfo[]>
   commitDetails(sha: string): Promise<CommitDetails>
@@ -121,6 +124,10 @@ export interface RepoApi {
   setRemoteUrl(name: string, url: string): Promise<void>
   renameRemote(name: string, newName: string): Promise<void>
   removeRemote(name: string): Promise<void>
+  /** Acrescenta uma URL de envio ao remote (o push vai para todas as URLs de envio). */
+  addRemoteUrl(name: string, url: string): Promise<void>
+  /** Tira uma URL de envio do remote. */
+  removeRemoteUrl(name: string, url: string): Promise<void>
 
   // Stash
   stash(message?: string): Promise<void>
@@ -159,6 +166,7 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'status',
   'branches',
   'tags',
+  'refs',
   'stashes',
   'log',
   'commitDetails',
@@ -198,6 +206,8 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'setRemoteUrl',
   'renameRemote',
   'removeRemote',
+  'addRemoteUrl',
+  'removeRemoteUrl',
   'stash',
   'stashApply',
   'stashDrop',

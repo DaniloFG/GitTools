@@ -180,6 +180,8 @@ class Controller {
   }
 
   private setup(panel: vscode.WebviewPanel, search?: string): void {
+    // Ícone na aba do painel (também nos painéis restaurados ao reabrir o VS Code).
+    panel.iconPath = vscode.Uri.joinPath(this.context.extensionUri, 'media', 'icon.png')
     this.panels.add(panel)
     panel.onDidDispose(() => this.panels.delete(panel))
     panel.webview.html = this.html(panel.webview, search)

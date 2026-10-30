@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { DIVIDER_WIDTHS, PANE_BUTTON_SCALES, ZOOM_LEVELS, type ThemeSetting } from '../../../../shared/settings'
-import { t, type MessageKey } from '../../i18n'
+import { DATE_FORMATS, DIVIDER_WIDTHS, PANE_BUTTON_SCALES, ZOOM_LEVELS, type DateFormatSetting, type ThemeSetting } from '../../../../shared/settings'
+import { formatDateTime, t, type MessageKey } from '../../i18n'
 import { fullDate } from '../../format'
 import { resetLayout } from '../../layout'
 import { applySavedLayout, cleanName, findByName, removeSavedLayout, saveCurrentLayout, useSavedLayouts } from '../../savedLayouts'
@@ -12,6 +12,13 @@ const THEMES: { id: ThemeSetting; label: MessageKey }[] = [
   { id: 'dark', label: 'settings.appearance.themeDark' },
   { id: 'light', label: 'settings.appearance.themeLight' }
 ]
+
+const DATE_FORMAT_LABELS: Record<DateFormatSetting, MessageKey> = {
+  iso: 'settings.appearance.dateFormatIso',
+  system: 'settings.appearance.dateFormatSystem',
+  '24h': 'settings.appearance.dateFormat24h',
+  '12h': 'settings.appearance.dateFormat12h'
+}
 
 /** Salvar o layout de agora com um nome, reaplicar um salvo ou apagá-lo. */
 function SavedLayouts() {
@@ -112,6 +119,20 @@ export function AppearanceSection({ draft, update }: SettingsSectionProps) {
         <label className="checkbox">
           <input type="checkbox" checked={draft.statusLetters} onChange={(e) => update({ statusLetters: e.target.checked })} />
         </label>
+      </div>
+      <div className="settings-row">
+        <div>
+          <span>{t('settings.appearance.dateFormat')}</span>
+          <p className="muted small">{t('settings.appearance.dateFormatHelp')}</p>
+          <p className="muted small">{t('settings.appearance.dateFormatSample', { sample: formatDateTime(Date.now()) })}</p>
+        </div>
+        <select value={draft.dateFormat} aria-label={t('settings.appearance.dateFormat')} onChange={(e) => update({ dateFormat: e.target.value as DateFormatSetting })}>
+          {DATE_FORMATS.map((id) => (
+            <option key={id} value={id}>
+              {t(DATE_FORMAT_LABELS[id])}
+            </option>
+          ))}
+        </select>
       </div>
       {info?.host !== 'vscode' && (
       <div className="settings-row">

@@ -123,6 +123,12 @@ export interface TagInfo {
   sha: string
 }
 
+/** Branches e tags de um repositório, lidas juntas (um único comando git). */
+export interface RepoRefs {
+  branches: BranchInfo[]
+  tags: TagInfo[]
+}
+
 export interface StashInfo {
   ref: string
   index: number
@@ -360,7 +366,15 @@ export interface GitCommandEntry {
 export interface RemoteInfo {
   name: string
   fetchUrl: string
+  /** Primeira URL de envio (a mesma de `fetchUrl` quando não há URL de envio própria). */
   pushUrl: string
+  /**
+   * Todas as URLs para onde o push vai. Um remote pode ter várias (espelhos: GitHub e GitLab, por exemplo);
+   * o push envia para todas. Sem URL de envio própria, é só a de `fetchUrl`.
+   */
+  pushUrls: string[]
+  /** O remote tem URLs de envio próprias (ajustadas com `git remote set-url --push`). */
+  customPush: boolean
 }
 
 // --------------------------------------------------------- identidade git

@@ -10,6 +10,7 @@ import { revealView } from '../dockStore'
 import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
 import { FileEntries, FileViewToggle } from './FileList'
+import { useSessionState } from '../useSessionState'
 import { LineStats } from './LineStats'
 import { Loader, LoaderPane, LoadingOverlay } from './Loader'
 
@@ -27,9 +28,10 @@ export function CompareView({ request, onRequest }: Props) {
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''
-  const [from, setFrom] = useState(request.from ?? head ?? 'HEAD')
-  const [to, setTo] = useState(request.to ?? defaultTo)
-  const [sinceBase, setSinceBase] = useState(true)
+  // Os campos da comparação são lembrados ao navegar para outra tela ou outra aba de repositório e voltar.
+  const [from, setFrom] = useSessionState('compare.from', request.from ?? head ?? 'HEAD')
+  const [to, setTo] = useSessionState('compare.to', request.to ?? defaultTo)
+  const [sinceBase, setSinceBase] = useSessionState('compare.sinceBase', true)
   const [comparison, setComparison] = useState<Comparison | null>(null)
   const [loading, setLoading] = useState(false)
   const [active, setActive] = useState<ChangedFile | null>(null)

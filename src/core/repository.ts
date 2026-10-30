@@ -34,6 +34,7 @@ import type {
   RebasePlan,
   RebaseStep,
   RemoteInfo,
+  RepoRefs,
   RepoInfo,
   RepoStatus,
   StashInfo,
@@ -259,6 +260,41 @@ function checkRemote(name: string, url: string): { name: string; url: string } {
   return { name: cleanName, url: cleanUrl }
 }
 
+/** Campos lidos de cada branch (`git for-each-ref`), separados por %1f. */
+const BRANCH_FORMAT = [
+  '%(refname)',
+  '%(refname:short)',
+  '%(objectname)',
+  '%(upstream:short)',
+  '%(upstream:track,nobracket)',
+  '%(HEAD)',
+  '%(committerdate:unix)',
+  '%(contents:subject)'
+].join('%1f')
+
+function parseBranches(stdout: string): BranchInfo[] {
+  const branches: BranchInfo[] = []
+  for (const line of stdout.split('\n')) {
+    if (!line) continue
+    const [fullRef, name, sha, upstream, track, head, date, subject] = line.split(FS)
+    if (fullRef.endsWith('/HEAD')) continue
+    const remote = fullRef.startsWith('refs/remotes/') ? fullRef.split('/')[2] : null
+    branches.push({
+      name,
+      fullRef,
+      remote,
+      sha,
+      upstream: upstream || null,
+      ahead: Number(/ahead (\d+)/.exec(track)?.[1] ?? 0),
+      behind: Number(/behind (\d+)/.exec(track)?.[1] ?? 0),
+      current: head === '*',
+      date: Number(date) * 1000,
+      subject: subject ?? ''
+    })
+  }
+  return branches
+}
+
 /** Caminhos por comando git ao resolver vários conflitos: a linha de comando tem limite de tamanho. */
 const CONFLICT_BATCH = 100
 
@@ -376,37 +412,8 @@ export class GitRepository implements RepoApi {
   }
 
   async branches(): Promise<BranchInfo[]> {
-    const format = [
-      '%(refname)',
-      '%(refname:short)',
-      '%(objectname)',
-      '%(upstream:short)',
-      '%(upstream:track,nobracket)',
-      '%(HEAD)',
-      '%(committerdate:unix)',
-      '%(contents:subject)'
-    ].join('%1f')
-    const { stdout } = await this.git(['for-each-ref', `--format=${format}`, 'refs/heads', 'refs/remotes'])
-    const branches: BranchInfo[] = []
-    for (const line of stdout.split('\n')) {
-      if (!line) continue
-      const [fullRef, name, sha, upstream, track, head, date, subject] = line.split(FS)
-      if (fullRef.endsWith('/HEAD')) continue
-      const remote = fullRef.startsWith('refs/remotes/') ? fullRef.split('/')[2] : null
-      branches.push({
-        name,
-        fullRef,
-        remote,
-        sha,
-        upstream: upstream || null,
-        ahead: Number(/ahead (\d+)/.exec(track)?.[1] ?? 0),
-        behind: Number(/behind (\d+)/.exec(track)?.[1] ?? 0),
-        current: head === '*',
-        date: Number(date) * 1000,
-        subject: subject ?? ''
-      })
-    }
-    return branches
+    const { stdout } = await this.git(['for-each-ref', `--format=${BRANCH_FORMAT}`, 'refs/heads', 'refs/remotes'])
+    return parseBranches(stdout)
   }
 
   async tags(): Promise<TagInfo[]> {
@@ -423,6 +430,25 @@ export class GitRepository implements RepoApi {
         const [name, sha, peeled] = line.split(FS)
         return { name, sha: peeled || sha }
       })
+  }
+
+  /** Branches e tags num único comando git (a interface precisa das duas a cada atualização). */
+  async refs(): Promise<RepoRefs> {
+    const format = `${BRANCH_FORMAT}%1f%(*objectname)%1f%(creatordate:unix)`
+    const { stdout } = await this.git(['for-each-ref', `--format=${format}`, 'refs/heads', 'refs/remotes', 'refs/tags'])
+    const branchLines: string[] = []
+    const tags: { name: string; sha: string; date: number }[] = []
+    for (const line of stdout.split('\n')) {
+      if (!line) continue
+      const fields = line.split(FS)
+      if (fields[0].startsWith('refs/tags/')) {
+        // nome curto, objeto (ou o objeto apontado, se a tag é anotada) e data de criação
+        tags.push({ name: fields[1], sha: fields[8] || fields[2], date: Number(fields[9]) || 0 })
+      } else branchLines.push(fields.slice(0, 8).join(FS))
+    }
+    // Mesma ordem de `tags()`: mais recentes primeiro e, em empate, pelo nome.
+    tags.sort((a, b) => b.date - a.date || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+    return { branches: parseBranches(branchLines.join('\n')), tags: tags.map(({ name, sha }) => ({ name, sha })) }
   }
 
   async stashes(): Promise<StashInfo[]> {
@@ -1173,12 +1199,47 @@ export class GitRepository implements RepoApi {
       const match = /^(\S+)\t(.*) \((fetch|push)\)$/.exec(line)
       if (!match) continue
       const [, name, url, kind] = match
-      const info = byName.get(name) ?? { name, fetchUrl: '', pushUrl: '' }
+      const info = byName.get(name) ?? { name, fetchUrl: '', pushUrl: '', pushUrls: [], customPush: false }
       if (kind === 'fetch') info.fetchUrl = url
-      else info.pushUrl = url
+      // O git escreve uma linha "(push)" por URL de envio: guarda todas, sem repetir.
+      else if (!info.pushUrls.includes(url)) info.pushUrls.push(url)
       byName.set(name, info)
     }
+    // Quais remotes têm URL de envio própria (sem ela, o git mostra a URL de baixar como a de enviar).
+    const custom = new Set<string>()
+    const configured = await this.git(['config', '--get-regexp', '^remote\\..*\\.pushurl$']).catch(() => ({ stdout: '' }))
+    for (const line of configured.stdout.split('\n')) {
+      const key = /^remote\.(.+)\.pushurl\s/i.exec(line)
+      if (key) custom.add(key[1])
+    }
+    for (const info of byName.values()) {
+      info.pushUrl = info.pushUrls[0] ?? info.fetchUrl
+      info.customPush = custom.has(info.name)
+    }
     return [...byName.values()]
+  }
+
+  /**
+   * Acrescenta uma URL de envio ao remote (o push passa a ir para todas). Na primeira vez, a URL de baixar vira
+   * também uma URL de envio, para o push continuar indo para ela.
+   */
+  async addRemoteUrl(name: string, url: string): Promise<void> {
+    const clean = checkRemote(name, url)
+    const remote = (await this.remotes()).find((r) => r.name === clean.name)
+    if (!remote) throw new Error(t('remotes.notFound', { name: clean.name }))
+    if (remote.pushUrls.includes(clean.url)) throw new Error(t('remotes.urlExists', { url: clean.url }))
+    // O git não faz isso sozinho: a primeira URL de envio acrescentada passaria a ser a única, e o push deixaria de ir para a de baixar.
+    if (!remote.customPush) await this.git(['remote', 'set-url', '--add', '--push', '--', clean.name, remote.fetchUrl])
+    await this.git(['remote', 'set-url', '--add', '--push', '--', clean.name, clean.url])
+  }
+
+  /** Tira uma URL de envio do remote. Quando sobra só a de baixar, o remote volta ao comportamento padrão. */
+  async removeRemoteUrl(name: string, url: string): Promise<void> {
+    const clean = checkRemote(name, url)
+    const remote = (await this.remotes()).find((r) => r.name === clean.name)
+    if (!remote) throw new Error(t('remotes.notFound', { name: clean.name }))
+    if (!remote.customPush || !remote.pushUrls.includes(clean.url)) throw new Error(t('remotes.urlMissing', { url: clean.url }))
+    await this.git(['remote', 'set-url', '--delete', '--push', '--', clean.name, clean.url])
   }
 
   async addRemote(name: string, url: string, fetchNow = false): Promise<string> {

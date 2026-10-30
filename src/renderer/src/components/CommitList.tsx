@@ -13,7 +13,7 @@ import { startReorder, useOrder } from '../reorder'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
 import { git } from '../git'
-import { formatShortDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
+import { dateFormatKey, formatShortDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
 import { graphFor, laneColor, matchesCommit, refName, type GraphRow } from '../graph'
 import { useDrop } from '../useDrop'
 import { FileEntries, FileViewToggle } from './FileList'
@@ -208,6 +208,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   /** Funções de sempre-atuais para as linhas, que ficam memorizadas e não podem depender delas diretamente. */
   const handlers = useRef({} as RowHandlers)
   const stableColumns = useMemo(() => columns, [columns.join()]) // eslint-disable-line react-hooks/exhaustive-deps
+  const dateKey = dateFormatKey()
 
   const dragShas = (commit: CommitInfo) => (selectedSet.has(commit.sha) ? commits.filter((c) => selectedSet.has(c.sha)).map((c) => c.sha) : [commit.sha])
 
@@ -389,6 +390,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
                 searching={searching}
                 query={searching ? deferredQuery : ''}
                 handlers={handlers}
+                dateKey={dateKey}
                 onScope={onScope}
               />
               {open && (
@@ -430,6 +432,8 @@ interface RowProps {
   searching: boolean
   query: string
   handlers: React.RefObject<RowHandlers>
+  /** Muda com o formato de datas e o idioma: a linha é memorizada e precisa saber que deve se redesenhar. */
+  dateKey: string
   onScope(scope: HistoryScope): void
 }
 
@@ -438,6 +442,7 @@ interface RowProps {
  * seleção, não as centenas de outras.
  */
 const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, template, columns, graphWidth, searching, query, handlers, onScope }: RowProps) {
+  // `dateKey` só existe para invalidar a memorização; a data é escrita pelas funções de formato.
   return (
     <div
       className={`commit-row ${selected ? 'selected' : ''} ${open ? 'expanded' : ''}`}
