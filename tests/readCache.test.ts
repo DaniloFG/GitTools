@@ -270,10 +270,17 @@ describe('approxSize', () => {
   it('cresce com o conteúdo e não percorre estruturas gigantes inteiras', () => {
     expect(approxSize('abc')).toBeLessThan(approxSize('abc'.repeat(100)))
     expect(approxSize([1, 2, 3])).toBeLessThan(approxSize(Array.from({ length: 100 }, (_, i) => ({ i, name: `n${i}` }))))
-    const huge = Array.from({ length: 200_000 }, (_, i) => ({ i }))
-    const start = Date.now()
+
+    // Conta quantos itens foram de fato lidos: deve parar perto do limite, sem depender do tempo da máquina.
+    let read = 0
+    const huge = Array.from({ length: 200_000 }, () => ({
+      get v() {
+        read++
+        return 1
+      }
+    }))
     expect(approxSize(huge)).toBeGreaterThan(10_000)
-    expect(Date.now() - start).toBeLessThan(100)
+    expect(read).toBeLessThan(5_000)
   })
 })
 
