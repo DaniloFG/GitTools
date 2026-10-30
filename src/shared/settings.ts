@@ -8,6 +8,9 @@ export type ThemeSetting = 'system' | 'dark' | 'light'
 export type LanguageSetting = 'system' | LocaleId
 /** Como o diff é exibido: linhas antigas e novas uma embaixo da outra, ou lado a lado. */
 export type DiffLayout = 'inline' | 'split'
+/** Formato de datas e horas: ISO (2026-12-31 23:59:59), o do sistema, ou o do idioma em 24 h / 12 h. */
+export type DateFormatSetting = 'iso' | 'system' | '24h' | '12h'
+export const DATE_FORMATS: readonly DateFormatSetting[] = ['iso', 'system', '24h', '12h']
 
 export type ToastHorizontal = 'left' | 'center' | 'right'
 export type ToastVertical = 'top' | 'middle' | 'bottom'
@@ -52,6 +55,8 @@ export interface Settings {
   editor: string
   /** Posição e tamanho das notificações. */
   toast: ToastSettings
+  /** Como datas e horas são escritas nas listas e nos detalhes. */
+  dateFormat: DateFormatSetting
   /** Mostra o ícone do tipo de cada arquivo ao lado do nome. */
   fileIcons: boolean
   /** Mostra a letra da modificação (M, A, D, R…) ao lado de cada arquivo. */
@@ -64,7 +69,7 @@ export interface Settings {
   shortcuts: Record<string, string>
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
+export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', dateFormat: 'iso', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
 
 export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6]
 export const DIVIDER_WIDTHS = [1, 2, 3, 4, 6, 8]
@@ -100,6 +105,7 @@ export function normalizeSettings(value: unknown): Settings {
     dividerWidth: oneOf(raw.dividerWidth, DIVIDER_WIDTHS, DEFAULT_SETTINGS.dividerWidth),
     paneButtonScale: oneOf(raw.paneButtonScale, PANE_BUTTON_SCALES, DEFAULT_SETTINGS.paneButtonScale),
     diffLayout: raw.diffLayout === 'split' ? 'split' : 'inline',
+    dateFormat: DATE_FORMATS.includes(raw.dateFormat as DateFormatSetting) ? (raw.dateFormat as DateFormatSetting) : DEFAULT_SETTINGS.dateFormat,
     fileIcons: raw.fileIcons !== false,
     statusLetters: raw.statusLetters !== false,
     diffFullFile: raw.diffFullFile === true,

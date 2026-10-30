@@ -16,6 +16,7 @@ import { PaneSlot } from '../slots'
 import { CommitBox } from './CommitBox'
 import { DiffView, useFullFile } from './DiffView'
 import { FileEntries, FileViewToggle } from './FileList'
+import { useSessionState } from '../useSessionState'
 import { LineStats } from './LineStats'
 
 type Area = 'unstaged' | 'staged'
@@ -66,7 +67,8 @@ export function ChangesView() {
   const runChanges = <T,>(label: string, fn: () => Promise<T>) => run(label, fn, SCREEN_VIEWS.changes)
   const { status } = data
   const [mode, setMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
-  const [active, setActive] = useState<Active | null>(null)
+  // O arquivo aberto no diff é lembrado ao navegar para outra tela ou outra aba de repositório e voltar.
+  const [active, setActive] = useSessionState<Active | null>('changes.active', null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()

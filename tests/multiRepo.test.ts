@@ -1,8 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative, sep } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Backend, type BackendHost } from '../src/backend/backend'
+import { changeKeys } from '../src/core/diff'
 import { runGit } from '../src/core/exec'
 import { GitRepository } from '../src/core/repository'
 import type { GitCommandEntry, OpenRepositories, OperationResult, RepoStatus } from '../src/shared/types'
@@ -412,5 +413,103 @@ describe('cherryPickAcross', () => {
     const { s, destino, c1, c2, backend } = await fixtures()
     await backend.invoke('app:cherryPickAcross', [s.repo.root, destino.repo.root, [c1, c2]])
     expect((await destino.git('for-each-ref', 'refs/gittools-tmp', 'refs/remotes')).trim()).toBe('')
+  })
+})
+
+describe('applyAcross: arquivos e linhas de outro repositório', () => {
+  const NINE = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'].join('\n') + '\n'
+
+  /** Origem com um commit que mexe em dois arquivos e outro que altera duas linhas; destino com um commit próprio. */
+  async function fixtures() {
+    const s = await createRepo()
+    await commitAt(s, 'base', { 'base.txt': 'base\n', 'doc.txt': NINE }, 1_700_000_000)
+    const cFiles = await commitAt(s, 'dois arquivos', { 'um.txt': 'um\n', 'dois.txt': 'dois\n' }, 1_700_000_060)
+    const cLines = await commitAt(s, 'altera duas linhas', { 'doc.txt': NINE.replace('b\n', 'B\n').replace('h\n', 'H\n') }, 1_700_000_120)
+    const destino = await createRepo()
+    await commitAt(destino, 'base destino', { 'base.txt': 'base\n', 'doc.txt': NINE }, 1_600_000_000)
+    const { backend } = fakeHost()
+    await openRepo(backend, s.dir)
+    await openRepo(backend, destino.dir)
+    const subjects = async () => (await destino.git('log', '--format=%s')).trim().split('\n').reverse()
+    return { s, destino, cFiles, cLines, backend, subjects }
+  }
+
+  it('traz só os arquivos escolhidos de um commit e cria o commit com a mensagem pedida', async () => {
+    const { s, destino, cFiles, backend, subjects } = await fixtures()
+    const result = (await backend.invoke('app:applyAcross', [
+      s.repo.root,
+      destino.repo.root,
+      { kind: 'files', shas: [cFiles], paths: ['um.txt'], mode: 'changes', options: { commitMessage: 'só o um' } }
+    ])) as OperationResult
+    expect(result).toMatchObject({ ok: true, conflicts: [] })
+    expect(readFileSync(join(destino.dir, 'um.txt'), 'utf8')).toBe('um\n')
+    expect(existsSync(join(destino.dir, 'dois.txt'))).toBe(false)
+    expect(await subjects()).toEqual(['base destino', 'só o um'])
+    // A origem não foi tocada.
+    expect((await s.repo.status()).unstaged).toEqual([])
+    expect((await s.git('log', '--format=%s')).trim().split('\n')).toHaveLength(3)
+  })
+
+  it('sem mensagem, deixa os arquivos no stage do destino', async () => {
+    const { s, destino, cFiles, backend } = await fixtures()
+    await backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, { kind: 'files', shas: [cFiles], paths: ['dois.txt'], mode: 'version' }])
+    expect((await destino.repo.status()).staged.map((f) => f.path)).toEqual(['dois.txt'])
+  })
+
+  it('traz só as linhas escolhidas de um arquivo', async () => {
+    const { s, destino, cLines, backend } = await fixtures()
+    const [file] = await s.repo.diff({ kind: 'commit', sha: cLines, path: 'doc.txt' })
+    const keys = changeKeys(file)
+    expect(keys.length).toBeGreaterThanOrEqual(4)
+    // Só a mudança da linha "b": as duas primeiras chaves (a remoção de "b" e a adição de "B").
+    const first = keys.slice(0, 2)
+    const result = (await backend.invoke('app:applyAcross', [
+      s.repo.root,
+      destino.repo.root,
+      { kind: 'lines', source: { kind: 'commit', sha: cLines }, path: 'doc.txt', lines: first, options: { commitMessage: 'linha b' } }
+    ])) as OperationResult
+    expect(result.ok).toBe(true)
+    const text = readFileSync(join(destino.dir, 'doc.txt'), 'utf8')
+    expect(text).toContain('B\n')
+    expect(text).toContain('h\n')
+    expect(text).not.toContain('H\n')
+  })
+
+  it('as mesmas proteções do cherry-pick de commits: destino sujo, sem branch e com operação em andamento', async () => {
+    const { s, destino, cFiles, cLines, backend } = await fixtures()
+    const files = { kind: 'files', shas: [cFiles], paths: ['um.txt'], mode: 'changes' }
+    const lines = { kind: 'lines', source: { kind: 'commit', sha: cLines }, path: 'doc.txt', lines: ['x'] }
+
+    destino.write('base.txt', 'sujo\n')
+    await expect(backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, files])).rejects.toThrow(/não foram commitadas/)
+    await expect(backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, lines])).rejects.toThrow(/não foram commitadas/)
+    // Nenhum objeto da origem foi trazido.
+    await expect(destino.git('cat-file', '-e', cFiles)).rejects.toThrow()
+    await destino.git('checkout', '--', 'base.txt')
+
+    await destino.git('checkout', '--detach')
+    await expect(backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, files])).rejects.toThrow(/sem branch/)
+    await destino.git('checkout', 'main')
+
+    await expect(backend.invoke('app:applyAcross', [destino.repo.root, destino.repo.root, files])).rejects.toThrow(/diferentes/)
+  })
+
+  it('pedidos mal formados são recusados sem tocar em nada', async () => {
+    const { s, destino, backend } = await fixtures()
+    const head = (await destino.git('rev-parse', 'HEAD')).trim()
+    await expect(backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, { kind: 'banana' }])).rejects.toThrow()
+    await expect(backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, undefined])).rejects.toThrow()
+    await expect(backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, { kind: 'files', shas: [], paths: [], mode: 'changes' }])).rejects.toThrow()
+    await expect(backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, { kind: 'files', shas: ['--upload-pack=x'], paths: ['a'], mode: 'changes' }])).rejects.toThrow()
+    await expect(backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, { kind: 'lines', source: { kind: 'staged' }, path: 'a', lines: ['x'] }])).rejects.toThrow()
+    await expect(backend.invoke('app:applyAcross', ['/nao/aberto', destino.repo.root, { kind: 'commits', shas: ['a'] }])).rejects.toThrow(/não está aberto/)
+    expect((await destino.git('rev-parse', 'HEAD')).trim()).toBe(head)
+  })
+
+  it('o kind "commits" faz o mesmo que cherryPickAcross', async () => {
+    const { s, destino, cFiles, backend, subjects } = await fixtures()
+    const result = (await backend.invoke('app:applyAcross', [s.repo.root, destino.repo.root, { kind: 'commits', shas: [cFiles] }])) as OperationResult
+    expect(result.ok).toBe(true)
+    expect(await subjects()).toEqual(['base destino', 'dois arquivos'])
   })
 })

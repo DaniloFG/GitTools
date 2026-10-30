@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getSession } from '../repoSession'
 import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../shared/types'
 import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
 import { useActions } from '../actions'
@@ -98,9 +99,12 @@ function MultiSelection({ shas }: { shas: string[] }) {
 }
 
 function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) {
-  const { toast, openFileView, openDiffWindow, openInEditor, showMenu } = useApp()
+  const { toast, openFileView, openDiffWindow, openInEditor, showMenu, repo } = useApp()
   const actions = useActions()
   const head = actions.head
+  /** Arquivo aberto neste commit, lembrado ao navegar para outra tela ou aba de repositório e voltar. */
+  const remembered = getSession(repo.root).ui.panes
+  const rememberKey = `commit.file:${sha}`
   const [details, setDetails] = useState<CommitDetails | null>(null)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [active, setActive] = useState<ChangedFile | null>(null)
@@ -112,11 +116,18 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     git.commitDetails(sha).then(
       (d) => {
         setDetails(d)
-        setActive(d.files[0] ?? null)
+        setActive(d.files.find((f) => f.path === remembered.get(rememberKey)) ?? d.files[0] ?? null)
       },
       (e) => toast('error', errorMessage(e))
     )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sha, toast])
+
+  useEffect(() => {
+    // Só grava o arquivo de agora quando ele é deste commit (ao trocar de commit, o `active` ainda é o do anterior).
+    if (active && details?.sha === sha && details.files.includes(active)) remembered.set(rememberKey, active.path)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, details, sha])
 
   /** Mostra o diff do arquivo no painel do diff (trazendo-o à frente, se estiver escondido). */
   const showDiff = (file: ChangedFile) => {

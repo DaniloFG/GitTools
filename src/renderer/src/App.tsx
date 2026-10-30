@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import type { OpenRepositories, RepoInfo } from '../../shared/types'
 import type { RecentRepo } from '../../shared/api'
-import { applySettings, resolveLocale } from './appearance'
+import { applyDateFormat, applySettings, resolveLocale } from './appearance'
 import { insideVsCode } from './vscodeBridge'
 import {
   AppContext,
@@ -44,16 +44,17 @@ import { RepoTabs } from './components/RepoTabs'
 import { Dock, type ViewMeta } from './components/Dock'
 import { installCopy } from './copy'
 import { errorMessage, shortSha } from './format'
-import { gitCalls, git, setActiveRoot } from './git'
+import { gitCalls, gitFor, gitInBackground, markChanged, readCache, setActiveRoot } from './git'
 import { draftPaths } from './editorDrafts'
 import { getLocale, setLocale, t, type MessageKey } from './i18n'
 import { resetLayout as clearLayout, useLayout } from './layout'
-import { historySignature, mergeData, type LogCache } from './stable'
+import { historySignature, mergeData } from './stable'
+import { dropSession, getSession, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
 import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
 import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
 import { openScreen, useDock, useScreen } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
-import { PaneSlot, WhenShown } from './slots'
+import { PaneSlot, WhenShown, useAnyShown } from './slots'
 import {
   cycleIndex,
   normalizeRoot,
@@ -82,6 +83,11 @@ const COMPARE_VIEWS: ViewId[] = ['compare.setup', 'compare.files', 'compare.diff
 
 /** Nenhum painel atingido (valor fixo, para o contexto não mudar a cada desenho quando não há operação). */
 const NO_VIEWS: readonly ViewId[] = []
+
+/** Painéis que usam o histórico de commits (o de branches usa as cores do grafo). */
+const LOG_VIEWS: ViewId[] = ['history', 'branches']
+/** Painéis que listam os stashes. */
+const STASH_VIEWS: ViewId[] = ['stashes']
 
 /** Texto do trabalho em aberto ("3 alterações não commitadas, uma operação em andamento"). */
 function describeWork(work: UnsavedReason[]): string {
@@ -133,6 +139,7 @@ export function App() {
   const locale = resolveLocale(effective, systemLocales)
   // O idioma precisa estar ativo antes de os componentes renderizarem seus textos.
   if (getLocale() !== locale) setLocale(locale)
+  applyDateFormat(effective, systemLocales)
 
   useEffect(() => {
     applySettings(effective, locale)
@@ -166,9 +173,15 @@ export function App() {
   )
 
   const commit = useCallback((next: OpenRepositories) => {
+    const roots = new Set(next.repos.map((r) => r.root))
+    // Repositório fechado: esquece a sessão (dados e tela) e as leituras guardadas dele.
+    for (const { root } of openedRef.current.repos) {
+      if (roots.has(root)) continue
+      dropSession(root)
+      readCache.drop(root)
+    }
     openedRef.current = next
     setOpened(next)
-    const roots = new Set(next.repos.map((r) => r.root))
     setSummaries((prev) => {
       const kept = Object.entries(prev).filter(([root]) => roots.has(root))
       return kept.length === Object.keys(prev).length ? prev : Object.fromEntries(kept)
@@ -178,7 +191,8 @@ export function App() {
   /** Atualiza o resumo de um repositório (branch, alterações, conflito, operação) sem trocar para ele. */
   const refreshSummary = useCallback(async (root: string) => {
     try {
-      const [status, operation] = await Promise.all([window.gittools.invokeOn(root, 'status'), window.gittools.invokeOn(root, 'operationState')])
+      const background = gitInBackground(root)
+      const [status, operation] = await Promise.all([background.status(), background.operationState()])
       const next = summarize(status, operation.kind)
       setSummaries((prev) => (JSON.stringify(prev[root]) === JSON.stringify(next) ? prev : { ...prev, [root]: next }))
     } catch {
@@ -307,6 +321,18 @@ export function App() {
     [askConfirm, transition]
   )
 
+  /**
+   * O ponteiro parou sobre a aba de outro repositório: lê o básico dele em segundo plano (poucas leituras por vez),
+   * e a troca de aba acha tudo no cache. Repositório já em dia não é lido.
+   */
+  const warm = useCallback((root: string) => {
+    if (root === openedRef.current.active || transitioning.current) return
+    const session = peekSession(root)
+    if (session?.data && session.loaded && session.loaded.generation === readCache.generation(root)) return
+    const background = gitInBackground(root)
+    void Promise.all([background.status(true), background.refs(), background.operationState()]).catch(() => undefined)
+  }, [])
+
   const cycle = useCallback(
     (delta: 1 | -1) => {
       const { repos, active } = openedRef.current
@@ -365,6 +391,8 @@ export function App() {
         toast('error', prefixToast(errorMessage(error), target.name, true))
       } finally {
         setCrossBusy(null)
+        // O cherry-pick entre repositórios não passa pelo proxy do git: avisa o cache de que o destino mudou.
+        markChanged(source.root, target.root)
         void refreshAll([source.root, target.root])
       }
     },
@@ -405,9 +433,13 @@ export function App() {
     () =>
       window.gittools.onRepositoryChanged((root) => {
         if (root !== undefined) {
+          // Mudou por fora (ou por outra aba): o que estava guardado deste repositório deixa de valer.
+          readCache.invalidate(root)
           if (openedRef.current.repos.some((r) => r.root === root)) void refreshSummary(root)
           return
         }
+        // A janela voltou a ter foco: qualquer repositório pode ter mudado na pasta de trabalho.
+        readCache.invalidateAll()
         void refreshAll()
         if (transitioning.current) return
         void window.gittools.openRepositories().then((next) => {
@@ -518,6 +550,7 @@ export function App() {
           onMenu={tabMenu}
           onAdd={(e) => void addMenu(e)}
           onDropCommits={(target, shas) => void applyAcross(activeRepo.root, target, shas)}
+          onWarm={warm}
         />
         <RepoView
           key={activeRepo.root}
@@ -577,14 +610,18 @@ interface RepoViewProps {
 function RepoView({ repo, several, workspace, settings, notify, appModalOpen, openSettings, openShortcuts }: RepoViewProps) {
   // As chamadas do proxy `git` passam a ir para este repositório (ver git.ts).
   setActiveRoot(repo.root)
-  const [data, setData] = useState<RepoData | null>(null)
+  /** Sessão do repositório: sobrevive à troca de aba e devolve os dados e a tela como estavam (ver repoSession.ts). */
+  const session = getSession(repo.root)
+  /** Chamadas presas a este repositório: uma leitura em andamento nunca termina no repositório de outra aba. */
+  const gitOn = useMemo(() => gitFor(repo.root), [repo.root])
+  const [data, setData] = useState<RepoData | null>(() => session.data)
   const [dock, setDock] = useDock()
   const [screen] = useScreen()
   const [changesMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
-  const [scope, setScope] = useState<HistoryScope>({ kind: 'all' })
-  const [selected, setSelected] = useState<string[]>([])
-  const [fileFocus, setFileFocus] = useState<FileFocus | null>(null)
-  const [wipFocus, setWipFocus] = useState<WipFocus | null>(null)
+  const [scope, setScope] = useState<HistoryScope>(() => session.ui.scope)
+  const [selected, setSelected] = useState<string[]>(() => session.ui.selected)
+  const [fileFocus, setFileFocus] = useState<FileFocus | null>(() => session.ui.fileFocus)
+  const [wipFocus, setWipFocus] = useState<WipFocus | null>(() => session.ui.wipFocus)
   /** Operação em andamento: o rótulo e os painéis que ela atinge (ver `run`). */
   const [operation, setOperation] = useState<{ label: string; scope: readonly ViewId[] } | null>(null)
   const busy = operation?.label ?? null
@@ -596,16 +633,34 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [studio, setStudio] = useState<StudioRequest | null>(null)
   const [conflict, setConflict] = useState<string | null>(null)
-  const [compare, setCompare] = useState<CompareRequest>({})
-  const [filePath, setFilePath] = useState<string | null>(null)
+  const [compare, setCompare] = useState<CompareRequest>(() => session.ui.compare)
+  const [filePath, setFilePath] = useState<string | null>(() => session.ui.filePath)
   const [rebaseFrom, setRebaseFrom] = useState<string | null>(null)
   /** A tela de Dashboards está aberta (no lugar dos painéis, que continuam montados por trás). */
   const [dashboardsOpen, setDashboards] = useState(false)
-  const refreshing = useRef<Promise<void> | null>(null)
-  const refreshAgain = useRef(false)
-  const logCache = useRef<LogCache | null>(null)
   const scopeRef = useRef(scope)
   scopeRef.current = scope
+
+  // O que o usuário estava vendo volta igual ao retornar a esta aba.
+  useEffect(() => {
+    Object.assign(session.ui, { scope, selected, fileFocus, wipFocus, compare, filePath })
+  }, [session, scope, selected, fileFocus, wipFocus, compare, filePath])
+
+  // Poucas sessões guardam dados ao mesmo tempo; as mais antigas voltam a ser lidas ao serem abertas.
+  useEffect(() => {
+    trimSessions(repo.root)
+  }, [repo.root])
+
+  /**
+   * Só o que está na tela é carregado. O histórico serve ao painel Histórico e às cores das branches; os stashes,
+   * ao painel Stashes e aos dashboards. Status, branches, tags e operação sempre vêm (as abas e as demais telas
+   * dependem deles). Quando um painel aparece, a leitura que faltava é feita na hora (ver `ensureFresh`).
+   */
+  const logShown = useAnyShown(LOG_VIEWS)
+  const stashesShown = useAnyShown(STASH_VIEWS) || dashboardsOpen
+  const wants = useMemo<Wants>(() => ({ log: logShown, stashes: stashesShown }), [logShown, stashesShown])
+  const wantsRef = useRef(wants)
+  wantsRef.current = wants
 
   /** Avisos desta aba: citam o repositório quando há mais de um aberto. */
   const toast = useCallback(
@@ -644,20 +699,24 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
   }, [toast, askConfirm])
 
   /**
-   * Baixa o estado do repositório. Só um refresh roda por vez: pedidos que chegam no meio (foco da janela,
-   * alteração na pasta .git, fim de uma operação) viram uma única nova rodada, em vez de várias em paralelo.
-   * O histórico só é baixado de novo se algo mudou de lugar (ver `historySignature`).
+   * Baixa o estado do repositório (passando pelo cache de leituras: o que não mudou desde a última vez não chama o
+   * git). O histórico só é baixado de novo se algo mudou de lugar (ver `historySignature`) e só se estiver na tela.
    */
   const load = useCallback(async () => {
     try {
       const s = scopeRef.current
-      const [status, branches, tags, stashes, operation] = await Promise.all([
-        git.status(true),
-        git.branches(),
-        git.tags(),
-        git.stashes(),
-        git.operationState()
+      const prev = session.data
+      // Primeira leitura: traz o histórico mesmo que o painel ainda não tenha aparecido (os painéis se encaixam depois do primeiro desenho).
+      const needs: Wants = { log: wantsRef.current.log || prev === null, stashes: wantsRef.current.stashes }
+      // Geração anotada antes de ler: se algo mudar durante a leitura, o resultado já nasce como "stale".
+      const generation = readCache.generation(repo.root)
+      const [status, refs, operation, stashes] = await Promise.all([
+        gitOn.status(true),
+        gitOn.refs(),
+        gitOn.operationState(),
+        needs.stashes ? gitOn.stashes() : Promise.resolve(prev?.stashes ?? [])
       ])
+      const { branches, tags } = refs
       // Uma branch marcada que foi excluída ou renomeada sai do filtro (o novo escopo dispara outra leitura).
       const names = new Set(branches.map((b) => b.name))
       const marked = checkedRefs(s)
@@ -665,54 +724,96 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
         setScope(scopeOfRefs(marked.filter((name) => names.has(name))))
         return
       }
-      const key = historySignature(scopeKey(s), status, branches, tags)
-      let log = logCache.current?.key === key ? logCache.current.log : null
-      if (!log) {
-        log = await git.log(scopeLogOptions(s)).catch((e) => {
-          toast('error', errorMessage(e))
-          return null
-        })
-        if (log) logCache.current = { key, log }
-        else log = logCache.current?.log ?? []
+      let log = prev?.log ?? []
+      if (needs.log) {
+        const key = historySignature(scopeKey(s), status, branches, tags)
+        const cached = session.logCache?.key === key ? session.logCache.log : null
+        if (cached) log = cached
+        else {
+          const fetched = await gitOn.log(scopeLogOptions(s)).catch((e) => {
+            toast('error', errorMessage(e))
+            return null
+          })
+          if (fetched) session.logCache = { key, log: fetched }
+          log = fetched ?? session.logCache?.log ?? []
+        }
       }
-      const next = { status, branches, tags, stashes, log, operation }
-      setData((prev) => mergeData(prev, next))
+      session.data = mergeData(session.data, { status, branches, tags, stashes, log, operation })
+      session.loaded = { generation, scopeKey: scopeKey(s), log: needs.log, stashes: needs.stashes }
+      setData(session.data)
     } catch (error) {
       toast('error', errorMessage(error))
     }
-  }, [toast])
+  }, [session, gitOn, repo.root, toast])
 
-  const refresh = useCallback((): Promise<void> => {
-    if (refreshing.current) {
-      refreshAgain.current = true
-      return refreshing.current
+  /**
+   * Só uma leitura roda por vez por repositório, mesmo que a aba suma e volte: pedidos que chegam no meio (foco da
+   * janela, alteração na pasta .git, fim de uma operação) viram uma única nova rodada, em vez de várias em paralelo.
+   */
+  const runLoad = useCallback((): Promise<void> => {
+    if (session.inflight) {
+      session.again = true
+      return session.inflight
     }
     const round = (async () => {
       try {
         do {
-          refreshAgain.current = false
+          session.again = false
           await load()
-        } while (refreshAgain.current)
+        } while (session.again)
       } finally {
-        refreshing.current = null
+        session.inflight = null
       }
     })()
-    refreshing.current = round
+    session.inflight = round
     return round
-  }, [load])
+  }, [session, load])
 
+  /** Leitura que decide sozinha se é preciso: dados em dia não chamam o git; dados velhos aparecem e são relidos por trás. */
+  const ensureFresh = useCallback(async () => {
+    // Poucas voltas: se o repositório não para de mudar, cada aviso dele já agenda a sua própria leitura.
+    for (let turn = 0; turn < 3; turn++) {
+      const state = sessionState({
+        hasData: session.data !== null,
+        loaded: session.loaded,
+        loading: session.inflight !== null,
+        generation: readCache.generation(repo.root),
+        scopeKey: scopeKey(scopeRef.current),
+        wants: wantsRef.current
+      })
+      const plan = planFor(state)
+      if (plan === 'use-cached') {
+        if (session.data) setData(session.data)
+        return
+      }
+      if (plan === 'wait') await session.inflight
+      else await runLoad()
+    }
+  }, [session, repo.root, runLoad])
+
+  /** Atualização pedida (depois de uma operação, de um aviso do git…): invalida as leituras guardadas e lê de novo. */
+  const refresh = useCallback((): Promise<void> => {
+    readCache.invalidate(repo.root)
+    return runLoad()
+  }, [repo.root, runLoad])
+
+  // Ao abrir a aba, ao mudar o filtro de branches ou quando um painel novo aparece: lê só o que falta.
   useEffect(() => {
-    void refresh()
-  }, [repo.root, scope, refresh])
+    void ensureFresh()
+  }, [repo.root, scope, wants, ensureFresh])
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null
-    return window.gittools.onRepositoryChanged((root) => {
+    const off = window.gittools.onRepositoryChanged((root) => {
       // Mudança em outro repositório não mexe nos dados desta aba (o indicador dela fica no nível do app).
       if (root !== undefined && root !== repo.root) return
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => void refresh(), 150)
     })
+    return () => {
+      if (timer) clearTimeout(timer)
+      off()
+    }
   }, [repo.root, refresh])
 
   /**

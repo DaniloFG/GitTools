@@ -7,6 +7,7 @@ const bridge: GitToolsBridge = {
   switchRepository: (root) => ipcRenderer.invoke('app:switchRepository', root),
   closeRepository: (root) => ipcRenderer.invoke('app:closeRepository', root),
   cherryPickAcross: (sourceRoot, targetRoot, shas, options) => ipcRenderer.invoke('app:cherryPickAcross', sourceRoot, targetRoot, shas, options),
+  applyAcross: (sourceRoot, targetRoot, request) => ipcRenderer.invoke('app:applyAcross', sourceRoot, targetRoot, request),
   currentRepository: () => ipcRenderer.invoke('app:currentRepository'),
   initRepository: () => ipcRenderer.invoke('app:initRepository'),
   recentRepositories: () => ipcRenderer.invoke('app:recentRepositories'),
