@@ -38,9 +38,18 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
   )
   const changed = JSON.stringify(draft) !== JSON.stringify(settings)
 
-  const save = async () => {
-    await onSave(draft)
-    onClose()
+  const [applying, setApplying] = useState(false)
+
+  /** Grava as configurações; com `close`, fecha a tela em seguida. "Aplicar" grava e a mantém aberta (para seguir mexendo). */
+  const commit = async (close: boolean) => {
+    setApplying(true)
+    try {
+      await onSave(draft)
+      if (close) onClose()
+      else window.dispatchEvent(new CustomEvent('gittools:toast', { detail: { kind: 'success', text: t('settings.applied') } }))
+    } finally {
+      setApplying(false)
+    }
   }
 
   return (
@@ -53,8 +62,11 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
           <span className="footer-summary">
             {errors.length > 0 ? <span className="warning-text">{t(errors[0].error)}</span> : changed ? t('settings.unsaved') : ''}
           </span>
-          <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" disabled={errors.length > 0 || !changed} onClick={save}>
+          <button onClick={onClose}>{changed ? t('common.cancel') : t('common.close')}</button>
+          <button disabled={errors.length > 0 || !changed || applying} title={t('settings.applyHelp')} onClick={() => void commit(false)}>
+            {t('settings.apply')}
+          </button>
+          <button className="primary" disabled={errors.length > 0 || !changed || applying} title={t('settings.saveHelp')} onClick={() => void commit(true)}>
             {t('common.save')}
           </button>
         </>

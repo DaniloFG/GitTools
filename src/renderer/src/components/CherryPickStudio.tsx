@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { BranchCommit, ChangedFile, DiffSource, FileApplyMode, FileDiff, LineKey, OperationResult } from '../../../shared/types'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { BranchCommit, BranchInfo, ChangedFile, CrossApply, DiffSource, FileApplyMode, FileDiff, LineKey, OperationResult } from '../../../shared/types'
 import { currentBranch, useApp, type StudioRequest } from '../context'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t, type MessageKey } from '../i18n'
-import { git } from '../git'
+import { gitFor, markChanged } from '../git'
 import { DiffView, useFullFile } from './DiffView'
 import { Modal } from './Modal'
 import { ResizableBox } from './ResizableBox'
@@ -24,11 +24,26 @@ const MODES: { id: Mode; label: MessageKey; help: MessageKey }[] = [
 /** Valor especial de origem: commits escolhidos no histórico, sem branch de origem. */
 const SELECTION = '\u0000selection'
 
+/** Quantos commits de uma branch de outro repositório são listados (os mais recentes). */
+const CROSS_LIMIT = 300
+
 export function CherryPickStudio({ request, onClose }: { request: StudioRequest; onClose(): void }) {
-  const { data, run, toast } = useApp()
+  const { data, run, toast, repo, workspace } = useApp()
   const head = currentBranch(data)
-  const local = data.branches.filter((b) => !b.remote)
   const fromSelection = !!request.commits?.length && !request.source
+
+  /**
+   * Repositório de onde vêm os commits. Sendo outro repositório aberto, o destino é sempre a branch atual deste, e as
+   * leituras vão ao repositório de origem (que não é alterado). Padrão: este mesmo repositório.
+   */
+  const [sourceRoot, setSourceRoot] = useState(repo.root)
+  const cross = sourceRoot !== repo.root
+  const sourceRepo = workspace.repos.find((r) => r.root === sourceRoot) ?? repo
+  const src = useMemo(() => gitFor(sourceRoot), [sourceRoot])
+  /** Branches do outro repositório (as deste vêm de `data`). */
+  const [otherBranches, setOtherBranches] = useState<BranchInfo[] | null>(null)
+  const sourceBranches = cross ? (otherBranches ?? []) : data.branches
+  const local = data.branches.filter((b) => !b.remote)
 
   const [source, setSource] = useState<string>(
     fromSelection ? SELECTION : request.source ?? data.branches.find((b) => b.name !== (request.target ?? head))?.name ?? ''
@@ -50,24 +65,72 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
   const [lineDiff, setLineDiff] = useState<FileDiff | null>(null)
   const [lineSelection, setLineSelection] = useState<Set<LineKey>>(new Set())
 
+  // Trocou o repositório de origem: lê as branches dele (em cache, se já foram lidas) e começa pela atual.
+  const firstSourceRoot = useRef(true)
+  useEffect(() => {
+    const first = firstSourceRoot.current
+    firstSourceRoot.current = false
+    if (!cross) {
+      setOtherBranches(null)
+      // Voltou a este repositório: começa por uma branch daqui (a do outro repositório pode nem existir).
+      if (!first) {
+        setSource(data.branches.find((b) => b.name !== head)?.name ?? '')
+        setTarget(head ?? local[0]?.name ?? '')
+      }
+      return
+    }
+    let cancelled = false
+    setOtherBranches(null)
+    setCommits(null)
+    src.branches().then(
+      (list) => {
+        if (cancelled) return
+        setOtherBranches(list)
+        setSource((list.find((b) => b.current) ?? list.find((b) => !b.remote) ?? list[0])?.name ?? '')
+        // O destino é sempre a branch atual deste repositório; "Branch inteira" não existe entre repositórios.
+        setTarget(head ?? '')
+        setMode((m) => (m === 'branch' ? 'commits' : m))
+      },
+      (e) => {
+        if (cancelled) return
+        setOtherBranches([])
+        toast('error', errorMessage(e))
+      }
+    )
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceRoot])
+
   // Carrega os commits candidatos.
   useEffect(() => {
     setCommits(null)
+    // Esperando as branches do outro repositório: o carregamento continua até elas chegarem.
+    if (cross && otherBranches === null) return
     let cancelled = false
     const load = async (): Promise<BranchCommit[]> => {
+      if (cross) {
+        // Outro repositório: os commits mais recentes da branch escolhida, sem marcar nenhum (nada é trazido sem ser escolhido).
+        if (!source) return []
+        const list = await src.log({ ref: source, limit: CROSS_LIMIT })
+        return list.map((c) => ({ ...c, alreadyApplied: false }))
+      }
       if (source === SELECTION) {
-        const details = await Promise.all(request.commits!.map((sha) => git.commitDetails(sha)))
+        const details = await Promise.all(request.commits!.map((sha) => src.commitDetails(sha)))
         return details.sort((a, b) => b.date - a.date).map((d) => ({ ...d, alreadyApplied: false }))
       }
       if (!source || !target || source === target) return []
-      return git.branchCommits(source, target)
+      return src.branchCommits(source, target)
     }
     load().then(
       (list) => {
         if (cancelled) return
         setCommits(list)
-        const preset = request.commits?.length ? new Set(request.commits) : null
-        setChecked(new Set(list.filter((c) => (preset ? preset.has(c.sha) : !c.alreadyApplied)).map((c) => c.sha)))
+        const preset = request.commits?.length && !cross ? new Set(request.commits) : null
+        setChecked(
+          cross ? new Set() : new Set(list.filter((c) => (preset ? preset.has(c.sha) : !c.alreadyApplied)).map((c) => c.sha))
+        )
       },
       (e) => {
         if (cancelled) return
@@ -78,7 +141,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
     return () => {
       cancelled = true
     }
-  }, [source, target, request.commits, toast])
+  }, [source, target, request.commits, toast, cross, src, otherBranches])
 
   const chosen = useMemo(() => (commits ?? []).filter((c) => checked.has(c.sha)), [commits, checked])
   const pending = (commits ?? []).filter((c) => !c.alreadyApplied)
@@ -91,7 +154,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
       return
     }
     let cancelled = false
-    git.filesChangedBy(chosen.map((c) => c.sha)).then(
+    src.filesChangedBy(chosen.map((c) => c.sha)).then(
       (list) => {
         if (cancelled) return
         setFiles(list)
@@ -103,7 +166,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
     return () => {
       cancelled = true
     }
-  }, [mode, chosen, toast])
+  }, [mode, chosen, toast, src])
 
   // Diferença usada no modo "Linhas": um commit, ou do pai do mais antigo até o mais novo marcado.
   const [fullFile] = useFullFile()
@@ -121,19 +184,19 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
     setLineSelection(new Set())
     if (mode !== 'lines' || !lineSource || !linePath) return
     let cancelled = false
-    git.diff({ ...lineSource, path: linePath }).then(
+    src.diff({ ...lineSource, path: linePath }).then(
       (list) => !cancelled && setLineDiff(list.find((f) => f.path === linePath) ?? list[0] ?? null),
       (e) => !cancelled && toast('error', errorMessage(e))
     )
     return () => {
       cancelled = true
     }
-  }, [mode, lineSource, linePath, toast])
+  }, [mode, lineSource, linePath, toast, src])
 
   // Mensagem de commit sugerida.
   useEffect(() => {
     if (messageTouched) return
-    const origin = source === SELECTION ? t('studio.selectedCommits') : source
+    const origin = source === SELECTION ? t('studio.selectedCommits') : cross ? `${sourceRepo.name}:${source}` : source
     if (chosen.length === 1) {
       const note =
         mode === 'lines'
@@ -145,10 +208,10 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
         `${t('messages.partialFrom', { origin })}\n\n${t('messages.sourceCommits')}\n${chosen.map((c) => `- ${shortSha(c.sha)} ${c.subject}`).join('\n')}`
       )
     }
-  }, [chosen, mode, linePath, source, messageTouched])
+  }, [chosen, mode, linePath, source, messageTouched, cross, sourceRepo.name])
 
   const targetIsHead = target === head
-  const sourceLabel = source === SELECTION ? t('studio.selectedCommits') : source
+  const sourceLabel = source === SELECTION ? t('studio.selectedCommits') : cross ? `${sourceRepo.name}:${source}` : source
 
   const finish = (result: OperationResult | undefined) => {
     if (result) onClose()
@@ -156,21 +219,44 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
 
   const apply = async () => {
     const commitMessage = autoCommit && message.trim() ? message : undefined
+    if (cross) {
+      // De outro repositório aberto: o backend confere o destino (branch, operação, alterações) antes de tocar em qualquer coisa.
+      const shas = chosen.map((c) => c.sha)
+      let request: CrossApply | null = null
+      if (mode === 'commits') request = { kind: 'commits', shas, options: { recordOrigin, noCommit } }
+      else if (mode === 'files') {
+        const paths = files.filter((f) => checkedFiles.has(f.path)).flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]))
+        request = { kind: 'files', shas, paths, mode: fileMode, options: { commitMessage } }
+      } else if (lineSource && lineDiff) request = { kind: 'lines', source: lineSource, path: lineDiff.path, lines: [...lineSelection], options: { commitMessage } }
+      if (!request) return
+      const label = mode === 'files' ? t('busy.applyingFiles') : mode === 'lines' ? t('busy.applyingLines') : t('busy.cherryPick')
+      finish(
+        await run(label, async () => {
+          try {
+            return await window.gittools.applyAcross(sourceRoot, repo.root, request!)
+          } finally {
+            // Não passa pelo proxy do git: avisa o cache de que o destino mudou.
+            markChanged(repo.root)
+          }
+        })
+      )
+      return
+    }
     if (mode === 'branch') {
-      finish(await run(t('busy.cherryPickFrom', { ref: source }), () => git.cherryPickBranch(source, target, { recordOrigin })))
+      finish(await run(t('busy.cherryPickFrom', { ref: source }), () => gitFor(repo.root).cherryPickBranch(source, target, { recordOrigin })))
     } else if (mode === 'commits') {
-      finish(await run(t('busy.cherryPick'), () => git.cherryPickCommits(target, chosen.map((c) => c.sha), { recordOrigin, noCommit })))
+      finish(await run(t('busy.cherryPick'), () => gitFor(repo.root).cherryPickCommits(target, chosen.map((c) => c.sha), { recordOrigin, noCommit })))
     } else if (mode === 'files') {
       const paths = files.filter((f) => checkedFiles.has(f.path)).flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]))
       finish(
         await run(t('busy.applyingFiles'), () =>
-          git.cherryPickFiles(target, chosen.map((c) => c.sha), paths, fileMode, { commitMessage })
+          gitFor(repo.root).cherryPickFiles(target, chosen.map((c) => c.sha), paths, fileMode, { commitMessage })
         )
       )
     } else if (lineSource && lineDiff) {
       finish(
         await run(t('busy.applyingLines'), () =>
-          git.cherryPickLines(target, lineSource, lineDiff.path, [...lineSelection], { commitMessage })
+          gitFor(repo.root).cherryPickLines(target, lineSource, lineDiff.path, [...lineSelection], { commitMessage })
         )
       )
     }
@@ -180,7 +266,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
     !!target &&
     commits !== null &&
     (mode === 'branch'
-      ? source !== SELECTION && pending.length > 0
+      ? !cross && source !== SELECTION && pending.length > 0
       : mode === 'commits'
         ? chosen.length > 0
         : mode === 'files'
@@ -224,20 +310,41 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
       }
     >
       <div className="studio">
+        {workspace.repos.length > 1 && (
+          <div className="studio-branches studio-repos">
+            <label className="field inline">
+              <span>{t('studio.sourceRepository')}</span>
+              <select value={sourceRoot} onChange={(e) => {
+                setSourceRoot(e.target.value)
+                setMessageTouched(false)
+                setCheckedFiles(new Set())
+              }}>
+                {workspace.repos.map((r) => (
+                  <option key={r.root} value={r.root}>
+                    {r.root === repo.root ? t('studio.thisRepository', { name: r.name }) : r.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {cross && <span className="muted small">{t('studio.crossNote', { source: sourceRepo.name, target: repo.name })}</span>}
+          </div>
+        )}
         <div className="studio-branches">
           <label className="field inline">
             <span>{t('studio.source')}</span>
             <select value={source} onChange={(e) => setSource(e.target.value)}>
-              {fromSelection && <option value={SELECTION}>{t('studio.selectedInHistory')}</option>}
+              {fromSelection && !cross && <option value={SELECTION}>{t('studio.selectedInHistory')}</option>}
               <optgroup label={t('studio.localBranches')}>
-                {local.map((b) => (
-                  <option key={b.fullRef} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
+                {sourceBranches
+                  .filter((b) => !b.remote)
+                  .map((b) => (
+                    <option key={b.fullRef} value={b.name}>
+                      {b.name}
+                    </option>
+                  ))}
               </optgroup>
               <optgroup label={t('studio.remoteBranches')}>
-                {data.branches
+                {sourceBranches
                   .filter((b) => b.remote)
                   .map((b) => (
                     <option key={b.fullRef} value={b.name}>
@@ -250,7 +357,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
           <button
             className="icon-button"
             title={t('studio.swap')}
-            disabled={source === SELECTION || !local.some((b) => b.name === source)}
+            disabled={cross || source === SELECTION || !local.some((b) => b.name === source)}
             onClick={() => {
               setSource(target)
               setTarget(source)
@@ -261,8 +368,8 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
           <span className="arrow">→</span>
           <label className="field inline">
             <span>{t('studio.target')}</span>
-            <select value={target} onChange={(e) => setTarget(e.target.value)}>
-              {local.map((b) => (
+            <select value={target} disabled={cross} title={cross ? t('studio.crossTargetHelp') : undefined} onChange={(e) => setTarget(e.target.value)}>
+              {(cross ? local.filter((b) => b.name === head) : local).map((b) => (
                 <option key={b.fullRef} value={b.name}>
                   {b.name}
                   {b.current ? ` ${t('studio.currentSuffix')}` : ''}
@@ -289,9 +396,10 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                 </>
               )}
             </div>
+            {cross && commits && commits.length >= CROSS_LIMIT && <p className="muted small">{t('studio.crossLimit', { count: CROSS_LIMIT })}</p>}
             {commits === null ? (
               <LoaderPane label={t('studio.comparing')} />
-            ) : source === target ? (
+            ) : !cross && source === target ? (
               <p className="empty">{t('studio.sameBranch')}</p>
             ) : commits.length === 0 ? (
               <p className="empty">{t('studio.nothingToBring', { target, source: sourceLabel })}</p>
@@ -323,7 +431,8 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                 <button
                   key={m.id}
                   className={mode === m.id ? 'active' : ''}
-                  disabled={m.id === 'branch' && source === SELECTION}
+                  disabled={m.id === 'branch' && (source === SELECTION || cross)}
+                  title={m.id === 'branch' && cross ? t('studio.crossBranchNote') : undefined}
                   onClick={() => setMode(m.id)}
                 >
                   {t(m.label)}
@@ -331,6 +440,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
               ))}
             </nav>
             <p className="muted">{t(MODES.find((m) => m.id === mode)!.help)}</p>
+            {cross && <p className="muted small">{t('studio.crossBranchNote')}</p>}
 
             {(mode === 'branch' || mode === 'commits') && (
               <div className="studio-options">

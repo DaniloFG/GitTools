@@ -7,6 +7,7 @@ export const BRIDGE_CHANNELS = [
   'app:switchRepository',
   'app:closeRepository',
   'app:cherryPickAcross',
+  'app:applyAcross',
   'app:currentRepository',
   'app:initRepository',
   'app:recentRepositories',

@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { DiffWindowRequest } from '../../../shared/api'
 import { DEFAULT_SETTINGS, type Settings } from '../../../shared/settings'
 import type { FileDiff } from '../../../shared/types'
-import { applySettings, resolveLocale } from '../appearance'
+import { applyDateFormat, applySettings, resolveLocale } from '../appearance'
 import { AppContext, type AppContextValue, type ToastKind } from '../context'
 import { addToast, type Toast } from '../feedback'
 import { errorMessage } from '../format'
-import { git, setActiveRoot } from '../git'
+import { getActiveRoot, git, markChanged, setActiveRoot } from '../git'
 import { getLocale, setLocale, t } from '../i18n'
 import { closeVsCodePanel } from '../vscodeBridge'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
@@ -61,6 +61,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
   settingsRef.current = settings
   const locale = resolveLocale(settings, systemLocales)
   if (getLocale() !== locale) setLocale(locale)
+  applyDateFormat(settings, systemLocales)
 
   useEffect(() => {
     window.gittools.getSettings().then(setSettings, () => undefined)
@@ -79,8 +80,14 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
 
   useEffect(() => {
     load()
-    window.addEventListener('focus', load)
-    return () => window.removeEventListener('focus', load)
+    // Ao voltar para a janela o arquivo pode ter mudado por fora: o que estava guardado deste repositório não vale mais.
+    const onFocus = () => {
+      const root = getActiveRoot()
+      if (root) markChanged(root)
+      load()
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [load])
 
   useEffect(() => {

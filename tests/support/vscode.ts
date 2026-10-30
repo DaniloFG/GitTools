@@ -25,6 +25,8 @@ export const FileType = { File: 1, Directory: 2 }
 export interface FakePanel {
   viewType: string
   title: string
+  /** Ícone mostrado na aba do painel. */
+  iconPath?: Uri | { light: Uri; dark: Uri }
   viewColumn: number
   webview: {
     html: string

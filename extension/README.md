@@ -112,6 +112,9 @@ with just those lines and applies it with `git apply --3way` — keep it staged 
 ## Cherry-pick Studio
 
 One place to pick **commits, files or lines** between any two branches: *Whole branch*, *Commits*, *Files* and *Lines* tabs.
+With more than one repository open, the *Source repository* selector brings commits, files or lines from **another open
+repository** into the current branch — the source is never changed, and nothing is touched unless the destination is on a
+branch with no operation in progress and no uncommitted changes.
 
 ![Cherry-pick Studio with the Lines tab](media/readme/studio.png)
 
@@ -216,8 +219,12 @@ Every shortcut can be changed in **⚙ Settings → Keyboard shortcuts**.
 ## Settings
 
 Open **⚙** in the panel's top bar: language, theme, file icons and change letters (M, A, D…), diff layout and whether
-diffs show only the changed parts or the whole file, notification position and size, your git identity
-(`user.name` / `user.email`, global or per repository) and **remotes** (add, rename, change URL, remove).
+diffs show only the changed parts or the whole file, **date and time format** (ISO `2026-12-31 23:59:59` by default, the system's, 24-hour or 12-hour),
+notification position and size, your git identity (`user.name` / `user.email`, global or per repository) and **remotes**
+(add, rename, change URL, remove, and several push destinations per remote). **Apply** saves and keeps Settings open.
+
+Open repositories are kept in memory per tab: switching tabs, screens and panels does not reload what was already loaded
+(unless the repository changed), and only the panels on screen load their data.
 
 ## Requirements
 

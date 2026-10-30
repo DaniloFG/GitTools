@@ -17,6 +17,8 @@ export function RemotesSection() {
   const [url, setUrl] = useState('')
   const [fetchNow, setFetchNow] = useState(true)
   const [editing, setEditing] = useState<{ name: string; url: string } | null>(null)
+  /** URL de envio digitada para cada remote (campo "adicionar destino de push"). */
+  const [pushDrafts, setPushDrafts] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -78,6 +80,13 @@ export function RemotesSection() {
     if (next && next.trim() !== remote.name) await change(() => git.renameRemote(remote.name, next.trim()), t('remotes.renamed', { name: next.trim() }))
   }
 
+  const addPushUrl = async (remote: RemoteInfo) => {
+    const url = (pushDrafts[remote.name] ?? '').trim()
+    if (await change(() => git.addRemoteUrl(remote.name, url), t('remotes.pushUrlAdded', { name: remote.name }))) setPushDrafts((d) => ({ ...d, [remote.name]: '' }))
+  }
+
+  const removePushUrl = (remote: RemoteInfo, url: string) => change(() => git.removeRemoteUrl(remote.name, url), t('remotes.pushUrlRemoved', { name: remote.name }))
+
   const saveUrl = async () => {
     if (!editing) return
     if (await change(() => git.setRemoteUrl(editing.name, editing.url.trim()), t('remotes.urlChanged', { name: editing.name }))) setEditing(null)
@@ -130,11 +139,39 @@ export function RemotesSection() {
                   {remote.fetchUrl}
                 </code>
               )}
-              {remote.pushUrl && remote.pushUrl !== remote.fetchUrl && (
-                <code className="remote-url muted" dir="ltr" title={t('remotes.pushUrl')}>
-                  ↑ {remote.pushUrl}
-                </code>
-              )}
+              <div className="remote-pushes">
+                <span className="muted small" title={t('remotes.pushUrlsHelp')}>
+                  {t('remotes.pushUrls')}
+                </span>
+                <ul className="remote-push-list">
+                  {remote.pushUrls.map((pushUrl) => (
+                    <li key={pushUrl} className="remote-push">
+                      <code className="remote-url muted" dir="ltr" title={t('remotes.pushUrl')}>
+                        ↑ {pushUrl}
+                      </code>
+                      {!remote.customPush && <span className="muted small">({t('remotes.pushUrlDefault')})</span>}
+                      {remote.customPush && (
+                        <button className="danger subtle" disabled={busy} title={t('remotes.removePushUrl')} aria-label={t('remotes.removePushUrl')} onClick={() => void removePushUrl(remote, pushUrl)}>
+                          ✕
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <div className="field-row">
+                  <input
+                    dir="ltr"
+                    value={pushDrafts[remote.name] ?? ''}
+                    placeholder={t('remotes.addPushUrlPlaceholder')}
+                    aria-label={t('remotes.addPushUrl')}
+                    onChange={(e) => setPushDrafts((d) => ({ ...d, [remote.name]: e.target.value }))}
+                    onKeyDown={(e) => e.key === 'Enter' && (pushDrafts[remote.name] ?? '').trim() && !busy && void addPushUrl(remote)}
+                  />
+                  <button disabled={busy || !(pushDrafts[remote.name] ?? '').trim()} onClick={() => void addPushUrl(remote)}>
+                    {t('remotes.addPushUrl')}
+                  </button>
+                </div>
+              </div>
             </li>
           ))}
         </ul>
