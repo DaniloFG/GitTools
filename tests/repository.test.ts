@@ -249,3 +249,26 @@ describe('tags', () => {
     expect((await t.repo.tags()).map((tag) => tag.name)).toEqual(['v2'])
   })
 })
+
+describe('refs: branches e tags num único comando', () => {
+  it('devolve o mesmo que branches() e tags(), na mesma ordem', async () => {
+    const t = await createRepo()
+    const first = await t.commit('um', { 'a.txt': '1\n' })
+    await t.git('branch', 'feature/x')
+    await t.git('tag', 'leve')
+    await t.commit('dois', { 'a.txt': '2\n' })
+    await t.git('tag', '-a', 'anotada', '-m', 'versão anotada')
+    await t.git('tag', 'v0', first)
+    const refs = await t.repo.refs()
+    expect(refs.branches).toEqual(await t.repo.branches())
+    expect(refs.tags).toEqual(await t.repo.tags())
+    expect(refs.tags.map((tag) => tag.name).sort()).toEqual(['anotada', 'leve', 'v0'])
+    // A tag anotada aponta para o commit (não para o objeto da tag).
+    expect(refs.tags.find((tag) => tag.name === 'anotada')!.sha).toBe((await t.git('rev-parse', 'HEAD')).trim())
+  })
+
+  it('funciona num repositório sem commits', async () => {
+    const t = await createRepo()
+    expect(await t.repo.refs()).toEqual({ branches: [], tags: [] })
+  })
+})

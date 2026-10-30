@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useRef, type CSSProperties } from 'react'
 import type { RepoInfo } from '../../../shared/types'
 import { useDrop } from '../useDrop'
 import { t } from '../i18n'
@@ -15,13 +15,18 @@ interface RepoTabsProps {
   onAdd(event: React.MouseEvent): void
   /** Commits soltos sobre uma aba (de outro repositório, o ativo): pede a confirmação da aplicação. */
   onDropCommits(root: string, shas: string[]): void
+  /** O ponteiro parou sobre a aba de outro repositório: dá tempo de aquecer o que ela vai precisar ao abrir. */
+  onWarm?(root: string): void
 }
+
+/** Quanto tempo o ponteiro precisa ficar sobre a aba para ela ser aquecida (passar o mouse por cima não conta). */
+export const WARM_DELAY_MS = 180
 
 /**
  * Barra de abas dos repositórios abertos. Cada aba tem a cor do repositório (estável), o nome, a branch e os
  * indicadores (alterações, conflito, operação em andamento). Clique troca; clique do meio ou × fecha.
  */
-export function RepoTabs({ repos, active, summaries, onActivate, onClose, onMenu, onAdd, onDropCommits }: RepoTabsProps) {
+export function RepoTabs({ repos, active, summaries, onActivate, onClose, onMenu, onAdd, onDropCommits, onWarm }: RepoTabsProps) {
   return (
     <div className="repo-tabs" role="tablist" aria-label={t('repoTabs.list')}>
       {repos.map((repo) => (
@@ -34,6 +39,7 @@ export function RepoTabs({ repos, active, summaries, onActivate, onClose, onMenu
           onClose={onClose}
           onMenu={onMenu}
           onDropCommits={onDropCommits}
+          onWarm={onWarm}
         />
       ))}
       <button className="repo-tab-add" onClick={onAdd} title={t('repoTabs.addTab')} aria-label={t('repoTabs.addTab')}>
@@ -51,9 +57,16 @@ interface RepoTabProps {
   onClose(root: string): void
   onMenu(event: React.MouseEvent, root: string): void
   onDropCommits(root: string, shas: string[]): void
+  onWarm?(root: string): void
 }
 
-function RepoTab({ repo, isActive, summary, onActivate, onClose, onMenu, onDropCommits }: RepoTabProps) {
+function RepoTab({ repo, isActive, summary, onActivate, onClose, onMenu, onDropCommits, onWarm }: RepoTabProps) {
+  const warmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const stopWarm = () => {
+    if (warmTimer.current) clearTimeout(warmTimer.current)
+    warmTimer.current = null
+  }
+  useEffect(() => stopWarm, [])
   // Só outro repositório aceita commits soltos: o ativo já é a origem deles.
   const drop = useDrop(
     (payload: DragPayload) => payload.type === 'commits' && !isActive,
@@ -73,6 +86,12 @@ function RepoTab({ repo, isActive, summary, onActivate, onClose, onMenu, onDropC
       className={className}
       style={{ '--repo': color } as CSSProperties}
       title={`${repo.root}${isActive ? '' : `\n${t('repoTabs.cross.dropHelp')}`}`}
+      onPointerEnter={() => {
+        if (isActive || !onWarm) return
+        stopWarm()
+        warmTimer.current = setTimeout(() => onWarm(repo.root), WARM_DELAY_MS)
+      }}
+      onPointerLeave={stopWarm}
       onClick={() => !isActive && onActivate(repo.root)}
       onKeyDown={(e) => {
         if ((e.key === 'Enter' || e.key === ' ') && !isActive) {

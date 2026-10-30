@@ -83,6 +83,7 @@ export function installVsCodeBridge(): boolean {
     switchRepository: (root) => call('app:switchRepository', root),
     closeRepository: (root) => call('app:closeRepository', root),
     cherryPickAcross: (sourceRoot, targetRoot, shas, options) => call('app:cherryPickAcross', sourceRoot, targetRoot, shas, options),
+    applyAcross: (sourceRoot, targetRoot, request) => call('app:applyAcross', sourceRoot, targetRoot, request),
     currentRepository: () => call('app:currentRepository'),
     initRepository: () => call('app:initRepository'),
     recentRepositories: () => call('app:recentRepositories'),

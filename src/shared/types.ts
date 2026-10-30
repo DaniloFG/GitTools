@@ -123,6 +123,12 @@ export interface TagInfo {
   sha: string
 }
 
+/** Branches e tags de um repositório, lidas juntas (um único comando git). */
+export interface RepoRefs {
+  branches: BranchInfo[]
+  tags: TagInfo[]
+}
+
 export interface StashInfo {
   ref: string
   index: number
@@ -200,6 +206,15 @@ export interface PartialApplyOptions {
 }
 
 export type FileApplyMode = 'changes' | 'version'
+
+/**
+ * O que trazer de outro repositório aberto para a branch atual do destino: commits inteiros, arquivos de commits
+ * ou linhas de um arquivo. Os objetos vêm pelo fetch; nada é alterado no repositório de origem.
+ */
+export type CrossApply =
+  | { kind: 'commits'; shas: string[]; options?: CherryPickOptions }
+  | { kind: 'files'; shas: string[]; paths: string[]; mode: FileApplyMode; options?: PartialApplyOptions }
+  | { kind: 'lines'; source: DiffSource; path: string; lines: LineKey[]; options?: PartialApplyOptions }
 
 // ------------------------------------------------------------- conflitos
 
@@ -360,7 +375,15 @@ export interface GitCommandEntry {
 export interface RemoteInfo {
   name: string
   fetchUrl: string
+  /** Primeira URL de envio (a mesma de `fetchUrl` quando não há URL de envio própria). */
   pushUrl: string
+  /**
+   * Todas as URLs para onde o push vai. Um remote pode ter várias (espelhos: GitHub e GitLab, por exemplo);
+   * o push envia para todas. Sem URL de envio própria, é só a de `fetchUrl`.
+   */
+  pushUrls: string[]
+  /** O remote tem URLs de envio próprias (ajustadas com `git remote set-url --push`). */
+  customPush: boolean
 }
 
 // --------------------------------------------------------- identidade git

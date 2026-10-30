@@ -10,6 +10,7 @@ import { startResize } from '../resize'
 import { DiffView, useFullFile } from './DiffView'
 import { revealView } from '../dockStore'
 import { PaneSlot, useAnyShown } from '../slots'
+import { useSessionState } from '../useSessionState'
 import { LineStats } from './LineStats'
 import { FileEditor } from './FileEditor'
 import { draftPaths, useDraftsVersion } from '../editorDrafts'
@@ -80,7 +81,7 @@ function FileHeader({ path, title }: { path: string; title: string }) {
 function FilesList({ path, onPath }: { path: string | null; onPath(path: string): void }) {
   const { data, toast, repo } = useApp()
   const [files, setFiles] = useState<string[]>([])
-  const [filter, setFilter] = useState('')
+  const [filter, setFilter] = useSessionState('files.filter', '')
   // Arquivos com alterações ainda não salvas no editor.
   useDraftsVersion()
   const unsaved = new Set(draftPaths(repo.root))

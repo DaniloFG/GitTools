@@ -2,10 +2,15 @@
 
 import type { Settings } from '../../shared/settings'
 import { insideVsCode, vsCodeTheme } from './vscodeBridge'
-import { matchLocale, textDirection, type LocaleId } from './i18n'
+import { matchLocale, setDateFormat, textDirection, type LocaleId } from './i18n'
 
 export function resolveLocale(settings: Settings, systemLocales: readonly string[]): LocaleId {
   return settings.language === 'system' ? matchLocale(systemLocales) : settings.language
+}
+
+/** Passa o formato de datas das configurações ao módulo de textos (chamado a cada desenho, antes de os componentes escreverem datas). */
+export function applyDateFormat(settings: Settings, systemLocales: readonly string[]): void {
+  setDateFormat(settings.dateFormat, systemLocales[0])
 }
 
 /** O tema está claro agora? (Para escolher a variante dos ícones de arquivo.) */

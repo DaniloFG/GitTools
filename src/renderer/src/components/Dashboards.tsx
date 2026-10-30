@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Analytics, GitCommandEntry } from '../../../shared/types'
 import { useApp } from '../context'
-import { errorMessage } from '../format'
+import { errorMessage, fullDate } from '../format'
 import { git } from '../git'
 import { t, formatRelative } from '../i18n'
 import { useLayout } from '../layout'
@@ -193,7 +193,7 @@ export function Dashboards() {
         </div>
         <div className="dash-actions">
           {analytics && (
-            <span className="dash-updated muted small" title={new Date(analytics.generatedAt).toLocaleString()}>
+            <span className="dash-updated muted small" title={fullDate(analytics.generatedAt)}>
               {loading ? <Loader size="sm" label={t('dash.loading')} /> : t('dash.updated', { time: formatRelative(analytics.generatedAt) })}
             </span>
           )}

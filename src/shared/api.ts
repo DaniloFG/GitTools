@@ -16,6 +16,7 @@ import type {
   CommitDetails,
   CommitInfo,
   Comparison,
+  CrossApply,
   ConflictDetails,
   ConflictResolution,
   DiffSource,
@@ -34,6 +35,7 @@ import type {
   RebaseStep,
   RemoteInfo,
   RepoInfo,
+  RepoRefs,
   RepoStatus,
   StashInfo,
   TagInfo
@@ -55,6 +57,8 @@ export interface RepoApi {
   status(withStats?: boolean): Promise<RepoStatus>
   branches(): Promise<BranchInfo[]>
   tags(): Promise<TagInfo[]>
+  /** Branches e tags juntas, num único comando git. */
+  refs(): Promise<RepoRefs>
   stashes(): Promise<StashInfo[]>
   log(options?: LogOptions): Promise<CommitInfo[]>
   commitDetails(sha: string): Promise<CommitDetails>
@@ -121,6 +125,10 @@ export interface RepoApi {
   setRemoteUrl(name: string, url: string): Promise<void>
   renameRemote(name: string, newName: string): Promise<void>
   removeRemote(name: string): Promise<void>
+  /** Acrescenta uma URL de envio ao remote (o push vai para todas as URLs de envio). */
+  addRemoteUrl(name: string, url: string): Promise<void>
+  /** Tira uma URL de envio do remote. */
+  removeRemoteUrl(name: string, url: string): Promise<void>
 
   // Stash
   stash(message?: string): Promise<void>
@@ -159,6 +167,7 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'status',
   'branches',
   'tags',
+  'refs',
   'stashes',
   'log',
   'commitDetails',
@@ -198,6 +207,8 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'setRemoteUrl',
   'renameRemote',
   'removeRemote',
+  'addRemoteUrl',
+  'removeRemoteUrl',
   'stash',
   'stashApply',
   'stashDrop',
@@ -279,6 +290,12 @@ export interface GitToolsBridge {
    * e diferentes). Conflitos voltam em `conflicts`, com a operação em andamento no destino.
    */
   cherryPickAcross(sourceRoot: string, targetRoot: string, shas: string[], options?: CherryPickOptions): Promise<OperationResult>
+  /**
+   * Traz de `sourceRoot` para a branch atual de `targetRoot` (ambos abertos e diferentes) commits, arquivos de
+   * commits ou linhas de um arquivo. Nada é alterado na origem; o destino só muda depois de confirmar que está
+   * numa branch, sem operação em andamento e sem alterações misturáveis.
+   */
+  applyAcross(sourceRoot: string, targetRoot: string, request: CrossApply): Promise<OperationResult>
   /** Repositório ativo (já aberto no processo principal, ex.: passado pela linha de comando). */
   currentRepository(): Promise<RepoInfo | null>
   initRepository(): Promise<RepoInfo | null>

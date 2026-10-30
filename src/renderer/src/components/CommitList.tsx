@@ -13,7 +13,7 @@ import { startReorder, useOrder } from '../reorder'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
 import { git } from '../git'
-import { formatShortDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
+import { dateFormatKey, formatGridDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
 import { graphFor, laneColor, matchesCommit, refName, type GraphRow } from '../graph'
 import { useDrop } from '../useDrop'
 import { FileEntries, FileViewToggle } from './FileList'
@@ -45,7 +45,7 @@ const COLUMN_LABELS: Record<Column, MessageKey> = {
 /** Colunas de largura fixa (a do assunto ocupa o resto); o usuário ajusta arrastando a borda do título. */
 type SizedColumn = 'author' | 'date' | 'sha'
 type ColumnWidths = Record<SizedColumn, number>
-const DEFAULT_WIDTHS: ColumnWidths = { author: 140, date: 136, sha: 76 }
+const DEFAULT_WIDTHS: ColumnWidths = { author: 140, date: 152, sha: 76 }
 const MIN_WIDTH = 44
 const MAX_WIDTH = 480
 const isSized = (c: Column): c is SizedColumn => c === 'author' || c === 'date' || c === 'sha'
@@ -208,6 +208,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   /** Funções de sempre-atuais para as linhas, que ficam memorizadas e não podem depender delas diretamente. */
   const handlers = useRef({} as RowHandlers)
   const stableColumns = useMemo(() => columns, [columns.join()]) // eslint-disable-line react-hooks/exhaustive-deps
+  const dateKey = dateFormatKey()
 
   const dragShas = (commit: CommitInfo) => (selectedSet.has(commit.sha) ? commits.filter((c) => selectedSet.has(c.sha)).map((c) => c.sha) : [commit.sha])
 
@@ -389,6 +390,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
                 searching={searching}
                 query={searching ? deferredQuery : ''}
                 handlers={handlers}
+                dateKey={dateKey}
                 onScope={onScope}
               />
               {open && (
@@ -430,6 +432,8 @@ interface RowProps {
   searching: boolean
   query: string
   handlers: React.RefObject<RowHandlers>
+  /** Muda com o formato de datas e o idioma: a linha é memorizada e precisa saber que deve se redesenhar. */
+  dateKey: string
   onScope(scope: HistoryScope): void
 }
 
@@ -438,6 +442,7 @@ interface RowProps {
  * seleção, não as centenas de outras.
  */
 const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, template, columns, graphWidth, searching, query, handlers, onScope }: RowProps) {
+  // `dateKey` só existe para invalidar a memorização; a data é escrita pelas funções de formato.
   return (
     <div
       className={`commit-row ${selected ? 'selected' : ''} ${open ? 'expanded' : ''}`}
@@ -496,7 +501,7 @@ const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, te
           case 'date':
             return (
               <span key={column} className="commit-date" title={`${fullDate(commit.date)}\n${relativeDate(commit.date)}`}>
-                <Highlight text={formatShortDateTime(commit.date)} query={query} />
+                <Highlight text={formatGridDateTime(commit.date)} query={query} />
               </span>
             )
           case 'sha':
