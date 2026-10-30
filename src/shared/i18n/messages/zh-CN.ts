@@ -457,6 +457,12 @@ export const zhCN: Messages = {
     selectedCommits: '所选提交',
     selectedInHistory: '在历史中选择的提交',
     source: '来源',
+    sourceRepository: '来源仓库',
+    thisRepository: '{name}（当前）',
+    crossNote: '正在从“{source}”引入到“{target}”的当前分支。来源仓库不会被修改：提交会被复制到目标仓库。',
+    crossBranchNote: '跨仓库没有“整个分支”（两者的历史可能毫无关联）：请从列表中选择提交——“全部”会带入列表中的所有内容。',
+    crossLimit: '显示该分支最新的 {count} 个提交。',
+    crossTargetHelp: '来自其他仓库时，目标始终是当前分支（不会切换分支）。',
     target: '目标',
     localBranches: '本地',
     remoteBranches: '远程',
@@ -947,6 +953,7 @@ export const zhCN: Messages = {
   multiRepo: {
     notOpen: '仓库 "{root}" 未在 GitTools 中打开。',
     sameRepository: '源仓库和目标仓库必须不同。',
+    invalidRequest: '请求无效：请选择要引入的提交、文件或行。',
     targetDetached: '仓库 "{root}" 没有分支（HEAD 处于分离状态）。请先选择一个分支，再引入提交。',
     targetDirty: '仓库 "{root}" 有未提交的更改。请先提交或暂存这些更改，再引入提交。',
     targetBusy: '仓库 "{root}" 有正在进行的操作。请先完成或中止该操作，再引入提交。'

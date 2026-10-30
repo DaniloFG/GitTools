@@ -13,7 +13,7 @@ import { startReorder, useOrder } from '../reorder'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
 import { git } from '../git'
-import { dateFormatKey, formatShortDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
+import { dateFormatKey, formatGridDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
 import { graphFor, laneColor, matchesCommit, refName, type GraphRow } from '../graph'
 import { useDrop } from '../useDrop'
 import { FileEntries, FileViewToggle } from './FileList'
@@ -45,7 +45,7 @@ const COLUMN_LABELS: Record<Column, MessageKey> = {
 /** Colunas de largura fixa (a do assunto ocupa o resto); o usuário ajusta arrastando a borda do título. */
 type SizedColumn = 'author' | 'date' | 'sha'
 type ColumnWidths = Record<SizedColumn, number>
-const DEFAULT_WIDTHS: ColumnWidths = { author: 140, date: 136, sha: 76 }
+const DEFAULT_WIDTHS: ColumnWidths = { author: 140, date: 152, sha: 76 }
 const MIN_WIDTH = 44
 const MAX_WIDTH = 480
 const isSized = (c: Column): c is SizedColumn => c === 'author' || c === 'date' || c === 'sha'
@@ -501,7 +501,7 @@ const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, te
           case 'date':
             return (
               <span key={column} className="commit-date" title={`${fullDate(commit.date)}\n${relativeDate(commit.date)}`}>
-                <Highlight text={formatShortDateTime(commit.date)} query={query} />
+                <Highlight text={formatGridDateTime(commit.date)} query={query} />
               </span>
             )
           case 'sha':

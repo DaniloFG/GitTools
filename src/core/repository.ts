@@ -882,6 +882,38 @@ export class GitRepository implements RepoApi {
     if (!shas.length) throw new Error(t('core.selectCommit'))
     shas.forEach((s) => assertRef(s, 'commit'))
     const unique = [...new Set(shas)]
+    const branch = await this.assertReadyForForeign()
+    await this.fetchFrom(sourceRoot, unique)
+    return this.cherryPickCommits(branch, unique, options)
+  }
+
+  /** Traz arquivos de commits de outro repositório aberto para a branch atual (mesmas verificações de `cherryPickFrom`). */
+  async cherryPickFilesFrom(sourceRoot: string, shas: string[], paths: string[], mode: FileApplyMode, options: PartialApplyOptions = {}): Promise<OperationResult> {
+    if (!shas.length) throw new Error(t('core.selectCommit'))
+    if (!paths.length) throw new Error(t('core.selectFile'))
+    shas.forEach((s) => assertRef(s, 'commit'))
+    const unique = [...new Set(shas)]
+    const branch = await this.assertReadyForForeign()
+    await this.fetchFrom(sourceRoot, unique)
+    return this.cherryPickFiles(branch, unique, paths, mode, options)
+  }
+
+  /** Traz linhas de um arquivo de um commit (ou de uma faixa de commits) de outro repositório aberto para a branch atual. */
+  async cherryPickLinesFrom(sourceRoot: string, source: DiffSource, path: string, lines: LineKey[], options: PartialApplyOptions = {}): Promise<OperationResult> {
+    if (source.kind !== 'commit' && source.kind !== 'range') throw new Error(t('core.linesSourceInvalid'))
+    if (!lines.length) throw new Error(t('core.noLinesSelected'))
+    const shas = source.kind === 'commit' ? [source.sha] : [source.from, source.to]
+    shas.forEach((s) => assertRef(s, 'commit'))
+    const branch = await this.assertReadyForForeign()
+    await this.fetchFrom(sourceRoot, [...new Set(shas)])
+    return this.cherryPickLines(branch, source, path, lines, options)
+  }
+
+  /**
+   * Confere se este repositório pode receber algo de outro: está numa branch, sem operação em andamento e sem
+   * alterações misturadas. Devolve a branch atual. Nada é tocado antes de a conferência passar.
+   */
+  private async assertReadyForForeign(): Promise<string> {
     const status = await this.status()
     if (status.detached || !status.branch) throw new Error(t('multiRepo.targetDetached', { root: this.root }))
     // Antes das alterações: com uma operação em andamento, os conflitos também deixariam o destino "sujo".
@@ -891,8 +923,7 @@ export class GitRepository implements RepoApi {
     if (status.staged.length || status.conflicted.length || status.unstaged.some((f) => !f.untracked)) {
       throw new Error(t('multiRepo.targetDirty', { root: this.root }))
     }
-    await this.fetchFrom(sourceRoot, unique)
-    return this.cherryPickCommits(status.branch, unique, options)
+    return status.branch
   }
 
   /**

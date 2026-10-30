@@ -10,7 +10,7 @@ import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { REPO_METHODS, type AppInfo, type DiffWindowRequest, type EditorInfo, type RecentRepo, type RepoMethod } from '../shared/api'
-import type { CherryPickOptions, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
+import type { CherryPickOptions, CrossApply, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
 import type { BridgeChannel } from '../shared/channels'
 import { t } from '../shared/i18n'
 import { normalizeSettings, type Settings } from '../shared/settings'
@@ -325,6 +325,25 @@ export class Backend {
     return target.cherryPickFrom(source.root, shas, options)
   }
 
+  /** Traz commits, arquivos ou linhas de outro repositório aberto para a branch atual do destino. */
+  async applyAcross(sourceRoot: string, targetRoot: string, request: CrossApply): Promise<OperationResult> {
+    await this.restoreWorkspace()
+    const source = this.requireRepo(sourceRoot)
+    const target = this.requireRepo(targetRoot)
+    if (source === target) throw new Error(t('multiRepo.sameRepository'))
+    const strings = (value: unknown): string[] => (Array.isArray(value) ? value.map(String) : [])
+    switch (request?.kind) {
+      case 'commits':
+        return target.cherryPickFrom(source.root, strings(request.shas), request.options)
+      case 'files':
+        return target.cherryPickFilesFrom(source.root, strings(request.shas), strings(request.paths), request.mode === 'version' ? 'version' : 'changes', request.options)
+      case 'lines':
+        return target.cherryPickLinesFrom(source.root, request.source, String(request.path ?? ''), Array.isArray(request.lines) ? request.lines : [], request.options)
+      default:
+        throw new Error(t('multiRepo.invalidRequest'))
+    }
+  }
+
   // ------------------------------------------------------------------------ canais
 
   /** Executa o pedido de um canal (`args` na ordem em que a interface os envia). */
@@ -353,6 +372,8 @@ export class Backend {
           Array.isArray(args[2]) ? args[2].map(String) : [],
           args[3] as CherryPickOptions | undefined
         )
+      case 'app:applyAcross':
+        return this.applyAcross(String(args[0] ?? ''), String(args[1] ?? ''), args[2] as CrossApply)
       case 'app:initRepository': {
         const folder = await host.pickFolder({ title: t('main.initDialogTitle'), create: true })
         return folder ? this.setRepository(await GitRepository.init(folder)) : null

@@ -201,7 +201,7 @@ quem tem alterações não commitadas ou operação em andamento é avisado ante
 
 Para não misturar repositórios:
 
-- ao trocar de aba, a tela é montada de novo: seleção, diff, filtros e rascunhos não passam de um para o outro;
+- cada aba tem a **sua sessão**: seleção, filtro de branches, arquivo aberto, comparação e filtros voltam como você os deixou, e um repositório nunca vê o estado de outro;
 - antes de trocar, as operações em andamento do repositório que sai terminam (com botão para trocar mesmo assim);
 - os diálogos de confirmação mostram o nome do repositório, e os avisos o citam quando há mais de um aberto;
 - o log de comandos diz de qual repositório é cada comando.
@@ -209,6 +209,27 @@ Para não misturar repositórios:
 Para trazer commits de um repositório para outro, arraste-os para a aba do destino ou use o menu de contexto
 *Aplicar em outro repositório aberto*. Antes de aplicar, o GitTools mostra origem e destino (com a branch atual
 do destino) e só então faz o cherry-pick. **Ctrl+Tab** / **Ctrl+Shift+Tab** alternam as abas e **Ctrl+W** fecha a aba atual.
+
+No **Cherry-pick Studio**, o seletor *Repositório de origem* (aparece com mais de um repositório aberto) lista as
+branches e os commits de **outro repositório aberto** e permite trazer **commits, arquivos ou linhas** dele para a
+branch atual do destino. O repositório de origem nunca é alterado; o destino só muda depois de conferir que está
+numa branch, sem operação em andamento e sem alterações não commitadas (senão nada é tocado). Entre repositórios
+não existe "branch inteira" (as histórias podem não ter nada em comum): escolha os commits na lista.
+
+#### Desempenho: o que já foi carregado não é carregado de novo
+
+- **Cache de leituras por repositório**: status, branches, histórico, diffs e árvore de arquivos ficam em memória.
+  Trocar de aba de repositório, de tela ou de painel e voltar não abre outro processo git enquanto nada mudou
+  (o commit e o diff de um commit, endereçados pelo sha, valem para sempre). Qualquer alteração feita pela interface,
+  aviso da pasta `.git` ou volta do foco da janela invalida só o que pode ter mudado, e só do repositório certo.
+- **Máquina de estados por aba** (`cold → loading → fresh → stale → revalidating`): uma aba em dia abre na hora e sem
+  chamar o git; uma aba "velha" abre com o que já tinha e se atualiza por trás (*stale-while-revalidate*); um
+  resultado que chega depois de o repositório mudar é entregue, mas nunca guardado como se fosse novo.
+- **Só o que está na tela é carregado**: o histórico só é lido se o painel Histórico (ou Branches, que usa as cores do
+  grafo) está visível, e os stashes só se o painel Stashes ou os dashboards estão. Ao aparecer, o painel lê o que faltava.
+- **Segundo plano sem pesar**: os resumos das abas e a pré-carga (ao parar o mouse sobre uma aba de outro
+  repositório) usam no máximo 2 chamadas ao mesmo tempo; chamadas iguais simultâneas viram uma só; branches e tags
+  vêm num único comando git; poucas sessões guardam dados em memória (as mais antigas esfriam e relêem ao abrir).
 
 ### Clonar e identidade git
 
@@ -371,10 +392,10 @@ conflito) abrem o menu certo. Layouts salvos antes dessa organização mantêm p
 
 ![Central de Configurações](docs/screenshots/configuracoes.png)
 
-Todas as opções gerais ficam num único lugar, separadas em seções: **Geral** (idioma),
-**Notificações** (posição e tamanho dos avisos), **Identidade e remotes** (nome e e-mail dos commits, remotes do repositório), **Editor e diff** (editor
+Todas as opções gerais ficam num único lugar, separadas em seções. **Aplicar** salva e mantém a tela aberta; **Salvar** salva e fecha: **Geral** (idioma),
+**Notificações** (posição e tamanho dos avisos), **Identidade e remotes** (nome e e-mail dos commits, remotes do repositório — cada remote lista todas as suas URLs de envio, com **vários destinos de push** para espelhar em GitHub e GitLab, por exemplo), **Editor e diff** (editor
 para abrir arquivos, com teste, **assistente de git no editor** — ligado por padrão —, conteúdo do diff — trecho alterado ou arquivo inteiro — e modo do diff),
-**Aparência** (tema, ícones de arquivo, letras das modificações M/A/D, tamanho, espessura das divisórias, tamanho dos botões de recolher/expandir e
+**Aparência** (tema, ícones de arquivo, letras das modificações M/A/D, **formato de data e hora** — ISO `2026-12-31 23:59:59` por padrão, igual ao do sistema, 24 h ou 12 h —, tamanho, espessura das divisórias, tamanho dos botões de recolher/expandir e
 restaurar ou **salvar o layout** dos painéis), **Atalhos de teclado** (com pesquisa pelo nome da ação ou pelas
 próprias teclas: clique em *Gravar teclas* e pressione a combinação) e **Sobre** (versões do GitTools, do git e
 do sistema, local do arquivo de configurações e "Restaurar padrões").
@@ -487,6 +508,8 @@ src/
 │       ├── translator.ts  Parâmetros {nome} e plurais (Intl.PluralRules)
 │       └── messages/   Um arquivo por idioma; pt-BR.ts é a referência
 └── renderer/           Interface em React
+    ├── src/readCache.ts     Cache das leituras do git por repositório (imutável por sha, volátil por geração) e limitador do segundo plano
+    ├── src/repoSession.ts   Sessão de cada aba (dados, tela) e a máquina de estados cold/loading/fresh/stale/revalidating
     ├── src/fileTree.ts  Árvore de pastas das listas de arquivos
     ├── src/diffNav.ts   Navegação entre alterações/arquivos dos diffs (botões e atalhos)
     ├── src/savedLayouts.ts  Layouts salvos pelo usuário (nome + foto do arranjo dos painéis)

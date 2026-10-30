@@ -468,6 +468,12 @@ export const ptBR = {
     selectedCommits: 'commits selecionados',
     selectedInHistory: 'Commits selecionados no histórico',
     source: 'Origem',
+    sourceRepository: 'Repositório de origem',
+    thisRepository: '{name} (este)',
+    crossNote: 'Trazendo de "{source}" para a branch atual de "{target}". O repositório de origem não é alterado: os commits são copiados para o destino.',
+    crossBranchNote: 'Entre repositórios não há "branch inteira" (as histórias podem não ter nada em comum): escolha os commits da lista — "Todos" leva tudo o que está listado.',
+    crossLimit: 'Mostrando os {count} commits mais recentes da branch.',
+    crossTargetHelp: 'Vindo de outro repositório, o destino é sempre a branch atual (sem trocar de branch).',
     target: 'Destino',
     localBranches: 'Locais',
     remoteBranches: 'Remotas',
@@ -982,6 +988,7 @@ export const ptBR = {
   multiRepo: {
     notOpen: 'O repositório "{root}" não está aberto no GitTools.',
     sameRepository: 'Origem e destino precisam ser repositórios diferentes.',
+    invalidRequest: 'Pedido inválido: escolha commits, arquivos ou linhas para trazer.',
     targetDetached: 'O repositório "{root}" está sem branch (HEAD destacado). Escolha uma branch antes de trazer commits.',
     targetDirty: 'O repositório "{root}" tem alterações que não foram commitadas. Faça commit ou guarde essas alterações antes de trazer commits.',
     targetBusy: 'O repositório "{root}" tem uma operação em andamento. Conclua ou aborte essa operação antes de trazer commits.'

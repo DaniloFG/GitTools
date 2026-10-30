@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { dateFormatKey, formatDate, formatDateTime, formatShortDateTime, setDateFormat, setLocale } from '../src/shared/i18n'
+import { dateFormatKey, formatDate, formatDateTime, formatGridDateTime, formatShortDateTime, setDateFormat, setLocale } from '../src/shared/i18n'
 import { DEFAULT_SETTINGS, normalizeSettings } from '../src/shared/settings'
 
 // 31/12/2026 23:59:59 no fuso da máquina (o formato ISO usa o horário local).
@@ -18,6 +18,14 @@ describe('formato de data e hora (issue #17)', () => {
     expect(formatDateTime(NEW_YEAR_EVE)).toBe('2026-12-31 23:59:59')
     expect(formatShortDateTime(NEW_YEAR_EVE)).toBe('2026-12-31 23:59')
     expect(formatDate(NEW_YEAR_EVE)).toBe('2026-12-31')
+  })
+
+  it('a coluna do histórico mostra os segundos no ISO e não nos demais (para caber)', () => {
+    setLocale('en')
+    setDateFormat('iso')
+    expect(formatGridDateTime(NEW_YEAR_EVE)).toBe('2026-12-31 23:59:59')
+    setDateFormat('24h')
+    expect(formatGridDateTime(NEW_YEAR_EVE)).toBe(formatShortDateTime(NEW_YEAR_EVE))
   })
 
   it('completa com zeros à esquerda e nunca usa AM/PM no ISO', () => {

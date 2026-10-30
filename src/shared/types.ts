@@ -207,6 +207,15 @@ export interface PartialApplyOptions {
 
 export type FileApplyMode = 'changes' | 'version'
 
+/**
+ * O que trazer de outro repositório aberto para a branch atual do destino: commits inteiros, arquivos de commits
+ * ou linhas de um arquivo. Os objetos vêm pelo fetch; nada é alterado no repositório de origem.
+ */
+export type CrossApply =
+  | { kind: 'commits'; shas: string[]; options?: CherryPickOptions }
+  | { kind: 'files'; shas: string[]; paths: string[]; mode: FileApplyMode; options?: PartialApplyOptions }
+  | { kind: 'lines'; source: DiffSource; path: string; lines: LineKey[]; options?: PartialApplyOptions }
+
 // ------------------------------------------------------------- conflitos
 
 export interface ConflictDetails {

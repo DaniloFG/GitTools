@@ -16,6 +16,7 @@ import type {
   CommitDetails,
   CommitInfo,
   Comparison,
+  CrossApply,
   ConflictDetails,
   ConflictResolution,
   DiffSource,
@@ -289,6 +290,12 @@ export interface GitToolsBridge {
    * e diferentes). Conflitos voltam em `conflicts`, com a operação em andamento no destino.
    */
   cherryPickAcross(sourceRoot: string, targetRoot: string, shas: string[], options?: CherryPickOptions): Promise<OperationResult>
+  /**
+   * Traz de `sourceRoot` para a branch atual de `targetRoot` (ambos abertos e diferentes) commits, arquivos de
+   * commits ou linhas de um arquivo. Nada é alterado na origem; o destino só muda depois de confirmar que está
+   * numa branch, sem operação em andamento e sem alterações misturáveis.
+   */
+  applyAcross(sourceRoot: string, targetRoot: string, request: CrossApply): Promise<OperationResult>
   /** Repositório ativo (já aberto no processo principal, ex.: passado pela linha de comando). */
   currentRepository(): Promise<RepoInfo | null>
   initRepository(): Promise<RepoInfo | null>

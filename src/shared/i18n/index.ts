@@ -88,6 +88,11 @@ export function formatShortDateTime(ms: number): string {
   return d.toLocaleString(currentLocale, { ...short, hour12: dateStyle === '12h' })
 }
 
+/** Data e hora da coluna do histórico: no formato ISO com segundos ("2026-12-31 23:59:59"); nos demais, sem segundos para caber. */
+export function formatGridDateTime(ms: number): string {
+  return dateStyle === 'iso' ? formatDateTime(ms) : formatShortDateTime(ms)
+}
+
 export function getCurrentLocale(): string {
   return currentLocale
 }

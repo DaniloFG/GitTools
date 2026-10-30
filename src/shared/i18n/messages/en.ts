@@ -467,6 +467,12 @@ export const en: Messages = {
     selectedCommits: 'selected commits',
     selectedInHistory: 'Commits selected in the history',
     source: 'Source',
+    sourceRepository: 'Source repository',
+    thisRepository: '{name} (this one)',
+    crossNote: 'Bringing from "{source}" into the current branch of "{target}". The source repository is not changed: commits are copied into the destination.',
+    crossBranchNote: 'Across repositories there is no “whole branch” (the histories may have nothing in common): pick commits from the list — “All” takes everything listed.',
+    crossLimit: 'Showing the {count} newest commits of the branch.',
+    crossTargetHelp: 'When coming from another repository, the target is always the current branch (no branch switch).',
     target: 'Target',
     localBranches: 'Local',
     remoteBranches: 'Remote',
@@ -981,6 +987,7 @@ export const en: Messages = {
   multiRepo: {
     notOpen: 'The repository "{root}" is not open in GitTools.',
     sameRepository: 'Source and target must be different repositories.',
+    invalidRequest: 'Invalid request: choose commits, files or lines to bring in.',
     targetDetached: 'The repository "{root}" has no branch (detached HEAD). Choose a branch before bringing in commits.',
     targetDirty: 'The repository "{root}" has uncommitted changes. Commit or stash them before bringing in commits.',
     targetBusy: 'The repository "{root}" has an operation in progress. Finish or abort it before bringing in commits.'

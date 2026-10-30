@@ -467,6 +467,12 @@ export const es: Messages = {
     selectedCommits: 'commits seleccionados',
     selectedInHistory: 'Commits seleccionados en el historial',
     source: 'Origen',
+    sourceRepository: 'Repositorio de origen',
+    thisRepository: '{name} (este)',
+    crossNote: 'Trayendo de "{source}" a la rama actual de "{target}". El repositorio de origen no se modifica: los commits se copian al destino.',
+    crossBranchNote: 'Entre repositorios no hay “rama completa” (las historias pueden no tener nada en común): elija commits de la lista — “Todos” lleva todo lo listado.',
+    crossLimit: 'Mostrando los {count} commits más recientes de la rama.',
+    crossTargetHelp: 'Al venir de otro repositorio, el destino es siempre la rama actual (sin cambiar de rama).',
     target: 'Destino',
     localBranches: 'Locales',
     remoteBranches: 'Remotas',
@@ -981,6 +987,7 @@ export const es: Messages = {
   multiRepo: {
     notOpen: 'El repositorio "{root}" no está abierto en GitTools.',
     sameRepository: 'El origen y el destino deben ser repositorios distintos.',
+    invalidRequest: 'Solicitud no válida: elija commits, archivos o líneas para traer.',
     targetDetached: 'El repositorio "{root}" no tiene rama (HEAD separado). Elige una rama antes de traer commits.',
     targetDirty: 'El repositorio "{root}" tiene cambios sin confirmar. Confirma o guarda esos cambios antes de traer commits.',
     targetBusy: 'El repositorio "{root}" tiene una operación en curso. Termina o aborta esa operación antes de traer commits.'
