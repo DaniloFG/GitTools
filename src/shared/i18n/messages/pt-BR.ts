@@ -139,6 +139,11 @@ export const ptBR = {
     unfavorite: 'Tirar dos favoritos',
     removeRecent: 'Remover da lista (a pasta não é apagada)'
   },
+  sponsor: {
+    button: 'Apoiar',
+    help: 'Abre o GitHub Sponsors no navegador',
+    message: 'A ferramenta ficou top, não é?! Então me dá um apoio para melhorar e criar mais.'
+  },
   sidebar: {
     hint: 'Arraste uma branch, commit ou arquivo sobre uma branch local para merge, rebase ou cherry-pick.',
     branches: 'Branches',

@@ -3,6 +3,7 @@ import { relativeDate } from '../format'
 import { t } from '../i18n'
 import { useRecentRepos } from '../recent'
 import { Loader } from './Loader'
+import { SponsorNote } from './Sponsor'
 
 interface Props {
   loading: boolean
@@ -72,6 +73,7 @@ export function Welcome({ loading, onOpen, onClone, onSettings }: Props) {
             </div>
             {group(t('welcome.favorites'), favorites)}
             {group(t('welcome.recent'), others)}
+            <SponsorNote />
           </>
         )}
       </div>
