@@ -1921,6 +1921,46 @@ button.ghost.danger-text:hover:not(:disabled) {
   gap: 10px;
   margin: 20px 0;
 }
+
+/* Apoio pelo GitHub Sponsors: um link com cara de botão (ver Sponsor.tsx). */
+.sponsor-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  color: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+}
+.sponsor-button:hover {
+  background: var(--bg-hover);
+}
+.sponsor-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+.sponsor-button.compact {
+  background: transparent;
+  border: none;
+  padding: 2px 6px;
+}
+.sponsor-heart {
+  color: #db61a2;
+}
+.sponsor-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 16px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
 .recent-list {
   list-style: none;
   padding: 0;

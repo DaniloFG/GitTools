@@ -2,7 +2,7 @@
   "name": "gittools-vscode",
   "displayName": "GitTools",
   "description": "%gittools.description%",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "publisher": "DaniloFG",
   "license": "MIT",
   "author": "Danilo Gama",
@@ -94,6 +94,9 @@
   "homepage": "https://github.com/DaniloFG/GitTools#readme",
   "bugs": {
     "url": "https://github.com/DaniloFG/GitTools/issues"
+  },
+  "sponsor": {
+    "url": "https://github.com/sponsors/DaniloFG"
   },
   "galleryBanner": {
     "color": "#1b1d23",

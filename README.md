@@ -4,6 +4,8 @@ Ferramenta com interface gráfica para usar o Git **arrastando e clicando**.
 O foco é deixar simples o que costuma ser difícil no terminal, em especial o **cherry-pick**:
 da branch inteira, de commits escolhidos, de **arquivos específicos** ou até de **linhas específicas** de um arquivo.
 
+[![Apoie no GitHub Sponsors](https://img.shields.io/badge/Apoiar-GitHub%20Sponsors-db61a2?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/DaniloFG)
+
 ![Dashboards: visão geral com indicadores, série temporal, contribuições, calendário de atividade e arquivos mais alterados](docs/screenshots/dashboards-visao-geral.png)
 
 ## 📊 Dashboards — o histórico do projeto em números
@@ -561,6 +563,17 @@ Plurais seguem as regras do Unicode CLDR: use `{ one, other }`, ou as formas que
 - Gerenciar remotos pela interface
 - Assinatura de commits (GPG/SSH) e edição de tags
 - Histórico de operações com "desfazer" (baseado no reflog)
+
+## 💖 Apoie o projeto
+
+A ferramenta ficou top, não é?! Então me dá um apoio para melhorar e criar mais. 😄
+
+[![Apoiar no GitHub Sponsors](https://img.shields.io/badge/%E2%99%A5%20Apoiar-GitHub%20Sponsors-db61a2?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/DaniloFG)
+
+Qualquer valor ajuda — uma vez só ou todo mês, pelo [GitHub Sponsors](https://github.com/sponsors/DaniloFG).
+O botão **♥** também fica no próprio GitTools: na barra de ferramentas, na tela inicial e em **Configurações → Sobre**
+(ele só abre a página no navegador; o app continua sem fazer nenhuma chamada de rede por conta própria).
+Não dá para apoiar agora? Uma ⭐ no repositório e indicar o GitTools para alguém também ajudam muito.
 
 ## Licença
 
