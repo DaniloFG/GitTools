@@ -95,6 +95,9 @@
   "bugs": {
     "url": "https://github.com/DaniloFG/GitTools/issues"
   },
+  "sponsor": {
+    "url": "https://github.com/sponsors/DaniloFG"
+  },
   "galleryBanner": {
     "color": "#1b1d23",
     "theme": "dark"

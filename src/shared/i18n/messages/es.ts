@@ -138,6 +138,11 @@ export const es: Messages = {
     unfavorite: 'Quitar de favoritos',
     removeRecent: 'Quitar de la lista (la carpeta no se borra)'
   },
+  sponsor: {
+    button: 'Apoyar',
+    help: 'Abre GitHub Sponsors en el navegador',
+    message: '¡La herramienta quedó genial, ¿verdad?! Entonces dame un apoyo para mejorarla y crear más.'
+  },
   sidebar: {
     hint: 'Arrastra una rama, un commit o un archivo sobre una rama local para hacer merge, rebase o cherry-pick.',
     branches: 'Ramas',

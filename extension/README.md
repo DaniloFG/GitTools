@@ -13,6 +13,7 @@
   <a href="https://marketplace.visualstudio.com/items?itemName=DaniloFG.gittools-vscode"><img alt="Marketplace version" src="https://img.shields.io/visual-studio-marketplace/v/DaniloFG.gittools-vscode?label=Marketplace&color=2f86ea" /></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=DaniloFG.gittools-vscode"><img alt="Installs" src="https://img.shields.io/visual-studio-marketplace/i/DaniloFG.gittools-vscode?color=2f86ea" /></a>
   <a href="https://github.com/DaniloFG/GitTools/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2f86ea" /></a>
+  <a href="https://github.com/sponsors/DaniloFG"><img alt="Sponsor on GitHub" src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-db61a2?logo=githubsponsors&logoColor=white" /></a>
 </p>
 
 ![GitTools Dashboards inside VS Code: KPIs, commits over time, top contributors, activity calendar and most changed files](media/readme/dashboards-overview.png)
@@ -236,9 +237,21 @@ Open repositories are kept in memory per tab: switching tabs, screens and panels
 Everything runs locally. GitTools only runs `git` commands on your machine; it has no telemetry, no account and no
 network calls of its own (git itself talks to your remotes when you fetch, pull, push or clone).
 
+## 💖 Support the project
+
+The tool turned out great, right?! Then give me a hand to keep improving it and build more. 😄
+
+[![Sponsor on GitHub](https://img.shields.io/badge/%E2%99%A5%20Sponsor-GitHub%20Sponsors-db61a2?style=for-the-badge&logo=githubsponsors&logoColor=white)](https://github.com/sponsors/DaniloFG)
+
+Any amount helps — one-time or monthly, through [GitHub Sponsors](https://github.com/sponsors/DaniloFG).
+You'll also find the **♥** button inside GitTools (toolbar, welcome screen and **Settings → About**) and a
+**Sponsor** button on this extension's page in VS Code. It only opens the page in your browser; GitTools still makes no
+network calls of its own. Can't sponsor right now? A ⭐ on the repository or a Marketplace review helps a lot too.
+
 ## Links
 
 - 💻 Source code & issues: <https://github.com/DaniloFG/GitTools>
+- 💖 Sponsor: <https://github.com/sponsors/DaniloFG>
 - 🖥️ Also available as a standalone desktop app (Windows, macOS, Linux) from the same repository.
 
 Released under the [MIT License](https://github.com/DaniloFG/GitTools/blob/main/LICENSE).
