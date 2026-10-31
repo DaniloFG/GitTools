@@ -6,6 +6,7 @@ import { errorMessage } from '../format'
 import { git } from '../git'
 import { t } from '../i18n'
 import { normalizeRoot, repoColor } from '../workspace'
+import { SponsorButton } from './Sponsor'
 
 interface ToolbarProps {
   onOpenRepository(path?: string, create?: boolean): void
@@ -110,6 +111,7 @@ export function Toolbar({ onOpenRepository, onClone }: ToolbarProps) {
       <button className="primary" onClick={() => openStudio({ target: head ?? undefined })}>
         🍒 {t('studio.name')}
       </button>
+      <SponsorButton compact />
       <button className="icon-button settings-button" onClick={() => openSettings()} title={t('toolbar.settings')}>
         ⚙
       </button>

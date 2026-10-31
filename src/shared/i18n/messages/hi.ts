@@ -141,6 +141,11 @@ export const hi: Messages = {
     unfavorite: 'पसंदीदा से हटाएँ',
     removeRecent: 'सूची से हटाएँ (फ़ोल्डर नहीं मिटता)'
   },
+  sponsor: {
+    button: 'सहयोग करें',
+    help: 'ब्राउज़र में GitHub Sponsors खोलता है',
+    message: 'टूल शानदार बना है, है ना?! तो इसे और बेहतर बनाने और नई चीज़ें बनाने में मेरा साथ दें।'
+  },
   sidebar: {
     hint: 'Merge, rebase या cherry-pick के लिए किसी branch, commit या फ़ाइल को लोकल branch पर खींचें।',
     branches: 'Branches',

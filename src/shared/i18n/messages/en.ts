@@ -138,6 +138,11 @@ export const en: Messages = {
     unfavorite: 'Remove from favorites',
     removeRecent: 'Remove from the list (the folder is not deleted)'
   },
+  sponsor: {
+    button: 'Sponsor',
+    help: 'Opens GitHub Sponsors in the browser',
+    message: 'The tool turned out great, right?! Then give me a hand to keep improving it and build more.'
+  },
   sidebar: {
     hint: 'Drag a branch, commit or file onto a local branch to merge, rebase or cherry-pick.',
     branches: 'Branches',

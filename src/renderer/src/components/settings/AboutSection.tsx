@@ -1,5 +1,6 @@
 import { DEFAULT_SETTINGS } from '../../../../shared/settings'
 import { t } from '../../i18n'
+import { SponsorNote } from '../Sponsor'
 import type { SettingsSectionProps } from './sections'
 import { useAppInfo } from './useAppInfo'
 
@@ -23,6 +24,7 @@ export function AboutSection({ replace }: SettingsSectionProps) {
         <span className="logo-mark">⑂</span> GitTools
       </p>
       <p className="muted">{t('welcome.tagline')}</p>
+      <SponsorNote />
       <table className="shortcut-table about-table">
         <tbody>
           {rows.map(([label, value]) => (

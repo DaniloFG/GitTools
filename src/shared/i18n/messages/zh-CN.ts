@@ -137,6 +137,11 @@ export const zhCN: Messages = {
     unfavorite: '取消收藏',
     removeRecent: '从列表中移除（不会删除文件夹）'
   },
+  sponsor: {
+    button: '赞助',
+    help: '在浏览器中打开 GitHub Sponsors',
+    message: '这个工具很棒，对吧？！那就支持我一下，让它越来越好，也做出更多工具。'
+  },
   sidebar: {
     hint: '将分支、提交或文件拖到本地分支上，即可合并、变基或拣选。',
     branches: '分支',
