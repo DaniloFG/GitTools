@@ -50,9 +50,17 @@ export interface BackendHost {
   settingsChanged(settings: Settings): void
   /** Chamado quando o repositório ativo muda (título da janela, por exemplo). */
   repositoryOpened?(info: RepoInfo): void
+  /**
+   * Onde guardar os repositórios abertos, no lugar de workspace.json na pasta de dados. A extensão do VS Code
+   * usa o estado da própria janela, assim cada janela mantém os seus projetos (a pasta de dados é compartilhada).
+   */
+  workspaceStore?: {
+    read(): unknown | PromiseLike<unknown>
+    write(value: unknown): PromiseLike<void>
+  }
 }
 
-/** Repositórios abertos gravados em workspace.json. */
+/** Repositórios abertos gravados em workspace.json (ou no `workspaceStore`). */
 interface WorkspaceFile {
   /** Caminhos (root) na ordem em que foram abertos. */
   repos: string[]
@@ -137,10 +145,11 @@ export class Backend {
     await this.saveRecent(list)
   }
 
-  /** Lê workspace.json. Arquivo ausente ou corrompido vira "nada aberto", sem erro. */
+  /** Lê os repositórios abertos (do `workspaceStore`, se houver, ou de workspace.json). Ausente ou corrompido vira "nada aberto", sem erro. */
   private async loadWorkspace(): Promise<WorkspaceFile> {
     try {
-      const data = JSON.parse(await readFile(this.workspaceFile(), 'utf8')) as Partial<WorkspaceFile> | null
+      const raw = this.host.workspaceStore ? await this.host.workspaceStore.read() : JSON.parse(await readFile(this.workspaceFile(), 'utf8'))
+      const data = raw as Partial<WorkspaceFile> | null
       const repos = Array.isArray(data?.repos) ? data.repos.filter((p): p is string => typeof p === 'string' && p.length > 0) : []
       return { repos, active: typeof data?.active === 'string' ? data.active : null }
     } catch {
@@ -153,6 +162,7 @@ export class Backend {
     const file: WorkspaceFile = { repos: [...this.repos.keys()], active: this.activeRoot }
     this.saving = this.saving
       .then(async () => {
+        if (this.host.workspaceStore) return this.host.workspaceStore.write(file)
         await mkdir(this.host.dataDir(), { recursive: true })
         await writeFile(this.workspaceFile(), JSON.stringify(file, null, 2))
       })

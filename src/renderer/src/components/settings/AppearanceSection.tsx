@@ -3,7 +3,7 @@ import { DATE_FORMATS, DIVIDER_WIDTHS, PANE_BUTTON_SCALES, ZOOM_LEVELS, type Dat
 import { formatDateTime, t, type MessageKey } from '../../i18n'
 import { fullDate } from '../../format'
 import { resetLayout } from '../../layout'
-import { applySavedLayout, cleanName, findByName, removeSavedLayout, saveCurrentLayout, useSavedLayouts } from '../../savedLayouts'
+import { applySavedLayout, cleanName, deleteSavedLayout, findByName, saveCurrentLayout, useCurrentLayoutName, useSavedLayouts } from '../../savedLayouts'
 import type { SettingsSectionProps } from './sections'
 import { useAppInfo } from './useAppInfo'
 
@@ -23,7 +23,9 @@ const DATE_FORMAT_LABELS: Record<DateFormatSetting, MessageKey> = {
 /** Salvar o layout de agora com um nome, reaplicar um salvo ou apagá-lo. */
 function SavedLayouts() {
   const [saved, setSaved] = useSavedLayouts()
-  const [name, setName] = useState('')
+  // Vem preenchido com o nome do layout em uso (pode ser trocado para salvar com outro nome).
+  const currentName = useCurrentLayoutName()
+  const [name, setName] = useState(currentName ?? '')
   const [message, setMessage] = useState<string | null>(null)
   const clean = cleanName(name)
   const replacing = clean ? findByName(saved, clean) : undefined
@@ -32,7 +34,7 @@ function SavedLayouts() {
     if (!clean) return
     saveCurrentLayout(saved, setSaved, clean)
     setMessage(t('layouts.saved', { name: replacing?.name ?? clean }))
-    setName('')
+    setName(clean)
   }
 
   return (
@@ -74,7 +76,7 @@ function SavedLayouts() {
               >
                 {t('layouts.apply')}
               </button>
-              <button className="danger" title={t('layouts.delete')} aria-label={t('layouts.delete')} onClick={() => setSaved(removeSavedLayout(saved, layout.id))}>
+              <button className="danger" title={t('layouts.delete')} aria-label={t('layouts.delete')} onClick={() => deleteSavedLayout(saved, setSaved, layout.id)}>
                 ✕
               </button>
             </span>

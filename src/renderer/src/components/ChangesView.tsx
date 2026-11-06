@@ -7,6 +7,7 @@ import { currentDrag, endDrag, startDrag } from '../dnd'
 import { stepIndex } from '../diffNav'
 import { errorMessage, statusLabel } from '../format'
 import { git } from '../git'
+import { copyText } from '../copy'
 import { t } from '../i18n'
 import { useLayout } from '../layout'
 import { useDrop } from '../useDrop'
@@ -60,9 +61,12 @@ type Entry = ChangeEntry
 
 /** Letra de status de um arquivo na visão de caixas: a da parte fora do stage, ou a do stage. */
 const entryCode = (e: Entry) => (e.unstaged ? (e.unstaged.untracked ? '?' : e.unstaged.worktree) : e.staged!.index)
+/** Blame e histórico precisam de uma versão commitada: arquivo novo (`A`) ou sem rastreio (`?`) não tem. */
+const fileHasHistory = (f: FileStatus) => !f.untracked && f.index !== 'A'
+const entryHasHistory = (e: Entry) => (e.staged ? e.staged.index !== 'A' : !e.unstaged!.untracked)
 
 export function ChangesView() {
-  const { data, run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow } = useApp()
+  const { data, run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow, showMenu } = useApp()
   /** Operações desta tela (stage, descarte, aplicar linhas): o indicador cobre só os painéis dela. */
   const runChanges = <T,>(label: string, fn: () => Promise<T>) => run(label, fn, SCREEN_VIEWS.changes)
   const { status } = data
@@ -74,8 +78,16 @@ export function ChangesView() {
   const [fullFile] = useFullFile()
   /** Caixas marcadas agora e ainda não confirmadas pelo git (a tela responde na hora). */
   const [pending, setPending] = useState<Record<string, boolean>>({})
+  /** Arquivos marcados (Ctrl+clique) na lista de não staged: a caixa de commit os inclui. */
+  const [pickedUnstaged, setPickedUnstaged] = useState<Set<string>>(new Set())
 
   const entries = buildEntries(status)
+
+  // Some da marcação os arquivos que saíram da lista de não staged (ex.: foram para o stage ou para o commit).
+  useEffect(() => {
+    const present = new Set(status.unstaged.map((f) => f.path))
+    setPickedUnstaged((prev) => (prev.size === 0 || [...prev].every((p) => present.has(p)) ? prev : new Set([...prev].filter((p) => present.has(p)))))
+  }, [status])
 
   // Se o arquivo ativo saiu da lista (ex.: foi todo para o stage), acompanha-o na outra lista.
   useEffect(() => {
@@ -172,6 +184,7 @@ export function ChangesView() {
 
   /** Troca entre as duas visões; os painéis da nova visão aparecem no lugar dos da anterior. */
   const chooseMode = (next: ChangesMode) => {
+    setPickedUnstaged(new Set())
     setMode(next === 'stage' ? undefined : next)
     revealScreen('changes', (view) => viewAvailable(view, { changesMode: next, conflicts: status.conflicted.length }))
   }
@@ -192,6 +205,20 @@ export function ChangesView() {
       <FileViewToggle />
     </>
   )
+
+  /** Menu de contexto de um arquivo: blame e histórico abrem a tela Files com o arquivo já escolhido. */
+  const fileMenu = (ev: React.MouseEvent, path: string, history: boolean) =>
+    showMenu(ev, [
+      ...(history
+        ? [
+            { label: t('changes.menu.blame'), onClick: () => { openFileView(path); revealView('files.blame') } },
+            { label: t('changes.menu.history'), onClick: () => { openFileView(path); revealView('files.history') } },
+            'separator' as const
+          ]
+        : []),
+      { label: t('common.openInEditor'), onClick: () => openInEditor(path) },
+      { label: t('history.files.copyPath'), onClick: () => copyText(path) }
+    ])
 
   const stageList = (area: Area): SectionDef => {
     const files = status[area]
@@ -233,7 +260,10 @@ export function ChangesView() {
             area={area}
             files={files}
             active={active}
+            picked={staged ? undefined : pickedUnstaged}
+            onPicked={staged ? undefined : setPickedUnstaged}
             onActivate={(f) => activate({ area, path: f.path })}
+            onMenu={(ev, f) => fileMenu(ev, f.path, fileHasHistory(f))}
             fileActions={(f) =>
               staged ? (
                 <button title={t('changes.unstage')} onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles([f.path]))}>
@@ -269,7 +299,7 @@ export function ChangesView() {
       body: (
         <>
           <p className="section-hint">{t('changes.conflictedHint')}</p>
-          <FileRows area="unstaged" files={status.conflicted} active={active} onActivate={(f) => openConflict(f.path)} />
+          <FileRows area="unstaged" files={status.conflicted} active={active} onActivate={(f) => openConflict(f.path)} onMenu={(ev, f) => fileMenu(ev, f.path, fileHasHistory(f))} />
         </>
       )
     }
@@ -314,6 +344,7 @@ export function ChangesView() {
                     style={style}
                     className={`file-item ${isActive ? 'active' : ''}`}
                     onClick={() => activate({ area: e.unstaged ? 'unstaged' : 'staged', path: e.path })}
+                    onContextMenu={(ev) => fileMenu(ev, e.path, entryHasHistory(e))}
                     title={first.path}
                   >
                     <span className="file-check" onClick={(ev) => ev.stopPropagation()}>
@@ -339,7 +370,10 @@ export function ChangesView() {
         )
     }
   }
-  sections.commit = { title: t('changes.sections.commit'), body: <CommitBox /> }
+  sections.commit = {
+    title: t('changes.sections.commit'),
+    body: mode === 'stage' ? <CommitBox picked={[...pickedUnstaged]} onCommitted={() => setPickedUnstaged(new Set())} /> : <CommitBox />
+  }
   const bothSides = !!active && status.unstaged.some((f) => f.path === active.path) && status.staged.some((f) => f.path === active.path)
   sections.diff = {
     title: active ? <code className="diff-title">{active.path}</code> : t('changes.sections.diff'),
@@ -464,11 +498,17 @@ interface RowsProps {
   active: Active | null
   onActivate(file: FileStatus): void
   fileActions?(file: FileStatus): React.ReactNode
+  onMenu?(event: React.MouseEvent, file: FileStatus): void
+  /** Marcação vinda de quem renderiza a lista (ex.: a tela, que também mostra a caixa de commit). Sem ela, a lista guarda a sua. */
+  picked?: Set<string>
+  onPicked?(next: Set<string>): void
 }
 
 /** Linhas de arquivos de uma lista (Ctrl+clique escolhe vários para arrastar juntos). */
-function FileRows({ area, files, active, onActivate, fileActions }: RowsProps) {
-  const [picked, setPicked] = useState<Set<string>>(new Set())
+function FileRows({ area, files, active, onActivate, fileActions, onMenu, picked: controlled, onPicked }: RowsProps) {
+  const [ownPicked, setOwnPicked] = useState<Set<string>>(new Set())
+  const picked = controlled ?? ownPicked
+  const setPicked = (next: Set<string>) => (onPicked ? onPicked(next) : setOwnPicked(next))
   const codeOf = (f: FileStatus) => (area === 'staged' ? f.index : f.untracked ? '?' : f.conflicted ? 'U' : f.worktree)
   if (files.length === 0) return <p className="section-empty">{t('changes.empty')}</p>
   return (
@@ -505,6 +545,7 @@ function FileRows({ area, files, active, onActivate, fileActions }: RowsProps) {
                 startDrag(e, { type: 'files', area, paths }, paths.length > 1 ? `📄 ${t('common.files', { count: paths.length })}` : `📄 ${f.path}`)
               }}
               onDragEnd={endDrag}
+              onContextMenu={onMenu ? (e) => onMenu(e, f) : undefined}
             >
               <span className={`status status-${code}`} title={statusLabel(code)}>
                 {code === '?' ? 'N' : code}

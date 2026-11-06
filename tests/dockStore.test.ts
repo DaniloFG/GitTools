@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { inScreen, pinnedIn } from '../src/renderer/src/dock'
-import { openScreen, readDock, readScreen, revealScreen, revealView, toggleScreenShown } from '../src/renderer/src/dockStore'
+import { inScreen, pinnedIn, setSizes } from '../src/renderer/src/dock'
+import { openScreen, readDock, readScreen, revealScreen, revealView, toggleScreenShown, updateDock } from '../src/renderer/src/dockStore'
 import { readLayout, resetLayout, snapshotLayout, writeLayout } from '../src/renderer/src/layout'
 
 /** localStorage de mentira (os testes rodam sem navegador). */
@@ -60,6 +60,13 @@ describe('troca de menu e painéis fixados (estado guardado)', () => {
     const snapshot = snapshotLayout()
     expect(Object.keys(snapshot).sort()).toEqual(['dock'])
     expect(snapshot.dock).toMatchObject({ pinned: { changes: ['commit.message'] } })
+  })
+
+  it('os tamanhos de cada tela entram no layout salvo', () => {
+    openScreen('files')
+    updateDock((s) => setSizes(s, 'd1', [1, 3], 'files'))
+    expect(readDock().screenSizes).toEqual({ files: { d1: [1, 3] } })
+    expect(snapshotLayout().dock).toMatchObject({ screenSizes: { files: { d1: [1, 3] } } })
   })
 
   it('o arranjo lido do disco é validado (sem fixados de versão antiga e com lixo)', () => {

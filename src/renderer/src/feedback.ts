@@ -74,9 +74,10 @@ export function dismissDelay(kind: ToastKind): number | null {
 /** Por que o commit não pode ser feito agora (null = pode). */
 export type CommitBlock = 'conflicts' | 'message' | 'nothing'
 
-export function commitBlock(input: { message: string; staged: number; amend: boolean; stageAll: boolean; conflicted: number }): CommitBlock | null {
+/** `picked`: arquivos marcados na lista de não staged; entram no commit (são staged antes dele). */
+export function commitBlock(input: { message: string; staged: number; picked?: number; amend: boolean; stageAll: boolean; conflicted: number }): CommitBlock | null {
   if (input.conflicted > 0) return 'conflicts'
   if (!input.message.trim()) return 'message'
-  if (input.staged === 0 && !input.amend && !input.stageAll) return 'nothing'
+  if (input.staged + (input.picked ?? 0) === 0 && !input.amend && !input.stageAll) return 'nothing'
   return null
 }

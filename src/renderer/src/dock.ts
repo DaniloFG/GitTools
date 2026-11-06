@@ -7,7 +7,8 @@
 //
 // Cada painel pertence a uma tela (um menu do topo: Histórico, Alterações, Arquivos, Comparar, Branches, Log).
 // A tela mostra só os próprios painéis, mais os de outras telas que o usuário fixou nela (`pinned`). A árvore é
-// uma só: posições e tamanhos valem para todas as telas, e o que está escondido numa tela continua escondido só nela.
+// uma só: as posições valem para todas as telas, mas os tamanhos das divisões são de cada tela (`screenSizes`),
+// e o que está escondido numa tela continua escondido só nela.
 
 export type ViewId =
   | 'branches'
@@ -132,6 +133,11 @@ export interface DockState {
   hidden: ViewId[]
   /** Painéis de outras telas fixados em cada tela (ex.: o diff das alterações, dentro do Histórico). */
   pinned: Partial<Record<ScreenId, ViewId[]>>
+  /**
+   * Tamanhos das divisões de cada tela, por id da divisão: quando a tela tem um valor aqui, ele vale no lugar de
+   * `sizes` da divisão. Entradas cujo id ou número de filhos não existe mais são ignoradas (e podadas).
+   */
+  screenSizes: Partial<Record<ScreenId, Record<string, number[]>>>
 }
 
 const isView = (v: unknown): v is ViewId => typeof v === 'string' && (VIEW_IDS as readonly string[]).includes(v)
@@ -150,6 +156,7 @@ export function defaultDock(): DockState {
     version: DOCK_VERSION,
     hidden: [],
     pinned: {},
+    screenSizes: {},
     root: split('d1', 'row', [0.17, 0.83], [
       split('d0', 'column', [0.64, 0.36], [group('g-branches', ['branches']), group('g-more', ['tags', 'stashes'])]),
       split('d2', 'column', [0.76, 0.24], [
@@ -180,17 +187,54 @@ export function defaultDock(): DockState {
  * mantidos e nenhuma tela ganha painéis de outra, até o usuário fixá-los.
  */
 export function parseDock(value: unknown): DockState {
-  const raw = (value && typeof value === 'object' ? value : {}) as { root?: unknown; hidden?: unknown; pinned?: unknown }
+  const raw = (value && typeof value === 'object' ? value : {}) as { root?: unknown; hidden?: unknown; pinned?: unknown; screenSizes?: unknown }
   const seen = new Set<ViewId>()
   const ids = new Set<string>()
   const root = normalize(parseNode(raw.root, seen, ids, 0))
   if (!root) return defaultDock()
-  const state: DockState = { version: DOCK_VERSION, root, hidden: [], pinned: {} }
+  const state: DockState = { version: DOCK_VERSION, root, hidden: [], pinned: {}, screenSizes: {} }
   for (const view of VIEW_IDS) if (!seen.has(view)) placeMissing(state, view)
   const hidden = Array.isArray(raw.hidden) ? raw.hidden.filter((v): v is ViewId => isView(v)) : []
   state.hidden = [...new Set(hidden)]
   state.pinned = parsePinned(raw.pinned)
+  state.screenSizes = pruneScreenSizes(parseScreenSizes(raw.screenSizes), state.root)
   return state
+}
+
+/**
+ * Tamanhos por tela válidos: só telas conhecidas, só listas de números positivos. Quem confere se a divisão ainda
+ * existe e tem esse número de filhos é `pruneScreenSizes`, depois que a árvore está pronta.
+ */
+function parseScreenSizes(value: unknown): DockState['screenSizes'] {
+  const out: DockState['screenSizes'] = {}
+  if (!value || typeof value !== 'object') return out
+  for (const screen of SCREEN_IDS) {
+    const list = (value as Record<string, unknown>)[screen]
+    if (!list || typeof list !== 'object' || Array.isArray(list)) continue
+    const splits = Object.fromEntries(Object.entries(list).filter(([, sizes]) => Array.isArray(sizes) && sizes.every(isPositive)))
+    if (Object.keys(splits).length) out[screen] = splits as Record<string, number[]>
+  }
+  return out
+}
+
+/** Tira os tamanhos de divisões que não existem mais no arranjo, ou que têm outro número de filhos. */
+export function pruneScreenSizes(sizes: DockState['screenSizes'], root: DockNode): DockState['screenSizes'] {
+  const counts = new Map<string, number>()
+  const walk = (n: DockNode) => {
+    if (n.kind === 'split') {
+      counts.set(n.id, n.children.length)
+      n.children.forEach(walk)
+    }
+  }
+  walk(root)
+  const out: DockState['screenSizes'] = {}
+  for (const screen of SCREEN_IDS) {
+    const splits = sizes[screen]
+    if (!splits) continue
+    const kept = Object.fromEntries(Object.entries(splits).filter(([id, list]) => counts.get(id) === list.length))
+    if (Object.keys(kept).length) out[screen] = kept
+  }
+  return out
 }
 
 /** Fixados válidos: só painéis de outra tela (um painel já é da própria tela), sem repetição. */
@@ -276,7 +320,13 @@ function clone<T extends DockNode>(node: T): T {
 export function cloneDock(state: DockState): DockState {
   const pinned: DockState['pinned'] = {}
   for (const screen of SCREEN_IDS) if (state.pinned[screen]) pinned[screen] = [...state.pinned[screen]!]
-  return { version: DOCK_VERSION, root: clone(state.root), hidden: [...state.hidden], pinned }
+  const screenSizes: DockState['screenSizes'] = {}
+  for (const screen of SCREEN_IDS) {
+    const splits = state.screenSizes[screen]
+    if (!splits) continue
+    screenSizes[screen] = Object.fromEntries(Object.entries(splits).map(([id, sizes]) => [id, [...sizes]]))
+  }
+  return { version: DOCK_VERSION, root: clone(state.root), hidden: [...state.hidden], pinned, screenSizes }
 }
 
 /** Todos os grupos, na ordem em que aparecem. */
@@ -374,6 +424,7 @@ export function moveView(state: DockState, view: ViewId, target: DropTarget): Do
   }
   next.hidden = next.hidden.filter((v) => v !== view)
   next.root = normalize(next.root) ?? defaultDock().root
+  next.screenSizes = pruneScreenSizes(next.screenSizes, next.root)
   return next
 }
 
@@ -466,22 +517,34 @@ export function showScreen(state: DockState, screen: ScreenId, available: (view:
   return SCREEN_VIEWS[screen].filter(available).reduce(activateView, state)
 }
 
-/** Guarda os pesos de uma divisão (depois de o usuário arrastar a divisória). */
-export function setSizes(state: DockState, splitId: string, sizes: number[]): DockState {
-  const next = cloneDock(state)
-  const find = (n: DockNode): SplitNode | null => {
-    if (n.kind === 'group') return null
-    if (n.id === splitId) return n
-    for (const c of n.children) {
-      const found = find(c)
-      if (found) return found
-    }
-    return null
+/** Acha uma divisão pelo id. */
+function findSplitNode(node: DockNode, id: string): SplitNode | null {
+  if (node.kind === 'group') return null
+  if (node.id === id) return node
+  for (const c of node.children) {
+    const found = findSplitNode(c, id)
+    if (found) return found
   }
-  const target = find(next.root)
+  return null
+}
+
+/**
+ * Guarda os pesos de uma divisão (depois de o usuário arrastar a divisória). Com `screen`, o tamanho vale só para
+ * essa tela (as outras continuam com os seus); sem ela, muda o tamanho padrão da árvore.
+ */
+export function setSizes(state: DockState, splitId: string, sizes: number[], screen?: ScreenId): DockState {
+  const next = cloneDock(state)
+  const target = findSplitNode(next.root, splitId)
   if (!target || sizes.length !== target.children.length || !sizes.every(isPositive)) return state
-  target.sizes = sizes
+  if (screen) next.screenSizes[screen] = { ...next.screenSizes[screen], [splitId]: sizes }
+  else target.sizes = sizes
   return next
+}
+
+/** Pesos de uma divisão numa tela: os da tela, se houver e couberem; senão os padrão da árvore. */
+export function sizesIn(state: DockState, split: SplitNode, screen?: ScreenId): number[] {
+  const own = screen ? state.screenSizes[screen]?.[split.id] : undefined
+  return own && own.length === split.children.length ? own : split.sizes
 }
 
 // ------------------------------------------------------------------------------------ o que aparece
@@ -508,17 +571,21 @@ export interface ShownSplit {
 }
 export type ShownNode = ShownGroup | ShownSplit
 
-/** A árvore sem o que está escondido ou indisponível: grupos sem abas e divisões vazias somem. */
-export function shownTree(state: DockState, shown: (view: ViewId) => boolean): ShownNode | null {
+/**
+ * A árvore sem o que está escondido ou indisponível: grupos sem abas e divisões vazias somem. Com `screen`, os
+ * pesos são os da tela (ver `sizesIn`).
+ */
+export function shownTree(state: DockState, shown: (view: ViewId) => boolean, screen?: ScreenId): ShownNode | null {
   const walk = (node: DockNode): ShownNode | null => {
     if (node.kind === 'group') {
       const views = node.views.filter(shown)
       const active = effectiveActive(node, shown)
       return active ? { kind: 'group', id: node.id, views, active } : null
     }
+    const sizes = sizesIn(state, node, screen)
     const children = node.children.flatMap((child, index) => {
       const next = walk(child)
-      return next ? [{ node: next, index, weight: node.sizes[index] ?? 1 }] : []
+      return next ? [{ node: next, index, weight: sizes[index] ?? 1 }] : []
     })
     if (children.length === 0) return null
     if (children.length === 1) return children[0].node

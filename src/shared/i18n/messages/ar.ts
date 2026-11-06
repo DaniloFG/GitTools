@@ -65,6 +65,7 @@ export const ar: Messages = {
     compare: 'مقارنة'
   },
   busy: {
+    editMessage: 'تعديل رسالة آخر إيداع',
     deletingTag: 'جارٍ حذف الوسم {name}',
     creatingTag: 'جارٍ إنشاء الوسم {name}',
     aborting: 'جارٍ الإلغاء',
@@ -127,7 +128,6 @@ export const ar: Messages = {
     push: 'دفع',
     pushHelp: 'إرسال إيداعاتك إلى المستودع البعيد',
     pushTo: 'إرسال إلى {remote}',
-    pushForceLease: 'دفع قسري (مع lease)',
     pushForce: 'دفع قسري (استبدال)',
     pushOptions: 'خيارات الدفع…',
     pushMore: 'مزيد من خيارات الدفع',
@@ -246,7 +246,8 @@ export const ar: Messages = {
       revert: 'التراجع عن الإيداع…',
       reset: 'نقل {branch} إلى هنا (reset)…',
       copySha: 'نسخ SHA',
-      copyMessage: 'نسخ الرسالة',
+      copy: 'نسخ',
+      editMessage: 'تعديل الرسالة…',
       copyMessageFull: 'الرسالة كاملة (العنوان والوصف)',
       copyMessageSubject: 'العنوان فقط (السطر الأول)',
       copyMessageBody: 'الوصف فقط',
@@ -296,6 +297,10 @@ export const ar: Messages = {
     discardLinesMessage: { one: 'تجاهل السطر المحدد من {path}؟', other: 'تجاهل الأسطر المحددة ({count}) من {path}؟' },
     conflicted: 'فيها تعارض',
     conflictedHint: 'انقر على ملف لحله جنبًا إلى جنب (الحالية × النتيجة × الواردة).',
+    menu: {
+      blame: 'تتبع المؤلف (Blame)',
+      history: 'سجل الملف'
+    },
     unstaged: 'تغييرات (غير مجهزة)',
     staged: 'جاهزة للإيداع (مجهزة)',
     stage: 'تجهيز',
@@ -326,6 +331,8 @@ export const ar: Messages = {
     commitInto: 'إيداع في {branch}',
     commitStageAll: 'تضمين كل الملفات (stage)',
     commitStageAllHelp: 'يجهّز كل الملفات المعدّلة قبل الإيداع',
+    commitPicked: { one: 'إيداع ملف واحد محدد', two: 'إيداع ملفين محددين', few: 'إيداع {count} ملفات محددة', many: 'إيداع {count} ملفًا محددًا', other: 'إيداع {count} ملف محدد' },
+    commitPickedHint: 'الملفات المحددة في قائمة غير المجهزة تدخل في هذا الإيداع.',
     pushAfter: 'الدفع بعد ذلك',
     amendNeedsForce: 'آخر إيداع موجود بالفعل في المستودع البعيد: تعديله يتطلب دفعًا قسريًا (يُفضّل مع lease).',
     pushFailedAfterCommit: 'تم الإيداع لكن الدفع فشل: {error}',
@@ -355,6 +362,14 @@ export const ar: Messages = {
     }
   },
   actions: {
+    editMessage: {
+      title: 'تعديل رسالة آخر إيداع',
+      subject: 'العنوان',
+      body: 'الوصف (اختياري)',
+      confirm: 'حفظ الرسالة',
+      pushedNote: 'تم تغيير الرسالة. الإيداع موجود بالفعل في المستودع البعيد: دفعه يتطلب دفعًا قسريًا.',
+      done: 'تم تغيير رسالة آخر إيداع'
+    },
     deleteTag: {
       confirm: 'حذف',
       message: 'حذف الوسم المحلي "{name}"؟ (لا تتغير الوسوم على المستودعات البعيدة.)',
@@ -631,8 +646,7 @@ export const ar: Messages = {
     }
   },
   compare: {
-    showCommitHelp: 'انقر لعرض الإيداع بجانبه (زر الفأرة الأيمن: فتح في السجل)',
-    showCommit: 'عرض الإيداع هنا',
+    showCommitHelp: 'انقر لتمييز الإيداع (زر الفأرة الأيمن: خيارات، فتح في السجل)',
     from: 'من',
     to: 'إلى',
     refPlaceholder: 'فرع أو وسم أو إيداع',
@@ -664,7 +678,6 @@ export const ar: Messages = {
     showCurrent: 'عرض النسخة الحالية',
     uncommitted: 'غير مودع',
     uncommittedHelp: 'تغيير لم يُودع بعد',
-    clickToOpen: 'انقر لفتح الإيداع',
     noCommits: 'لا توجد إيداعات لهذا الملف بعد.',
     restoreTitle: 'استعادة نسخة',
     restoreMessage: 'سيعود الملف {path} كما كان في الإيداع {sha} ("{subject}").\nيبقى التغيير في منطقة التجهيز لتراجعه وتودعه.',
@@ -821,6 +834,7 @@ export const ar: Messages = {
     about: {
       title: 'حول',
       description: 'الإصدارات ومعلومات النظام.',
+      developers: 'المطوّرون',
       version: 'إصدار GitTools',
       git: 'إصدار git',
       gitMissing: 'غير موجود في PATH',

@@ -58,6 +58,7 @@ export const ptBR = {
     compare: 'Comparar'
   },
   busy: {
+    editMessage: 'Editando a mensagem do último commit',
     deletingTag: 'Excluindo a tag {name}',
     creatingTag: 'Criando a tag {name}',
     aborting: 'Abortando',
@@ -120,7 +121,6 @@ export const ptBR = {
     push: 'Push',
     pushHelp: 'Enviar seus commits para o remoto',
     pushTo: 'Enviar para {remote}',
-    pushForceLease: 'Force push (com lease)',
     pushForce: 'Force push (sobrescrever)',
     pushOptions: 'Opções de push…',
     pushMore: 'Mais opções de push',
@@ -239,7 +239,8 @@ export const ptBR = {
       revert: 'Reverter commit…',
       reset: 'Mover {branch} para cá (reset)…',
       copySha: 'Copiar SHA',
-      copyMessage: 'Copiar mensagem',
+      copy: 'Copiar',
+      editMessage: 'Editar mensagem…',
       copyMessageFull: 'Mensagem completa (título e descrição)',
       copyMessageSubject: 'Só o título (primeira linha)',
       copyMessageBody: 'Só a descrição',
@@ -295,6 +296,10 @@ export const ptBR = {
     },
     conflicted: 'Em conflito',
     conflictedHint: 'Clique num arquivo para resolver lado a lado (atual × resultado × que entra).',
+    menu: {
+      blame: 'Blame (autoria das linhas)',
+      history: 'Histórico do arquivo'
+    },
     unstaged: 'Alterações (não staged)',
     staged: 'Prontas para commit (staged)',
     stage: 'Stage',
@@ -318,6 +323,8 @@ export const ptBR = {
     commitInto: 'Commit em {branch}',
     commitStageAll: 'Incluir todos os arquivos (stage)',
     commitStageAllHelp: 'Faz o stage de todos os arquivos alterados antes de confirmar',
+    commitPicked: { one: 'Commit com {count} arquivo selecionado', other: 'Commit com {count} arquivos selecionados' },
+    commitPickedHint: 'Os arquivos marcados na lista de não staged entram neste commit.',
     pushAfter: 'Enviar (push) em seguida',
     amendNeedsForce: 'O último commit já está no remoto: corrigi-lo exige force push (recomendado: com lease).',
     pushFailedAfterCommit: 'O commit foi feito, mas o push falhou: {error}',
@@ -347,6 +354,14 @@ export const ptBR = {
     }
   },
   actions: {
+    editMessage: {
+      title: 'Editar a mensagem do último commit',
+      subject: 'Título',
+      body: 'Descrição (opcional)',
+      confirm: 'Salvar mensagem',
+      pushedNote: 'Mensagem trocada. O commit já estava no remoto: enviar exige force push.',
+      done: 'Mensagem do último commit trocada'
+    },
     deleteTag: {
       confirm: 'Excluir',
       message: 'Excluir a tag local "{name}"? (A tag em remotos não é alterada.)',
@@ -620,8 +635,7 @@ export const ptBR = {
     }
   },
   compare: {
-    showCommitHelp: 'Clique para ver o commit ao lado (botão direito: abrir no histórico)',
-    showCommit: 'Ver o commit aqui',
+    showCommitHelp: 'Clique para destacar o commit (botão direito: opções, abrir no histórico)',
     from: 'De',
     to: 'Para',
     refPlaceholder: 'branch, tag ou commit',
@@ -653,7 +667,6 @@ export const ptBR = {
     showCurrent: 'ver versão atual',
     uncommitted: 'não commitado',
     uncommittedHelp: 'Alteração ainda não commitada',
-    clickToOpen: 'Clique para abrir o commit',
     noCommits: 'Este arquivo ainda não tem commits.',
     restoreTitle: 'Restaurar versão',
     restoreMessage: 'O arquivo {path} voltará a ficar como no commit {sha} ("{subject}").\nA alteração fica no stage para você revisar e fazer commit.',
@@ -810,6 +823,7 @@ export const ptBR = {
     about: {
       title: 'Sobre',
       description: 'Versões e informações do sistema.',
+      developers: 'Desenvolvedores',
       version: 'Versão do GitTools',
       git: 'Versão do git',
       gitMissing: 'não encontrado no PATH',
