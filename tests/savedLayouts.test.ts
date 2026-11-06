@@ -1,6 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { applyLayoutSnapshot, readLayout, resetLayout, snapshotLayout, writeLayout } from '../src/renderer/src/layout'
-import { addSavedLayout, cleanName, findByName, MAX_SAVED_LAYOUTS, parseSavedLayouts, removeSavedLayout, renameSavedLayout } from '../src/renderer/src/savedLayouts'
+import {
+  addSavedLayout,
+  applySavedLayout,
+  cleanName,
+  clearCurrentLayout,
+  deleteSavedLayout,
+  findByName,
+  layoutNameFor,
+  MAX_SAVED_LAYOUTS,
+  parseSavedLayouts,
+  removeSavedLayout,
+  renameSavedLayout,
+  saveCurrentLayout,
+  type SavedLayout
+} from '../src/renderer/src/savedLayouts'
 
 /** localStorage de mentira (os testes rodam sem navegador). */
 function fakeStorage() {
@@ -114,5 +128,77 @@ describe('foto do layout', () => {
     applyLayoutSnapshot({ dock: { b: 1 }, 'pref.changesMode': 'stage' })
     expect(readLayout('pref.changesMode')).toBe('check')
     expect(readLayout('dock')).toEqual({ b: 1 })
+  })
+})
+
+describe('layout em uso', () => {
+  const original = (globalThis as { localStorage?: unknown }).localStorage
+  beforeEach(() => {
+    ;(globalThis as { localStorage?: unknown }).localStorage = fakeStorage()
+    clearCurrentLayout()
+  })
+  afterEach(() => {
+    resetLayout()
+    clearCurrentLayout()
+    ;(globalThis as { localStorage?: unknown }).localStorage = original
+  })
+
+  it('o nome do layout em uso só vale se ele ainda existe', () => {
+    const list = addSavedLayout([], 'Revisão', {}, 1)
+    expect(layoutNameFor(list, 'l1')).toBe('Revisão')
+    expect(layoutNameFor(list, 'l9')).toBeUndefined()
+    expect(layoutNameFor(list, undefined)).toBeUndefined()
+  })
+
+  it('salvar devolve o id; o mesmo nome mantém o id e outro nome cria um novo', () => {
+    writeLayout('dock', { a: 1 })
+    let list: SavedLayout[] = []
+    const set = (next: SavedLayout[]) => {
+      list = next
+    }
+    expect(saveCurrentLayout(list, set, 'Revisão')).toBe('l1')
+    expect(readLayout('pref.currentLayout')).toBe('l1')
+
+    expect(saveCurrentLayout(list, set, 'revisão')).toBe('l1')
+    expect(list).toHaveLength(1)
+
+    expect(saveCurrentLayout(list, set, 'Outro')).toBe('l2')
+    expect(readLayout('pref.currentLayout')).toBe('l2')
+    expect(layoutNameFor(list, readLayout('pref.currentLayout') as string)).toBe('Outro')
+  })
+
+  it('aplicar um salvo o torna o em uso; a preferência não entra na foto', () => {
+    let list = addSavedLayout([], 'A', { dock: { a: 1 } }, 1)
+    list = addSavedLayout(list, 'B', { dock: { b: 2 } }, 2)
+    applySavedLayout(list[0])
+    expect(readLayout('dock')).toEqual({ a: 1 })
+    expect(readLayout('pref.currentLayout')).toBe('l1')
+    expect(snapshotLayout()).toEqual({ dock: { a: 1 } })
+  })
+
+  it('restaurar o padrão não apaga a preferência; limpá-la esquece o em uso', () => {
+    writeLayout('pref.currentLayout', 'l1')
+    resetLayout()
+    expect(readLayout('pref.currentLayout')).toBe('l1')
+    clearCurrentLayout()
+    expect(readLayout('pref.currentLayout')).toBeUndefined()
+  })
+
+  it('apagar o layout em uso esquece o em uso; apagar outro não mexe nele', () => {
+    let list = addSavedLayout([], 'A', {}, 1)
+    list = addSavedLayout(list, 'B', {}, 2)
+    writeLayout('pref.currentLayout', 'l1')
+    let out = list
+    const set = (next: SavedLayout[]) => {
+      out = next
+    }
+
+    deleteSavedLayout(out, set, 'l2')
+    expect(out.map((l) => l.id)).toEqual(['l1'])
+    expect(readLayout('pref.currentLayout')).toBe('l1')
+
+    deleteSavedLayout(out, set, 'l1')
+    expect(out).toEqual([])
+    expect(readLayout('pref.currentLayout')).toBeUndefined()
   })
 })

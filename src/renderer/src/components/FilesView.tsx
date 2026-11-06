@@ -7,6 +7,7 @@ import { t } from '../i18n'
 import { git } from '../git'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
+import { copyText } from '../copy'
 import { DiffView, useFullFile } from './DiffView'
 import { revealView } from '../dockStore'
 import { PaneSlot, useAnyShown } from '../slots'
@@ -133,7 +134,7 @@ function FilesList({ path, onPath }: { path: string | null; onPath(path: string)
 }
 
 function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onClearRev(): void }) {
-  const { selectCommit, data } = useApp()
+  const { selectCommit, showMenu, data } = useApp()
   const [blame, setBlame] = useState<BlameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [gutter, setGutter] = useLayout('blame.gutter', parseGutter)
@@ -200,8 +201,11 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
                   <td
                     className="blame-gutter"
                     style={{ borderInlineStartColor: `color-mix(in srgb, var(--accent) ${Math.round(15 + h * 85)}%, transparent)` }}
-                    title={uncommitted ? t('files.uncommittedHelp') : `${commit.summary}\n${commit.author} · ${fullDate(commit.date)}\n${commit.sha}\n\n${t('files.clickToOpen')}`}
-                    onClick={() => !uncommitted && selectCommit(line.sha)}
+                    title={uncommitted ? t('files.uncommittedHelp') : `${commit.summary}\n${commit.author} · ${fullDate(commit.date)}\n${commit.sha}`}
+                    onContextMenu={uncommitted ? undefined : (e) => showMenu(e, [
+                      { label: t('compare.openInHistory'), onClick: () => selectCommit(line.sha) },
+                      { label: t('history.menu.copySha'), onClick: () => copyText(line.sha) }
+                    ])}
                   >
                     {first &&
                       (uncommitted ? (

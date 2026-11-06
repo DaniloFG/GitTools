@@ -18,6 +18,26 @@ export class Uri {
   }
 }
 
+/**
+ * Memento do VS Code (`workspaceState`, `globalState`). Um novo `Memento` é uma janela nova, com estado vazio;
+ * passar o mesmo objeto para outra ativação simula reabrir a mesma janela. Como no VS Code, os valores são
+ * guardados como JSON.
+ */
+export class Memento {
+  private readonly values = new Map<string, string>()
+  get<T>(key: string, fallback?: T): T | undefined {
+    const raw = this.values.get(key)
+    return raw === undefined ? fallback : (JSON.parse(raw) as T)
+  }
+  async update(key: string, value: unknown): Promise<void> {
+    if (value === undefined) this.values.delete(key)
+    else this.values.set(key, JSON.stringify(value))
+  }
+  keys(): readonly string[] {
+    return [...this.values.keys()]
+  }
+}
+
 export const ViewColumn = { Active: -1, Beside: -2, One: 1 }
 export const StatusBarAlignment = { Left: 1, Right: 2 }
 export const FileType = { File: 1, Directory: 2 }

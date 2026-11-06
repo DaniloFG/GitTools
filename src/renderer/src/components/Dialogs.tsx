@@ -29,7 +29,7 @@ export interface PromptRequest {
   placeholder?: string
   confirmLabel?: string
   /** Segundo campo, opcional (ex.: mensagem da tag); o valor é entregue a `onDetail` ao confirmar. */
-  detail?: { label: string; placeholder?: string; onDetail(value: string): void }
+  detail?: { label: string; placeholder?: string; initial?: string; onDetail(value: string): void }
   /** Caixa de seleção opcional (ex.: "fazer checkout"); o valor final é entregue a `onCheck` ao confirmar. */
   check?: { label: string; checked: boolean; onCheck(value: boolean): void }
 }
@@ -126,7 +126,7 @@ function ConfirmDialog({ dialog, onDone, scope }: { dialog: Extract<DialogState,
 
 function PromptDialog({ dialog, onDone, scope }: { dialog: Extract<DialogState, { kind: 'prompt' }>; onDone(): void; scope: DialogScope | null }) {
   const [value, setValue] = useState(dialog.initial ?? '')
-  const [detail, setDetail] = useState('')
+  const [detail, setDetail] = useState(dialog.detail?.initial ?? '')
   const [checked, setChecked] = useState(dialog.check?.checked ?? false)
   const close = (v: string | null) => {
     if (v !== null) {

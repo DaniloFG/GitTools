@@ -71,6 +71,8 @@ export interface RepoApi {
   discardFiles(paths: string[]): Promise<void>
   applyLines(source: DiffSource, path: string, lines: LineKey[], action: LineAction): Promise<OperationResult>
   commit(message: string, amend?: boolean): Promise<void>
+  /** Troca a mensagem do HEAD sem incluir o que está em stage. */
+  rewordHead(message: string): Promise<void>
 
   // Branches
   checkout(ref: string): Promise<void>
@@ -178,6 +180,7 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'discardFiles',
   'applyLines',
   'commit',
+  'rewordHead',
   'checkout',
   'createBranch',
   'deleteBranch',
