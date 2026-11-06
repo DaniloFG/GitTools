@@ -272,3 +272,27 @@ describe('refs: branches e tags num único comando', () => {
     expect(await t.repo.refs()).toEqual({ branches: [], tags: [] })
   })
 })
+
+describe('reescrever a mensagem do HEAD', () => {
+  it('troca a mensagem, mantém a árvore e não inclui o que está em stage', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'a.txt': 'a\n' })
+    const head = await t.commit('errada', { 'b.txt': 'b\n' })
+    t.write('c.txt', 'c\n')
+    await t.git('add', 'c.txt')
+
+    await t.repo.rewordHead('certa\n\ncorpo da mensagem')
+
+    expect((await t.git('log', '-1', '--format=%B')).trim()).toBe('certa\n\ncorpo da mensagem')
+    // A árvore do commit continua a mesma (sem c.txt) e o arquivo em stage segue em stage.
+    expect((await t.git('ls-tree', '--name-only', 'HEAD')).split('\n').filter(Boolean).sort()).toEqual(['a.txt', 'b.txt'])
+    expect((await t.git('diff', '--cached', '--name-only')).trim()).toBe('c.txt')
+    expect((await t.git('rev-parse', 'HEAD')).trim()).not.toBe(head)
+  })
+
+  it('recusa mensagem vazia', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'a.txt': 'a\n' })
+    await expect(t.repo.rewordHead('   ')).rejects.toThrow()
+  })
+})

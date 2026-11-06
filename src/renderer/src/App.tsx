@@ -48,11 +48,12 @@ import { gitCalls, gitFor, gitInBackground, markChanged, readCache, setActiveRoo
 import { draftPaths } from './editorDrafts'
 import { getLocale, setLocale, t, type MessageKey } from './i18n'
 import { resetLayout as clearLayout, useLayout } from './layout'
+import { clearCurrentLayout } from './savedLayouts'
 import { historySignature, mergeData } from './stable'
 import { dropSession, getSession, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
 import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
 import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
-import { openScreen, useDock, useScreen } from './dockStore'
+import { openScreen, readScreen, useDock, useScreen } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
 import { PaneSlot, WhenShown, useAnyShown } from './slots'
 import {
@@ -695,6 +696,7 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
     })
     if (!ok) return
     clearLayout()
+    clearCurrentLayout()
     toast('success', t('workbench.layoutRestored'))
   }, [toast, askConfirm])
 
@@ -987,7 +989,8 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
         scope={scope}
         onScope={(s, options) => {
           setScope(s)
-          if (options?.reveal !== false) setView('history')
+          // Na tela de branches a lista só filtra o histórico: não troca de tela.
+          if (options?.reveal !== false && readScreen() !== 'branches') setView('history')
         }}
       />
       <PaneSlot id="history">

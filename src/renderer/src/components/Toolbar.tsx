@@ -58,7 +58,6 @@ export function Toolbar({ onOpenRepository, onClone }: ToolbarProps) {
     })
     showMenu(e, [
       { label: t('toolbar.push'), onClick: () => push() },
-      { label: t('toolbar.pushForceLease'), onClick: () => push({ force: 'lease' }) },
       { label: t('toolbar.pushForce'), onClick: () => push({ force: 'force' }), danger: true },
       'separator',
       ...(remotes.length > 1

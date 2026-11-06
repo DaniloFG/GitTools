@@ -706,6 +706,12 @@ export class GitRepository implements RepoApi {
     await this.git(['commit', '-F', '-', ...(amend ? ['--amend'] : [])], { input: message })
   }
 
+  /** Troca só a mensagem do HEAD: o `--only` sem caminhos deixa de fora o que estiver em stage. */
+  async rewordHead(message: string): Promise<void> {
+    if (!message.trim()) throw new Error(t('core.commitMessageRequired'))
+    await this.git(['commit', '--amend', '--only', '--allow-empty', '-F', '-'], { input: message })
+  }
+
   // --------------------------------------------------------------- branches
 
   private async refExists(ref: string): Promise<boolean> {

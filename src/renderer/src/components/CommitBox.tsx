@@ -29,7 +29,7 @@ const draftOf = (root: string) => drafts.get(root) ?? { message: '', amend: fals
  * Caixa de commit: as opções se combinam livremente — corrigir o último commit (amend), incluir tudo,
  * e enviar em seguida (normal, force com lease ou force). O botão diz o que vai acontecer.
  */
-export function CommitBox() {
+export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onCommitted?(): void }) {
   const { data, run, repo, toast } = useApp()
   const { confirmForce } = useActions()
   const [message, setMessageState] = useState(() => draftOf(repo.root).message)
@@ -49,7 +49,7 @@ export function CommitBox() {
   const { status } = data
   const pending = status.unstaged.length
   const useStageAll = stageAll && pending > 0
-  const block = commitBlock({ message, staged: status.staged.length, amend, stageAll: useStageAll, conflicted: status.conflicted.length })
+  const block = commitBlock({ message, staged: status.staged.length, picked: picked.length, amend, stageAll: useStageAll, conflicted: status.conflicted.length })
   const canCommit = block === null
   // Corrigir um commit que já está no remoto reescreve o histórico dele: o push comum seria recusado.
   const needsForce = push && amend && !!status.upstream && status.ahead === 0
@@ -62,6 +62,8 @@ export function CommitBox() {
     let committed = false
     const result = await run(push ? t('busy.commitPush') : amend ? t('busy.amending') : t('busy.commit'), async () => {
       if (useStageAll) await git.stageFiles(status.unstaged.map((f) => f.path))
+      // Os arquivos marcados na lista de não staged entram no commit: são staged antes dele.
+      else if (picked.length > 0) await git.stageFiles(picked)
       await git.commit(message, amend)
       committed = true
       if (!push) return true
@@ -75,6 +77,7 @@ export function CommitBox() {
     if (result || committed) {
       setMessage('')
       setAmend(false)
+      onCommitted?.()
     }
   }
 
@@ -88,9 +91,11 @@ export function CommitBox() {
         : t('changes.commitPush', { branch: status.branch ?? 'HEAD' })
     : amend
       ? t('changes.amendButton')
-      : status.branch
-        ? t('changes.commitInto', { branch: status.branch })
-        : t('changes.commit')
+      : picked.length > 0
+        ? t('changes.commitPicked', { count: picked.length })
+        : status.branch
+          ? t('changes.commitInto', { branch: status.branch })
+          : t('changes.commit')
 
   return (
     <div className="commit-box">
@@ -144,6 +149,7 @@ export function CommitBox() {
           </select>
         )}
       </div>
+      {picked.length > 0 && <p className="muted commit-hint">{t('changes.commitPickedHint')}</p>}
       {needsForce && <p className="muted commit-hint">{t('changes.amendNeedsForce')}</p>}
       <div className="commit-actions">
         <button

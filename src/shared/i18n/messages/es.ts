@@ -57,6 +57,7 @@ export const es: Messages = {
     compare: 'Comparar'
   },
   busy: {
+    editMessage: 'Editando el mensaje del último commit',
     deletingTag: 'Eliminando la etiqueta {name}',
     creatingTag: 'Creando la etiqueta {name}',
     aborting: 'Abortando',
@@ -119,7 +120,6 @@ export const es: Messages = {
     push: 'Push',
     pushHelp: 'Enviar tus commits al remoto',
     pushTo: 'Enviar a {remote}',
-    pushForceLease: 'Force push (con lease)',
     pushForce: 'Force push (sobrescribir)',
     pushOptions: 'Opciones de push…',
     pushMore: 'Más opciones de push',
@@ -238,7 +238,8 @@ export const es: Messages = {
       revert: 'Revertir commit…',
       reset: 'Mover {branch} aquí (reset)…',
       copySha: 'Copiar SHA',
-      copyMessage: 'Copiar mensaje',
+      copy: 'Copiar',
+      editMessage: 'Editar mensaje…',
       copyMessageFull: 'Mensaje completo (título y descripción)',
       copyMessageSubject: 'Solo el título (primera línea)',
       copyMessageBody: 'Solo la descripción',
@@ -294,6 +295,10 @@ export const es: Messages = {
     },
     conflicted: 'En conflicto',
     conflictedHint: 'Haz clic en un archivo para resolverlo lado a lado (actual × resultado × entrante).',
+    menu: {
+      blame: 'Autoría (blame)',
+      history: 'Historial del archivo'
+    },
     unstaged: 'Cambios (sin stage)',
     staged: 'Listos para commit (en stage)',
     stage: 'Stage',
@@ -317,6 +322,8 @@ export const es: Messages = {
     commitInto: 'Commit en {branch}',
     commitStageAll: 'Incluir todos los archivos (stage)',
     commitStageAllHelp: 'Hace stage de todos los archivos modificados antes de confirmar',
+    commitPicked: { one: 'Commit con {count} archivo seleccionado', other: 'Commit con {count} archivos seleccionados' },
+    commitPickedHint: 'Los archivos seleccionados en la lista No staged se incluyen en este commit.',
     pushAfter: 'Enviar (push) después',
     amendNeedsForce: 'El último commit ya está en el remoto: corregirlo requiere force push (recomendado: con lease).',
     pushFailedAfterCommit: 'El commit se hizo, pero el push falló: {error}',
@@ -346,6 +353,14 @@ export const es: Messages = {
     }
   },
   actions: {
+    editMessage: {
+      title: 'Editar el mensaje del último commit',
+      subject: 'Título',
+      body: 'Descripción (opcional)',
+      confirm: 'Guardar mensaje',
+      pushedNote: 'Mensaje cambiado. El commit ya estaba en el remoto: enviarlo requiere force push.',
+      done: 'Mensaje del último commit cambiado'
+    },
     deleteTag: {
       confirm: 'Eliminar',
       message: '¿Eliminar la etiqueta local "{name}"? (Las etiquetas en remotos no cambian.)',
@@ -619,8 +634,7 @@ export const es: Messages = {
     }
   },
   compare: {
-    showCommitHelp: 'Haz clic para ver el commit al lado (clic derecho: abrir en el historial)',
-    showCommit: 'Ver el commit aquí',
+    showCommitHelp: 'Haz clic para resaltar el commit (clic derecho: opciones, abrir en el historial)',
     from: 'De',
     to: 'A',
     refPlaceholder: 'rama, etiqueta o commit',
@@ -652,7 +666,6 @@ export const es: Messages = {
     showCurrent: 'ver la versión actual',
     uncommitted: 'sin commit',
     uncommittedHelp: 'Cambio todavía sin commit',
-    clickToOpen: 'Haz clic para abrir el commit',
     noCommits: 'Este archivo todavía no tiene commits.',
     restoreTitle: 'Restaurar versión',
     restoreMessage: 'El archivo {path} volverá a estar como en el commit {sha} ("{subject}").\nEl cambio queda en stage para que lo revises y hagas commit.',
@@ -809,6 +822,7 @@ export const es: Messages = {
     about: {
       title: 'Acerca de',
       description: 'Versiones e información del sistema.',
+      developers: 'Desarrolladores',
       version: 'Versión de GitTools',
       git: 'Versión de git',
       gitMissing: 'no encontrado en el PATH',

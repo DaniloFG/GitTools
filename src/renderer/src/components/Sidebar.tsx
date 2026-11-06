@@ -6,6 +6,7 @@ import { useBranchMenu } from '../branchMenu'
 import { useApp } from '../context'
 import { endDrag, startDrag } from '../dnd'
 import { git } from '../git'
+import { readScreen } from '../dockStore'
 import { relativeDate } from '../format'
 import { commitColors, laneColor } from '../graph'
 import { useDrop } from '../useDrop'
@@ -251,7 +252,8 @@ function TagItem({ name, sha }: { name: string; sha: string }) {
   return (
     <li
       className="branch-item"
-      onClick={() => selectCommit(sha)}
+      // Na tela de branches o clique não troca para o histórico.
+      onClick={() => readScreen() !== 'branches' && selectCommit(sha)}
       onContextMenu={(e) =>
         showMenu(e, [
           { label: t('sidebar.menu.checkoutDetached'), onClick: () => actions.checkout(name) },

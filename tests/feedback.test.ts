@@ -90,4 +90,11 @@ describe('motivo de o commit não poder ser feito', () => {
     expect(commitBlock({ ...ok, staged: 0, amend: true })).toBeNull()
     expect(commitBlock({ ...ok, staged: 0, stageAll: true })).toBeNull()
   })
+
+  it('arquivos marcados na lista de não staged liberam o commit mesmo sem nada no stage', () => {
+    expect(commitBlock({ ...ok, staged: 0, picked: 2 })).toBeNull()
+    expect(commitBlock({ ...ok, staged: 0, picked: 0 })).toBe('nothing')
+    expect(commitBlock({ ...ok, staged: 0 })).toBe('nothing')
+    expect(commitBlock({ ...ok, staged: 0, picked: 1, message: '' })).toBe('message')
+  })
 })

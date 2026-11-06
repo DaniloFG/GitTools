@@ -24,7 +24,7 @@ interface Props {
  * cada lado (`compare.setup`), os arquivos diferentes (`compare.files`) e o diff do arquivo (`compare.diff`).
  */
 export function CompareView({ request, onRequest }: Props) {
-  const { data, run, toast, selectCommit, showCommit, openFileView, showMenu, openDiffWindow } = useApp()
+  const { data, run, toast, selectCommit, openFileView, showMenu, openDiffWindow } = useApp()
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''
@@ -35,7 +35,7 @@ export function CompareView({ request, onRequest }: Props) {
   const [comparison, setComparison] = useState<Comparison | null>(null)
   const [loading, setLoading] = useState(false)
   const [active, setActive] = useState<ChangedFile | null>(null)
-  /** Último commit clicado nas listas "Só em…" (aparece nos painéis do commit; a comparação continua aqui). */
+  /** Último commit clicado nas listas "Só em…" (só fica destacado; ir ao Histórico é pelo menu). */
   const [commit, setCommit] = useState<string | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
@@ -95,17 +95,13 @@ export function CompareView({ request, onRequest }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, comparison, fullFile])
 
-  const openCommit = (sha: string) => {
-    setCommit(sha)
-    showCommit(sha)
-  }
+  // Clicar num commit das listas só o destaca aqui: a comparação continua na tela (ir ao Histórico é pelo menu).
+  const openCommit = (sha: string) => setCommit(sha)
   const commitMenu = (e: React.MouseEvent, sha: string) =>
     showMenu(e, [
-      { label: t('compare.showCommit'), onClick: () => openCommit(sha) },
       { label: t('compare.openInHistory'), onClick: () => selectCommit(sha) },
       'separator',
-      actions.copyMessageMenu([sha]),
-      { label: t('history.menu.copySha'), onClick: () => navigator.clipboard.writeText(sha) }
+      actions.copyMessageMenu([sha])
     ])
 
   const swap = () => {

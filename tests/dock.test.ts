@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   activateView,
+  cloneDock,
   DOCK_VERSION,
   defaultDock,
   effectiveActive,
@@ -498,5 +499,78 @@ describe('versão do arranjo guardado', () => {
   it('o arranjo com fixados sobrevive a salvar e ler de novo', () => {
     const state = toggleScreenIn(revealIn(defaultDock(), 'changes.diff', 'files'), 'branches', 'history')
     expect(parseDock(JSON.parse(JSON.stringify(state)))).toEqual(state)
+  })
+})
+
+describe('tamanhos das divisões por tela', () => {
+  const weightsOf = (tree: ShownNode | null) => (tree?.kind === 'split' ? tree.children.map((c) => c.weight) : null)
+
+  it('redimensionar numa tela não muda a árvore nem as outras telas', () => {
+    const d = defaultDock()
+    const next = setSizes(d, 'd1', [1, 3], 'changes')
+    expect(next.root).toEqual(d.root)
+    expect(next.screenSizes).toEqual({ changes: { d1: [1, 3] } })
+    expect(weightsOf(shownTree(next, allShown, 'changes'))).toEqual([1, 3])
+    expect(weightsOf(shownTree(next, allShown, 'history'))).toEqual([0.17, 0.83])
+    expect(weightsOf(shownTree(next, allShown))).toEqual([0.17, 0.83])
+  })
+
+  it('sem tela, setSizes continua mudando o tamanho padrão da árvore', () => {
+    const next = setSizes(defaultDock(), 'd1', [1, 3])
+    expect(next.screenSizes).toEqual({})
+    expect(weightsOf(shownTree(next, allShown, 'files'))).toEqual([1, 3])
+  })
+
+  it('tamanhos inválidos são recusados, com a mesma tela', () => {
+    const d = defaultDock()
+    expect(setSizes(d, 'd1', [1], 'history')).toBe(d)
+    expect(setSizes(d, 'd1', [1, -2], 'history')).toBe(d)
+    expect(setSizes(d, 'nao-existe', [1, 1], 'history')).toBe(d)
+  })
+
+  it('uma tela sem tamanho próprio usa os padrões da árvore', () => {
+    expect(weightsOf(shownTree(defaultDock(), allShown, 'files'))).toEqual([0.17, 0.83])
+  })
+
+  it('um tamanho que não casa com o número de filhos da divisão é ignorado', () => {
+    const d = { ...defaultDock(), screenSizes: { files: { d1: [1, 2, 3] } } }
+    expect(weightsOf(shownTree(d, allShown, 'files'))).toEqual([0.17, 0.83])
+  })
+
+  it('a cópia do arranjo não divide as listas de tamanhos com o original', () => {
+    const a = setSizes(defaultDock(), 'd1', [1, 3], 'files')
+    const b = cloneDock(a)
+    b.screenSizes.files!.d1![0] = 9
+    expect(a.screenSizes.files!.d1).toEqual([1, 3])
+  })
+
+  it('ao carregar, tira tamanhos de telas e divisões desconhecidas, e de divisões com outro número de filhos', () => {
+    const state = parseDock({
+      ...JSON.parse(JSON.stringify(defaultDock())),
+      screenSizes: {
+        history: { d1: [1, 2], nope: [1, 1], d0: [1, 1, 1] },
+        files: { d1: [1, -1], d2: ['x', 1] },
+        nope: { d1: [1, 1] }
+      }
+    })
+    expect(state.screenSizes).toEqual({ history: { d1: [1, 2] } })
+  })
+
+  it('layout salvo antes dos tamanhos por tela é lido com `screenSizes` vazio', () => {
+    const { screenSizes: _sizes, ...legacy } = JSON.parse(JSON.stringify(defaultDock())) as DockState
+    expect(parseDock(legacy).screenSizes).toEqual({})
+  })
+
+  it('os tamanhos por tela sobrevivem a salvar e ler de novo', () => {
+    const state = setSizes(setSizes(defaultDock(), 'd1', [1, 3], 'files'), 'd2', [2, 1], 'history')
+    expect(parseDock(JSON.parse(JSON.stringify(state)))).toEqual(state)
+  })
+
+  it('ao mudar a estrutura, tamanhos de divisões que sumiram são descartados', () => {
+    // Tirar o Log do git do rodapé faz a divisão d2 sumir (sobra só um filho).
+    const withSizes = setSizes(defaultDock(), 'd2', [1, 2], 'history')
+    const moved = moveView(withSizes, 'gitlog', { kind: 'tabs', group: 'g-main' })
+    expect(groupsOf(moved.root).some((g) => g.id === 'g-log')).toBe(false)
+    expect(moved.screenSizes).toEqual({})
   })
 })

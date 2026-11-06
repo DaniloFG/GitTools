@@ -3,6 +3,7 @@ import type { MenuItem } from './components/ContextMenu'
 import { currentBranch, useApp } from './context'
 import type { DragPayload } from './dnd'
 import { git } from './git'
+import { copyText } from './copy'
 import { errorMessage, shortSha } from './format'
 import { t } from './i18n'
 import { useLayout } from './layout'
@@ -302,14 +303,41 @@ export function useActions() {
     }
   }
 
-  /** Item "Copiar mensagem" dos menus de commit, com o submenu das três formas de copiar. */
+  /** Troca a mensagem do HEAD (título e descrição); o que está em stage não entra no commit. */
+  async function editHeadMessage(sha: string) {
+    try {
+      const details = await git.commitDetails(sha)
+      // Antes de reescrever: se o HEAD já está no remoto, o resultado exige force push.
+      const pushed = !!data.status.upstream && data.status.ahead === 0
+      let body = details.body.trim()
+      const subject = await prompt({
+        title: t('actions.editMessage.title'),
+        label: t('actions.editMessage.subject'),
+        initial: details.subject,
+        confirmLabel: t('actions.editMessage.confirm'),
+        detail: { label: t('actions.editMessage.body'), initial: body, onDetail: (value) => (body = value.trim()) }
+      })
+      if (subject === null) return
+      const message = body ? `${subject}\n\n${body}` : subject
+      await run(t('busy.editMessage'), async () => {
+        await git.rewordHead(message)
+        return t(pushed ? 'actions.editMessage.pushedNote' : 'actions.editMessage.done')
+      })
+    } catch (error) {
+      toast('error', errorMessage(error))
+    }
+  }
+
+  /** Item "Copiar" dos menus de commit: as três formas de copiar a mensagem e, por último, o SHA (um por linha). */
   function copyMessageMenu(shas: string[]): MenuItem {
     return {
-      label: t('history.menu.copyMessage'),
+      label: t('history.menu.copy'),
       submenu: [
         { label: t('history.menu.copyMessageFull'), onClick: () => void copyMessage(shas, 'full') },
         { label: t('history.menu.copyMessageSubject'), onClick: () => void copyMessage(shas, 'subject') },
-        { label: t('history.menu.copyMessageBody'), onClick: () => void copyMessage(shas, 'body') }
+        { label: t('history.menu.copyMessageBody'), onClick: () => void copyMessage(shas, 'body') },
+        'separator',
+        { label: t('history.menu.copySha'), onClick: () => void copyText(shas.join('\n')) }
       ]
     }
   }
@@ -318,6 +346,7 @@ export function useActions() {
     head,
     copyMessage,
     copyMessageMenu,
+    editHeadMessage,
     stash,
     checkout,
     createBranch,

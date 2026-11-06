@@ -29,6 +29,8 @@ function samePath(a: string, b: string): boolean {
 
 const MAIN_VIEW = 'gittools'
 const DIFF_VIEW = 'gittools.diff'
+/** Chave, no estado da janela, dos repositórios abertos nela. */
+const WORKSPACE_KEY = 'gittools.workspace'
 
 /** Idioma das mensagens do motor git: o das configurações do GitTools ou, em "sistema", o do VS Code. */
 function applyLocale(settings: Settings) {
@@ -71,6 +73,11 @@ class Controller {
       settingsChanged: applyLocale,
       repositoryOpened: (info) => {
         if (this.main) this.main.title = `GitTools — ${info.name}`
+      },
+      // Os projetos abertos são de cada janela do VS Code (o globalStorage é compartilhado por todas).
+      workspaceStore: {
+        read: () => context.workspaceState.get(WORKSPACE_KEY),
+        write: (value) => context.workspaceState.update(WORKSPACE_KEY, value)
       }
     }
     this.backend = new Backend(host)
