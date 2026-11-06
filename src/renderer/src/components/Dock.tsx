@@ -11,6 +11,7 @@ import {
   screenOf,
   setSizes,
   shownTree,
+  sizesIn,
   zoneAt,
   type DockNode,
   type DockState,
@@ -109,7 +110,7 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
   }
 
   const isShown = (view: ViewId) => available(view) && inScreen(state, view, screen)
-  const tree = shownTree(state, isShown)
+  const tree = shownTree(state, isShown, screen)
 
   const maximizedGroup = maximized && tree ? findShownGroup(tree, maximized) : null
   // O painel ampliado volta ao tamanho de antes quando ele some ou quando outro painel passa à frente (ex.: um atalho de tela).
@@ -299,7 +300,7 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
     const rtl = row && getComputedStyle(divider).direction === 'rtl'
     const start = latest.current
     startResize(e, row ? 'col-resize' : 'row-resize', (_event, dx, dy) => {
-      onChange(withPair(start, node, i, row ? (rtl ? -dx : dx) : dy, sa, sb))
+      onChange(withPair(start, node, i, row ? (rtl ? -dx : dx) : dy, sa, sb, screen))
     })
   }
 
@@ -313,10 +314,10 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
     const next = divider.nextElementSibling as HTMLElement
     const size = (el: HTMLElement) => (row ? el.getBoundingClientRect().width : el.getBoundingClientRect().height)
     const rtl = row && getComputedStyle(divider).direction === 'rtl'
-    if (e.key === 'Enter') return onChange(withPair(latest.current, node, i, (size(next) - size(prev)) / 2, size(prev), size(next)))
+    if (e.key === 'Enter') return onChange(withPair(latest.current, node, i, (size(next) - size(prev)) / 2, size(prev), size(next), screen))
     let delta = (e.key === keys[1] ? 1 : -1) * (e.shiftKey ? KEY_STEP * 5 : KEY_STEP)
     if (rtl) delta = -delta
-    onChange(withPair(latest.current, node, i, delta, size(prev), size(next)))
+    onChange(withPair(latest.current, node, i, delta, size(prev), size(next), screen))
   }
 
   const renderNode = (node: ShownNode): React.ReactNode => {
@@ -342,7 +343,7 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
                     const prev = el.previousElementSibling as HTMLElement
                     const next = el.nextElementSibling as HTMLElement
                     const size = (x: HTMLElement) => (row ? x.getBoundingClientRect().width : x.getBoundingClientRect().height)
-                    onChange(withPair(latest.current, node, i, (size(next) - size(prev)) / 2, size(prev), size(next)))
+                    onChange(withPair(latest.current, node, i, (size(next) - size(prev)) / 2, size(prev), size(next), screen))
                   }}
                 />
               )}
@@ -409,16 +410,16 @@ function frontViews(node: ShownNode, except?: string): ViewId[] {
 }
 
 /** Novo arranjo depois de a divisória entre os filhos `i - 1` e `i` andar `delta` pixels. */
-function withPair(state: DockState, node: ShownSplit, i: number, delta: number, sizeA: number, sizeB: number): DockState {
+function withPair(state: DockState, node: ShownSplit, i: number, delta: number, sizeA: number, sizeB: number, screen: ScreenId): DockState {
   const [a, b] = [node.children[i - 1], node.children[i]]
   const min = node.dir === 'row' ? MIN_WIDTH : MIN_HEIGHT
   const [wa, wb] = resizePair(a.weight, b.weight, sizeA, sizeB, delta, min, min)
   const current = findSplit(state.root, node.id)
   if (!current) return state
-  const sizes = [...current.sizes]
+  const sizes = [...sizesIn(state, current, screen)]
   sizes[a.index] = wa
   sizes[b.index] = wb
-  return setSizes(state, node.id, sizes)
+  return setSizes(state, node.id, sizes, screen)
 }
 
 function findSplit(node: DockNode, id: string): Extract<DockNode, { kind: 'split' }> | null {

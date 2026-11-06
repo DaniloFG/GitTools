@@ -1,7 +1,7 @@
 import { useApp } from '../context'
 import { inScreen, pinnedIn, SCREEN_IDS, SCREEN_VIEWS, toggleIn, type DockState, type ScreenId, type ViewId } from '../dock'
 import { t } from '../i18n'
-import { applySavedLayout, findByName, removeSavedLayout, saveCurrentLayout, useSavedLayouts } from '../savedLayouts'
+import { applySavedLayout, deleteSavedLayout, findByName, saveCurrentLayout, useCurrentLayoutName, useSavedLayouts } from '../savedLayouts'
 import type { ViewMeta } from './Dock'
 import type { MenuItem } from './ContextMenu'
 
@@ -74,10 +74,11 @@ export function ScreenTabs({ state, meta, screen, available, onScreen, changeCou
 export function PanelsButtons({ state, onChange, screen, meta, available }: Omit<Props, 'changeCount' | 'dashboards' | 'onDashboards' | 'onScreen'>) {
   const { showMenu, resetLayout, prompt, confirm, toast } = useApp()
   const [saved, setSaved] = useSavedLayouts()
+  const currentName = useCurrentLayoutName()
 
-  /** Guarda o arranjo de agora com o nome que o usuário escolher (o mesmo nome substitui o layout antigo). */
+  /** Guarda o arranjo de agora com o nome que o usuário escolher (o nome do layout em uso vem sugerido; o mesmo nome substitui o layout antigo). */
   const saveLayout = async () => {
-    const name = await prompt({ title: t('layouts.saveTitle'), label: t('layouts.name'), placeholder: t('layouts.namePlaceholder'), confirmLabel: t('layouts.save') })
+    const name = await prompt({ title: t('layouts.saveTitle'), label: t('layouts.name'), placeholder: t('layouts.namePlaceholder'), initial: currentName, confirmLabel: t('layouts.save') })
     if (!name) return
     const existing = findByName(saved, name)
     if (existing) {
@@ -114,7 +115,7 @@ export function PanelsButtons({ state, onChange, screen, meta, available }: Omit
             applySavedLayout(layout)
             toast('success', t('layouts.applied', { name: layout.name }))
           },
-          actions: [{ icon: '✕', title: t('layouts.delete'), onClick: () => setSaved(removeSavedLayout(saved, layout.id)) }]
+          actions: [{ icon: '✕', title: t('layouts.delete'), onClick: () => deleteSavedLayout(saved, setSaved, layout.id) }]
         }))
       })
     }

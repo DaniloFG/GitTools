@@ -275,9 +275,11 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
       'separator',
       { label: t('history.menu.revert'), onClick: () => actions.revert(commit) },
       { label: t('history.menu.reset', { branch: head ?? 'HEAD' }), onClick: () => actions.reset(commit) },
+      ...(shas.length === 1 && commit.sha === data.status.headSha
+        ? [{ label: t('history.menu.editMessage'), onClick: () => void actions.editHeadMessage(commit.sha) }]
+        : []),
       'separator',
-      actions.copyMessageMenu(shas),
-      { label: t('history.menu.copySha'), onClick: () => copyText(commit.sha) }
+      actions.copyMessageMenu(shas)
     ])
   }
 

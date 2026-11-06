@@ -57,6 +57,7 @@ export const en: Messages = {
     compare: 'Compare'
   },
   busy: {
+    editMessage: 'Editing the last commit message',
     deletingTag: 'Deleting tag {name}',
     creatingTag: 'Creating tag {name}',
     aborting: 'Aborting',
@@ -119,7 +120,6 @@ export const en: Messages = {
     push: 'Push',
     pushHelp: 'Send your commits to the remote',
     pushTo: 'Push to {remote}',
-    pushForceLease: 'Force push (with lease)',
     pushForce: 'Force push (overwrite)',
     pushOptions: 'Push options…',
     pushMore: 'More push options',
@@ -238,7 +238,8 @@ export const en: Messages = {
       revert: 'Revert commit…',
       reset: 'Move {branch} here (reset)…',
       copySha: 'Copy SHA',
-      copyMessage: 'Copy message',
+      copy: 'Copy',
+      editMessage: 'Edit message…',
       copyMessageFull: 'Full message (title and description)',
       copyMessageSubject: 'Title only (first line)',
       copyMessageBody: 'Description only',
@@ -294,6 +295,10 @@ export const en: Messages = {
     },
     conflicted: 'Conflicted',
     conflictedHint: 'Click a file to resolve it side by side (current × result × incoming).',
+    menu: {
+      blame: 'Blame (line authors)',
+      history: 'File history'
+    },
     unstaged: 'Changes (unstaged)',
     staged: 'Ready to commit (staged)',
     stage: 'Stage',
@@ -317,6 +322,8 @@ export const en: Messages = {
     commitInto: 'Commit to {branch}',
     commitStageAll: 'Include all files (stage)',
     commitStageAllHelp: 'Stages every changed file before committing',
+    commitPicked: { one: 'Commit {count} selected file', other: 'Commit {count} selected files' },
+    commitPickedHint: 'The files selected in the Not staged list are included in this commit.',
     pushAfter: 'Push afterwards',
     amendNeedsForce: 'The last commit is already on the remote: amending it requires a force push (recommended: with lease).',
     pushFailedAfterCommit: 'The commit was made, but the push failed: {error}',
@@ -346,6 +353,14 @@ export const en: Messages = {
     }
   },
   actions: {
+    editMessage: {
+      title: 'Edit the last commit message',
+      subject: 'Subject',
+      body: 'Description (optional)',
+      confirm: 'Save message',
+      pushedNote: 'Message changed. The commit was already on the remote: pushing it requires a force push.',
+      done: 'Last commit message changed'
+    },
     deleteTag: {
       confirm: 'Delete',
       message: 'Delete the local tag "{name}"? (Tags on remotes are not changed.)',
@@ -619,8 +634,7 @@ export const en: Messages = {
     }
   },
   compare: {
-    showCommitHelp: 'Click to show the commit alongside (right-click: open in history)',
-    showCommit: 'Show commit here',
+    showCommitHelp: 'Click to highlight the commit (right-click: options, open in history)',
     from: 'From',
     to: 'To',
     refPlaceholder: 'branch, tag or commit',
@@ -652,7 +666,6 @@ export const en: Messages = {
     showCurrent: 'show current version',
     uncommitted: 'not committed',
     uncommittedHelp: 'Change not committed yet',
-    clickToOpen: 'Click to open the commit',
     noCommits: 'This file has no commits yet.',
     restoreTitle: 'Restore version',
     restoreMessage: 'The file {path} will go back to how it was in commit {sha} ("{subject}").\nThe change is staged so you can review it and commit.',
@@ -809,6 +822,7 @@ export const en: Messages = {
     about: {
       title: 'About',
       description: 'Versions and system information.',
+      developers: 'Developers',
       version: 'GitTools version',
       git: 'Git version',
       gitMissing: 'not found in PATH',

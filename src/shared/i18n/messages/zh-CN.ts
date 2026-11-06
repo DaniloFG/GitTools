@@ -56,6 +56,7 @@ export const zhCN: Messages = {
     compare: '比较'
   },
   busy: {
+    editMessage: '正在编辑最后一次提交的信息',
     deletingTag: '正在删除标签 {name}',
     creatingTag: '正在创建标签 {name}',
     aborting: '正在中止',
@@ -118,7 +119,6 @@ export const zhCN: Messages = {
     push: '推送',
     pushHelp: '将你的提交发送到远程仓库',
     pushTo: '推送到 {remote}',
-    pushForceLease: '强制推送（带 lease）',
     pushForce: '强制推送（覆盖）',
     pushOptions: '推送选项…',
     pushMore: '更多推送选项',
@@ -237,7 +237,8 @@ export const zhCN: Messages = {
       revert: '还原提交…',
       reset: '将 {branch} 移到这里（重置）…',
       copySha: '复制 SHA',
-      copyMessage: '复制提交信息',
+      copy: '复制',
+      editMessage: '编辑提交信息…',
       copyMessageFull: '完整信息（标题和说明）',
       copyMessageSubject: '仅标题（第一行）',
       copyMessageBody: '仅说明',
@@ -287,6 +288,10 @@ export const zhCN: Messages = {
     discardLinesMessage: { other: '丢弃 {path} 中选中的 {count} 行？' },
     conflicted: '有冲突',
     conflictedHint: '点击文件即可并排解决（当前 × 结果 × 传入）。',
+    menu: {
+      blame: '追溯（Blame）',
+      history: '文件历史'
+    },
     unstaged: '更改（未暂存）',
     staged: '准备提交（已暂存）',
     stage: '暂存',
@@ -310,6 +315,8 @@ export const zhCN: Messages = {
     commitInto: '提交到 {branch}',
     commitStageAll: '包含所有文件（暂存）',
     commitStageAllHelp: '提交前先暂存所有已更改的文件',
+    commitPicked: { other: '提交所选的 {count} 个文件' },
+    commitPickedHint: '“未暂存”列表中选中的文件会包含在本次提交中。',
     pushAfter: '提交后推送',
     amendNeedsForce: '最后一次提交已在远程：修改它需要强制推送（建议使用 lease）。',
     pushFailedAfterCommit: '提交已完成，但推送失败：{error}',
@@ -339,6 +346,14 @@ export const zhCN: Messages = {
     }
   },
   actions: {
+    editMessage: {
+      title: '编辑最后一次提交的信息',
+      subject: '标题',
+      body: '描述（可选）',
+      confirm: '保存信息',
+      pushedNote: '信息已修改。该提交已在远程：推送它需要强制推送。',
+      done: '最后一次提交的信息已修改'
+    },
     deleteTag: {
       confirm: '删除',
       message: '删除本地标签“{name}”？（远程上的标签不受影响。）',
@@ -588,8 +603,7 @@ export const zhCN: Messages = {
     }
   },
   compare: {
-    showCommitHelp: '单击在旁边查看提交（右键：在历史中打开）',
-    showCommit: '在此查看提交',
+    showCommitHelp: '单击高亮提交（右键：选项，在历史中打开）',
     from: '从',
     to: '到',
     refPlaceholder: '分支、标签或提交',
@@ -621,7 +635,6 @@ export const zhCN: Messages = {
     showCurrent: '查看当前版本',
     uncommitted: '未提交',
     uncommittedHelp: '尚未提交的更改',
-    clickToOpen: '点击打开该提交',
     noCommits: '此文件还没有提交。',
     restoreTitle: '恢复版本',
     restoreMessage: '文件 {path} 将恢复到提交 {sha}（“{subject}”）时的状态。\n更改会放入暂存区，供你检查并提交。',
@@ -778,6 +791,7 @@ export const zhCN: Messages = {
     about: {
       title: '关于',
       description: '版本和系统信息。',
+      developers: '开发者',
       version: 'GitTools 版本',
       git: 'Git 版本',
       gitMissing: '未在 PATH 中找到',

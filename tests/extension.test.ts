@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as fakeVscode from './support/vscode'
-import { fake, Uri, type FakePanel } from './support/vscode'
+import { fake, Memento, Uri, type FakePanel } from './support/vscode'
 import { createRepo } from './helpers'
 import { activate } from '../extension/src/extension'
 
@@ -18,9 +18,10 @@ const INDEX = `<!doctype html><html><head>
   </head><body><div id="root"></div></body></html>`
 
 const dirs: string[] = []
-function extensionContext() {
-  const root = mkdtempSync(join(tmpdir(), 'gittools-ext-'))
-  dirs.push(root)
+/** Pasta da extensão (globalStorage incluído). Passar `root` simula outra janela usando a mesma pasta. */
+function extensionContext(options: { root?: string; workspaceState?: Memento } = {}) {
+  const root = options.root ?? mkdtempSync(join(tmpdir(), 'gittools-ext-'))
+  if (!options.root) dirs.push(root)
   mkdirSync(join(root, 'dist', 'webview', 'assets'), { recursive: true })
   writeFileSync(join(root, 'dist', 'webview', 'index.html'), INDEX)
   const subscriptions: { dispose(): void }[] = []
@@ -29,6 +30,8 @@ function extensionContext() {
       subscriptions,
       extensionUri: Uri.file(root),
       globalStorageUri: Uri.file(join(root, 'storage')),
+      // Estado da janela: um Memento novo é uma janela nova (vazia); o mesmo objeto é a mesma janela.
+      workspaceState: options.workspaceState ?? new Memento(),
       extension: { packageJSON: { version: '9.9.9' } }
     },
     subscriptions
@@ -54,10 +57,12 @@ afterEach(() => {
   while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true })
 })
 
-async function start() {
-  const { context, subscriptions } = extensionContext()
+async function start(options: { root?: string; workspaceState?: Memento } = {}) {
+  const { context, subscriptions } = extensionContext(options)
   activate(context as never)
-  return { context, subscriptions, run: (id: string, ...args: unknown[]) => fake.commands.get(id)!(...args) }
+  // Cada janela usa os próprios comandos (a última ativação substitui os registros em `fake.commands`).
+  const handlers = new Map(fake.commands)
+  return { context, subscriptions, run: (id: string, ...args: unknown[]) => handlers.get(id)!(...args) }
 }
 
 describe('extensão do VS Code', () => {
@@ -203,6 +208,93 @@ describe('extensão do VS Code', () => {
     expect(panel.webview.html).toContain('window.__gittoolsBoot')
     expect((panel.iconPath as Uri).fsPath).toMatch(/media[\\/]icon\.png$/)
     expect((await ask(panel, 'app:currentRepository')).ok).toBe(true)
+  })
+
+  it('cada janela do VS Code guarda os próprios projetos: uma janela nova começa sem nenhum e não mexe na outra', async () => {
+    const a = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    const b = await createRepo()
+    await b.commit('b', { 'b.txt': 'b\n' })
+    // As duas janelas compartilham o globalStorage, como no VS Code.
+    const shared = mkdtempSync(join(tmpdir(), 'gittools-ext-'))
+    dirs.push(shared)
+
+    fake.workspaceFolders = undefined
+    const windowA = await start({ root: shared, workspaceState: new Memento() })
+    await windowA.run('gittools.open')
+    const panelA = fake.panels[0]
+    expect((await ask(panelA, 'app:openRepository', a.dir)).ok).toBe(true)
+
+    const windowB = await start({ root: shared, workspaceState: new Memento() })
+    await windowB.run('gittools.open')
+    const panelB = fake.panels[1]
+    const openB = await ask(panelB, 'app:openRepositories')
+    expect(openB.result).toEqual({ repos: [], active: null })
+    expect((await ask(panelB, 'app:currentRepository')).result).toBeNull()
+    // Recentes continuam globais: a janela B vê o repositório que a A abriu.
+    expect(((await ask(panelB, 'app:recentRepositories')).result as { path: string }[]).map((r) => r.path)).toEqual([a.repo.root])
+
+    expect((await ask(panelB, 'app:openRepository', b.dir)).ok).toBe(true)
+    const openA = (await ask(panelA, 'app:openRepositories')).result as { repos: { root: string }[]; active: string }
+    expect(openA.repos.map((r) => r.root)).toEqual([a.repo.root])
+    expect(openA.active).toBe(a.repo.root)
+    // Nada foi gravado na pasta de dados compartilhada: o estado fica no estado de cada janela.
+    expect(existsSync(join(shared, 'storage', 'workspace.json'))).toBe(false)
+    windowA.subscriptions.forEach((s) => s.dispose())
+    windowB.subscriptions.forEach((s) => s.dispose())
+  })
+
+  it('reabrir a mesma janela restaura os projetos e o ativo dela', async () => {
+    const a = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    const b = await createRepo()
+    await b.commit('b', { 'b.txt': 'b\n' })
+    const shared = mkdtempSync(join(tmpdir(), 'gittools-ext-'))
+    dirs.push(shared)
+    const state = new Memento()
+
+    fake.workspaceFolders = undefined
+    const first = await start({ root: shared, workspaceState: state })
+    await first.run('gittools.open')
+    await ask(fake.panels[0], 'app:openRepository', a.dir)
+    await ask(fake.panels[0], 'app:openRepository', b.dir)
+    first.subscriptions.forEach((s) => s.dispose())
+
+    // Outra janela, nova, que não deve pegar esses projetos.
+    const other = await start({ root: shared, workspaceState: new Memento() })
+    await other.run('gittools.open')
+    expect((await ask(fake.panels[1], 'app:openRepositories')).result).toEqual({ repos: [], active: null })
+
+    // A mesma janela voltando (mesmo estado): recupera os dois repositórios e o ativo (b).
+    const again = await start({ root: shared, workspaceState: state })
+    await again.run('gittools.open')
+    const reopened = (await ask(fake.panels[2], 'app:openRepositories')).result as { repos: { root: string }[]; active: string }
+    expect(reopened.repos.map((r) => r.root)).toEqual([a.repo.root, b.repo.root])
+    expect(reopened.active).toBe(b.repo.root)
+    again.subscriptions.forEach((s) => s.dispose())
+    other.subscriptions.forEach((s) => s.dispose())
+  })
+
+  it('janela nova cuja pasta é um repositório abre só essa pasta (comportamento de antes)', async () => {
+    const a = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    const c = await createRepo()
+    await c.commit('c', { 'c.txt': 'c\n' })
+    const shared = mkdtempSync(join(tmpdir(), 'gittools-ext-'))
+    dirs.push(shared)
+
+    fake.workspaceFolders = undefined
+    const first = await start({ root: shared, workspaceState: new Memento() })
+    await first.run('gittools.open')
+    await ask(fake.panels[0], 'app:openRepository', a.dir)
+
+    fake.workspaceFolders = [{ uri: Uri.file(c.dir) }]
+    const second = await start({ root: shared, workspaceState: new Memento() })
+    await second.run('gittools.open')
+    const open = (await ask(fake.panels[1], 'app:openRepositories')).result as { repos: { root: string }[] }
+    expect(open.repos.map((r) => r.root)).toEqual([c.repo.root])
+    first.subscriptions.forEach((s) => s.dispose())
+    second.subscriptions.forEach((s) => s.dispose())
   })
 })
 

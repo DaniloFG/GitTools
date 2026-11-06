@@ -24,7 +24,7 @@ const newDataDir = (): string => {
 }
 
 /** Backend com a pasta de dados `data` (pode ser reaproveitada por outro Backend, como numa nova sessão). */
-function fakeHost(data = newDataDir()) {
+function fakeHost(data = newDataDir(), overrides: Partial<BackendHost> = {}) {
   const events: { channel: string; payload?: unknown }[] = []
   const host: BackendHost = {
     dataDir: () => data,
@@ -42,7 +42,8 @@ function fakeHost(data = newDataDir()) {
     detectEditors: () => [],
     chooseEditor: async () => null,
     openDiffWindow: () => undefined,
-    settingsChanged: () => undefined
+    settingsChanged: () => undefined,
+    ...overrides
   }
   const backend = new Backend(host)
   backends.push(backend)
@@ -282,6 +283,29 @@ describe('vários repositórios abertos', () => {
     const formato = newDataDir()
     writeFileSync(join(formato, 'workspace.json'), JSON.stringify({ repos: 'x', active: 3 }))
     expect(await openList(fakeHost(formato).backend)).toEqual({ repos: [], active: null })
+  })
+
+  it('com workspaceStore, guarda os repositórios abertos nele e não em workspace.json', async () => {
+    const data = newDataDir()
+    const a = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    let stored: unknown = null
+    const workspaceStore = { read: () => stored, write: async (value: unknown) => void (stored = value) }
+
+    const first = fakeHost(data, { workspaceStore })
+    await openRepo(first.backend, a.dir)
+    first.backend.dispose()
+    expect(stored).toEqual({ repos: [a.repo.root], active: a.repo.root })
+    expect(existsSync(join(data, 'workspace.json'))).toBe(false)
+
+    // Nova sessão com o mesmo store reabre o repositório; sem store (Electron) a pasta de dados não tem nada.
+    const second = fakeHost(data, { workspaceStore }).backend
+    expect((await openList(second)).repos.map((r) => r.root)).toEqual([a.repo.root])
+    expect(await openList(fakeHost(data).backend)).toEqual({ repos: [], active: null })
+
+    // Store com valor inválido vira "nada aberto", como o arquivo corrompido.
+    stored = { repos: 3 }
+    expect(await openList(fakeHost(data, { workspaceStore }).backend)).toEqual({ repos: [], active: null })
   })
 
   it('observador da pasta .git avisa só o repositório que mudou, com { root }', async () => {

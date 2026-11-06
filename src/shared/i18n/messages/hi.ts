@@ -60,6 +60,7 @@ export const hi: Messages = {
     compare: 'तुलना'
   },
   busy: {
+    editMessage: 'आख़िरी commit का संदेश बदला जा रहा है',
     deletingTag: 'टैग {name} हटाया जा रहा है',
     creatingTag: 'टैग {name} बनाया जा रहा है',
     aborting: 'रद्द किया जा रहा है',
@@ -122,7 +123,6 @@ export const hi: Messages = {
     push: 'Push',
     pushHelp: 'अपने commits remote पर भेजें',
     pushTo: '{remote} पर Push करें',
-    pushForceLease: 'Force push (lease के साथ)',
     pushForce: 'Force push (overwrite)',
     pushOptions: 'Push विकल्प…',
     pushMore: 'और Push विकल्प',
@@ -241,7 +241,8 @@ export const hi: Messages = {
       revert: 'Commit revert करें…',
       reset: '{branch} को यहाँ ले जाएँ (reset)…',
       copySha: 'SHA कॉपी करें',
-      copyMessage: 'संदेश कॉपी करें',
+      copy: 'कॉपी करें',
+      editMessage: 'संदेश संपादित करें…',
       copyMessageFull: 'पूरा संदेश (शीर्षक और विवरण)',
       copyMessageSubject: 'केवल शीर्षक (पहली पंक्ति)',
       copyMessageBody: 'केवल विवरण',
@@ -297,6 +298,10 @@ export const hi: Messages = {
     },
     conflicted: 'टकराव में',
     conflictedHint: 'साथ-साथ हल करने के लिए फ़ाइल पर क्लिक करें (मौजूदा × परिणाम × आने वाला)।',
+    menu: {
+      blame: 'Blame (लाइन लेखक)',
+      history: 'फ़ाइल इतिहास'
+    },
     unstaged: 'बदलाव (unstaged)',
     staged: 'Commit के लिए तैयार (staged)',
     stage: 'Stage',
@@ -320,6 +325,8 @@ export const hi: Messages = {
     commitInto: '{branch} में commit',
     commitStageAll: 'सभी फ़ाइलें शामिल करें (stage)',
     commitStageAllHelp: 'Commit से पहले बदली हुई सभी फ़ाइलों को stage करता है',
+    commitPicked: { one: '{count} चुनी हुई फ़ाइल के साथ commit', other: '{count} चुनी हुई फ़ाइलों के साथ commit' },
+    commitPickedHint: 'Not staged सूची में चुनी गई फ़ाइलें इस commit में शामिल होती हैं।',
     pushAfter: 'इसके बाद Push करें',
     amendNeedsForce: 'पिछला commit पहले से remote पर है: उसे सुधारने के लिए force push चाहिए (सुझाव: lease के साथ)।',
     pushFailedAfterCommit: 'Commit हो गया, पर Push विफल रहा: {error}',
@@ -349,6 +356,14 @@ export const hi: Messages = {
     }
   },
   actions: {
+    editMessage: {
+      title: 'आख़िरी commit का संदेश बदलें',
+      subject: 'शीर्षक',
+      body: 'विवरण (वैकल्पिक)',
+      confirm: 'संदेश सहेजें',
+      pushedNote: 'संदेश बदल दिया गया। commit पहले से remote पर था: उसे भेजने के लिए force push चाहिए।',
+      done: 'आख़िरी commit का संदेश बदल दिया गया'
+    },
     deleteTag: {
       confirm: 'हटाएँ',
       message: 'स्थानीय टैग "{name}" हटाएँ? (रिमोट के टैग नहीं बदलते।)',
@@ -622,8 +637,7 @@ export const hi: Messages = {
     }
   },
   compare: {
-    showCommitHelp: 'कमिट बगल में देखने के लिए क्लिक करें (राइट-क्लिक: इतिहास में खोलें)',
-    showCommit: 'कमिट यहीं देखें',
+    showCommitHelp: 'कमिट को हाइलाइट करने के लिए क्लिक करें (राइट-क्लिक: विकल्प, इतिहास में खोलें)',
     from: 'से',
     to: 'तक',
     refPlaceholder: 'branch, tag या commit',
@@ -655,7 +669,6 @@ export const hi: Messages = {
     showCurrent: 'मौजूदा संस्करण देखें',
     uncommitted: 'commit नहीं हुआ',
     uncommittedHelp: 'बदलाव अभी commit नहीं हुआ',
-    clickToOpen: 'Commit खोलने के लिए क्लिक करें',
     noCommits: 'इस फ़ाइल का अभी कोई commit नहीं है।',
     restoreTitle: 'संस्करण पुनर्स्थापित करें',
     restoreMessage: 'फ़ाइल {path} commit {sha} ("{subject}") जैसी हो जाएगी।\nबदलाव stage में रहेगा ताकि आप जाँचकर commit कर सकें।',
@@ -812,6 +825,7 @@ export const hi: Messages = {
     about: {
       title: 'जानकारी',
       description: 'संस्करण और सिस्टम की जानकारी।',
+      developers: 'डेवलपर्स',
       version: 'GitTools संस्करण',
       git: 'Git संस्करण',
       gitMissing: 'PATH में नहीं मिला',

@@ -4,6 +4,12 @@ import { SponsorNote } from '../Sponsor'
 import type { SettingsSectionProps } from './sections'
 import { useAppInfo } from './useAppInfo'
 
+/** Quem desenvolve o GitTools (nome e login no GitHub). */
+const DEVELOPERS = [
+  { name: 'Danilo Gama', login: 'DaniloFG' },
+  { name: 'Anderson Jardim', login: 'AndersonJardim' }
+]
+
 export function AboutSection({ replace }: SettingsSectionProps) {
   const info = useAppInfo()
   const rows: [string, string][] = info
@@ -25,6 +31,21 @@ export function AboutSection({ replace }: SettingsSectionProps) {
       </p>
       <p className="muted">{t('welcome.tagline')}</p>
       <SponsorNote />
+      <div className="about-developers">
+        <h4>{t('settings.about.developers')}</h4>
+        <ul>
+          {DEVELOPERS.map((dev) => (
+            <li key={dev.login}>
+              <a href={`https://github.com/${dev.login}`} target="_blank" rel="noreferrer">
+                {dev.name}
+              </a>{' '}
+              <span className="muted small" dir="ltr">
+                github.com/{dev.login}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
       <table className="shortcut-table about-table">
         <tbody>
           {rows.map(([label, value]) => (

@@ -3,7 +3,7 @@
 // Cada layout guarda uma foto do arranjo dos painéis e dos tamanhos (ver `snapshotLayout`). A lista fica nas
 // preferências: o botão de restaurar o layout padrão não a apaga.
 
-import { applyLayoutSnapshot, snapshotLayout, useLayout } from './layout'
+import { applyLayoutSnapshot, readLayout, snapshotLayout, useLayout, writeLayout } from './layout'
 
 export interface SavedLayout {
   id: string
@@ -71,18 +71,50 @@ export function renameSavedLayout(list: SavedLayout[], id: string, name: string)
 }
 
 const KEY = 'pref.savedLayouts'
+/** Id do layout salvo que está em uso (a preferência não é apagada pelo botão de restaurar o padrão). */
+const CURRENT_KEY = 'pref.currentLayout'
 
 /** Layouts salvos e como trocá-los. */
 export function useSavedLayouts() {
   return useLayout<SavedLayout[]>(KEY, parseSavedLayouts)
 }
 
-/** Salva o layout de agora com um nome. */
-export function saveCurrentLayout(list: SavedLayout[], setList: (next: SavedLayout[]) => void, name: string) {
-  setList(addSavedLayout(list, name, snapshotLayout(), Date.now()))
+const parseCurrentId = (value: unknown): string | undefined => (typeof value === 'string' && value ? value : undefined)
+
+/** Nome do layout salvo com este id, se ele ainda existir na lista. */
+export function layoutNameFor(list: SavedLayout[], id: string | undefined): string | undefined {
+  return id ? list.find((l) => l.id === id)?.name : undefined
 }
 
-/** Aplica um layout salvo. */
+/** Nome do layout salvo que está em uso agora (undefined se nenhum, ou se ele foi apagado). */
+export function useCurrentLayoutName(): string | undefined {
+  const [saved] = useSavedLayouts()
+  const [id] = useLayout<string | undefined>(CURRENT_KEY, parseCurrentId)
+  return layoutNameFor(saved, id)
+}
+
+/** Nenhum layout salvo está em uso (ex.: ao restaurar o layout padrão). */
+export function clearCurrentLayout() {
+  writeLayout(CURRENT_KEY, undefined)
+}
+
+/** Salva o layout de agora com um nome; o salvo passa a ser o que está em uso. Devolve o id do layout salvo. */
+export function saveCurrentLayout(list: SavedLayout[], setList: (next: SavedLayout[]) => void, name: string): string | undefined {
+  const next = addSavedLayout(list, name, snapshotLayout(), Date.now())
+  setList(next)
+  const id = findByName(next, name)?.id
+  if (id) writeLayout(CURRENT_KEY, id)
+  return id
+}
+
+/** Apaga um layout salvo; se ele era o que estava em uso, nenhum fica em uso. */
+export function deleteSavedLayout(list: SavedLayout[], setList: (next: SavedLayout[]) => void, id: string) {
+  setList(removeSavedLayout(list, id))
+  if (parseCurrentId(readLayout(CURRENT_KEY)) === id) clearCurrentLayout()
+}
+
+/** Aplica um layout salvo (e ele passa a ser o que está em uso). */
 export function applySavedLayout(layout: SavedLayout) {
   applyLayoutSnapshot(layout.data)
+  writeLayout(CURRENT_KEY, layout.id)
 }

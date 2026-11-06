@@ -3302,6 +3302,14 @@ kbd.duplicate {
 .about-table code {
   word-break: break-all;
 }
+.about-developers ul {
+  list-style: none;
+  margin: 0.25rem 0 1rem;
+  padding: 0;
+}
+.about-developers li + li {
+  margin-top: 0.25rem;
+}
 
 /* Código, diffs, SHAs e caminhos continuam da esquerda para a direita mesmo em idiomas RTL. */
 [dir='rtl'] .diff-table,
