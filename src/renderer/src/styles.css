@@ -1131,7 +1131,9 @@ mark {
 }
 .diff-table .code {
   white-space: pre-wrap;
-  word-break: break-all;
+  /* Quebra só quando a palavra não cabe (sem cortar palavras no meio). */
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 .hunk-header td {
   background: var(--hunk-bg);
@@ -2447,7 +2449,7 @@ button.danger .loader {
 }
 /* Com a barra de abas, o indicador de operação desce para não cobrir a toolbar. */
 .workspace-app .busy {
-  top: 52px;
+  top: calc(var(--toolbar-h, 42px) + 10px);
 }
 
 /* ------------------------------------------------------------ toasts */
@@ -4054,16 +4056,36 @@ body.docking .pane-grip {
   width: 2px;
   background: var(--accent);
 }
-@container (max-width: 520px) {
+/* Painel estreito: some Autor (<700px), depois Data/hora (<520px) e Hash (<380px). A mensagem fica com o resto.
+   Largura zerada + visibility mantém as colunas alinhadas com o cabeçalho (a grade não muda de forma). */
+@container (max-width: 699px) {
   .commit-row,
+  .wip-row,
   .commit-columns {
     --w-author: 0px;
   }
+  .commit-list .commit-author {
+    visibility: hidden;
+  }
 }
-@container (max-width: 400px) {
+@container (max-width: 519px) {
   .commit-row,
+  .wip-row,
   .commit-columns {
     --w-date: 0px;
+  }
+  .commit-list .commit-date {
+    visibility: hidden;
+  }
+}
+@container (max-width: 379px) {
+  .commit-row,
+  .wip-row,
+  .commit-columns {
+    --w-sha: 0px;
+  }
+  .commit-list .commit-sha {
+    visibility: hidden;
   }
 }
 
@@ -4792,10 +4814,14 @@ button.blame-bubble:hover {
 }
 
 /* ---------------------------------------------------------------- barra superior (única) */
-/* Uma só barra: repositório, branch, telas, ações do Git e o menu ⚙. A própria barra é o contêiner das consultas
-   abaixo, então os botões encolhem para só o ícone conforme a largura da janela (ou do webview do VS Code). */
-.toolbar {
+/* Uma só barra: repositório, branch, telas, ações do Git e o menu ⚙. O contêiner das consultas é o invólucro da barra
+   (a barra não pode consultar a si mesma). Abaixo de ~1000px as telas descem para uma segunda linha, de largura toda. */
+.toolbar-frame {
   container: toolbar / inline-size;
+  flex: none;
+  min-width: 0;
+}
+.toolbar {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -4805,26 +4831,43 @@ button.blame-bubble:hover {
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
 }
-.toolbar > * {
-  flex: none;
+/* Em janela larga o grupo principal não tem caixa própria: os itens entram na linha, com as telas no meio. */
+.toolbar .toolbar-main {
+  display: contents;
 }
-.toolbar > .toolbar-spacer {
+.toolbar .toolbar-main > * {
+  flex: none;
+  order: 2;
+}
+.toolbar .toolbar-main > .repo-button {
+  order: 0;
+  flex: 0 0 auto;
+}
+.toolbar .toolbar-main > .current-branch {
+  order: 0;
+  flex: 0 1 auto;
+  min-width: 8em;
+}
+.toolbar .toolbar-main > .toolbar-spacer {
   flex: 1 1 0;
   min-width: 8px;
 }
-.toolbar > .repo-button,
-.toolbar > .current-branch,
+/* Na linha larga, as telas são quem encolhe primeiro (rolam); o repositório e a branch mantêm o nome. */
 .toolbar > .screen-tabs {
-  flex: 0 1 auto;
+  order: 1;
+  flex: 0 3 auto;
   min-width: 0;
+  max-width: 100%;
 }
+
 .toolbar .repo-button {
   height: 28px;
   max-width: 240px;
   padding: 0 8px;
 }
+/* O nome do repositório nunca encolhe abaixo de ~6 caracteres: o resto vira reticências (o nome completo fica no title). */
 .toolbar .repo-button strong {
-  min-width: 0;
+  min-width: 6ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4835,17 +4878,30 @@ button.blame-bubble:hover {
 }
 .toolbar .current-branch {
   max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text);
   font-size: 13px;
   font-weight: 600;
   line-height: 28px;
 }
-/* As telas rolam na horizontal (sem barra visível) quando a janela é estreita. */
+/* As telas rolam na horizontal quando não cabem. Nas bordas, uma máscara de desvanecimento mostra que há mais abas;
+   o atributo data-more (do ScreenTabs) diz de que lado. */
 .toolbar .screen-tabs {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  max-width: 100%;
+  --fade-left: 0px;
+  --fade-right: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-left), #000 calc(100% - var(--fade-right)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-left), #000 calc(100% - var(--fade-right)), transparent 100%);
+}
+.toolbar .screen-tabs[data-more~='left'] {
+  --fade-left: 28px;
+}
+.toolbar .screen-tabs[data-more~='right'] {
+  --fade-right: 28px;
 }
 .toolbar .screen-tabs::-webkit-scrollbar {
   display: none;
@@ -4878,7 +4934,7 @@ button.blame-bubble:hover {
   margin-inline-start: 1px;
 }
 
-/* Telas estreitas: o rótulo some e fica o ícone (com o nome no title e no aria-label). */
+/* Janela média: os botões mostram só o ícone (com o nome no title e no aria-label). */
 @container toolbar (max-width: 1100px) {
   .toolbar .tb-label {
     display: none;
@@ -4887,21 +4943,44 @@ button.blame-bubble:hover {
     padding: 0 8px;
   }
 }
+/* Janela estreita: duas linhas. A primeira tem repositório, branch e ações; a segunda, as telas em largura toda. */
+@container toolbar (max-width: 1000px) {
+  .toolbar {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .toolbar .toolbar-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .toolbar .toolbar-main > .repo-button {
+    flex: 0 1 auto;
+  }
+  .toolbar .toolbar-main > .current-branch {
+    min-width: 0;
+  }
+  .toolbar > .screen-tabs {
+    flex: 0 0 100%;
+  }
+}
 @container toolbar (max-width: 800px) {
   .toolbar .repo-button {
-    max-width: 140px;
+    max-width: 200px;
   }
   .toolbar .current-branch {
-    max-width: 150px;
+    max-width: 160px;
   }
 }
 /* Muito estreita: a branch some para caber as ações (o repositório segue visível). */
-@container toolbar (max-width: 560px) {
+@container toolbar (max-width: 520px) {
   .toolbar .current-branch {
     display: none;
   }
   .toolbar .repo-button {
-    max-width: 110px;
+    max-width: 160px;
   }
 }
 
@@ -5307,4 +5386,120 @@ button.blame-bubble:hover {
 }
 .change-ruler-mark.resolved {
   background: var(--ruler-resolved);
+}
+
+/* ---------------- responsivo: painéis */
+
+/* Janela estreita (abaixo de STACK_WIDTH): as divisões lado a lado empilham; o .dock rola se não couber. */
+.dock.dock-stacked {
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.dock.dock-stacked > .dock-split {
+  flex: 0 0 auto;
+  min-height: 100%;
+}
+.dock.dock-stacked .dock-cell {
+  flex-direction: column;
+  /* Sem corte: uma divisão aninhada maior que a célula faz a célula crescer (o .dock rola). */
+  overflow: visible;
+}
+.dock.dock-stacked .dock-cell > .dock-split {
+  min-height: auto;
+}
+
+/* Lista do histórico: a barra de filtros quebra linha em vez de cortar, e nada rola na horizontal. */
+.list-header {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.list-body {
+  overflow-x: hidden;
+}
+
+/* Cabeçalho do painel de mensagem: o botão alinha à esquerda e encolhe com reticências. */
+.details > .sticky-actions.commit-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.details > .sticky-actions button {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------- responsivo: barra e configurações */
+
+/* Diálogos: nunca maiores que a janela; o miolo rola e o cabeçalho e o rodapé ficam à vista. */
+.modal {
+  max-height: calc(100vh - 16px);
+}
+.modal-header,
+.modal-footer {
+  flex: none;
+}
+
+/* Menus de contexto: cabem na janela e rolam quando são longos. Submenus são fixos na janela (ver ContextMenu.tsx). */
+.context-menu {
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+.context-menu.context-submenu {
+  position: fixed;
+  inset: auto;
+  min-width: 200px;
+}
+
+/* Tabela de versões e atalhos: rótulo | valor, com a quebra de linha onde precisa (sem rolagem horizontal). */
+.about-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.about-table td:first-child {
+  width: 38%;
+  overflow-wrap: anywhere;
+}
+.about-table td:nth-child(2) {
+  white-space: normal;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.about-table code {
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+.settings-content .shortcut-table td:first-child {
+  overflow-wrap: anywhere;
+}
+
+/* Telas estreitas: as seções viram chips que quebram linha (todas à vista) e o diálogo de configurações ocupa quase tudo. */
+@media (max-width: 720px) {
+  .modal-settings {
+    width: calc(100vw - 16px) !important;
+    height: calc(100vh - 16px) !important;
+  }
+  .settings-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+    overflow: visible;
+  }
+  .settings-nav button {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    font-size: 12px;
+  }
+  .settings-nav button.active {
+    background: var(--bg-active);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  }
 }

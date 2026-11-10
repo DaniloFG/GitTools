@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useRecentRepos } from '../recent'
 import { useActions } from '../actions'
 import type { RecentRepo } from '../../../shared/api'
@@ -35,6 +36,22 @@ export function Toolbar({ onOpenRepository, onClone, state, onChange, screen, on
   const [hidden, setHidden] = useLayout<ToolbarItemId[]>('pref.toolbar.hidden', parseHiddenToolbarItems)
   const shown = (id: ToolbarItemId) => isToolbarItemShown(hidden, id)
   const panelItems = usePanelsItems({ state, onChange, screen, meta, available })
+  const frameRef = useRef<HTMLDivElement>(null)
+
+  // A altura real da barra (uma ou duas linhas) vai para --toolbar-h, para o indicador de operação descer junto.
+  useEffect(() => {
+    const el = frameRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const root = document.documentElement
+    const sync = () => root.style.setProperty('--toolbar-h', `${el.offsetHeight}px`)
+    sync()
+    const observer = new ResizeObserver(sync)
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('--toolbar-h')
+    }
+  }, [])
 
   const { favorites, others, setFavorite, remove } = useRecentRepos(repo)
   const showError = (error: unknown) => toast('error', errorMessage(error))
@@ -103,31 +120,32 @@ export function Toolbar({ onOpenRepository, onClone, state, onChange, screen, on
       {
         label: t('toolbar.toolbarMenu'),
         submenu: TOOLBAR_ITEM_IDS.map((id) => ({
-          label: `${shown(id) ? '✓' : ' '} ${t(TOOLBAR_ITEM_LABELS[id])}`,
+          label: t(TOOLBAR_ITEM_LABELS[id]),
+          checked: shown(id),
           onClick: () => setHidden((prev) => toggleToolbarItem(prev, id))
         }))
       }
     ])
 
   return (
-    <header className="toolbar">
-      {shown('repo') && (
-        <button className="repo-button" onClick={repoMenu} title={repo.root} style={{ '--repo': repoColor(repo.root) } as React.CSSProperties}>
-          <span className="repo-button-dot" aria-hidden />
-          <span className="logo-mark">⑂</span>
-          <strong>{repo.name}</strong> ▾
-        </button>
-      )}
-      {shown('branch') && (
-        <span className="current-branch" title={t('toolbar.currentBranch')}>
-          ⎇ {head ?? t('toolbar.detached', { sha: status.headSha?.slice(0, 7) ?? t('toolbar.noCommits') })}
-        </span>
-      )}
-      {shown('screens') && (
-        <ScreenTabs state={state} meta={meta} screen={screen} onScreen={onScreen} available={available} changeCount={changeCount} dashboards={dashboards} onDashboards={onDashboards} />
-      )}
-      <div className="toolbar-spacer" />
-      {shown('fetch') && (
+    <div className="toolbar-frame" ref={frameRef}>
+      <header className="toolbar">
+        {/* Grupo da primeira linha: em janela larga os itens entram direto na barra; estreita, ele é uma linha só. */}
+        <div className="toolbar-main">
+          {shown('repo') && (
+            <button className="repo-button" onClick={repoMenu} title={repo.root} style={{ '--repo': repoColor(repo.root) } as React.CSSProperties}>
+              <span className="repo-button-dot" aria-hidden />
+              <span className="logo-mark">⑂</span>
+              <strong title={repo.name}>{repo.name}</strong> ▾
+            </button>
+          )}
+          {shown('branch') && (
+            <span className="current-branch" title={t('toolbar.currentBranch')}>
+              ⎇ {head ?? t('toolbar.detached', { sha: status.headSha?.slice(0, 7) ?? t('toolbar.noCommits') })}
+            </span>
+          )}
+          <div className="toolbar-spacer" />
+          {shown('fetch') && (
         <button className="tb-btn" onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')} aria-label={t('toolbar.fetch')}>
           <span aria-hidden>⟳</span>
           <span className="tb-label">{t('toolbar.fetch')}</span>
@@ -175,10 +193,15 @@ export function Toolbar({ onOpenRepository, onClone, state, onChange, screen, on
           <span className="tb-label">{t('studio.name')}</span>
         </button>
       )}
-      <SponsorButton compact />
-      <button className="icon-button tb-menu" onClick={barMenu} title={t('toolbar.menuHelp')} aria-label={t('toolbar.menu')} aria-haspopup="menu">
-        ⚙
-      </button>
-    </header>
+          <SponsorButton compact />
+          <button className="icon-button tb-menu" onClick={barMenu} title={t('toolbar.menuHelp')} aria-label={t('toolbar.menu')} aria-haspopup="menu">
+            ⚙
+          </button>
+        </div>
+        {shown('screens') && (
+          <ScreenTabs state={state} meta={meta} screen={screen} onScreen={onScreen} available={available} changeCount={changeCount} dashboards={dashboards} onDashboards={onDashboards} />
+        )}
+      </header>
+    </div>
   )
 }

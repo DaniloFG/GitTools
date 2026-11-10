@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useApp } from '../context'
 import { inScreen, pinnedIn, SCREEN_IDS, SCREEN_VIEWS, toggleIn, type DockState, type ScreenId, type ViewId } from '../dock'
 import { t } from '../i18n'
@@ -46,8 +47,44 @@ const SCREEN_NAMES: Record<ScreenId, Parameters<typeof t>[0]> = {
  * a quantidade discretamente (com a lista na dica), para não se perder deles.
  */
 export function ScreenTabs({ state, meta, screen, available, onScreen, changeCount, dashboards, onDashboards }: Omit<ScreenProps, 'onChange'>) {
+  const ref = useRef<HTMLDivElement>(null)
+  /** Atualiza a máscara das bordas: some do lado em que não há mais abas escondidas. */
+  const fade = useRef<() => void>(() => {})
+
+  // Quando a tela muda (ou o menu ativo), a aba ativa rola para a vista em janelas estreitas.
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>('.screen-tab.active')?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' })
+  }, [screen, dashboards])
+
+  // Depois de cada renderização (contagens e fixados mudam a largura), a máscara acompanha o conteúdo.
+  useEffect(() => fade.current())
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    fade.current = () => {
+      const max = el.scrollWidth - el.clientWidth
+      const pos = Math.abs(el.scrollLeft)
+      // Em RTL o rolar começa à direita: o lado "início" visual é o fim lógico.
+      const rtl = getComputedStyle(el).direction === 'rtl'
+      const atStart = pos < 2
+      const atEnd = pos > max - 2
+      const more = max <= 0 ? [] : [rtl ? !atEnd && 'left' : !atStart && 'left', rtl ? !atStart && 'right' : !atEnd && 'right'].filter(Boolean)
+      if (more.length) el.dataset.more = more.join(' ')
+      else delete el.dataset.more
+    }
+    fade.current()
+    el.addEventListener('scroll', fade.current, { passive: true })
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fade.current)
+    observer?.observe(el)
+    return () => {
+      el.removeEventListener('scroll', fade.current)
+      observer?.disconnect()
+    }
+  }, [])
+
   return (
-    <div className="screen-tabs" role="group" aria-label={t('workbench.screens')} title={t('workbench.screensHelp')}>
+    <div ref={ref} className="screen-tabs" role="group" aria-label={t('workbench.screens')} title={t('workbench.screensHelp')}>
       {SCREENS.map((item) => {
         const current = !dashboards && screen === item.id
         const pinned = pinnedIn(state, item.id).filter(available)
@@ -95,7 +132,7 @@ export function usePanelsItems({ state, onChange, screen, meta, available }: Pic
   /** Um painel da lista: ✓ quando está à vista nesta tela; clicar mostra ou esconde (ou fixa, se for de outra tela). */
   const panelItem = (view: ViewId): MenuItem => {
     const shown = inScreen(state, view, screen)
-    return { label: `${shown ? '✓' : ' '} ${meta[view].label}`, onClick: () => onChange(toggleIn(state, view, screen)) }
+    return { label: meta[view].label, checked: shown, onClick: () => onChange(toggleIn(state, view, screen)) }
   }
 
   const items: MenuItem[] = SCREEN_VIEWS[screen].filter(available).map(panelItem)
