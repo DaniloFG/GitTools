@@ -358,6 +358,8 @@ Fase concluída. Resultados, metas atingidas e não atingidas na [seção 9](#9-
 Meta: selecionar um commit com 2 processos; 10 setas seguidas com até 6; `status` do cenário `heavy` em até
 2× o `status()` simples.
 
+Fase concluída. Resultados na [seção 10](#10-resultado-da-fase-3).
+
 ### Fase 4 — Listas e redesenhos (cerca de 1 semana)
 
 | # | Mudança | Achado | Tamanho |
@@ -385,22 +387,22 @@ Meta: JavaScript da primeira carga em até 700 KB; carga inicial com até 8 proc
 
 ## 7. Orçamentos
 
-Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/ui.mjs 4`. "Hoje" é a medição ao fim da Fase 2 (as linhas de processos git não mudaram desde a Fase 1); a meta é o que o plano busca. Enquanto a meta não é atingida, a regra é **não piorar o "hoje"**.
+Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/ui.mjs 4`. "Hoje" é a medição ao fim da Fase 3; a meta é o que o plano busca. Enquanto a meta não é atingida, a regra é **não piorar o "hoje"**.
 
 | Métrica | Hoje | Meta |
 | --- | --- | --- |
-| Processos git: a janela ganha o foco | 4 | ≤ 3 |
+| Processos git: a janela ganha o foco | 2 | ≤ 3 |
 | Processos git: stage de 1 arquivo | 9 | ≤ 6 |
-| Processos git: selecionar 1 commit | 5 | ≤ 2 |
-| Processos git: 10× seta no histórico | 10 | ≤ 6 |
-| Processos git: carga inicial | 11 | ≤ 8 |
+| Processos git: selecionar 1 commit | 2 | ≤ 2 |
+| Processos git: 10× seta no histórico | 4 | ≤ 6 |
+| Processos git: carga inicial | 6 | ≤ 8 |
 | Rolar o histórico (CPU 4×, 30 quadros de 400 px) | 45–73 ms por quadro (antes da janela: ~41) | ≤ 16 ms |
 | Tarefas longas ao rolar o histórico (CPU 4×) | 1–13 (maior 50–123 ms) | 0 |
 | Arrastar divisória (CPU 4×) | 71–122 ms por passo (34–41 linhas montadas); com o diff de 5.000 linhas, 151–160 ms | ≤ 16 ms |
-| Abrir diff de 5.000 linhas alteradas (CPU 4×) | 1,0–1,3 s | ≤ 300 ms |
+| Abrir diff de 5.000 linhas alteradas (CPU 4×) | 0,93–0,99 s | ≤ 300 ms |
 | Marcar 1 linha nesse diff (CPU 4×) | 26–61 ms | ≤ 50 ms |
 | Nós no DOM, em qualquer tela | ≤ 1.645 (histórico, diff de 5.000 linhas, blame de 20 mil) | ≤ 5.000 |
-| `status` no cenário `heavy` | 331–421 ms | ≤ 2× o `status()` simples |
+| `status` no cenário `heavy` | com contagens 129 ms (simples 15 ms); sem contagens, que é o caso da atualização fora das telas que as mostram, igual ao simples | ≤ 2× o `status()` simples |
 | JavaScript da primeira carga (Electron) | 1.251 KB | ≤ 700 KB |
 
 A meta do arrasto de divisória depende da lista em janela da Fase 2 (itens 2.1 e 2.6): o custo que resta é de layout
@@ -518,3 +520,36 @@ pior). A diferença que resta, ~10%, está dentro do ruído da medição.
 | Arrasto de divisória perto do caso de 120 linhas (113–157 ms) | 71–116 ms por passo | Atingida |
 | Abrir o diff de 5.000 linhas em ≤ 300 ms | 1,0–1,3 s | Não atingida (transporte de 2,9 MB; ver acima) |
 | Marcar uma linha em ≤ 50 ms | 26–61 ms (mediana ~45) | Praticamente atingida |
+
+## 10. Resultado da Fase 3
+
+Fase concluída: 3.1 a 3.5 (o 3.5 veio na Fase 1) e o formato compacto do diff. Medições com `ui.mjs 4 moderate`
+(duas rodadas) e `core.mjs`.
+
+| Item | O que mudou | Resultado medido |
+| --- | --- | --- |
+| 3.2 Detalhes em 1 processo | `commitDetails` com um `git show -z --raw --numstat -M -m --first-parent` (parser `parseCommitShow`, com testes de equivalência); diff de commit com base `<sha>^`, árvore vazia só no commit raiz | Selecionar 1 commit: 5 → 2 processos (36 → 19–23 ms); 10 setas: 10–15 → 4; carga inicial: 11 → 8 |
+| 3.1 Status leve | `stats` em `Wants`: as contagens de linhas só são lidas com a tela Changes, os painéis das alterações não commitadas, a lista de alterações do histórico ou o blame na tela. Não rastreados: fila de 8 leituras, teto de 1.000 arquivos, limite de 1 MB por arquivo e cache por caminho, tamanho e data | Foco da janela: 4 → 2 processos; carga: 8 → 6; abrir a tela Changes: 2 → 5 (é ela que lê as contagens); `status(true)` no cenário `heavy`: 331–421 → 129 ms |
+| 3.3 Cancelamento | `signal` e `stopAtLimit` em `runGit`; o diff encerra o git ao chegar ao teto | Núcleo pronto e testado; a ligação com a interface não foi feita (ver abaixo) |
+| 3.4 Fila de processos | No máximo 2 a 6 processos git simultâneos (pelos núcleos), com prioridade; dashboards em `low`; comandos de rede fora da fila | Testado (pico, prioridade, cancelamento na fila, vaga devolvida após erro) |
+| Formato compacto do diff | `diffWire.ts`: tipos das linhas numa string e textos num vetor; números de linha recalculados na chegada | JSON do diff de 5.000 linhas 636 → 369 KB; abrir o diff de 5.000 linhas 1,0–1,3 s → 0,93–0,99 s |
+
+### Metas da Fase 3
+
+| Meta | Resultado | Situação |
+| --- | --- | --- |
+| Selecionar um commit com 2 processos | 2 | Atingida |
+| 10 setas seguidas com até 6 processos | 4 | Atingida |
+| `status` do cenário `heavy` em até 2× o `status()` simples | Com contagens, 129 contra 15 ms (8,6×); a atualização só pede contagens quando uma tela as mostra | Não atingida com contagens; o custo que resta são os 2 `numstat` e o `lstat` de cada não rastreado |
+| (Fase 0) Foco ≤ 3 e carga inicial ≤ 8 processos | 2 e 6 | Atingidas |
+
+### Não feito, de propósito
+
+- **Cancelamento ligado à interface.** Exigiria um protocolo de cancelamento nas três pontes (Electron, VS Code e o
+  harness). Com a espera curta entre seleção e leitura (Fase 1) e a seleção em 2 processos, 10 setas já abrem 4
+  processos; o ganho restante é pequeno. O núcleo está pronto (`signal` em `runGit`).
+- **Stage de 1 arquivo em 6 processos** (hoje 9): o resto está no `refresh()` do fim de `run` e no ouvinte da aba,
+  que ainda leem duas vezes em alguns caminhos (ver HANDOFF).
+- **Abrir o diff de 5.000 linhas em 300 ms** (hoje 0,93–0,99 s): o que sobra é o texto das linhas (~1,6 MB), a
+  conversão e o primeiro desenho. Próximos passos possíveis: mandar só as primeiras centenas de linhas e o resto
+  sob demanda (o diff já é desenhado por janela), ou comprimir o texto.

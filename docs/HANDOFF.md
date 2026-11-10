@@ -27,17 +27,16 @@ Estas instruções vieram do usuário e valem para todas as janelas:
 
 ## 2. Estado atual (fim da janela 2)
 
-- **Fase 2 concluída** (itens 2.1 a 2.6), medida e enviada; resultado na seção 9 de `docs/PERFORMANCE.md`. Commits da
-  janela 2: `865422b` a `5f45958`, mais os de documento.
-- **Verificado no último commit de código:** `npm run typecheck` limpo, 684 testes passando, `npm run build` e
-  `npm run build:extension` ok, conferências no navegador do histórico (10 itens), do diff (21) e do blame (10).
+- **Fases 2 e 3 concluídas**, medidas e enviadas; resultados nas seções 9 e 10 de `docs/PERFORMANCE.md`.
+- **Verificado no último commit de código (`6cff4a2`):** `npm run typecheck` limpo, 719 testes passando,
+  `npm run build:extension` ok; conferências no navegador do histórico, do diff, do blame e das contagens sob demanda.
 - **Mudanças de medição na janela 2:** `ui.mjs` rola o histórico só 30 quadros dentro dos primeiros 500 commits
   (`4fa9eeb`) e espera o diff por `data-rows` (`0527760`); o harness entrega as respostas como texto JSON
   (`6bc6069`). Números anteriores a esses commits, nessas linhas, não são comparáveis.
-- **Roteiros descartáveis** (somem com o scratchpad; recriar delegando se precisar): conferência do histórico
-  (`check-history.mjs`), do diff (`check-diff.mjs`), do blame (`check-blame.mjs`), rolagem com mediana
-  (`scroll-only.mjs`) e perfis de CPU (`prof-*.mjs`). Todos usam `launch` de `scripts/readme-media/harness.mjs`.
-- **A seguir: Fase 3** (seção 5).
+- **Roteiros descartáveis** (somem com o scratchpad; recriar delegando se precisar): conferência do histórico,
+  do diff, do blame e das contagens (`check-*.mjs`), rolagem com mediana (`scroll-only.mjs`) e perfis de CPU
+  (`prof-*.mjs`). Todos usam `launch` de `scripts/readme-media/harness.mjs`.
+- **A seguir: Fase 4** (seção 5).
 
 ### Janela 1
 
@@ -141,7 +140,7 @@ por ele.
 linha em ≤ 50 ms (CPU 4×). Ordem sugerida de entrega (cada uma com testes, medição e commit): 2.1 + 2.6, depois 2.3,
 2.2 e 2.4 (o diff e a régua andam juntos), depois 2.5.
 
-### Fase 3 — Menos git (a próxima)
+### Fase 3 — Menos git (concluída na janela 2)
 
 Metas: selecionar um commit com 2 processos (hoje 5); 10 setas com até 6 (hoje 10–15); `status` do cenário `heavy`
 em até 2× o `status()` simples. Ordem sugerida:
@@ -156,6 +155,19 @@ em até 2× o `status()` simples. Ordem sugerida:
 4. **3.4** fila de processos git no `Backend`, com prioridade para o que está na tela.
 5. Formato compacto do diff (as linhas como texto e os tipos num vetor), que é o que falta para abrir o diff de
    5.000 linhas em 300 ms (hoje 1,0–1,3 s, quase tudo transporte de 2,9 MB).
+
+### Fase 4 — Listas e redesenhos (a próxima)
+
+Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). Ordem sugerida: 4.6 (comparação de diffs por
+identificador, não por `JSON.stringify`: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`, com o `applyLines` que
+chama `setSelection` depois de `await` sem guarda), 4.4 (`buildTree` com `Map`), 4.3 (branches e tags lineares),
+4.2 (itens de lista sem contexto: `BranchBadge` no histórico chama `useApp()` e `data.branches.find` por
+etiqueta), 4.5 (ícones por símbolo reutilizado) e 4.1 (contexto dividido, o maior). Meta da fase: rolar o histórico
+em até 16 ms por quadro (hoje 45–73 ms; o piso de pintura medido na janela 2 é de ~41 ms, então a meta exige menos
+nós por linha, não só menos React).
+
+Pendências da Fase 3 que podem entrar junto: stage de 1 arquivo em 6 processos (hoje 9) e a ligação do
+cancelamento com a interface (núcleo pronto).
 
 ### Fases seguintes (resumo; detalhes no documento)
 
@@ -197,7 +209,7 @@ Cole isto como primeira mensagem da sessão nova:
 
 > Leia `docs/HANDOFF.md`, `CLAUDE.md` e as seções 6 a 8 de `docs/PERFORMANCE.md`. Siga as regras de trabalho da seção 1
 > do HANDOFF (a janela principal não escreve código: delega a subagentes Haiku 5.5, o mais recente, e só especifica,
-> revisa, mede e commita). Continue pela Fase 3, na ordem da seção 5 do HANDOFF. Antes de começar, confira `git status` e
+> revisa, mede e commita). Continue pela Fase 4, na ordem da seção 5 do HANDOFF. Antes de começar, confira `git status` e
 > `git log --oneline -8`, recrie o repositório de teste com `node scripts/perf/stress-repo.mjs` e rode
 > `node scripts/perf/core.mjs moderate` para ter a base. Se os tokens estiverem acabando, faça só o que der para fechar
 > bem e atualize a seção 2 e 5 do HANDOFF. Este arquivo nunca vai para develop/homolog/main; nada de PR da branch de trabalho até o fim.
