@@ -19,6 +19,11 @@ Estas instruções vieram do usuário e valem para todas as janelas:
 4. Branch de desenvolvimento: `claude/gittools-gui-repo-yyo0ff`. Não abrir PR sem o usuário pedir. Fluxo do projeto:
    trabalho → `develop` → `homolog` → `main`, sempre por PR (`CONTRIBUTING.md`).
 5. Commits em português, explicando o porquê, terminando com as linhas de atribuição que o ambiente indicar.
+6. **Este arquivo nunca sobe para `develop`, `homolog` ou `main`.** A branch de trabalho não recebe PR para a `develop`
+   até o trabalho de otimização acabar. O CI reprova qualquer PR que contenha este arquivo (check "Validar fluxo de
+   branches"). No commit final (quando todas as fases combinadas estiverem prontas e o usuário disser que acabou),
+   remova `docs/HANDOFF.md` e a linha que o menciona no `CLAUDE.md`, e só então abra o PR. Não há exceção para
+   "driblar" a trava: se algo precisar ser entregue antes, pergunte ao usuário.
 
 ## 2. Estado atual (fim da janela 1)
 
@@ -148,6 +153,16 @@ linha em ≤ 50 ms (CPU 4×). Ordem sugerida de entrega (cada uma com testes, me
   partir dos dados lidos e o descarte do eco do observador. Se o stage de 1 arquivo (hoje 9 processos) precisar chegar
   a 6, o resto está em: o `refresh()` do fim de `run` e o do ouvinte da aba ainda leem duas vezes em alguns caminhos.
 
+### Encerramento do trabalho
+
+Lista de conferência do commit final. Só se faz quando o usuário disser que o trabalho de otimização acabou:
+
+1. Todas as fases combinadas feitas e medidas.
+2. Seção 1 e o achado D1 de `docs/PERFORMANCE.md` reescritos para o estado final.
+3. `git rm docs/HANDOFF.md` e remover do `CLAUDE.md` o parágrafo que o menciona.
+4. `npm run typecheck`, `npm test` e `npm run build` verdes.
+5. Só então abrir o PR da branch de trabalho para a `develop`, avisando o usuário.
+
 ## 6. Como começar a próxima janela
 
 Cole isto como primeira mensagem da sessão nova:
@@ -157,4 +172,4 @@ Cole isto como primeira mensagem da sessão nova:
 > revisa, mede e commita). Comece pela Fase 2, itens 2.1 e 2.6. Antes de começar, confira `git status` e
 > `git log --oneline -8`, recrie o repositório de teste com `node scripts/perf/stress-repo.mjs` e rode
 > `node scripts/perf/core.mjs moderate` para ter a base. Se os tokens estiverem acabando, faça só o que der para fechar
-> bem e atualize a seção 2 e 5 do HANDOFF.
+> bem e atualize a seção 2 e 5 do HANDOFF. Este arquivo nunca vai para develop/homolog/main; nada de PR da branch de trabalho até o fim.

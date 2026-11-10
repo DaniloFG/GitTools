@@ -8,7 +8,9 @@ A análise completa, os números medidos e o plano estão em [`docs/PERFORMANCE.
 Leia a seção de orçamentos antes de mexer em qualquer coisa que rode a cada tecla, quadro, clique ou atualização.
 
 Para continuar o trabalho de otimização em uma sessão nova (estado, regras de delegação, próximos passos), leia
-[`docs/HANDOFF.md`](docs/HANDOFF.md) primeiro.
+[`docs/HANDOFF.md`](docs/HANDOFF.md) primeiro. Esse arquivo existe só na branch de trabalho
+(`claude/gittools-gui-repo-yyo0ff`) e é removido no encerramento do trabalho de otimização; ele nunca vai para
+`develop`, `homolog` ou `main`.
 
 ## Mapa do código
 
