@@ -10,6 +10,7 @@ também em computadores fracos. As regras do dia a dia que saem daqui estão no 
 - [5. Achados](#5-achados)
 - [6. Plano de melhoria](#6-plano-de-melhoria)
 - [7. Orçamentos](#7-orçamentos)
+- [8. Resultado da Fase 1](#8-resultado-da-fase-1)
 
 ## 1. Resumo
 
@@ -61,7 +62,7 @@ Limites do que foi medido, para ler os números com a cautela certa:
 - A limitação de CPU não simula disco lento nem o custo de criar processos no Windows. Por isso a métrica de
   git que vale é a **quantidade de processos**, que não depende da máquina.
 - A interface foi medida com o pacote do webview (minificado). O aplicativo Electron usa o mesmo código, porém
-  sem minificação (achado D1); a inicialização do Electron em si não foi medida.
+  sem minificação na época desta medição (achado D1, corrigido na Fase 1; ver seção 8); a inicialização do Electron em si não foi medida.
 - Blame e Dashboards foram medidos só na camada de dados; os problemas de desenho deles vêm da leitura do código.
 
 ## 3. Linha de base
@@ -171,6 +172,10 @@ todos os assinantes do layout. O resultado é o redesenho de `RepoView` e de tud
 (`App.tsx:956-979`) é recriado a cada vez, e nenhum painel é memorizado. `Split.tsx:160-165` faz o mesmo.
 Correção: durante o arrasto, aplicar o tamanho por estilo direto nas duas células e gravar uma vez ao soltar;
 assinar o arranjo só em `Dock` e `Toolbar`; `meta` memorizado; painéis com `React.memo`.
+
+**Atualização (Fase 1):** a parte do React e do `localStorage` foi corrigida: `RepoView` e a lista de commits deixaram
+de ser redesenhados no arrasto, e o arranjo é gravado uma vez, ao soltar. O custo que resta é de layout e pintura do
+navegador, proporcional ao conteúdo montado; ver a [seção 8](#8-resultado-da-fase-1).
 
 **A4. O blame desenha todas as linhas e formata uma data por linha.**
 `components/FilesView.tsx:201-236`: uma `<tr>` por linha do arquivo, cada uma com `fullDate()` no `title`
@@ -321,8 +326,8 @@ antes e depois.
 | 1.7 | `operationState` sem processo; `log` sem `rev-parse`; `keyOf` com cache | B4, B5 | P |
 | 1.8 | Tabela do diff com largura fixa | A1 | P |
 
-Meta: stage de 1 arquivo de 17 para até 8 processos; foco de 7 para até 4; arrasto de divisória abaixo de
-30 ms por passo com a CPU 4× mais lenta.
+Fase concluída. Os resultados medidos, as metas atingidas e as que não foram atingidas estão na
+[seção 8](#8-resultado-da-fase-1).
 
 ### Fase 2 — Fim dos travamentos (cerca de 1 semana)
 
@@ -346,7 +351,7 @@ linha em menos de 50 ms, com a CPU 4× mais lenta.
 | 3.2 | `commitDetails` em 1 processo; `diff` de commit sem `rev-list` | B3 | M |
 | 3.3 | Cancelamento de verdade (`AbortSignal` até o `runGit`) | B3 | M |
 | 3.4 | Fila de processos git no `Backend`, com prioridade | B6 | M |
-| 3.5 | Ignorar o aviso do observador causado pela própria operação | B1 | M |
+| 3.5 | Ignorar o aviso do observador causado pela própria operação (feito na Fase 1) | B1 | M |
 
 Meta: selecionar um commit com 2 processos; 10 setas seguidas com até 6; `status` do cenário `heavy` em até
 2× o `status()` simples.
@@ -378,21 +383,78 @@ Meta: JavaScript da primeira carga em até 700 KB; carga inicial com até 8 proc
 
 ## 7. Orçamentos
 
-Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/ui.mjs 4`. "Hoje" é a medição
-desta análise; a meta é o que o plano busca. Enquanto a meta não é atingida, a regra é **não piorar o "hoje"**.
+Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/ui.mjs 4`. "Hoje" é a medição feita ao fim da Fase 1; a meta é o que o plano busca. Enquanto a meta não é atingida, a regra é **não piorar o "hoje"**.
 
 | Métrica | Hoje | Meta |
 | --- | --- | --- |
-| Processos git: a janela ganha o foco | 7 | ≤ 3 |
-| Processos git: stage de 1 arquivo | 17 | ≤ 6 |
+| Processos git: a janela ganha o foco | 4 | ≤ 3 |
+| Processos git: stage de 1 arquivo | 9 | ≤ 6 |
 | Processos git: selecionar 1 commit | 5 | ≤ 2 |
-| Processos git: 10× seta no histórico | 50 | ≤ 6 |
-| Processos git: carga inicial | 14 | ≤ 8 |
-| Rolar o histórico (CPU 4×) | 39 ms por quadro | ≤ 16 ms |
+| Processos git: 10× seta no histórico | 10 | ≤ 6 |
+| Processos git: carga inicial | 11 | ≤ 8 |
+| Rolar o histórico (CPU 4×) | 24–44 ms por quadro | ≤ 16 ms |
 | Tarefas longas ao rolar o histórico (CPU 4×) | 28 | 0 |
-| Arrastar divisória (CPU 4×) | 258 ms por passo | ≤ 16 ms |
-| Abrir diff de 5.000 linhas alteradas (CPU 4×) | 20 s | ≤ 300 ms |
+| Arrastar divisória (CPU 4×) | 262–291 ms por passo (500 linhas montadas) | ≤ 16 ms |
+| Abrir diff de 5.000 linhas alteradas (CPU 4×) | 18–20 s | ≤ 300 ms |
 | Marcar 1 linha nesse diff (CPU 4×) | 1,8–3,3 s | ≤ 50 ms |
 | Nós no DOM, em qualquer tela | 161.726 | ≤ 5.000 |
 | `status` no cenário `heavy` | 331–421 ms | ≤ 2× o `status()` simples |
-| JavaScript da primeira carga (Electron) | 2.076 KB | ≤ 700 KB |
+| JavaScript da primeira carga (Electron) | 1.251 KB | ≤ 700 KB |
+
+A meta do arrasto de divisória depende da lista em janela da Fase 2 (itens 2.1 e 2.6): o custo que resta é de layout
+e pintura do conteúdo montado, e não do React.
+
+## 8. Resultado da Fase 1
+
+A Fase 1 (seção 6) foi implementada e medida com os roteiros da linha de base (seção 3): `ui.mjs 4 moderate` para a
+interface, `core.mjs moderate` para o git e `npm run build` para o tamanho do pacote. Os números de "antes" são os da
+seção 3.
+
+### O que foi feito
+
+| Item | O que mudou | Resultado medido |
+| --- | --- | --- |
+| 1.1 Minificação | `build.minify` nos três alvos do `electron.vite.config.ts` | JavaScript da interface 2.076 KB → 1.251 KB; CSS 132 KB → 96 KB; processo principal 663 KB → 541 KB |
+| 1.2 Formatadores `Intl` | Formatadores guardados em `src/shared/i18n/index.ts`; teste confirma texto idêntico nos seis idiomas | `formatShortDateTime`: 0,058–0,076 ms → 0,003 ms por chamada; `formatRelative`: 0,023 ms → 0,001 ms. Rolagem do histórico: sem ganho comprovado (39 ms por quadro antes; 24–44 ms depois) |
+| 1.3 Arrasto em lote | `startResize` abre um lote de layout, grava no `localStorage` só ao soltar e entrega um movimento por quadro | Sem ganho no tempo por passo (ver o diagnóstico do arrasto, logo abaixo) |
+| 1.4 `Dock`, `Toolbar` e `meta` | `Dock` e `Toolbar` leem o arranjo por conta própria; `RepoView` e a lista de commits deixam de ser redesenhados no arrasto (confirmado por perfil); `meta` memorizado | O custo de script caiu para cerca de 9 ms por passo; o passo continua caro (ver o diagnóstico do arrasto, logo abaixo) |
+| 1.5 Cancelamento e espera | `cancelled` nos efeitos de `CommitDetails`; espera com dois tempos em `src/renderer/src/settle.ts` (400 ms sem mudanças para valer na hora; 120 ms dentro de uma rajada). A primeira versão, com um tempo só (100 ms), não funcionou em máquina lenta (36 processos), porque cada seleção leva mais de 100 ms para ser desenhada | 10 setas: 50 → 10 processos. Selecionar 1 commit segue em 5 (não era alvo desta fase) |
+| 1.6 Resumo e eco do observador | Resumo da aba ativa a partir dos dados já lidos. O aviso do observador causado pela própria operação é ignorado quando os dados já foram lidos depois dela (`repoSession.ts`, `isOwnEcho`; o carimbo vale para um aviso só). A parte do eco estava prevista como item 3.5 e foi antecipada | Foco: 7 → 4 processos. Stage de 1 arquivo: 17 → 9 processos |
+| 1.7 Leituras sem processo | `operationState` sem processo; `log` sem `rev-parse` depois de ver o HEAD; abertura do repositório em um processo só; `Backend.keyOf` sem disco a cada chamada | `operationState()`: 1 → 0 processos; `log({ all: true })`: 2 → 1 processo; linha "ATUALIZAÇÃO" de `core.mjs`: 7 → 5 processos |
+| 1.8 Tabela do diff | Tabela do diff unificado com `table-layout: fixed` e larguras por `<col>` | Sem ganho medido no diff de 5.000 linhas (20 s antes; 18–20 s depois). O custo ali é montar 161.732 nós; fica para a Fase 2 |
+
+Abrir a tela Changes não teve mudança comprovada: as faixas de antes e depois se sobrepõem, em torno de 400 a 700 ms.
+
+### O diagnóstico do arrasto estava incompleto
+
+O achado A3 (seção 5) atribuía o custo do arrasto ao redesenho do React e à gravação no `localStorage`. Essas duas
+partes foram corrigidas (itens 1.3 e 1.4), e o tempo por passo não caiu. O perfil feito depois da correção mostra, por
+passo com a CPU 4× mais lenta e 500 linhas do histórico montadas: script de cerca de 9 ms, layout do navegador de
+92–107 ms e pintura de cerca de 75–92 ms. Com 120 linhas montadas, o passo custa 124 ms, dos quais 31 ms são de layout.
+
+Ou seja, o custo acompanha a quantidade de conteúdo montado, e o histórico acumula linhas ao rolar (achado C1). A
+correção de verdade é a lista em janela (itens 2.1 e 2.6).
+
+### Testado e não adotado
+
+`content-visibility: auto` nas linhas do histórico. Numa rodada de cada, o layout do arrasto com 500 linhas caiu de
+97 ms para 42 ms por passo (262 → 177 ms por passo no total), mas a rolagem do histórico foi de 24 para 32 ms por
+quadro. Como a rolagem varia muito entre rodadas, o efeito nela não ficou comprovado para nenhum dos lados. A mudança
+foi desfeita; a lista em janela da Fase 2 é o caminho previsto para os dois casos.
+
+### Metas da Fase 1
+
+| Meta | Resultado | Situação |
+| --- | --- | --- |
+| Foco da janela: até 4 processos | 4 | Atingida |
+| Stage de 1 arquivo: até 8 processos | 9 | Não atingida (um processo acima) |
+| Arrasto de divisória: abaixo de 30 ms por passo | 262–291 ms por passo | Não atingida; o motivo está no diagnóstico acima |
+
+### Correções no roteiro de medição
+
+- O marcador de "abrir a tela Changes" esperava `.diff-file`, que já existe no histórico antes do clique. Agora espera
+  `.csection-diff .diff-file`.
+- O roteiro passou a mostrar a divisão script / layout / estilo na rolagem e no arrasto, e a medir o arrasto com 120 e
+  com 500 linhas montadas.
+- Os 372 ms de "abrir a tela Changes" da linha de base (seção 3) vieram do marcador antigo e de uma rodada só: não
+  servem de comparação.
