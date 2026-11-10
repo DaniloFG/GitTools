@@ -156,6 +156,40 @@ function withStats<T extends { path: string }>(files: T[], stats: Map<string, Li
 }
 
 /**
+ * Teto de arquivos novos contados. Só os primeiros desta quantidade (na ordem do git) ganham contagem; os demais
+ * ficam sem contagem, como os binários. Sem teto, um repositório com milhares de arquivos novos leria todos a cada
+ * atualização da tela.
+ */
+export const UNTRACKED_STATS_LIMIT = 1000
+/** Arquivo novo maior que isto não é lido para contar linhas (fica sem contagem). */
+const UNTRACKED_STATS_MAX_BYTES = 1024 * 1024
+/**
+ * Leituras de arquivos novos ao mesmo tempo. Sem limite, cada leitura segura um descritor de arquivo: com 2.000
+ * arquivos novos, 2.000 descritores abertos de uma vez.
+ */
+const UNTRACKED_READS_AT_ONCE = 8
+
+/**
+ * Roda `fn` em cada item, com no máximo `limit` em andamento. Fila de poucas tarefas, sem dependência: um
+ * `Promise.all` sobre a lista inteira abriria tudo de uma vez.
+ */
+async function mapLimit<T>(items: readonly T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0
+  const worker = async (): Promise<void> => {
+    while (next < items.length) await fn(items[next++])
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+}
+
+/** Linhas de um arquivo novo: todas são adições. Binário (byte nulo no começo) não tem contagem. */
+function countNewLines(buffer: Buffer): LineStats {
+  if (buffer.subarray(0, 8000).includes(0)) return { binary: true }
+  const text = buffer.toString('utf8')
+  const lines = text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0)
+  return { additions: lines, deletions: 0 }
+}
+
+/**
  * Formato de `git show` que traz o commit inteiro numa chamada: os campos de COMMIT_FORMAT, depois committer e
  * corpo. Os mesmos campos que `commitDetails` lia antes com `git show -s`, agora seguidos do RS que fecha o cabeçalho.
  */
@@ -487,7 +521,14 @@ export class GitRepository implements RepoApi {
     return { root: this.root, name: basename(this.root) }
   }
 
-  /** Situação da área de trabalho. Com `withStats`, inclui quantas linhas cada arquivo ganhou e perdeu. */
+  /** Contagens dos arquivos novos, por caminho (ver `untrackedStats`). Guarda só os arquivos da última leitura com contagem. */
+  private untrackedCache = new Map<string, { size: number; mtimeMs: number; stats: LineStats }>()
+
+  /**
+   * Situação da área de trabalho. Com `includeStats`, inclui quantas linhas cada arquivo ganhou e perdeu: são mais
+   * dois processos (numstat) e a leitura dos arquivos novos. Sem ele, é um único processo e nenhum arquivo é lido.
+   * O caminho de atualização da tela pede sem contagens; só as telas que as mostram pedem com (ver `wants.stats`).
+   */
   async status(includeStats = false): Promise<RepoStatus> {
     const { stdout } = await this.git(['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])
     const status = parseStatus(stdout)
@@ -497,23 +538,41 @@ export class GitRepository implements RepoApi {
       this.git(['diff', '--cached', '--numstat', '-z', '-M', '--no-color', '--no-ext-diff', '--']).then((r) => parseNumstat(r.stdout))
     ])
     status.staged = withStats(status.staged, staged)
-    status.unstaged = await Promise.all(
-      status.unstaged.map(async (f) => (f.untracked ? { ...f, ...(await this.untrackedStats(f.path)) } : { ...f, ...unstaged.get(f.path) }))
-    )
+    const counted = await this.untrackedStatsFor(status.unstaged.filter((f) => f.untracked).map((f) => f.path))
+    status.unstaged = status.unstaged.map((f) => (f.untracked ? { ...f, ...counted.get(f.path) } : { ...f, ...unstaged.get(f.path) }))
     return status
   }
 
-  /** Arquivo novo: todas as linhas são adições (arquivos muito grandes ou binários não são contados). */
+  /**
+   * Contagens dos arquivos novos, em fila de poucas leituras por vez. Os que passam do teto ficam sem contagem; e o
+   * cache sai dos arquivos que deixaram de ser novos ou ficaram de fora desta leitura.
+   */
+  private async untrackedStatsFor(paths: string[]): Promise<Map<string, LineStats>> {
+    const counted = paths.slice(0, UNTRACKED_STATS_LIMIT)
+    const result = new Map<string, LineStats>()
+    await mapLimit(counted, UNTRACKED_READS_AT_ONCE, async (path) => {
+      result.set(path, await this.untrackedStats(path))
+    })
+    const keep = new Set(counted)
+    for (const path of this.untrackedCache.keys()) if (!keep.has(path)) this.untrackedCache.delete(path)
+    return result
+  }
+
+  /**
+   * Arquivo novo: um `lstat` (barato) e, só se o tamanho ou a data mudou desde a última contagem, a leitura do
+   * conteúdo. Arquivo acima de 1 MB, que não é arquivo comum ou que sumiu fica sem contagem.
+   * Limite conhecido: uma edição que mantém o tamanho e a data exatos não é vista até a data mudar de novo.
+   */
   private async untrackedStats(path: string): Promise<LineStats> {
     try {
       const full = join(this.root, path)
       const stat = await lstat(full)
-      if (!stat.isFile() || stat.size > 5 * 1024 * 1024) return {}
-      const buffer = await readFile(full)
-      if (buffer.subarray(0, 8000).includes(0)) return { binary: true }
-      const text = buffer.toString('utf8')
-      const lines = text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0)
-      return { additions: lines, deletions: 0 }
+      if (!stat.isFile() || stat.size > UNTRACKED_STATS_MAX_BYTES) return {}
+      const cached = this.untrackedCache.get(path)
+      if (cached && cached.size === stat.size && cached.mtimeMs === stat.mtimeMs) return cached.stats
+      const stats = countNewLines(await readFile(full))
+      this.untrackedCache.set(path, { size: stat.size, mtimeMs: stat.mtimeMs, stats })
+      return stats
     } catch {
       return {}
     }

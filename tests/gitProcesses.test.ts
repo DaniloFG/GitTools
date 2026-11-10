@@ -66,6 +66,16 @@ describe('GitRepository: processos git', () => {
     expect(result.root).toBe(t.repo.root)
   })
 
+  it('status sem contagens abre 1 processo; com contagens, 3, e isso não cresce com os arquivos novos', async () => {
+    const t = await createRepo()
+    await t.commit('primeiro', { 'a.txt': 'a\n' })
+    for (let n = 0; n < 20; n++) t.write(`novo-${n}.txt`, 'x\n')
+    const plain = await countGit(() => t.repo.status())
+    expect(plain.processes).toHaveLength(1)
+    const withStats = await countGit(() => t.repo.status(true))
+    expect(withStats.processes).toHaveLength(3)
+  })
+
   it('gitDir de instância criada direto descobre a pasta .git uma vez e guarda', async () => {
     const t = await createRepo()
     await t.commit('primeiro', { 'a.txt': 'a\n' })

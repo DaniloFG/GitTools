@@ -88,6 +88,13 @@ const NO_VIEWS: readonly ViewId[] = []
 const LOG_VIEWS: ViewId[] = ['history', 'branches']
 /** Painéis que listam os stashes. */
 const STASH_VIEWS: ViewId[] = ['stashes']
+/** Painel do histórico que lista as alterações não commitadas (WipRow, montado só no slot `history`). */
+const WIP_LIST_VIEWS: ViewId[] = ['history']
+/**
+ * Painel do blame. A assinatura que decide a releitura dele (`blameSignature`, em blameRows.ts) usa as contagens do
+ * status: sem elas, editar um arquivo não mudaria a assinatura e o blame deixaria de ser relido. Por isso ele conta.
+ */
+const BLAME_VIEWS: ViewId[] = ['files.blame']
 
 /** Texto do trabalho em aberto ("3 alterações não commitadas, uma operação em andamento"). */
 function describeWork(work: UnsavedReason[]): string {
@@ -705,11 +712,20 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   /**
    * Só o que está na tela é carregado. O histórico serve ao painel Histórico e às cores das branches; os stashes,
    * ao painel Stashes e aos dashboards. Status, branches, tags e operação sempre vêm (as abas e as demais telas
-   * dependem deles). Quando um painel aparece, a leitura que faltava é feita na hora (ver `ensureFresh`).
+   * dependem deles), mas as contagens de linhas do status (+/−) só quando uma tela que as mostra está na tela.
+   * Quando um painel aparece, a leitura que faltava é feita na hora (ver `ensureFresh`).
    */
   const logShown = useAnyShown(LOG_VIEWS)
   const stashesShown = useAnyShown(STASH_VIEWS) || dashboardsOpen
-  const wants = useMemo<Wants>(() => ({ log: logShown, stashes: stashesShown }), [logShown, stashesShown])
+  // Todos os `useAnyShown` são chamados sempre (regra dos hooks): as condições entram só depois.
+  const changesShown = useAnyShown(CHANGES_VIEWS)
+  const commitShown = useAnyShown(COMMIT_VIEWS)
+  const wipListShown = useAnyShown(WIP_LIST_VIEWS)
+  const blameShown = useAnyShown(BLAME_VIEWS)
+  const [wipListOpen] = useLayout<boolean>('history.wipOpen', (v) => v === true)
+  // Painéis do commit só mostram as alterações (WipPanes) quando o foco está nelas, sem commit selecionado.
+  const statsShown = changesShown || (commitShown && wipFocus !== null && selected.length === 0) || (wipListShown && wipListOpen) || blameShown
+  const wants = useMemo<Wants>(() => ({ log: logShown, stashes: stashesShown, stats: statsShown }), [logShown, stashesShown, statsShown])
   const wantsRef = useRef(wants)
   wantsRef.current = wants
 
@@ -759,12 +775,13 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       const s = scopeRef.current
       const prev = session.data
       // Primeira leitura: traz o histórico mesmo que o painel ainda não tenha aparecido (os painéis se encaixam depois do primeiro desenho).
-      const needs: Wants = { log: wantsRef.current.log || prev === null, stashes: wantsRef.current.stashes }
+      const needs: Wants = { log: wantsRef.current.log || prev === null, stashes: wantsRef.current.stashes, stats: wantsRef.current.stats }
       // Geração anotada antes de ler: se algo mudar durante a leitura, o resultado já nasce como "stale".
       const generation = readCache.generation(repo.root)
       session.loadingGeneration = generation
       const [status, refs, operation, stashes] = await Promise.all([
-        gitOn.status(true),
+        // Sem contagens, o status é um processo só e não lê arquivo algum (ver `status` no núcleo).
+        gitOn.status(needs.stats),
         gitOn.refs(),
         gitOn.operationState(),
         needs.stashes ? gitOn.stashes() : Promise.resolve(prev?.stashes ?? [])
@@ -794,7 +811,7 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
         }
       }
       session.data = mergeData(session.data, { status, branches, tags, stashes, log, operation })
-      session.loaded = { generation, scopeKey: scopeKey(s), log: needs.log, stashes: needs.stashes }
+      session.loaded = { generation, scopeKey: scopeKey(s), log: needs.log, stashes: needs.stashes, stats: needs.stats }
       setData(session.data)
     } catch (error) {
       toast('error', errorMessage(error))

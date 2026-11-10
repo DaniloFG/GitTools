@@ -22,6 +22,11 @@ export interface Wants {
   log: boolean
   /** Stashes (painel Stashes ou dashboards). */
   stashes: boolean
+  /**
+   * Contagens de linhas (+/−) do status. Custam a leitura dos arquivos novos, então só as telas que as mostram pedem
+   * (ver `wants.stats` em App.tsx); a leitura sem elas é a do caminho de atualização, com um processo só.
+   */
+  stats: boolean
 }
 
 /** O que a última leitura trouxe. */
@@ -45,7 +50,7 @@ export interface StateInput {
 
 /** O dado guardado cobre o que a tela quer agora? (Um painel novo na tela pode pedir o histórico ou os stashes.) */
 export function covers(loaded: Loaded, scope: string, wants: Wants): boolean {
-  return loaded.scopeKey === scope && (loaded.log || !wants.log) && (loaded.stashes || !wants.stashes)
+  return loaded.scopeKey === scope && (loaded.log || !wants.log) && (loaded.stashes || !wants.stashes) && (loaded.stats || !wants.stats)
 }
 
 /** Estado da sessão neste instante (derivado: não existe "stale" gravado, ele nasce de a geração ter mudado). */

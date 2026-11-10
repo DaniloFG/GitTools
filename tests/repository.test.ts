@@ -1,11 +1,27 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { changeKeys, parseDiff } from '../src/core/diff'
 import { runGit } from '../src/core/exec'
-import { parseNumstat } from '../src/core/repository'
+import { parseNumstat, UNTRACKED_STATS_LIMIT } from '../src/core/repository'
 import { DIFF_MAX_BYTES } from '../src/shared/types'
 import { createRepo, lines } from './helpers'
+
+// Espião das leituras de conteúdo do núcleo (`readFile` de node:fs/promises): conta quantas foram e quantas
+// correram ao mesmo tempo. Repassa tudo ao módulo real; só observa.
+const reads = vi.hoisted(() => ({ count: 0, inFlight: 0, peak: 0 }))
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const readFile = (...args: unknown[]) => {
+    reads.count++
+    reads.inFlight++
+    reads.peak = Math.max(reads.peak, reads.inFlight)
+    return (actual.readFile as (...a: unknown[]) => Promise<unknown>)(...args).finally(() => {
+      reads.inFlight--
+    })
+  }
+  return { ...actual, readFile }
+})
 
 const BASE = lines('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j')
 
@@ -60,6 +76,87 @@ describe('status, branches e log', () => {
     await t.commit('init', { 'a.txt': 'a\n' })
     await expect(t.repo.log({ skip: -1 })).rejects.toThrow()
     await expect(t.repo.log({ skip: Number.NaN })).rejects.toThrow()
+  })
+})
+
+describe('contagem de linhas dos arquivos novos', () => {
+  /** Os arquivos novos do status, por caminho. */
+  const newFiles = (status: { unstaged: { path: string; untracked: boolean }[] }) =>
+    new Map(status.unstaged.filter((f) => f.untracked).map((f) => [f.path, f as { path: string; additions?: number; binary?: boolean }]))
+
+  it('conta como antes: com e sem quebra final, vazio e binário; acima de 1 MB não conta', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'base.txt': 'x\n' })
+    t.write('a.txt', 'um\ndois\n')
+    t.write('sem-quebra.txt', 'x\ny')
+    t.write('vazio.txt', '')
+    t.write('bin.dat', 'ab\0cd')
+    t.write('grande.txt', 'a\n'.repeat(600_000)) // 1,2 MB: acima do limite de leitura
+    const files = newFiles(await t.repo.status(true))
+    expect(files.get('a.txt')).toMatchObject({ additions: 2, deletions: 0 })
+    expect(files.get('sem-quebra.txt')).toMatchObject({ additions: 2, deletions: 0 })
+    expect(files.get('vazio.txt')).toMatchObject({ additions: 0, deletions: 0 })
+    expect(files.get('bin.dat')).toEqual({ path: 'bin.dat', untracked: true, index: '?', worktree: '?', conflicted: false, binary: true })
+    expect(files.get('grande.txt')?.additions).toBeUndefined()
+  })
+
+  it('o segundo status sem mudança não relê conteúdo; só o arquivo editado é relido', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'base.txt': 'x\n' })
+    t.write('a.txt', 'um\n')
+    t.write('b.txt', 'dois\n')
+    reads.count = 0
+    await t.repo.status(true)
+    expect(reads.count).toBe(2)
+    reads.count = 0
+    const again = newFiles(await t.repo.status(true))
+    expect(reads.count).toBe(0)
+    expect(again.get('a.txt')?.additions).toBe(1)
+    t.write('a.txt', 'um\ndois\ntrês\n') // o tamanho muda: esse arquivo é lido de novo
+    reads.count = 0
+    const edited = newFiles(await t.repo.status(true))
+    expect(reads.count).toBe(1)
+    expect(edited.get('a.txt')?.additions).toBe(3)
+    expect(edited.get('b.txt')?.additions).toBe(1)
+  })
+
+  it('lê os arquivos novos em fila de no máximo 8 leituras ao mesmo tempo', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'base.txt': 'x\n' })
+    for (let n = 0; n < 40; n++) t.write(`novo-${n}.txt`, `${n}\n`)
+    reads.count = 0
+    reads.peak = 0
+    const files = newFiles(await t.repo.status(true))
+    expect(reads.count).toBe(40)
+    expect(reads.peak).toBeGreaterThan(1)
+    expect(reads.peak).toBeLessThanOrEqual(8)
+    expect(files.get('novo-7.txt')?.additions).toBe(1)
+  })
+
+  it('conta só até o teto de arquivos novos; os demais ficam sem contagem', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'base.txt': 'x\n' })
+    const total = UNTRACKED_STATS_LIMIT + 5
+    for (let n = 0; n < total; n++) t.write(`pasta/${String(n).padStart(4, '0')}.txt`, 'a\n')
+    reads.count = 0
+    const files = [...newFiles(await t.repo.status(true)).values()]
+    expect(files).toHaveLength(total)
+    expect(files.filter((f) => f.additions === 1)).toHaveLength(UNTRACKED_STATS_LIMIT)
+    expect(files.filter((f) => f.additions === undefined)).toHaveLength(5)
+    expect(reads.count).toBe(UNTRACKED_STATS_LIMIT)
+  })
+
+  it('o cache guarda só os arquivos novos atuais: um arquivo que deixou de ser novo sai dele', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'base.txt': 'x\n' })
+    t.write('a.txt', 'um\n')
+    t.write('b.txt', 'dois\n')
+    await t.repo.status(true)
+    const cache = (t.repo as unknown as { untrackedCache: Map<string, unknown> }).untrackedCache
+    expect([...cache.keys()].sort()).toEqual(['a.txt', 'b.txt'])
+    await t.git('add', 'a.txt') // sai da lista de não rastreados
+    await t.repo.status(true)
+    expect([...cache.keys()]).toEqual(['b.txt'])
   })
 })
 
