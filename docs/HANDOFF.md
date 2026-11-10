@@ -24,6 +24,26 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    branches"). No commit final (quando todas as fases combinadas estiverem prontas e o usuário disser que acabou),
    remova `docs/HANDOFF.md` e a linha que o menciona no `CLAUDE.md`, e só então abra o PR. Não há exceção para
    "driblar" a trava: se algo precisar ser entregue antes, pergunte ao usuário.
+7. **Troca de janela por conta própria, ao fim de cada fase ou micro fase.** O usuário autorizou que a sessão siga
+   sozinha de uma janela para a seguinte, para trabalhar sempre com contexto limpo. A sessão não consegue limpar a
+   própria conversa (`/clear` é só do usuário); em vez disso, abre uma sessão nova e para a atual. A troca acontece
+   num ponto de corte limpo: uma fase inteira ou uma micro fase (um item da fase, como "3.2") fechada; nunca no meio
+   de um item. Passos, nesta ordem:
+   1. Tudo commitado e enviado (`git status` limpo, branch igual à do remoto), com `npm run typecheck` e `npm test`
+      verdes no último commit de código.
+   2. Seções 2 e 5 deste arquivo atualizadas (estado, o que foi medido, o próximo item) e enviadas.
+   3. Conferir com `list_sessions` (ferramentas `mcp__claude-code-remote__*`) que não há outra sessão desta branch em
+      andamento: nunca duas sessões ao mesmo tempo na branch.
+   4. Criar a sessão nova com `create_session`: `source_url` deste repositório, `source_revision` e `outcome_branch`
+      iguais a `claude/gittools-gui-repo-yyo0ff`, mesmo modelo, título "GitTools desempenho: <próximo item>" e, como
+      `prompt`, a mensagem da seção 6 com o próximo item no lugar de "Continue pela …".
+   5. Dizer ao usuário, numa linha, o que foi fechado e o link ou id da sessão nova; então parar (não arquivar a
+      sessão atual: o usuário pode querer lê-la).
+   Quando NÃO trocar sozinha e parar para o usuário: todas as fases combinadas acabaram (o encerramento da seção 5
+   pede a palavra do usuário); uma decisão que só o usuário pode tomar (por exemplo, uma meta que exige mudar algo
+   que ele pediu, como as contagens de linhas em todas as listas); verificação vermelha que não se resolve; ou se o
+   usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
+   pronta e avise o usuário.
 
 ## 2. Estado atual (fim da janela 2)
 
@@ -213,3 +233,4 @@ Cole isto como primeira mensagem da sessão nova:
 > `git log --oneline -8`, recrie o repositório de teste com `node scripts/perf/stress-repo.mjs` e rode
 > `node scripts/perf/core.mjs moderate` para ter a base. Se os tokens estiverem acabando, faça só o que der para fechar
 > bem e atualize a seção 2 e 5 do HANDOFF. Este arquivo nunca vai para develop/homolog/main; nada de PR da branch de trabalho até o fim.
+> Ao fechar cada item ou fase, siga a regra 7 da seção 1 do HANDOFF: abra a sessão seguinte por conta própria e pare.
