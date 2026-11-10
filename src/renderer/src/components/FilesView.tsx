@@ -15,7 +15,9 @@ import { useSessionState } from '../useSessionState'
 import { LineStats } from './LineStats'
 import { FileEditor } from './FileEditor'
 import { draftPaths, useDraftsVersion } from '../editorDrafts'
-import { FileEntries, FileViewToggle } from './FileList'
+import { FileEntries, useFileViewMode } from './FileList'
+import { firstFileShown } from '../fileTree'
+import { FileViewOptions } from './ViewOptions'
 import { Loader, LoaderPane } from './Loader'
 
 const MAX_LISTED = 500
@@ -97,11 +99,18 @@ function FilesList({ path, onPath }: { path: string | null; onPath(path: string)
   }, [files, filter])
   const shown = useMemo(() => filtered.slice(0, MAX_LISTED), [filtered])
 
+  // Sem arquivo aberto, abre o primeiro da lista como ela aparece (editor e blame já carregam). Não troca o escolhido.
+  const [viewMode] = useFileViewMode()
+  const firstPath = useMemo(() => firstFileShown(shown, viewMode), [shown, viewMode])
+  useEffect(() => {
+    if (path === null && firstPath) onPath(firstPath)
+  }, [path, firstPath, onPath])
+
   return (
     <div className="files-list">
       <div className="files-list-header">
         <input className="files-filter" placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
-        <FileViewToggle />
+        <FileViewOptions />
       </div>
       <ul className="file-list">
         <FileEntries

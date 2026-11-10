@@ -4,20 +4,37 @@ import type { RecentRepo } from '../../../shared/api'
 import { useApp } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
+import { useLayout } from '../layout'
 import { t } from '../i18n'
+import {
+  TOOLBAR_ITEM_IDS,
+  TOOLBAR_ITEM_LABELS,
+  isToolbarItemShown,
+  parseHiddenToolbarItems,
+  toggleToolbarItem,
+  type ToolbarItemId
+} from '../toolbarItems'
 import { normalizeRoot, repoColor } from '../workspace'
+import { ScreenTabs, usePanelsItems, type ScreenProps } from './Screens'
 import { SponsorButton } from './Sponsor'
 
-interface ToolbarProps {
+interface ToolbarProps extends ScreenProps {
   onOpenRepository(path?: string, create?: boolean): void
   onClone(): void
 }
 
-/** Barra de ferramentas do repositório. Os menus do topo (telas e painéis) ficam na barra logo abaixo, em `App`. */
-export function Toolbar({ onOpenRepository, onClone }: ToolbarProps) {
+/**
+ * Barra superior única: repositório e branch, as telas (History, Changes…), as ações do Git e o menu ⚙.
+ * Cada item pode ser escondido pelo menu (Barra de ferramentas); os escondidos ficam salvos como preferência.
+ * Em janelas estreitas os botões mostram só o ícone (container query) e as telas rolam na horizontal.
+ */
+export function Toolbar({ onOpenRepository, onClone, state, onChange, screen, onScreen, meta, available, changeCount, dashboards, onDashboards }: ToolbarProps) {
   const { repo, data, toast, showMenu, openStudio, openSettings, openInEditor, workspace } = useApp()
   const { head, createBranch, createTag, stash, push, pushDialog, fetchRemote, pullRemote } = useActions()
   const { status } = data
+  const [hidden, setHidden] = useLayout<ToolbarItemId[]>('pref.toolbar.hidden', parseHiddenToolbarItems)
+  const shown = (id: ToolbarItemId) => isToolbarItemShown(hidden, id)
+  const panelItems = usePanelsItems({ state, onChange, screen, meta, available })
 
   const { favorites, others, setFavorite, remove } = useRecentRepos(repo)
   const showError = (error: unknown) => toast('error', errorMessage(error))
@@ -68,50 +85,98 @@ export function Toolbar({ onOpenRepository, onClone }: ToolbarProps) {
     ])
   }
 
+  /** Botão ＋ Novo (ou a seta ao lado): criar branch, criar tag ou guardar as alterações. */
+  const newMenu = (e: React.MouseEvent) =>
+    showMenu(e, [
+      { label: t('toolbar.newBranch'), onClick: () => createBranch() },
+      { label: t('toolbar.newTag'), onClick: () => createTag() },
+      'separator',
+      { label: t('toolbar.stash'), onClick: () => stash() }
+    ])
+
+  /** ⚙ Menu: configurações; a aparência (painéis e layouts); e quais itens aparecem nesta barra. */
+  const barMenu = (e: React.MouseEvent) =>
+    showMenu(e, [
+      { label: t('toolbar.settings'), onClick: () => openSettings() },
+      'separator',
+      { label: t('toolbar.appearance'), submenu: panelItems },
+      {
+        label: t('toolbar.toolbarMenu'),
+        submenu: TOOLBAR_ITEM_IDS.map((id) => ({
+          label: `${shown(id) ? '✓' : ' '} ${t(TOOLBAR_ITEM_LABELS[id])}`,
+          onClick: () => setHidden((prev) => toggleToolbarItem(prev, id))
+        }))
+      }
+    ])
+
   return (
     <header className="toolbar">
-      <button className="repo-button" onClick={repoMenu} title={repo.root} style={{ '--repo': repoColor(repo.root) } as React.CSSProperties}>
-        <span className="repo-button-dot" aria-hidden />
-        <span className="logo-mark">⑂</span>
-        <strong>{repo.name}</strong> ▾
-      </button>
-      <span className="current-branch" title={t('toolbar.currentBranch')}>
-        ⎇ {head ?? t('toolbar.detached', { sha: status.headSha?.slice(0, 7) ?? t('toolbar.noCommits') })}
-      </span>
+      {shown('repo') && (
+        <button className="repo-button" onClick={repoMenu} title={repo.root} style={{ '--repo': repoColor(repo.root) } as React.CSSProperties}>
+          <span className="repo-button-dot" aria-hidden />
+          <span className="logo-mark">⑂</span>
+          <strong>{repo.name}</strong> ▾
+        </button>
+      )}
+      {shown('branch') && (
+        <span className="current-branch" title={t('toolbar.currentBranch')}>
+          ⎇ {head ?? t('toolbar.detached', { sha: status.headSha?.slice(0, 7) ?? t('toolbar.noCommits') })}
+        </span>
+      )}
+      {shown('screens') && (
+        <ScreenTabs state={state} meta={meta} screen={screen} onScreen={onScreen} available={available} changeCount={changeCount} dashboards={dashboards} onDashboards={onDashboards} />
+      )}
       <div className="toolbar-spacer" />
-      <div className="toolbar-group">
-        <button onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')}>
-          ⟳ {t('toolbar.fetch')}
+      {shown('fetch') && (
+        <button className="tb-btn" onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')} aria-label={t('toolbar.fetch')}>
+          <span aria-hidden>⟳</span>
+          <span className="tb-label">{t('toolbar.fetch')}</span>
         </button>
-        <button onClick={() => pullRemote()} title={t('toolbar.pullHelp')}>
-          ↓ {t('toolbar.pull')} {status.behind > 0 && <span className="badge">{status.behind}</span>}
+      )}
+      {shown('pull') && (
+        <button className="tb-btn" onClick={() => pullRemote()} title={t('toolbar.pullHelp')} aria-label={t('toolbar.pull')}>
+          <span aria-hidden>↓</span>
+          <span className="tb-label">{t('toolbar.pull')}</span>
+          {status.behind > 0 && <span className="badge">{status.behind}</span>}
         </button>
+      )}
+      {shown('push') && (
         <span className="split-button">
-          <button onClick={() => push()} onContextMenu={pushMenu} title={t('toolbar.pushHelp')}>
-            ↑ {t('toolbar.push')} {status.ahead > 0 && <span className="badge">{status.ahead}</span>}
+          <button className="tb-btn" onClick={() => push()} onContextMenu={pushMenu} title={t('toolbar.pushHelp')} aria-label={t('toolbar.push')}>
+            <span aria-hidden>↑</span>
+            <span className="tb-label">{t('toolbar.push')}</span>
+            {status.ahead > 0 && <span className="badge">{status.ahead}</span>}
           </button>
-          <button className="split-arrow" onClick={pushMenu} title={t('toolbar.pushMore')} aria-label={t('toolbar.pushMore')} aria-haspopup="menu">
+          <button className="split-arrow tb-btn" onClick={pushMenu} title={t('toolbar.pushMore')} aria-label={t('toolbar.pushMore')} aria-haspopup="menu">
             ▾
           </button>
         </span>
-      </div>
-      <div className="toolbar-group">
-        <button onClick={() => createBranch()}>＋ {t('toolbar.branch')}</button>
-        <button onClick={() => createTag()} title={t('toolbar.tagHelp')}>
-          ⌂ {t('toolbar.tag')}
+      )}
+      {shown('new') && (
+        <span className="split-button">
+          <button className="tb-btn" onClick={newMenu} title={t('toolbar.newHelp')} aria-label={t('toolbar.new')} aria-haspopup="menu">
+            <span aria-hidden>＋</span>
+            <span className="tb-label">{t('toolbar.new')}</span>
+          </button>
+          <button className="split-arrow tb-btn" onClick={newMenu} title={t('toolbar.newMore')} aria-label={t('toolbar.newMore')} aria-haspopup="menu">
+            ▾
+          </button>
+        </span>
+      )}
+      {shown('editor') && (
+        <button className="tb-btn" onClick={() => openInEditor()} title={t('toolbar.openInEditorHelp')} aria-label={t('common.openInEditor')}>
+          <span aria-hidden>✎</span>
+          <span className="tb-label">{t('common.openInEditor')}</span>
         </button>
-        <button onClick={stash} title={t('toolbar.stashHelp')}>
-          ⧉ {t('toolbar.stash')}
+      )}
+      {shown('studio') && (
+        <button className="primary tb-btn" onClick={() => openStudio({ target: head ?? undefined })} aria-label={t('studio.name')}>
+          <span aria-hidden>🍒</span>
+          <span className="tb-label">{t('studio.name')}</span>
         </button>
-        <button onClick={() => openInEditor()} title={t('toolbar.openInEditorHelp')}>
-          ✎ {t('common.openInEditor')}
-        </button>
-      </div>
-      <button className="primary" onClick={() => openStudio({ target: head ?? undefined })}>
-        🍒 {t('studio.name')}
-      </button>
+      )}
       <SponsorButton compact />
-      <button className="icon-button settings-button" onClick={() => openSettings()} title={t('toolbar.settings')}>
+      <button className="icon-button tb-menu" onClick={barMenu} title={t('toolbar.menuHelp')} aria-label={t('toolbar.menu')} aria-haspopup="menu">
         ⚙
       </button>
     </header>

@@ -5,7 +5,7 @@ import { applySavedLayout, deleteSavedLayout, findByName, saveCurrentLayout, use
 import type { ViewMeta } from './Dock'
 import type { MenuItem } from './ContextMenu'
 
-interface Props {
+export interface ScreenProps {
   state: DockState
   onChange(next: DockState): void
   /** Menu do topo aberto agora. */
@@ -45,7 +45,7 @@ const SCREEN_NAMES: Record<ScreenId, Parameters<typeof t>[0]> = {
  * Menus do topo. Cada um mostra só os próprios painéis; um menu com painéis de outras telas fixados nele mostra
  * a quantidade discretamente (com a lista na dica), para não se perder deles.
  */
-export function ScreenTabs({ state, meta, screen, available, onScreen, changeCount, dashboards, onDashboards }: Omit<Props, 'onChange'>) {
+export function ScreenTabs({ state, meta, screen, available, onScreen, changeCount, dashboards, onDashboards }: Omit<ScreenProps, 'onChange'>) {
   return (
     <div className="screen-tabs" role="group" aria-label={t('workbench.screens')} title={t('workbench.screensHelp')}>
       {SCREENS.map((item) => {
@@ -70,9 +70,12 @@ export function ScreenTabs({ state, meta, screen, available, onScreen, changeCou
   )
 }
 
-/** Menu para mostrar ou esconder painéis (os do menu aberto e os fixados de outras telas), e o layout salvo/padrão. */
-export function PanelsButtons({ state, onChange, screen, meta, available }: Omit<Props, 'changeCount' | 'dashboards' | 'onDashboards' | 'onScreen'>) {
-  const { showMenu, resetLayout, prompt, confirm, toast } = useApp()
+/**
+ * Itens do menu de painéis (mostrar ou esconder painéis da tela, painéis fixados de outras telas, layouts salvos e
+ * restaurar o padrão). Fica no menu único ⚙/☰ da barra, em Aparência.
+ */
+export function usePanelsItems({ state, onChange, screen, meta, available }: Pick<ScreenProps, 'state' | 'onChange' | 'screen' | 'meta' | 'available'>): MenuItem[] {
+  const { resetLayout, prompt, confirm, toast } = useApp()
   const [saved, setSaved] = useSavedLayouts()
   const currentName = useCurrentLayoutName()
 
@@ -92,42 +95,32 @@ export function PanelsButtons({ state, onChange, screen, meta, available }: Omit
   /** Um painel da lista: ✓ quando está à vista nesta tela; clicar mostra ou esconde (ou fixa, se for de outra tela). */
   const panelItem = (view: ViewId): MenuItem => {
     const shown = inScreen(state, view, screen)
-    return { label: `${shown ? '✓' : ' '} ${meta[view].label}`, onClick: () => onChange(toggleIn(state, view, screen)) }
+    return { label: `${shown ? '✓' : ' '} ${meta[view].label}`, onClick: () => onChange(toggleIn(state, view, screen)) }
   }
 
-  const panelsMenu = (e: React.MouseEvent) => {
-    const items: MenuItem[] = SCREEN_VIEWS[screen].filter(available).map(panelItem)
-    // Painéis de outras telas: fixados aqui, só nesta tela (o resto do tempo ficam nas telas deles).
-    const others: MenuItem[] = []
-    for (const other of SCREEN_IDS) {
-      if (other === screen) continue
-      const views = SCREEN_VIEWS[other].filter(available)
-      if (views.length) others.push({ label: t(SCREEN_NAMES[other]), submenu: views.map(panelItem) })
-    }
-    if (others.length) items.push('separator', { label: t('screenMenu.otherScreens'), submenu: others })
-    items.push('separator', { label: t('layouts.saveCurrent'), onClick: () => void saveLayout() })
-    if (saved.length) {
-      items.push({
-        label: t('layouts.mine'),
-        submenu: saved.map((layout) => ({
-          label: layout.name,
-          onClick: () => {
-            applySavedLayout(layout)
-            toast('success', t('layouts.applied', { name: layout.name }))
-          },
-          actions: [{ icon: '✕', title: t('layouts.delete'), onClick: () => deleteSavedLayout(saved, setSaved, layout.id) }]
-        }))
-      })
-    }
-    items.push({ label: t('workbench.resetLayout'), onClick: () => void resetLayout() })
-    showMenu(e, items)
+  const items: MenuItem[] = SCREEN_VIEWS[screen].filter(available).map(panelItem)
+  // Painéis de outras telas: fixados aqui, só nesta tela (o resto do tempo ficam nas telas deles).
+  const others: MenuItem[] = []
+  for (const other of SCREEN_IDS) {
+    if (other === screen) continue
+    const views = SCREEN_VIEWS[other].filter(available)
+    if (views.length) others.push({ label: t(SCREEN_NAMES[other]), submenu: views.map(panelItem) })
   }
-
-  return (
-    <>
-      <button className="icon-button panels-button" onClick={panelsMenu} title={`${t('workbench.panels')}: ${t('workbench.panelsHelp')}`} aria-label={t('workbench.panels')} aria-haspopup="menu">
-        ▦
-      </button>
-    </>
-  )
+  if (others.length) items.push('separator', { label: t('screenMenu.otherScreens'), submenu: others })
+  items.push('separator', { label: t('layouts.saveCurrent'), onClick: () => void saveLayout() })
+  if (saved.length) {
+    items.push({
+      label: t('layouts.mine'),
+      submenu: saved.map((layout) => ({
+        label: layout.name,
+        onClick: () => {
+          applySavedLayout(layout)
+          toast('success', t('layouts.applied', { name: layout.name }))
+        },
+        actions: [{ icon: '✕', title: t('layouts.delete'), onClick: () => deleteSavedLayout(saved, setSaved, layout.id) }]
+      }))
+    })
+  }
+  items.push({ label: t('workbench.resetLayout'), onClick: () => void resetLayout() })
+  return items
 }

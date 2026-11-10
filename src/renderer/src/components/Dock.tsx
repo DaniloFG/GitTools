@@ -265,10 +265,37 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
               onClick={() => onChange(activateView(latest.current, view))}
               onDoubleClick={() => setMaximized(maximized === node.id ? null : node.id)}
               onContextMenu={(e) => tabMenu(e, view, node.id, node.views.length === 1)}
+              onMouseDown={(e) => {
+                // Clique com o botão do meio oculta o painel (como no VS Code).
+                if (e.button !== 1) return
+                e.preventDefault()
+                onChange(hideIn(latest.current, view, screen))
+              }}
               title={meta[view].help}
             >
               {meta[view].label}
               {!!meta[view].badge && <span className="badge">{meta[view].badge}</span>}
+              {/* Um <button> não pode conter outro, então o X é um span com papel de botão. */}
+              <span
+                role="button"
+                tabIndex={0}
+                className="dock-tab-close"
+                aria-label={t('workbench.hide')}
+                title={t('workbench.hide')}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onChange(hideIn(latest.current, view, screen))
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onChange(hideIn(latest.current, view, screen))
+                }}
+              >
+                ✕
+              </span>
             </button>
           ))}
         </nav>

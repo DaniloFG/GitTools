@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { FileDiff, FileStatus, LineKey } from '../../../shared/types'
-import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
+import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { parseChangesMode, type ChangesMode, type SectionId } from '../changesMode'
 import { useApp } from '../context'
 import { currentDrag, endDrag, startDrag } from '../dnd'
@@ -16,7 +16,8 @@ import { SCREEN_VIEWS, viewAvailable, type ViewId } from '../dock'
 import { PaneSlot } from '../slots'
 import { CommitBox } from './CommitBox'
 import { DiffView, useFullFile } from './DiffView'
-import { FileEntries, FileViewToggle } from './FileList'
+import { FileEntries } from './FileList'
+import { useFileViewGroup, ViewOptionsButton, type ViewOptionGroup } from './ViewOptions'
 import { useSessionState } from '../useSessionState'
 import { LineStats } from './LineStats'
 
@@ -70,6 +71,8 @@ export function ChangesView() {
   /** Operações desta tela (stage, descarte, aplicar linhas): o indicador cobre só os painéis dela. */
   const runChanges = <T,>(label: string, fn: () => Promise<T>) => run(label, fn, SCREEN_VIEWS.changes)
   const { status } = data
+  /** Opções de visualização da lista (modo das alterações e lista/árvore) ficam num menu do cabeçalho. */
+  const fileGroup = useFileViewGroup()
   const [mode, setMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
   // O arquivo aberto no diff é lembrado ao navegar para outra tela ou outra aba de repositório e voltar.
   const [active, setActive] = useSessionState<Active | null>('changes.active', null)
@@ -96,6 +99,13 @@ export function ChangesView() {
     if (inList(active.area)) return
     const other: Area = active.area === 'unstaged' ? 'staged' : 'unstaged'
     setActive(inList(other) ? { area: other, path: active.path } : null)
+  }, [status, active])
+
+  // Sem arquivo escolhido, abre o primeiro para o diff já aparecer (não espera um clique).
+  useEffect(() => {
+    if (active) return
+    const first = firstChange(status)
+    if (first) setActive(first)
   }, [status, active])
 
   useEffect(() => {
@@ -192,19 +202,12 @@ export function ChangesView() {
     { id: 'stage', label: t('changes.mode.stage'), help: t('changes.mode.stageHelp') },
     { id: 'check', label: t('changes.mode.check'), help: t('changes.mode.checkHelp') }
   ]
-  /** Escolha da visão e da forma de listar os arquivos, no cabeçalho das listas. */
-  const listTools = (
-    <>
-      <div className="segmented changes-mode" role="group" aria-label={t('changes.mode.label')} dir="ltr">
-        {modes.map((m) => (
-          <button key={m.id} className={mode === m.id ? 'active' : ''} aria-pressed={mode === m.id} title={m.help} onClick={() => chooseMode(m.id)}>
-            {m.label}
-          </button>
-        ))}
-      </div>
-      <FileViewToggle />
-    </>
-  )
+  /** Escolha da visão e da forma de listar os arquivos, no menu de opções do cabeçalho das listas. */
+  const modeGroup: ViewOptionGroup = {
+    title: t('changes.mode.label'),
+    options: modes.map((m) => ({ label: m.label, checked: mode === m.id, onSelect: () => chooseMode(m.id), hint: m.help }))
+  }
+  const listTools = <ViewOptionsButton groups={[modeGroup, fileGroup]} />
 
   /** Menu de contexto de um arquivo: blame e histórico abrem a tela Files com o arquivo já escolhido. */
   const fileMenu = (ev: React.MouseEvent, path: string, history: boolean) =>
@@ -233,7 +236,7 @@ export function ChangesView() {
               {t('changes.unstageAll')} ↑
             </button>
           )}
-          <FileViewToggle />
+          <ViewOptionsButton groups={[fileGroup]} />
         </>
       ) : (
         <>

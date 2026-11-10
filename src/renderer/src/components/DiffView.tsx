@@ -10,6 +10,8 @@ import { t, type MessageKey } from '../i18n'
 import { useLayout } from '../layout'
 import { displayCombo, resolveBindings } from '../shortcuts'
 import type { MenuItem } from './ContextMenu'
+import { ChangeRuler } from './ChangeRuler'
+import { diffViewGroups, ViewOptionsButton } from './ViewOptions'
 
 /**
  * Escolha entre "cima e baixo" e "lado a lado": todo diff abre no modo padrão das configurações;
@@ -54,6 +56,19 @@ interface Props {
 function useShortcutOf(): (action: string) => string {
   const overrides = useContext(AppContext)?.settings.shortcuts
   return (action) => displayCombo(resolveBindings(overrides ?? {})[action])
+}
+
+/**
+ * Tipo de uma linha do diff lado a lado, para a régua: só o lado direito alterado (add), só o esquerdo (del)
+ * ou os dois (mod). Sem alteração, null.
+ */
+function splitRowKind(hunk: FileDiff['hunks'][number], row: { left: number | null; right: number | null }): 'add' | 'del' | 'mod' | null {
+  const left = row.left !== null && hunk.lines[row.left].kind !== 'context'
+  const right = row.right !== null && hunk.lines[row.right].kind !== 'context'
+  if (left && right) return 'mod'
+  if (left) return 'del'
+  if (right) return 'add'
+  return null
 }
 
 const TYPE_LABEL: Record<FileDiff['changeType'], MessageKey> = {
@@ -243,26 +258,10 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
           </div>
         )}
         {!file.binary && file.hunks.length > 0 && (
-          <button
-            className={`diff-full ${fullFile ? 'active' : ''}`}
-            aria-pressed={fullFile}
-            onClick={() => setFullFile(!fullFile)}
-            title={fullFile ? t('diffExtra.changesOnlyHelp') : t('diffExtra.fullFileHelp')}
-          >
-            ⇕ {t('diffExtra.fullFile')}
-          </button>
-        )}
-        {!file.binary && file.hunks.length > 0 && (
-          <div className="segmented diff-layout" role="group" aria-label={t('diff.layout')}>
-            <button className={layout === 'inline' ? 'active' : ''} onClick={() => setLayout('inline')} title={t('diff.inlineHelp')}>
-              ☰ {t('diff.inline')}
-            </button>
-            <button className={layout === 'split' ? 'active' : ''} onClick={() => setLayout('split')} title={t('diff.splitHelp')}>
-              ◫ {t('diff.split')}
-            </button>
-          </div>
+          <ViewOptionsButton groups={diffViewGroups({ layout, setLayout, fullFile, setFullFile })} />
         )}
       </div>
+      <div className="diff-body-wrap">
       <div className="diff-body" onContextMenu={onMenu}>
       {file.binary ? (
         <p className="empty">{t('diff.binary')}</p>
@@ -330,7 +329,8 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
                   <tr
                     key={`${h}:${row.left ?? '-'}:${row.right ?? '-'}`}
                     className="line"
-                    data-change={[row.left, row.right].some((i) => i !== null && hunk.lines[i].kind !== 'context') || undefined}
+                    data-change={splitRowKind(hunk, row) !== null || undefined}
+                    data-kind={splitRowKind(hunk, row) ?? undefined}
                   >
                     {side(row.left, 'old')}
                     {side(row.right, 'new')}
@@ -374,6 +374,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
                       key={key}
                       className={`line line-${line.kind} ${isSelected ? 'line-selected' : ''}`}
                       data-change={change || undefined}
+                      data-kind={change ? line.kind : undefined}
                       onMouseEnter={change ? () => onLineEnter(key) : undefined}
                     >
                       <td className="sel" onMouseDown={change ? (e) => onLineDown(e, key) : undefined}>
@@ -407,6 +408,8 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
           </tbody>
         </table>
       )}
+      </div>
+      <ChangeRuler selector="tr[data-change]" scroller=".diff-body" />
       </div>
     </div>
   )

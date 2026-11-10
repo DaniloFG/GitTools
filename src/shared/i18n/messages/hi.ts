@@ -130,7 +130,17 @@ export const hi: Messages = {
     branch: 'Branch',
     stash: 'Stash',
     stashHelp: 'लोकल बदलाव अलग रखें और वर्किंग फ़ोल्डर साफ़ करें',
-    settings: 'सेटिंग्स'
+    settings: 'सेटिंग्स',
+    new: 'नया',
+    newHelp: 'एक ब्रांच या टैग बनाएँ, या अपने बदलाव स्टैश करें',
+    newBranch: 'नई ब्रांच…',
+    newTag: 'नया टैग…',
+    newMore: 'नए के और विकल्प',
+    itemRepo: 'रिपॉज़िटरी',
+    menu: 'मेनू',
+    menuHelp: 'सेटिंग्स और पैनल',
+    appearance: 'दिखावट',
+    toolbarMenu: 'टूलबार'
   },
   welcome: {
     tagline: 'आसान Git: खींचें और क्लिक करें — branches, commits, फ़ाइलों और यहाँ तक कि अलग-अलग लाइनों का merge, rebase और cherry-pick करें।',
@@ -147,6 +157,7 @@ export const hi: Messages = {
     message: 'टूल शानदार बना है, है ना?! तो इसे और बेहतर बनाने और नई चीज़ें बनाने में मेरा साथ दें।'
   },
   sidebar: {
+    viewMode: 'शाखाएँ दिखाने का तरीका',
     hint: 'Merge, rebase या cherry-pick के लिए किसी branch, commit या फ़ाइल को लोकल branch पर खींचें।',
     branches: 'Branches',
     remote: 'Remote: {remote}',
@@ -756,13 +767,17 @@ export const hi: Messages = {
     applyHelp: 'सेटिंग्स सहेजता है और यह विंडो खुली रखता है।',
     saveHelp: 'सेटिंग्स सहेजता है और यह विंडो बंद करता है।',
     applied: 'सेटिंग्स लागू हो गईं।',
+    searchPlaceholder: 'सेटिंग खोजें',
+    noResults: 'कोई मेल खाती सेटिंग नहीं मिली',
     general: {
       title: 'सामान्य',
       description: 'GitTools की भाषा और सामान्य पसंद।',
       language: 'भाषा',
       languageHelp: 'टूल के सभी टेक्स्ट बदल देता है। बदलाव तुरंत लागू होता है।',
       systemLanguage: 'सिस्टम के अनुसार',
-      detected: 'पहचानी गई: {language}'
+      detected: 'पहचानी गई: {language}',
+      multiRepo: 'वर्कस्पेस में कई रिपॉज़िटरी का पता लगाएँ',
+      multiRepoHelp: 'VS Code में GitTools खोलने पर, वर्कस्पेस में मिले हर रिपॉज़िटरी (.git) को उसके अपने टैब में खोला जाता है और नए रिपॉज़िटरी पर नज़र रखी जाती है।',
     },
     appearance: {
       title: 'रूप-रंग',
@@ -1679,6 +1694,7 @@ export const hi: Messages = {
     testOk: 'एडिटर ने repository की एक फ़ाइल (पूरे पथ के साथ) खोल दी।'
   },
   fileList: {
+    viewOptions: 'दृश्य विकल्प',
     viewMode: 'फ़ाइलें दिखाने का तरीका',
     viewModeHelp: 'फ़ाइलें सूची (नाम और फ़ोल्डर) या फ़ोल्डर ट्री में दिखाएँ — सभी फ़ाइल सूचियों पर लागू होता है',
     list: 'सूची',

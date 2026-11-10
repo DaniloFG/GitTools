@@ -128,7 +128,17 @@ export const ptBR = {
     branch: 'Branch',
     stash: 'Stash',
     stashHelp: 'Guardar as alterações locais e limpar a área de trabalho',
-    settings: 'Configurações'
+    settings: 'Configurações',
+    new: 'Novo',
+    newHelp: 'Criar uma branch ou uma tag, ou guardar as alterações',
+    newBranch: 'Nova branch…',
+    newTag: 'Nova tag…',
+    newMore: 'Mais opções de novo',
+    itemRepo: 'Repositório',
+    menu: 'Menu',
+    menuHelp: 'Configurações e painéis',
+    appearance: 'Aparência',
+    toolbarMenu: 'Barra de ferramentas'
   },
   welcome: {
     tagline: 'Git sem complicação: arraste e clique para fazer merge, rebase e cherry-pick de branches, commits, arquivos e até linhas.',
@@ -145,6 +155,7 @@ export const ptBR = {
     message: 'A ferramenta ficou top, não é?! Então me dá um apoio para melhorar e criar mais.'
   },
   sidebar: {
+    viewMode: 'Exibição das branches',
     hint: 'Arraste uma branch, commit ou arquivo sobre uma branch local para merge, rebase ou cherry-pick.',
     branches: 'Branches',
     remote: 'Remoto: {remote}',
@@ -754,13 +765,17 @@ export const ptBR = {
     applyHelp: 'Salva as configurações e mantém esta tela aberta.',
     saveHelp: 'Salva as configurações e fecha esta tela.',
     applied: 'Configurações aplicadas.',
+    searchPlaceholder: 'Pesquisar configurações',
+    noResults: 'Nenhuma configuração encontrada',
     general: {
       title: 'Geral',
       description: 'Idioma e preferências gerais do GitTools.',
       language: 'Idioma',
       languageHelp: 'Muda todos os textos da ferramenta. A troca é aplicada na hora.',
       systemLanguage: 'Igual ao sistema',
-      detected: 'Detectado: {language}'
+      detected: 'Detectado: {language}',
+      multiRepo: 'Detectar vários repositórios no workspace',
+      multiRepoHelp: 'Ao abrir o GitTools no VS Code, abre cada repositório (.git) encontrado no workspace na sua própria aba e acompanha os repositórios novos que aparecerem.',
     },
     appearance: {
       title: 'Aparência',
@@ -1678,6 +1693,7 @@ export const ptBR = {
     testOk: 'O editor foi aberto com um arquivo do repositório (caminho completo).'
   },
   fileList: {
+    viewOptions: 'Opções de visualização',
     viewMode: 'Exibição dos arquivos',
     viewModeHelp: 'Mostrar os arquivos em lista (nome e pasta) ou em árvore de pastas — vale para todas as listas',
     list: 'Lista',

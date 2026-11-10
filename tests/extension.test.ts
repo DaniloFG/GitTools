@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as fakeVscode from './support/vscode'
 import { fake, Memento, Uri, type FakePanel } from './support/vscode'
 import { createRepo } from './helpers'
+import { runGit } from '../src/core/exec'
+import { GitRepository } from '../src/core/repository'
 import { activate } from '../extension/src/extension'
 
 const INDEX = `<!doctype html><html><head>
@@ -303,4 +305,129 @@ function createFake(): FakePanel {
   const before = fake.panels.length
   fakeVscode.window.createWebviewPanel('gittools', 'GitTools', 1, {})
   return fake.panels.splice(before, 1)[0]
+}
+
+/** Espera uma condição (o VS Code avisa por eventos assíncronos). */
+async function until(check: () => boolean | Promise<boolean>) {
+  for (let i = 0; i < 300; i++) {
+    if (await check()) return
+    await new Promise((r) => setTimeout(r, 10))
+  }
+  throw new Error('a condição não aconteceu a tempo')
+}
+
+/** Repositórios abertos e o ativo, como a interface os vê. */
+async function openList(panel: FakePanel) {
+  const reply = await ask(panel, 'app:openRepositories')
+  return reply.result as { repos: { root: string }[]; active: string | null }
+}
+
+describe('detecção de vários repositórios no workspace', () => {
+  it('abre todos os repositórios das pastas do workspace, com o ativo na primeira pasta', async () => {
+    const primeira = await createRepo()
+    await primeira.commit('um', { 'a.txt': 'a\n' })
+    const segunda = await createRepo()
+    await segunda.commit('dois', { 'b.txt': 'b\n' })
+    fake.workspaceFolders = [{ uri: Uri.file(segunda.dir) }, { uri: Uri.file(primeira.dir) }]
+    const { run } = await start()
+    await run('gittools.open')
+    const list = await openList(fake.panels[0])
+    expect(list.repos.map((r) => r.root)).toEqual([segunda.repo.root, primeira.repo.root])
+    expect(list.active).toBe(segunda.repo.root)
+  })
+
+  it('acha um repositório aninhado dentro de uma pasta do workspace', async () => {
+    const pasta = await createRepo()
+    await pasta.commit('raiz', { 'a.txt': 'a\n' })
+    const interno = join(pasta.dir, 'modulos', 'interno')
+    mkdirSync(interno, { recursive: true })
+    await runGit(interno, ['init', '-q'])
+    fake.workspaceFolders = [{ uri: Uri.file(pasta.dir) }]
+    const { run } = await start()
+    await run('gittools.open')
+    const list = await openList(fake.panels[0])
+    expect(list.repos.map((r) => r.root)).toEqual([pasta.repo.root, await realRoot(interno)])
+    expect(list.active).toBe(pasta.repo.root)
+  })
+
+  it('com a detecção desligada, abre só o primeiro repositório (comportamento antigo)', async () => {
+    const primeira = await createRepo()
+    await primeira.commit('um', { 'a.txt': 'a\n' })
+    const segunda = await createRepo()
+    await segunda.commit('dois', { 'b.txt': 'b\n' })
+    fake.workspaceFolders = [{ uri: Uri.file(primeira.dir) }, { uri: Uri.file(segunda.dir) }]
+    const data = mkdtempSync(join(tmpdir(), 'gittools-ext-off-'))
+    dirs.push(data)
+    mkdirSync(join(data, 'storage'), { recursive: true })
+    writeFileSync(join(data, 'storage', 'settings.json'), JSON.stringify({ multiRepoDetection: false }))
+    const { run } = await start({ root: data })
+    await run('gittools.open')
+    const list = await openList(fake.panels[0])
+    expect(list.repos.map((r) => r.root)).toEqual([primeira.repo.root])
+    expect(fake.watchers).toHaveLength(0)
+  })
+
+  it('pasta nova no workspace abre como aba de fundo (sem trocar o ativo) e avisa a interface', async () => {
+    const atual = await createRepo()
+    await atual.commit('atual', { 'a.txt': 'a\n' })
+    const nova = await createRepo()
+    await nova.commit('nova', { 'b.txt': 'b\n' })
+    fake.workspaceFolders = [{ uri: Uri.file(atual.dir) }]
+    const { run } = await start()
+    await run('gittools.open')
+    const panel = fake.panels[0]
+    fake.folderListeners.forEach((l) => l({ added: [{ uri: Uri.file(nova.dir) }], removed: [] }))
+    await until(async () => (await openList(panel)).repos.length === 2)
+    const list = await openList(panel)
+    expect(list.repos.map((r) => r.root)).toEqual([atual.repo.root, nova.repo.root])
+    expect(list.active).toBe(atual.repo.root)
+    expect(panel.webview.posted).toContainEqual({ type: 'event', channel: 'repo:changed' })
+  })
+
+  it('repositório criado dentro do workspace (git init) abre na hora, sem trocar o ativo', async () => {
+    const atual = await createRepo()
+    await atual.commit('atual', { 'a.txt': 'a\n' })
+    fake.workspaceFolders = [{ uri: Uri.file(atual.dir) }]
+    const { run } = await start()
+    await run('gittools.open')
+    const panel = fake.panels[0]
+    const watcher = fake.watchers.find((w) => w.pattern === '**/.git')!
+    expect(watcher).toBeDefined()
+
+    const sub = join(atual.dir, 'modulo')
+    mkdirSync(sub)
+    await runGit(sub, ['init', '-q'])
+    // Um .git dentro de node_modules não é um repositório do usuário.
+    const ignorado = join(atual.dir, 'node_modules', 'pacote')
+    mkdirSync(ignorado, { recursive: true })
+    await runGit(ignorado, ['init', '-q'])
+    watcher.emitCreate(Uri.file(join(ignorado, '.git')))
+    watcher.emitCreate(Uri.file(join(sub, '.git')))
+
+    await until(async () => (await openList(panel)).repos.length === 2)
+    const list = await openList(panel)
+    expect(list.repos.map((r) => r.root)).toEqual([atual.repo.root, await realRoot(sub)])
+    expect(list.active).toBe(atual.repo.root)
+    expect(panel.webview.posted).toContainEqual({ type: 'event', channel: 'repo:changed' })
+  })
+
+  it('desligar a detecção pela configuração para de observar; ligar de novo volta a observar', async () => {
+    const atual = await createRepo()
+    await atual.commit('atual', { 'a.txt': 'a\n' })
+    fake.workspaceFolders = [{ uri: Uri.file(atual.dir) }]
+    const { run } = await start()
+    await run('gittools.open')
+    const panel = fake.panels[0]
+    const watcher = fake.watchers[0]
+    const settings = (await ask(panel, 'app:getSettings')).result as Record<string, unknown>
+    await ask(panel, 'app:saveSettings', { ...settings, multiRepoDetection: false })
+    expect(watcher.disposed).toBe(true)
+    await ask(panel, 'app:saveSettings', { ...settings, multiRepoDetection: true })
+    expect(fake.watchers.filter((w) => !w.disposed)).toHaveLength(1)
+  })
+})
+
+/** Caminho real de uma pasta (o git informa o caminho sem links simbólicos). */
+async function realRoot(path: string): Promise<string> {
+  return GitRepository.open(path).then((r) => r.root)
 }

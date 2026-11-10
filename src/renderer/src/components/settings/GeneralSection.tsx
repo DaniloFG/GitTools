@@ -1,4 +1,7 @@
+import { DEFAULT_SETTINGS } from '../../../../shared/settings'
+import { insideVsCode } from '../../vscodeBridge'
 import { LOCALES, matchLocale, t } from '../../i18n'
+import { SettingCheckbox, SettingRow, SettingSelect } from './SettingRow'
 import type { SettingsSectionProps } from './sections'
 import { useAppInfo } from './useAppInfo'
 
@@ -7,30 +10,33 @@ export function GeneralSection({ draft, update }: SettingsSectionProps) {
   const info = useAppInfo()
   const detected = matchLocale(info?.systemLocales ?? navigator.languages)
   const detectedName = LOCALES.find((l) => l.id === detected)?.nativeName ?? detected
+  const category = t('settings.general.title')
 
   return (
     <div className="settings-group">
-      <h4>{t('settings.general.language')}</h4>
-      <p className="muted small">{t('settings.general.languageHelp')}</p>
-      <div className="language-list" role="radiogroup" aria-label={t('settings.general.language')}>
-        <label className={`language-option ${draft.language === 'system' ? 'selected' : ''}`}>
-          <input type="radio" name="language" checked={draft.language === 'system'} onChange={() => update({ language: 'system' })} />
-          <span className="language-native">{t('settings.general.systemLanguage')}</span>
-          <span className="muted small">{t('settings.general.detected', { language: detectedName })}</span>
-        </label>
-        {LOCALES.map((locale) => (
-          <label key={locale.id} className={`language-option ${draft.language === locale.id ? 'selected' : ''}`}>
-            <input type="radio" name="language" checked={draft.language === locale.id} onChange={() => update({ language: locale.id })} />
-            {/* Só o nome nativo usa a direção do idioma; o cartão segue o layout dos demais. */}
-            <span className="language-native" lang={locale.id} dir={locale.dir}>
-              {locale.nativeName}
-            </span>
-            <span className="muted small" dir="ltr">
-              {locale.englishName}
-            </span>
-          </label>
-        ))}
-      </div>
+      <SettingRow id="setting-language" category={category} title={t('settings.general.language')} description={t('settings.general.languageHelp')} modified={draft.language !== DEFAULT_SETTINGS.language}>
+        <SettingSelect
+          id="setting-language"
+          value={draft.language}
+          options={[
+            { value: 'system', label: `${t('settings.general.systemLanguage')} (${t('settings.general.detected', { language: detectedName })})` },
+            ...LOCALES.map((locale) => ({ value: locale.id, label: locale.nativeName }))
+          ]}
+          onChange={(language) => update({ language })}
+        />
+      </SettingRow>
+
+      {insideVsCode() && (
+        <SettingCheckbox
+          id="setting-multi-repo"
+          category={category}
+          title={t('settings.general.multiRepo')}
+          description={t('settings.general.multiRepoHelp')}
+          checked={draft.multiRepoDetection}
+          modified={draft.multiRepoDetection !== DEFAULT_SETTINGS.multiRepoDetection}
+          onChange={(multiRepoDetection) => update({ multiRepoDetection })}
+        />
+      )}
     </div>
   )
 }

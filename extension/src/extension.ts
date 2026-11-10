@@ -5,7 +5,7 @@
 import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, relative, sep } from 'node:path'
+import { dirname, isAbsolute, join, relative, sep } from 'node:path'
 import * as vscode from 'vscode'
 import { Backend, type BackendHost } from '../../src/backend/backend'
 import { isBridgeChannel, type HostToWebview, type WebviewToHost } from '../../src/shared/channels'
@@ -13,6 +13,7 @@ import { matchLocale, setLocale } from '../../src/shared/i18n'
 import type { DiffWindowRequest } from '../../src/shared/api'
 import type { Settings } from '../../src/shared/settings'
 import { GitRepository } from '../../src/core/repository'
+import { findRepositories, isIgnoredPath } from '../../src/core/discover'
 
 /** Dois caminhos apontam para a mesma pasta? (links simbólicos, como /var → /private/var no macOS, e maiúsculas do Windows) */
 function samePath(a: string, b: string): boolean {
@@ -31,6 +32,16 @@ const MAIN_VIEW = 'gittools'
 const DIFF_VIEW = 'gittools.diff'
 /** Chave, no estado da janela, dos repositórios abertos nela. */
 const WORKSPACE_KEY = 'gittools.workspace'
+/** Intervalo entre tentativas de abrir um .git recém-criado (um clone ainda está escrevendo o repositório). */
+const NEW_REPO_RETRY_MS = 1500
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** `path` está dentro de `folder` (ou é a própria pasta)? */
+function isInside(folder: string, path: string): boolean {
+  const rel = relative(folder, path)
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
 
 /** Idioma das mensagens do motor git: o das configurações do GitTools ou, em "sistema", o do VS Code. */
 function applyLocale(settings: Settings) {
@@ -41,8 +52,10 @@ class Controller {
   readonly backend: Backend
   private main: vscode.WebviewPanel | null = null
   private readonly panels = new Set<vscode.WebviewPanel>()
-  /** A pasta do VS Code já foi considerada nesta janela (ver `useWorkspaceRepository`). */
-  private workspaceChecked = false
+  /** A descoberta das pastas do VS Code foi feita nesta janela (uma vez; ver `useWorkspaceRepository`). */
+  private workspaceReady: Promise<void> | null = null
+  /** Observadores do workspace (novas pastas e repositórios criados dentro dele); null com a detecção desligada. */
+  private detectors: vscode.Disposable[] | null = null
 
   constructor(private readonly context: vscode.ExtensionContext) {
     const host: BackendHost = {
@@ -70,7 +83,10 @@ class Controller {
       detectEditors: () => [],
       chooseEditor: async () => null,
       openDiffWindow: (request) => this.openDiff(request),
-      settingsChanged: applyLocale,
+      settingsChanged: (settings) => {
+        applyLocale(settings)
+        this.applyDetection(settings.multiRepoDetection)
+      },
       repositoryOpened: (info) => {
         if (this.main) this.main.title = `GitTools — ${info.name}`
       },
@@ -85,6 +101,7 @@ class Controller {
   }
 
   dispose() {
+    this.stopDetectors()
     this.backend.dispose()
   }
 
@@ -111,21 +128,113 @@ class Controller {
   }
 
   /**
-   * Usa a pasta aberta no VS Code se ela for um repositório git. Só na primeira vez nesta janela: depois
-   * disso vale a escolha do usuário. Os repositórios reabertos da última sessão continuam abertos.
+   * Abre os repositórios do workspace do VS Code. Só uma vez por janela (depois disso vale a escolha do
+   * usuário, e repositórios fechados de propósito não voltam). Os reabertos da última sessão continuam abertos.
    */
   async useWorkspaceRepository(): Promise<void> {
     await this.backend.restoreWorkspace()
-    if (this.workspaceChecked) return
-    this.workspaceChecked = true
-    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+    this.workspaceReady ??= this.discoverWorkspace()
+    await this.workspaceReady
+  }
+
+  /** Conforme a configuração `multiRepoDetection`: todos os repositórios do workspace, ou só o primeiro (comportamento antigo). */
+  private async discoverWorkspace(): Promise<void> {
+    const settings = await this.backend.loadSettings()
+    const folders = this.folderPaths()
+    if (!settings.multiRepoDetection) {
+      for (const folder of folders) {
+        try {
+          await this.backend.setRepository(await GitRepository.open(folder))
+          return
+        } catch {
+          // Não é um repositório: tenta a próxima pasta.
+        }
+      }
+      return
+    }
+    this.startDetectors()
+    await this.openFound(folders)
+  }
+
+  /**
+   * Abre, cada um na sua aba, os repositórios achados nestas pastas, sem trocar o ativo. Sem nenhum ativo,
+   * o primeiro achado vira o ativo. Repositórios já abertos não são duplicados (o Backend já cuida disso).
+   */
+  private async openFound(folders: string[]): Promise<void> {
+    let first: string | null = null
+    let opened = false
+    for (const path of await findRepositories(folders)) {
       try {
-        await this.backend.setRepository(await GitRepository.open(folder.uri.fsPath))
-        return
+        const repo = await GitRepository.open(path)
+        await this.backend.addRepository(repo, { activate: false })
+        first ??= repo.root
+        opened = true
       } catch {
-        // Não é um repositório: tenta a próxima pasta.
+        // Pasta que deixou de ser repositório, ou sem permissão: segue para o próximo.
       }
     }
+    if (first !== null && this.backend.activeRoot === null) await this.backend.switchRepository(first)
+    if (opened) this.notifyRepositoryChanged()
+  }
+
+  /** Liga a detecção: novas pastas no workspace e repositórios criados (git init, clone) dentro dele. */
+  private startDetectors(): void {
+    if (this.detectors) return
+    const watcher = vscode.workspace.createFileSystemWatcher('**/.git')
+    this.detectors = [
+      vscode.workspace.onDidChangeWorkspaceFolders((event) => {
+        void this.openFound(event.added.map((f) => f.uri.fsPath))
+      }),
+      watcher.onDidCreate((uri) => void this.openCreated(uri.fsPath)),
+      watcher
+    ]
+  }
+
+  /** Desliga a detecção (configuração desligada, ou a janela fechou). */
+  private stopDetectors(): void {
+    for (const d of this.detectors ?? []) d.dispose()
+    this.detectors = null
+  }
+
+  /** A configuração mudou: liga ou desliga a detecção, e na ligação procura o que já existe no workspace. */
+  private applyDetection(enabled: boolean): void {
+    if (!enabled) {
+      this.stopDetectors()
+      return
+    }
+    if (this.detectors) return
+    this.startDetectors()
+    void this.openFound(this.folderPaths())
+  }
+
+  /** Um `.git` apareceu dentro do workspace: abre o repositório como aba nova, sem trocar o ativo. */
+  private async openCreated(gitPath: string): Promise<void> {
+    const root = dirname(gitPath)
+    const folder = this.folderPaths().find((f) => isInside(f, root))
+    if (!folder || isIgnoredPath(relative(folder, root))) return
+    // Um clone ainda está escrevendo o repositório: tenta de novo algumas vezes antes de desistir.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await wait(NEW_REPO_RETRY_MS)
+      try {
+        const repo = await GitRepository.open(root)
+        await this.backend.addRepository(repo, { activate: false })
+        if (this.backend.activeRoot === null) await this.backend.switchRepository(repo.root)
+        this.notifyRepositoryChanged()
+        return
+      } catch {
+        // Ainda não é um repositório completo: tenta de novo.
+      }
+    }
+  }
+
+  /** Pastas do workspace do VS Code, como caminhos do sistema. */
+  private folderPaths(): string[] {
+    return (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath)
+  }
+
+  /** Avisa o painel que a lista de repositórios mudou (a interface relê os abertos). */
+  private notifyRepositoryChanged(): void {
+    this.post({ type: 'event', channel: 'repo:changed' })
   }
 
   /** Abre (ou mostra) o painel principal do GitTools. */

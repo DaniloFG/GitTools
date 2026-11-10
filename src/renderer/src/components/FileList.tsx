@@ -11,21 +11,6 @@ export function useFileViewMode() {
   return useLayout<FileViewMode>('files.viewMode', parseFileViewMode)
 }
 
-/** Alterna entre "lista" (nome + pasta) e "árvore" (agrupado por pasta); vale para todas as listas. */
-export function FileViewToggle() {
-  const [mode, setMode] = useFileViewMode()
-  return (
-    <div className="segmented file-view-toggle" role="group" aria-label={t('fileList.viewMode')} title={t('fileList.viewModeHelp')} dir="ltr">
-      <button className={mode === 'list' ? 'active' : ''} aria-pressed={mode === 'list'} onClick={() => setMode(undefined)}>
-        ☰ {t('fileList.list')}
-      </button>
-      <button className={mode === 'tree' ? 'active' : ''} aria-pressed={mode === 'tree'} onClick={() => setMode('tree')}>
-        ⊟ {t('fileList.tree')}
-      </button>
-    </div>
-  )
-}
-
 /** Tema claro? Reage à troca de tema (do GitTools, do sistema ou do VS Code). */
 const useLightTheme = () => useSyncExternalStore(subscribeTheme, isLightTheme)
 

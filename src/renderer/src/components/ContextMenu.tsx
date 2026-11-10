@@ -10,6 +10,8 @@ export type MenuItem =
       danger?: boolean
       disabled?: boolean
       hint?: string
+      /** Opção marcável: com `checked` (true ou false) o item ganha uma coluna à esquerda do rótulo, com ✓ quando marcado. */
+      checked?: boolean
       /** Botões pequenos ao lado do item (ex.: ★ favoritar, ✕ remover); fecham o menu ao serem usados. */
       actions?: { icon: string; title: string; onClick(): void }[]
     }
@@ -95,8 +97,22 @@ function MenuItems({ items, onClose }: { items: MenuItem[]; onClose(): void }) {
                 item.onClick?.()
               }}
             >
-              <span>{item.label}</span>
-              {item.hint && <small>{item.hint}</small>}
+              {typeof item.checked === 'boolean' ? (
+                <>
+                  <span className="menu-main">
+                    <span className="menu-check" aria-hidden>
+                      {item.checked ? '✓' : ''}
+                    </span>
+                    <span>{item.label}</span>
+                  </span>
+                  {item.hint && <small>{item.hint}</small>}
+                </>
+              ) : (
+                <>
+                  <span>{item.label}</span>
+                  {item.hint && <small>{item.hint}</small>}
+                </>
+              )}
             </button>
             {item.actions?.map((action) => (
               <button
