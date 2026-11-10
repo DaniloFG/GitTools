@@ -46,7 +46,8 @@ function serve(dir) {
 const BRIDGE = String.raw`
 (() => {
   const listeners = { cmd: new Set(), changed: new Set() }
-  const call = (channel, ...args) => window.__gt(channel, args)
+  // A resposta chega como texto JSON e é lida aqui: o Playwright devolve objetos grandes à página muito devagar.
+  const call = (channel, ...args) => window.__gt(channel, args).then((text) => JSON.parse(text).v)
   // Mesmo contrato do preload: "repo:changed" chega como o root (ou nada, quando a janela ganha o foco).
   window.__emit = (channel, payload) => {
     if (channel === 'git:command') listeners.cmd.forEach((l) => l(payload))
@@ -131,7 +132,10 @@ export async function launch(options) {
   const errors = []
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
   page.on('console', (m) => m.type() === 'error' && errors.push(`console: ${m.text()}`))
-  await page.exposeFunction('__gt', (channel, args) => backend.invoke(channel, args))
+  // Devolve texto em vez de objeto: com a CPU 4x mais lenta, um objeto de 3,5 MB levou 2,6-3,5 s para chegar à página;
+  // como texto com JSON.parse, 0,56-0,73 s. O envelope { v } mantém undefined (JSON.stringify sozinho o perderia).
+  // Erros do backend não são capturados: a rejeição chega à página como antes.
+  await page.exposeFunction('__gt', async (channel, args) => JSON.stringify({ v: await backend.invoke(channel, args) }))
   await page.addInitScript(BRIDGE)
   if (options.video) await page.addInitScript(CURSOR)
   if (options.layout) {
