@@ -146,7 +146,7 @@ linha em ≤ 50 ms (CPU 4×). Ordem sugerida de entrega (cada uma com testes, me
 Metas: selecionar um commit com 2 processos (hoje 5); 10 setas com até 6 (hoje 10–15); `status` do cenário `heavy`
 em até 2× o `status()` simples. Ordem sugerida:
 
-1. **3.2** `commitDetails` em 1 processo (`git show --raw --numstat -z -m --first-parent`, no lugar de `show` + dois
+1. ~~3.2~~ (feito na janela 2, `f720cad`: selecionar um commit 5 → 2 processos, 10 setas 10–15 → 4, carga 11 → 8). Era: `commitDetails` em 1 processo (`git show --raw --numstat -z -m --first-parent`, no lugar de `show` + dois
    `diff`; testes de equivalência com o resultado de hoje: arquivo normal, renomeado, binário, commit raiz, merge,
    commit vazio) e o `diff` de commit sem `rev-list` (`sha^` e, só no commit raiz, a árvore vazia).
 2. **3.1** `status` leve no caminho de atualização; as contagens de linhas (dois `numstat` e a leitura dos não
