@@ -149,7 +149,7 @@ em até 2× o `status()` simples. Ordem sugerida:
 1. ~~3.2~~ (feito na janela 2, `f720cad`: selecionar um commit 5 → 2 processos, 10 setas 10–15 → 4, carga 11 → 8). Era: `commitDetails` em 1 processo (`git show --raw --numstat -z -m --first-parent`, no lugar de `show` + dois
    `diff`; testes de equivalência com o resultado de hoje: arquivo normal, renomeado, binário, commit raiz, merge,
    commit vazio) e o `diff` de commit sem `rev-list` (`sha^` e, só no commit raiz, a árvore vazia).
-2. **3.1** `status` leve no caminho de atualização; as contagens de linhas (dois `numstat` e a leitura dos não
+2. ~~3.1~~ (feito na janela 2: foco 4 → 2 processos, carga 8 → 6, status pesado 331–421 → 129 ms; meta de 2× o simples não atingida: 129 contra 15 ms). Era: `status` leve no caminho de atualização; as contagens de linhas (dois `numstat` e a leitura dos não
    rastreados) só para as telas que as mostram, por `Wants`, com limite de quantidade e fila de poucas leituras.
 3. **3.3** `AbortSignal` até o `runGit` (matar o processo de uma leitura substituída) e, junto, parar o git no teto de
    saída do diff (hoje o excedente é lido e descartado).
