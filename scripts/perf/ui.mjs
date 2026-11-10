@@ -207,7 +207,15 @@ await longTasks()
 // Caso extremo: o commit com 5000 linhas alteradas num arquivo (25 mil linhas de tabela).
 start = Date.now()
 await row(1).click()
-await page.waitForFunction(() => document.querySelectorAll('.diff-table tr.line').length > 20000, null, { timeout: 300000 })
+// Com a lista em janela só existem alguns blocos no DOM: o diff inteiro é dito pelo data-rows do contêiner.
+await page.waitForFunction(
+  () => {
+    const body = document.querySelector('.diff-body[data-rows]')
+    return !!body && Number(body.dataset.rows) > 20000 && !!document.querySelector('.diff-table tr.line')
+  },
+  null,
+  { timeout: 300000 }
+)
 show('abrir diff de 5000 linhas alteradas', `${Date.now() - start} ms`)
 await wait(2500)
 show('  tarefas longas', await longTasks())

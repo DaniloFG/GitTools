@@ -4135,10 +4135,11 @@ body.docking .pane-grip {
   flex-direction: column;
   height: 100%;
 }
+/* A janela do diff não rola: quem rola é o .diff-body (lista em janela), dentro da altura que sobra (ver abaixo). */
 .diff-window-app .diff-window {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 0 10px 10px;
 }
 /* Nos painéis, as barras de botões do diff (ações e setas) ficam fixas no topo e só o conteúdo do diff rola. */
@@ -4182,6 +4183,10 @@ body.docking .pane-grip {
 .diff-window-app .diff-file {
   margin-top: 10px;
   overflow: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .diff-window-app .diff-file-header {
   position: sticky;
@@ -5287,6 +5292,44 @@ button.blame-bubble:hover {
 .diff-panel .diff-body-wrap > .diff-body {
   flex: 1 1 auto;
   min-height: 0;
+}
+/* Diff sem painel por perto (janela própria e modo de linhas do CherryPick): o corpo ocupa a altura que sobra
+   e rola sozinho. Sem essa altura limitada, a lista em janela montaria o diff inteiro (a "tela" seria o diff todo). */
+.diff-window-app .diff-file-header,
+.studio-lines > .diff-file > .diff-file-header {
+  flex: none;
+}
+.diff-window-app .diff-body-wrap,
+.studio-lines > .diff-file > .diff-body-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.diff-window-app .diff-body,
+.studio-lines > .diff-file > .diff-body-wrap > .diff-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+/* Modo de linhas do CherryPick: o painel do meio não rola inteiro; o diff ocupa o resto da coluna. */
+.studio-main:has(> .studio-lines) {
+  overflow: hidden;
+}
+.studio-lines {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.studio-lines > .diff-file {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Tabelas empilhadas (um bloco por tabela): sem margem nem espaço entre elas. As bordas já são colapsadas por bloco. */
+.diff-body .diff-table {
+  display: table;
+  margin: 0;
 }
 
 /* Linhas alteradas: faixa de 3px no início da linha e números e sinal com um tom mais forte. */
