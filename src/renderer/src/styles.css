@@ -3045,8 +3045,28 @@ kbd.duplicate {
   min-height: 0;
   overflow: auto;
 }
+/* Com o blame na tela, o painel não rola por fora: quem rola é .blame-body, dentro da altura que sobra. Sem essa
+   altura limitada, a lista em janela montaria o arquivo inteiro (a "tela" seria o arquivo todo). */
+.file-details-body:has(> .blame-wrap) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .blame-wrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.blame-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.blame-body .blame-table {
+  display: table;
+  margin: 0;
 }
 .blame-resize {
   inset-inline-start: calc(var(--blame-gutter) - 4px);
@@ -3069,6 +3089,14 @@ kbd.duplicate {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
+  /* Colunas pelos <col> de cada bloco (ver BlameView): os blocos ficam alinhados entre si. */
+  table-layout: fixed;
+}
+.blame-table col.blame-col-gutter {
+  width: var(--blame-gutter, 260px);
+}
+.blame-table col.ln {
+  width: max(36px, calc(var(--ln-digits, 4) * 1ch + 12px));
 }
 .blame-table td {
   vertical-align: top;

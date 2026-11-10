@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { BlameResult, FileDiff, FileHistoryEntry, LineKey } from '../../../shared/types'
 import { currentBranch, useApp } from '../context'
 import { useActions } from '../actions'
@@ -20,9 +20,11 @@ import { FileEntries, useFileViewMode } from './FileList'
 import { firstFileShown } from '../fileTree'
 import { FileViewOptions } from './ViewOptions'
 import { Loader, LoaderPane } from './Loader'
+import { VirtualList } from './VirtualList'
+import { BLOCK_ROWS, chunkRows } from '../diffBlocks'
+import { blameColors, blameRowFlags, blameSignature, isUncommitted } from '../blameRows'
 
 const MAX_LISTED = 500
-const UNCOMMITTED = /^0+$/
 const GUTTER_DEFAULT = 260
 const GUTTER_MIN = 120
 const GUTTER_MAX = 640
@@ -143,19 +145,106 @@ function FilesList({ path, onPath }: { path: string | null; onPath(path: string)
   )
 }
 
+/** Altura estimada de um bloco de linhas. As linhas têm 18 px, mas o código quebra linha: por isso todo bloco é medido. */
+const BLOCK_HEIGHT = BLOCK_ROWS * 18
+/** Margem montada acima e abaixo da tela: rolar não mostra espaço em branco. */
+const OVERSCAN = 800
+/** Todo bloco é de altura variável. Constante de módulo: a identidade não muda. */
+const alwaysVariable = () => true
+
+/**
+ * Cada blame carregado ganha prefixo de chave novo, para as alturas medidas de um arquivo (ou de outra versão)
+ * não valerem para o seguinte. Mesmo truque do diff (`diffEpoch`).
+ */
+let blameEpoch = 0
+
+/**
+ * Estado que o bloco lê no momento do desenho e dos eventos. Os manipuladores ficam numa ref, atualizada a cada
+ * desenho do blame: um bloco memorizado não é refeito só porque o menu ou o histórico mudou.
+ */
+interface BlameLive {
+  tip(sha: string): string
+  menu(e: React.MouseEvent, sha: string): void
+}
+
+interface BlameBlockProps {
+  blame: BlameResult
+  colors: ReadonlyMap<string, string>
+  start: number
+  end: number
+  live: RefObject<BlameLive | null>
+}
+
+/**
+ * Um bloco de linhas do blame: uma tabela própria, com as mesmas larguras de coluna das demais (o gutter vem de
+ * --blame-gutter e o número de --ln-digits, no contêiner). Só os blocos perto da tela são montados.
+ */
+const BlameBlock = memo(function BlameBlock({ blame, colors, start, end, live }: BlameBlockProps) {
+  const rows: React.ReactNode[] = []
+  for (let i = start; i < end; i++) {
+    const line = blame.lines[i]
+    const { first, second } = blameRowFlags(blame.lines, i)
+    const uncommitted = isUncommitted(line.sha)
+    const commit = blame.commits[line.sha]
+    rows.push(
+      <tr key={i} className={first ? 'blame-first' : ''}>
+        <td
+          className="blame-gutter"
+          style={{ borderInlineStartColor: colors.get(line.sha) }}
+          // A dica (title) é montada só ao passar o mouse, e não a cada linha desenhada.
+          onMouseEnter={(e) => {
+            if (!e.currentTarget.title) e.currentTarget.title = live.current?.tip(line.sha) ?? ''
+          }}
+          onContextMenu={uncommitted ? undefined : (e) => live.current?.menu(e, line.sha)}
+        >
+          {first &&
+            (uncommitted ? (
+              <span className="muted">{t('files.uncommitted')}</span>
+            ) : (
+              <div className="blame-info">
+                <code>{shortSha(line.sha)}</code> <span className="blame-author">{commit.author}</span>{' '}
+                <span className="muted">{relativeDate(commit.date)}</span>
+              </div>
+            ))}
+          {second && !uncommitted && <div className="blame-summary">{commit.summary}</div>}
+        </td>
+        <td className="ln">{line.line}</td>
+        <td className="code">{line.content || ' '}</td>
+      </tr>
+    )
+  }
+  // Layout fixo, com as mesmas colunas em todos os blocos: as larguras vêm dos <col> (ver styles.css).
+  return (
+    <table className="blame-table">
+      <colgroup>
+        <col className="blame-col-gutter" />
+        <col className="ln" />
+        <col />
+      </colgroup>
+      <tbody>{rows}</tbody>
+    </table>
+  )
+})
+
+/**
+ * Blame do arquivo, linha a linha, com o commit de cada uma. O corpo é uma lista em janela de blocos: só o
+ * contêiner `.blame-body` rola. A releitura só acontece quando a assinatura muda (ver blameSignature).
+ */
 function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onClearRev(): void }) {
-  const { selectCommit, showMenu, data } = useApp()
+  const { selectCommit, showMenu, data, repo } = useApp()
   const [blame, setBlame] = useState<BlameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [gutter, setGutter] = useLayout('blame.gutter', parseGutter)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const live = useRef<BlameLive | null>(null)
 
   useEffect(() => {
     setBlame(null)
     setError(null)
   }, [path, rev])
 
-  // Recarrega também quando o repositório muda (sem apagar a tela enquanto carrega).
+  // Relê só quando o que o blame mostra mudou (HEAD, ou o próprio arquivo, ou o repositório); não a cada status.
+  const sig = useMemo(() => blameSignature(repo.root, data.status, path, rev), [repo.root, data.status, path, rev])
   useEffect(() => {
     let cancelled = false
     git.blame(path, rev).then(
@@ -165,14 +254,14 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
     return () => {
       cancelled = true
     }
-  }, [path, rev, data.status])
+  }, [path, rev, sig])
 
-  const range = useMemo(() => {
-    const dates = Object.values(blame?.commits ?? {})
-      .filter((c) => !UNCOMMITTED.test(c.sha))
-      .map((c) => c.date)
-    return { min: Math.min(...dates), max: Math.max(...dates) }
-  }, [blame])
+  // Estes derivados são feitos uma vez por blame, e não a cada linha desenhada.
+  const colors = useMemo(() => (blame ? blameColors(blame.commits) : new Map<string, string>()), [blame])
+  const blocks = useMemo(() => chunkRows(blame?.lines.length ?? 0), [blame])
+  const epoch = useMemo(() => ++blameEpoch, [blame])
+  const keyOf = useCallback((i: number) => `${epoch}:${i}`, [epoch])
+  const digits = String(blame?.lines.length ?? 0).length
 
   if (error) return <p className="empty">{error}</p>
   if (!blame) return <LoaderPane label={t('loader.blame')} />
@@ -183,7 +272,24 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
     startResize(e, 'col-resize', (_event, dx) => setGutter(Math.round(Math.min(Math.max(start + (rtl ? -dx : dx), GUTTER_MIN), GUTTER_MAX))))
   }
 
-  const heat = (date: number) => (range.max > range.min ? (date - range.min) / (range.max - range.min) : 1)
+  // Os blocos leem o menu e a dica daqui. Atualizada a cada desenho, antes de qualquer evento.
+  live.current = {
+    tip: (sha) => {
+      if (isUncommitted(sha)) return t('files.uncommittedHelp')
+      const commit = blame.commits[sha]
+      return commit ? `${commit.summary}\n${commit.author} · ${fullDate(commit.date)}\n${commit.sha}` : ''
+    },
+    menu: (e, sha) =>
+      showMenu(e, [
+        { label: t('compare.openInHistory'), onClick: () => selectCommit(sha) },
+        { label: t('history.menu.copySha'), onClick: () => copyText(sha) }
+      ])
+  }
+
+  const renderItem = (i: number) => {
+    const { start, end } = blocks[i]
+    return <BlameBlock blame={blame} colors={colors} start={start} end={end} live={live} />
+  }
 
   return (
     <>
@@ -195,46 +301,18 @@ function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onCl
           </button>
         </p>
       )}
-      <div className="blame-wrap" ref={wrapRef} style={{ '--blame-gutter': `${gutter}px` } as React.CSSProperties}>
+      <div className="blame-wrap" ref={wrapRef} style={{ '--blame-gutter': `${gutter}px`, '--ln-digits': digits } as React.CSSProperties}>
+        <VirtualList
+          className="blame-body"
+          count={blocks.length}
+          rowHeight={BLOCK_HEIGHT}
+          keyOf={keyOf}
+          isVariable={alwaysVariable}
+          overscan={OVERSCAN}
+          renderItem={renderItem}
+        />
+        {/* Fora da lista de propósito: a alça fica na altura visível e não rola junto com o texto. */}
         <div className="column-resize blame-resize" title={t('layout.resize')} onPointerDown={resizeGutter} onDoubleClick={() => setGutter(undefined)} />
-        <table className="blame-table">
-          <tbody>
-            {blame.lines.map((line, i) => {
-              const commit = blame.commits[line.sha]
-              const first = i === 0 || blame.lines[i - 1].sha !== line.sha
-              // A segunda linha de cada bloco mostra o resumo do commit.
-              const second = !first && (i === 1 || blame.lines[i - 2].sha !== line.sha)
-              const uncommitted = UNCOMMITTED.test(line.sha)
-              const h = uncommitted ? 1 : heat(commit.date)
-              return (
-                <tr key={line.line} className={first ? 'blame-first' : ''}>
-                  <td
-                    className="blame-gutter"
-                    style={{ borderInlineStartColor: `color-mix(in srgb, var(--accent) ${Math.round(15 + h * 85)}%, transparent)` }}
-                    title={uncommitted ? t('files.uncommittedHelp') : `${commit.summary}\n${commit.author} · ${fullDate(commit.date)}\n${commit.sha}`}
-                    onContextMenu={uncommitted ? undefined : (e) => showMenu(e, [
-                      { label: t('compare.openInHistory'), onClick: () => selectCommit(line.sha) },
-                      { label: t('history.menu.copySha'), onClick: () => copyText(line.sha) }
-                    ])}
-                  >
-                    {first &&
-                      (uncommitted ? (
-                        <span className="muted">{t('files.uncommitted')}</span>
-                      ) : (
-                        <div className="blame-info">
-                          <code>{shortSha(line.sha)}</code> <span className="blame-author">{commit.author}</span>{' '}
-                          <span className="muted">{relativeDate(commit.date)}</span>
-                        </div>
-                      ))}
-                    {second && !uncommitted && <div className="blame-summary">{commit.summary}</div>}
-                  </td>
-                  <td className="ln">{line.line}</td>
-                  <td className="code">{line.content || ' '}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
       </div>
     </>
   )
