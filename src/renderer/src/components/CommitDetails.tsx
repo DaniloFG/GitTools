@@ -42,8 +42,9 @@ export function CommitPanes({ selected: selectedNow, focus: focusNow, wip: wipNo
   const signature = [selectedNow.join('\n'), focusNow ? `${focusNow.sha}\n${focusNow.path}\n${focusNow.n}` : '-', wipNow ? `${wipNow.path}\n${wipNow.n}` : '-'].join('\u0000')
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const current = useMemo(() => ({ selected: selectedNow, focus: focusNow, wip: wipNow }), [signature])
-  // Espera 100 ms de rajada (tecla repetindo) antes de ler o git: só o commit parado é lido.
-  const { selected, focus, wip } = useSettled(current, 100)
+  // Mudança isolada (sem nada há 400 ms) vale na hora; rajada (tecla repetindo) espera 120 ms depois da última,
+  // para só o commit parado ser lido. Dois tempos porque máquina lenta leva mais de 100 ms para desenhar.
+  const { selected, focus, wip } = useSettled(current, 400, 120)
 
   if (selected.length === 0 && wip) return <WipPanes focus={wip} />
   if (selected.length === 0) {

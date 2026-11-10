@@ -105,15 +105,30 @@ function sameOpened(a: OpenRepositories, b: OpenRepositories): boolean {
  * O aviso do observador para `root` é eco de uma alteração feita por esta interface, e os dados já foram lidos
  * depois dela (ver `isOwnEcho`). O ouvinte do app e o da aba usam esta mesma função: nenhum invalida antes.
  */
+/**
+ * Última decisão de `isEcho`. Os dois ouvintes perguntam sobre o MESMO aviso, um após o outro, de forma síncrona;
+ * a primeira resposta "eco" consome o carimbo, então a segunda pergunta precisa receber a mesma resposta.
+ * Limpa no microtask seguinte, quando os dois ouvintes já terminaram: o aviso seguinte é decidido do zero.
+ */
+let lastEcho: { root: string; echo: boolean } | null = null
+
 function isEcho(root: string): boolean {
+  if (lastEcho?.root === root) return lastEcho.echo
   const session = peekSession(root)
-  return isOwnEcho({
+  const echo = isOwnEcho({
     ownChange: readCache.hasRecentChange(root, OWN_CHANGE_WINDOW_MS),
     generation: readCache.generation(root),
     lastLoaded: session?.loaded?.generation ?? null,
     loadingGeneration: session?.loadingGeneration ?? null,
     again: session?.again ?? false
   })
+  // Eco de uma alteração já lida: o carimbo sai, para que um commit do terminal logo depois não passe por eco.
+  if (echo) readCache.consumeChange(root)
+  lastEcho = { root, echo }
+  queueMicrotask(() => {
+    lastEcho = null
+  })
+  return echo
 }
 
 /**

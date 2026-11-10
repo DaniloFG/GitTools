@@ -346,6 +346,33 @@ describe('alteração própria recente (eco do observador)', () => {
     expect(cache.hasRecentChange('/a', WINDOW, 6001)).toBe(false)
   })
 
+  it('consumir o carimbo faz a alteração deixar de ser recente', async () => {
+    const cache = new ReadCache()
+    await cache.call('/a', 'stage', [], instant('ok').run)
+    expect(cache.hasRecentChange('/a', WINDOW)).toBe(true)
+    cache.consumeChange('/a')
+    expect(cache.hasRecentChange('/a', WINDOW)).toBe(false)
+  })
+
+  it('consumir não afeta uma alteração ainda em andamento', async () => {
+    const cache = new ReadCache()
+    const change = fakeCall('ok')
+    const done = cache.call('/a', 'stage', [], change.run)
+    cache.consumeChange('/a')
+    expect(cache.hasRecentChange('/a', WINDOW, Date.now() + 60_000)).toBe(true)
+    change.finish()
+    await done
+  })
+
+  it('consumir um repositório não afeta o outro', async () => {
+    const cache = new ReadCache()
+    await cache.call('/a', 'stage', [], instant('ok').run)
+    await cache.call('/b', 'stage', [], instant('ok').run)
+    cache.consumeChange('/a')
+    expect(cache.hasRecentChange('/a', WINDOW)).toBe(false)
+    expect(cache.hasRecentChange('/b', WINDOW)).toBe(true)
+  })
+
   it('drop esquece a alteração recente', async () => {
     const cache = new ReadCache()
     await cache.call('/a', 'stage', [], instant('ok').run)

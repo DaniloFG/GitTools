@@ -1,26 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * Quanto esperar antes de aplicar uma mudança. Mudança isolada (a anterior foi há mais de `intervalMs`)
- * vale na hora; mudança logo depois de outra (rajada, tecla repetindo) espera `intervalMs`, para que
- * só a última da rajada dispare as leituras. Exatamente no limite conta como rajada.
+ * Quanto esperar antes de aplicar uma mudança. Dois tempos, porque máquina lenta desenha devagar: uma seleção
+ * pode levar mais de 100 ms para ser desenhada, e então o intervalo entre duas setas passaria desse valor e
+ * toda mudança pareceria isolada (e leria o git a cada tecla).
+ *  - `quietMs`: sem mudanças há mais que isso, a mudança é isolada (clique deliberado) e vale na hora;
+ *  - `waitMs`: senão é rajada (tecla repetindo) e espera isso depois da última mudança, para só ela ser lida.
+ * Exatamente no limite de `quietMs` conta como rajada.
  */
-export function settleDelay(now: number, lastChangeAt: number | undefined, intervalMs: number): number {
+export function settleDelay(now: number, lastChangeAt: number | undefined, quietMs: number, waitMs: number): number {
   if (lastChangeAt === undefined) return 0
-  return now - lastChangeAt > intervalMs ? 0 : intervalMs
+  return now - lastChangeAt > quietMs ? 0 : waitMs
 }
 
 /**
- * Devolve o valor "assentado": muda na hora quando a mudança é isolada e só depois de `intervalMs`
- * sem novas mudanças quando elas vêm em rajada. Enquanto espera, devolve o valor anterior.
+ * Devolve o valor "assentado" (ver `settleDelay`). Enquanto espera, devolve o valor anterior.
  */
-export function useSettled<T>(value: T, intervalMs: number): T {
+export function useSettled<T>(value: T, quietMs: number, waitMs: number): T {
   const [settled, setSettled] = useState(value)
   const lastChangeAt = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     const now = Date.now()
-    const delay = settleDelay(now, lastChangeAt.current, intervalMs)
+    const delay = settleDelay(now, lastChangeAt.current, quietMs, waitMs)
     lastChangeAt.current = now
     if (delay === 0) {
       setSettled(() => value)
@@ -29,7 +31,7 @@ export function useSettled<T>(value: T, intervalMs: number): T {
     // A limpeza cancela o temporizador se outra mudança chegar antes, e também ao desmontar.
     const timer = setTimeout(() => setSettled(() => value), delay)
     return () => clearTimeout(timer)
-  }, [value, intervalMs])
+  }, [value, quietMs, waitMs])
 
   return settled
 }

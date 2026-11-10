@@ -246,6 +246,14 @@ export class ReadCache {
     return at !== undefined && now - at <= windowMs
   }
 
+  /**
+   * Consome o carimbo da última alteração: depois disso `hasRecentChange` é falso, salvo se uma alteração ainda
+   * estiver em andamento (ela continua valendo até terminar). Usado quando um aviso foi aceito como eco.
+   */
+  consumeChange(root: string): void {
+    this.changedAt.delete(root)
+  }
+
   /** Algo mudou em `root` (por fora ou por uma operação fora desta interface): as leituras voláteis dele deixam de valer. */
   invalidate(root: string): void {
     this.local.set(root, (this.local.get(root) ?? 0) + 1)
