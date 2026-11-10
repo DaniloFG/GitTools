@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS } from '../../../../shared/settings'
 import { t } from '../../i18n'
 import { SponsorNote } from '../Sponsor'
+import { SettingRow } from './SettingRow'
 import type { SettingsSectionProps } from './sections'
 import { useAppInfo } from './useAppInfo'
 
@@ -58,10 +59,9 @@ export function AboutSection({ replace }: SettingsSectionProps) {
           ))}
         </tbody>
       </table>
-      <div className="settings-row">
-        <span className="muted small">{t('settings.about.resetHelp')}</span>
+      <SettingRow title={t('settings.about.reset')} description={t('settings.about.resetHelp')}>
         <button onClick={() => replace({ ...DEFAULT_SETTINGS })}>{t('settings.about.reset')}</button>
-      </div>
+      </SettingRow>
     </div>
   )
 }

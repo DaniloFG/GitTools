@@ -53,3 +53,12 @@ describe('configurações de exibição', () => {
     expect(normalizeSettings({ inlineBlame: 'não' }).inlineBlame).toBe(true)
   })
 })
+
+describe('detecção de vários repositórios', () => {
+  it('vem ligada, e só desliga se o usuário pedir', () => {
+    expect(DEFAULT_SETTINGS.multiRepoDetection).toBe(true)
+    expect(normalizeSettings({}).multiRepoDetection).toBe(true)
+    expect(normalizeSettings({ multiRepoDetection: false }).multiRepoDetection).toBe(false)
+    expect(normalizeSettings({ multiRepoDetection: 'não' }).multiRepoDetection).toBe(true)
+  })
+})

@@ -44,3 +44,11 @@ export function summarizeChanges(status: Pick<RepoStatus, 'staged' | 'unstaged' 
     conflicted: status.conflicted.length
   }
 }
+
+/** Arquivo que o diff mostra quando nada foi escolhido: o primeiro não staged, senão o primeiro staged (null = nada alterado). */
+export function firstChange(status: Pick<RepoStatus, 'staged' | 'unstaged'>): { area: 'unstaged' | 'staged'; path: string } | null {
+  const unstaged = status.unstaged[0]
+  if (unstaged) return { area: 'unstaged', path: unstaged.path }
+  const staged = status.staged[0]
+  return staged ? { area: 'staged', path: staged.path } : null
+}

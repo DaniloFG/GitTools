@@ -32,7 +32,6 @@ import { RebaseEditor } from './components/RebaseEditor'
 import { SettingsCenter } from './components/settings/SettingsCenter'
 import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
 import { SidebarPanes } from './components/Sidebar'
-import { PanelsButtons, ScreenTabs } from './components/Screens'
 import { Dashboards } from './components/Dashboards'
 import { Loader, useDelayedLoading, useLastDefined } from './components/Loader'
 import { Toasts } from './components/Toasts'
@@ -647,6 +646,15 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
     Object.assign(session.ui, { scope, selected, fileFocus, wipFocus, compare, filePath })
   }, [session, scope, selected, fileFocus, wipFocus, compare, filePath])
 
+  // Ao abrir o histórico sem commit escolhido, mostra o mais recente: os painéis do commit já têm o que exibir.
+  // Só uma vez por aba: se o usuário tirar a seleção depois, ela fica como ele deixou.
+  const seededHistory = useRef(false)
+  useEffect(() => {
+    if (seededHistory.current || !data || data.log.length === 0) return
+    seededHistory.current = true
+    if (selected.length === 0 && !wipFocus) setSelected([data.log[0].sha])
+  }, [data, selected, wipFocus])
+
   // Poucas sessões guardam dados ao mesmo tempo; as mais antigas voltam a ser lidas ao serem abertas.
   useEffect(() => {
     trimSessions(repo.root)
@@ -973,12 +981,19 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
   return (
     <AppContext.Provider value={context}>
       <KeyboardShortcuts disabled={modalOpen} onOpenRepository={() => void workspace.openRepo()} />
-      <Toolbar onOpenRepository={(path, create) => void workspace.openRepo(path, create)} onClone={workspace.openClone} />
-      <div className="screen-bar">
-        <ScreenTabs state={dock} meta={meta} screen={screen} onScreen={setView} available={available} changeCount={changeCount} dashboards={dashboardsOpen} onDashboards={() => setDashboards(true)} />
-        <div className="toolbar-spacer" />
-        <PanelsButtons state={dock} onChange={setDock} screen={screen} meta={meta} available={available} />
-      </div>
+      <Toolbar
+        onOpenRepository={(path, create) => void workspace.openRepo(path, create)}
+        onClone={workspace.openClone}
+        state={dock}
+        onChange={setDock}
+        screen={screen}
+        onScreen={setView}
+        meta={meta}
+        available={available}
+        changeCount={changeCount}
+        dashboards={dashboardsOpen}
+        onDashboards={() => setDashboards(true)}
+      />
       <OperationBanner onShowChanges={() => setView('changes')} />
       <div className={dashboardsOpen ? 'dock-hidden' : 'dock-wrap'}>
         <Dock state={dock} onChange={setDock} screen={screen} meta={meta} available={available} />

@@ -133,6 +133,17 @@ next / previous change and `F8` / `Shift+F8` to the next / previous file.
 
 ![Folder tree and jumping between changes with F7 and F8](media/readme/diff-navigation.gif)
 
+## Several repositories in the workspace
+
+GitTools opens **every git repository in your VS Code workspace** when it starts: each workspace folder that is a repository,
+plus repositories nested inside them (up to four folder levels deep, skipping `node_modules`, `dist`, `build`, `out`, `vendor`,
+`target` and `.venv`). Each one gets its own tab, the first workspace folder is the active one, and the others stay open in the
+background. New folders added to the workspace, and repositories created inside it (`git init`, `git clone`), open in a new tab
+as they appear, without switching the active one.
+
+Turn this off with the **Detect several repositories in the workspace** setting (on by default). With it off, GitTools opens only
+the first repository of the workspace, as before.
+
 ## Arrange the workspace
 
 No panel is a "parent" of another: the commit list, the commit message, the commit's files and diff, the *Unstaged* and

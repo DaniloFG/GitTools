@@ -3,6 +3,7 @@ import type { GitConfigScope, GitIdentities, GitIdentity } from '../../../../sha
 import { t } from '../../i18n'
 import { getActiveRoot } from '../../git'
 import { RemotesSection } from './RemotesSection'
+import { SettingRow, SettingSegmented } from './SettingRow'
 import { Loader } from '../Loader'
 
 const errorText = (error: unknown) =>
@@ -66,45 +67,52 @@ export function IdentitySection() {
   return (
     <>
     <div className="settings-group identity">
-      <h4>{t('identity.scope')}</h4>
-      <div className="language-list" role="radiogroup" aria-label={t('identity.scope')}>
-        <label className={`language-option ${scope === 'global' ? 'selected' : ''}`}>
-          <input type="radio" name="identity-scope" checked={scope === 'global'} onChange={() => setScope('global')} />
-          <span className="language-native">{t('identity.global')}</span>
-          <span className="muted small">{t('identity.globalHelp')}</span>
-        </label>
-        <label className={`language-option ${scope === 'local' ? 'selected' : ''} ${hasRepo ? '' : 'disabled'}`} title={hasRepo ? '' : t('identity.noRepo')}>
-          <input type="radio" name="identity-scope" disabled={!hasRepo} checked={scope === 'local'} onChange={() => setScope('local')} />
-          <span className="language-native">{t('identity.local')}</span>
-          <span className="muted small">{hasRepo ? t('identity.localHelp') : t('identity.noRepo')}</span>
-        </label>
-      </div>
+      <SettingRow
+        title={t('identity.scope')}
+        description={hasRepo ? t('identity.localHelp') : t('identity.noRepo')}
+        modified={scope !== 'global'}
+      >
+        <SettingSegmented
+          ariaLabel={t('identity.scope')}
+          value={scope}
+          options={[
+            { value: 'global', label: t('identity.global'), title: t('identity.globalHelp') },
+            { value: 'local', label: t('identity.local'), title: hasRepo ? t('identity.localHelp') : t('identity.noRepo'), disabled: !hasRepo }
+          ]}
+          onChange={(v) => setScope(v as GitConfigScope)}
+        />
+      </SettingRow>
 
-      <div className="identity-fields">
-        <label className="field">
-          <span>{t('identity.name')}</span>
-          <input value={form.name} placeholder={t('identity.namePlaceholder')} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        </label>
-        <label className="field">
-          <span>{t('identity.email')}</span>
-          <input
-            type="text"
-            inputMode="email"
-            dir="ltr"
-            value={form.email}
-            placeholder={t('identity.emailPlaceholder')}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            onKeyDown={(e) => e.key === 'Enter' && changed && !saving && save()}
-          />
-        </label>
-      </div>
-      <p className="muted small">{t('identity.clearHelp')}</p>
-      <div className="button-row">
-        <button className="primary" disabled={!changed || saving} onClick={save}>
-          {saving ? <Loader size="sm" /> : t('identity.save')}
-        </button>
-      </div>
-      {message && <p className={message.ok ? 'success-text' : 'warning-text'}>{message.text}</p>}
+      <SettingRow id="identity-name" title={t('identity.name')}>
+        <input
+          id="identity-name"
+          className="setting-input"
+          value={form.name}
+          placeholder={t('identity.namePlaceholder')}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+      </SettingRow>
+      <SettingRow id="identity-email" title={t('identity.email')} description={t('identity.clearHelp')}>
+        <input
+          id="identity-email"
+          className="setting-input"
+          type="text"
+          inputMode="email"
+          dir="ltr"
+          value={form.email}
+          placeholder={t('identity.emailPlaceholder')}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          onKeyDown={(e) => e.key === 'Enter' && changed && !saving && save()}
+        />
+      </SettingRow>
+      <SettingRow title={t('identity.save')}>
+        <div className="setting-inline">
+          <button className="primary" disabled={!changed || saving} onClick={save}>
+            {saving ? <Loader size="sm" /> : t('identity.save')}
+          </button>
+          {message && <span className={message.ok ? 'success-text' : 'warning-text'}>{message.text}</span>}
+        </div>
+      </SettingRow>
       {identities.effective && (
         <p className="muted small identity-effective">
           {t('identity.effective', { name: show(identities.effective.name), email: show(identities.effective.email) })}

@@ -127,7 +127,17 @@ export const es: Messages = {
     branch: 'Rama',
     stash: 'Stash',
     stashHelp: 'Guardar los cambios locales y limpiar el área de trabajo',
-    settings: 'Configuración'
+    settings: 'Configuración',
+    new: 'Nuevo',
+    newHelp: 'Crear una rama o una etiqueta, o guardar tus cambios',
+    newBranch: 'Nueva rama…',
+    newTag: 'Nueva etiqueta…',
+    newMore: 'Más opciones de nuevo',
+    itemRepo: 'Repositorio',
+    menu: 'Menú',
+    menuHelp: 'Configuración y paneles',
+    appearance: 'Apariencia',
+    toolbarMenu: 'Barra de herramientas'
   },
   welcome: {
     tagline: 'Git sin complicaciones: arrastra y haz clic para hacer merge, rebase y cherry-pick de ramas, commits, archivos e incluso líneas.',
@@ -144,6 +154,7 @@ export const es: Messages = {
     message: '¡La herramienta quedó genial, ¿verdad?! Entonces dame un apoyo para mejorarla y crear más.'
   },
   sidebar: {
+    viewMode: 'Vista de ramas',
     hint: 'Arrastra una rama, un commit o un archivo sobre una rama local para hacer merge, rebase o cherry-pick.',
     branches: 'Ramas',
     remote: 'Remoto: {remote}',
@@ -753,13 +764,17 @@ export const es: Messages = {
     applyHelp: 'Guarda la configuración y mantiene esta ventana abierta.',
     saveHelp: 'Guarda la configuración y cierra esta ventana.',
     applied: 'Configuración aplicada.',
+    searchPlaceholder: 'Buscar configuración',
+    noResults: 'No se encontró ninguna configuración',
     general: {
       title: 'General',
       description: 'Idioma y preferencias generales de GitTools.',
       language: 'Idioma',
       languageHelp: 'Cambia todos los textos de la herramienta. Se aplica al instante.',
       systemLanguage: 'Igual que el sistema',
-      detected: 'Detectado: {language}'
+      detected: 'Detectado: {language}',
+      multiRepo: 'Detectar varios repositorios en el espacio de trabajo',
+      multiRepoHelp: 'Al abrir GitTools en VS Code, abre cada repositorio (.git) encontrado en el espacio de trabajo en su propia pestaña y sigue detectando los repositorios nuevos.',
     },
     appearance: {
       title: 'Apariencia',
@@ -1677,6 +1692,7 @@ export const es: Messages = {
     testOk: 'El editor abrió un archivo del repositorio (con su ruta completa).'
   },
   fileList: {
+    viewOptions: 'Opciones de vista',
     viewMode: 'Vista de archivos',
     viewModeHelp: 'Mostrar los archivos en lista (nombre y carpeta) o en árbol de carpetas — vale para todas las listas',
     list: 'Lista',

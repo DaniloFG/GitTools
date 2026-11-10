@@ -55,7 +55,7 @@ export function ShortcutsSection({ draft, update }: SettingsSectionProps) {
 
   return (
     <div className="settings-group">
-      <div className="settings-row">
+      <div className="settings-toolbar">
         <span className="muted small">{t('settings.shortcuts.help')}</span>
         <button className="link" disabled={Object.keys(draft.shortcuts).length === 0} onClick={() => update({ shortcuts: {} })}>
           {t('settings.shortcuts.resetAll')}

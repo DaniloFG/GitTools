@@ -85,3 +85,10 @@ export function flattenTree<T>(nodes: readonly TreeNode<T>[], collapsed: Readonl
   }
   return rows
 }
+
+/** Primeiro arquivo como a lista o desenha: na ordem da lista, ou na árvore (a primeira linha de arquivo). */
+export function firstFileShown(paths: readonly string[], mode: FileViewMode): string | null {
+  if (mode === 'list') return paths[0] ?? null
+  const first = flattenTree(buildTree(paths, (p) => p), new Set()).find((row) => row.kind === 'file')
+  return first?.kind === 'file' ? first.node.path : null
+}
