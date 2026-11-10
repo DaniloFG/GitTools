@@ -13,7 +13,7 @@
 
 import type { CompareRequest, RepoData } from './context'
 import type { FileFocus, WipFocus } from './components/CommitDetails'
-import type { HistoryScope } from './historyScope'
+import type { HistoryScope, LogLimit } from './historyScope'
 import type { LogCache } from './stable'
 
 /** O que a tela precisa que esteja carregado, além do básico (status, branches, tags e operação). */
@@ -97,6 +97,13 @@ export interface RepoSession {
   /** Geração do cache quando a leitura em andamento começou; `null` quando não há leitura. */
   loadingGeneration: number | null
   logCache: LogCache | null
+  /** Quantos commits do histórico (deste escopo) já foram pedidos; a página seguinte começa daí. */
+  logLimit: LogLimit | null
+  /**
+   * Página do histórico em leitura. Enquanto ela existe, nenhuma leitura completa começa: senão uma delas poderia
+   * gravar uma lista com o limite antigo por cima da página nova.
+   */
+  pagingLog: Promise<void> | null
   ui: SessionUi
   /** Quando a sessão foi usada pela última vez (para descartar as mais antigas). */
   touchedAt: number
@@ -122,6 +129,8 @@ export function getSession(root: string): RepoSession {
       again: false,
       loadingGeneration: null,
       logCache: null,
+      logLimit: null,
+      pagingLog: null,
       ui: blankUi(),
       touchedAt: Date.now()
     }
@@ -176,6 +185,7 @@ export function trimSessions(keep: string, max = MAX_WARM_SESSIONS): string[] {
     s.data = null
     s.loaded = null
     s.logCache = null
+    s.logLimit = null
   }
   return dropped.map((s) => s.root)
 }

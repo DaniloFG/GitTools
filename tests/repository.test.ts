@@ -39,6 +39,25 @@ describe('status, branches e log', () => {
     const details = await t.repo.commitDetails(log[0].sha)
     expect(details.files).toEqual([{ status: 'M', path: 'a.txt', additions: 1, deletions: 1 }])
   })
+
+  it('pagina o histórico com skip: as páginas somadas são a lista inteira, sem repetir nem pular', async () => {
+    const t = await createRepo()
+    for (let i = 1; i <= 5; i++) await t.commit(`commit ${i}`, { 'a.txt': `${i}\n` })
+    const first = await t.repo.log({ limit: 2 })
+    const second = await t.repo.log({ skip: 2, limit: 2 })
+    const whole = await t.repo.log({ limit: 4 })
+    expect([...first, ...second].map((c) => c.sha)).toEqual(whole.map((c) => c.sha))
+    expect(second.map((c) => c.subject)).toEqual(['commit 3', 'commit 2'])
+    // Um deslocamento além do fim devolve lista vazia, não erro.
+    expect(await t.repo.log({ skip: 50, limit: 2 })).toEqual([])
+  })
+
+  it('rejeita deslocamento negativo ou inválido antes de chamar o git', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'a.txt': 'a\n' })
+    await expect(t.repo.log({ skip: -1 })).rejects.toThrow()
+    await expect(t.repo.log({ skip: Number.NaN })).rejects.toThrow()
+  })
 })
 
 describe('stage/unstage/descartar por linha', () => {

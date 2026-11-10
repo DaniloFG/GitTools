@@ -50,7 +50,7 @@ import { resetLayout as clearLayout, useLayout } from './layout'
 import { clearCurrentLayout } from './savedLayouts'
 import { historySignature, mergeData } from './stable'
 import { dropSession, getSession, isOwnEcho, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
-import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
+import { canLoadMoreLog, checkedRefs, logLimitFor, nextLogPage, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
 import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
 import { openScreen, readScreen } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
@@ -779,11 +779,13 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       }
       let log = prev?.log ?? []
       if (needs.log) {
-        const key = historySignature(scopeKey(s), status, branches, tags)
+        // O limite entra na chave: uma página nova (ou o escopo trocado) não reaproveita a lista menor.
+        const limit = logLimitFor(session.logLimit, scopeKey(s))
+        const key = `${historySignature(scopeKey(s), status, branches, tags)}\n${limit}`
         const cached = session.logCache?.key === key ? session.logCache.log : null
         if (cached) log = cached
         else {
-          const fetched = await gitOn.log(scopeLogOptions(s)).catch((e) => {
+          const fetched = await gitOn.log({ ...scopeLogOptions(s), limit }).catch((e) => {
             toast('error', errorMessage(e))
             return null
           })
@@ -812,6 +814,8 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       try {
         do {
           session.again = false
+          // Uma página do histórico em leitura termina antes: a leitura completa lê o limite já atualizado.
+          if (session.pagingLog) await session.pagingLog
           await load()
         } while (session.again)
       } finally {
@@ -822,6 +826,42 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
     session.inflight = round
     return round
   }, [session, load])
+
+  /**
+   * Lê só a página seguinte do histórico (um processo git) e a junta à lista atual. Não passa por `load`: status,
+   * refs e operação não são relidos, porque a página não depende deles. Chamada quando o rodapé da lista aparece.
+   */
+  const loadMoreLog = useCallback(async () => {
+    // Não se mistura com uma leitura completa: espera ela terminar (e não começa outra enquanto esta página roda).
+    while (session.inflight) await session.inflight
+    if (session.pagingLog) return
+    const s = scopeRef.current
+    const prev = session.data
+    const limit = logLimitFor(session.logLimit, scopeKey(s))
+    // Só continua a partir de um histórico que corresponde ao status atual (a última leitura trouxe o log).
+    if (!prev || !session.loaded?.log || !canLoadMoreLog(prev.log.length, limit)) return
+    const page = nextLogPage(prev.log.length)
+    const reading = (async () => {
+      try {
+        const fetched = await gitOn.log({ ...scopeLogOptions(s), ...page })
+        // Mudou enquanto lia (leitura completa, troca de escopo, repositório descartado): a página já não se aplica.
+        if (session.data?.log !== prev.log || scopeKey(scopeRef.current) !== scopeKey(s)) return
+        const log = [...prev.log, ...fetched]
+        // O limite pedido (não o tamanho da página): se a página veio curta, `canLoadMoreLog` já dá falso.
+        const loadedLimit = page.skip + page.limit
+        session.logLimit = { scopeKey: scopeKey(s), limit: loadedLimit }
+        session.logCache = { key: `${historySignature(scopeKey(s), prev.status, prev.branches, prev.tags)}\n${loadedLimit}`, log }
+        session.data = mergeData(session.data, { ...prev, log })
+        setData(session.data)
+      } catch (e) {
+        toast('error', errorMessage(e))
+      } finally {
+        session.pagingLog = null
+      }
+    })()
+    session.pagingLog = reading
+    await reading
+  }, [session, gitOn, toast])
 
   /** Leitura que decide sozinha se é preciso: dados em dia não chamam o git; dados velhos aparecem e são relidos por trás. */
   const ensureFresh = useCallback(async () => {
@@ -1070,6 +1110,8 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
         <CommitList
           scope={scope}
           onScope={setScope}
+          canLoadMore={data !== null && canLoadMoreLog(data.log.length, logLimitFor(session.logLimit, scopeKey(scope)))}
+          onLoadMore={loadMoreLog}
           selected={selected}
           onSelect={(shas) => {
             setWipFocus(null)

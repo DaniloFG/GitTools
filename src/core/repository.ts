@@ -533,6 +533,10 @@ export class GitRepository implements RepoApi {
   /** Argumentos do `git log` de `log()`: HEAD só entra quando existe (`hasHead`). */
   private logArgs(options: LogOptions, refs: string[], hasHead: boolean): string[] {
     const args = ['log', `--format=${COMMIT_FORMAT}`, '--topo-order', `-n${options.limit ?? 500}`]
+    // Página seguinte do histórico. Valida antes de ir ao git: um número inválido não pode virar um argumento.
+    const skip = Math.floor(options.skip ?? 0)
+    if (!(skip >= 0)) throw new Error(`Deslocamento do histórico inválido: ${options.skip}`)
+    if (skip > 0) args.push(`--skip=${skip}`)
     if (options.all) {
       args.push('--branches', '--remotes', '--tags')
       if (hasHead) args.push('HEAD')

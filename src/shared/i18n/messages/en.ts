@@ -201,12 +201,14 @@ export const en: Messages = {
       graph: 'Graph'
     },
     count: { one: '{count} commit', other: '{count} commits' },
+    loadingMore: 'Loading more commits…',
+    limitReached: { other: 'Showing the {count} most recent commits' },
     selected: { one: '{count} selected', other: '{count} selected' },
     hint: 'Ctrl/Shift+click to select several · ▸ or double-click shows the files · drag onto a branch',
     empty: 'No commits yet.',
     log: {
       chip: 'git log',
-      help: 'This history is "git log" in visual form: every row is a commit and the graph shows the branches. It is the same as git log --graph --all --decorate, up to 500 commits.',
+      help: 'This history is "git log" in visual form: every row is a commit and the graph shows the branches. It is the same as git log --graph --all --decorate, 500 commits at a time, loading more as you scroll (up to 10,000).',
       tab: 'History — git log in visual form'
     },
     wip: {

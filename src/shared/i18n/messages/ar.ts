@@ -209,12 +209,14 @@ export const ar: Messages = {
       graph: 'المخطط'
     },
     count: { one: 'إيداع واحد', two: 'إيداعان', few: '{count} إيداعات', many: '{count} إيداعًا', other: '{count} إيداع' },
+    loadingMore: 'جارٍ تحميل المزيد من الإيداعات…',
+    limitReached: { other: 'عرض أحدث {count} إيداع' },
     selected: { one: 'تم تحديد واحد', two: 'تم تحديد اثنين', other: 'المحدد: {count}' },
     hint: 'Ctrl/Shift+نقر لتحديد عدة عناصر · ▸ أو النقر المزدوج يعرض الملفات · اسحب إلى فرع',
     empty: 'لا توجد إيداعات بعد.',
     log: {
       chip: 'git log',
-      help: 'هذا السجل هو «git log» بشكل مرئي: كل صف إيداع والرسم يوضح الفروع. يعادل git log --graph --all --decorate بحد أقصى 500 إيداع.',
+      help: 'هذا السجل هو «git log» بشكل مرئي: كل صف إيداع والرسم يوضح الفروع. يعادل git log --graph --all --decorate 500 إيداع في كل مرة، مع تحميل المزيد عند التمرير (حتى 10,000).',
       tab: 'السجل — git log بشكل مرئي'
     },
     wip: {

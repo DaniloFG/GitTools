@@ -201,12 +201,14 @@ export const es: Messages = {
       graph: 'Grafo'
     },
     count: { one: '{count} commit', other: '{count} commits' },
+    loadingMore: 'Cargando más commits…',
+    limitReached: { other: 'Mostrando los {count} commits más recientes' },
     selected: { one: '{count} seleccionado', other: '{count} seleccionados' },
     hint: 'Ctrl/Shift+clic para seleccionar varios · ▸ o doble clic muestra los archivos · arrastra a una rama',
     empty: 'Todavía no hay commits.',
     log: {
       chip: 'git log',
-      help: 'Este historial es el "git log" en forma visual: cada fila es un commit y el grafo muestra las ramas. Equivale a git log --graph --all --decorate, con hasta 500 commits.',
+      help: 'Este historial es el "git log" en forma visual: cada fila es un commit y el grafo muestra las ramas. Equivale a git log --graph --all --decorate: 500 commits por vez, cargando más al desplazarse (hasta 10.000).',
       tab: 'Historial — el git log en forma visual'
     },
     wip: {

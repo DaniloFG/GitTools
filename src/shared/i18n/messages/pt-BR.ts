@@ -202,12 +202,14 @@ export const ptBR = {
       graph: 'Grafo'
     },
     count: { one: '{count} commit', other: '{count} commits' },
+    loadingMore: 'Carregando mais commits…',
+    limitReached: { other: 'Mostrando os {count} commits mais recentes' },
     selected: { one: '{count} selecionado', other: '{count} selecionados' },
     hint: 'Ctrl/Shift+clique para selecionar vários · ▸ ou duplo clique mostra os arquivos · arraste para uma branch',
     empty: 'Nenhum commit ainda.',
     log: {
       chip: 'git log',
-      help: 'Este histórico é o "git log" em forma visual: cada linha é um commit e o grafo mostra as branches. Equivale a git log --graph --all --decorate, com até 500 commits.',
+      help: 'Este histórico é o "git log" em forma visual: cada linha é um commit e o grafo mostra as branches. Equivale a git log --graph --all --decorate, 500 commits por vez, carregando mais ao rolar (até 10.000).',
       tab: 'Histórico — o git log em forma visual'
     },
     wip: {

@@ -200,12 +200,14 @@ export const zhCN: Messages = {
       graph: '图形'
     },
     count: { other: '{count} 个提交' },
+    loadingMore: '正在加载更多提交…',
+    limitReached: { other: '仅显示最近的 {count} 个提交' },
     selected: { other: '已选 {count} 个' },
     hint: 'Ctrl/Shift+点击可多选 · ▸ 或双击显示文件 · 拖到分支上',
     empty: '还没有提交。',
     log: {
       chip: 'git log',
-      help: '此历史记录就是可视化的 “git log”：每一行是一次提交，图形显示各个分支。相当于 git log --graph --all --decorate，最多 500 个提交。',
+      help: '此历史记录就是可视化的 “git log”：每一行是一次提交，图形显示各个分支。相当于 git log --graph --all --decorate，每次加载 500 个提交，滚动时继续加载（最多 10,000 个）。',
       tab: '历史记录 — 可视化的 git log'
     },
     wip: {

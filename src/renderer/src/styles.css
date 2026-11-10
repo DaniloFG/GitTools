@@ -5403,6 +5403,17 @@ button.blame-bubble:hover {
   overflow-x: hidden;
 }
 
+/* Rodapé do histórico ("carregando mais" ou o aviso do teto): altura fixa, como uma linha; sem efeito por linha. */
+.history-more {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
 /* Cabeçalho do painel de mensagem: o botão alinha à esquerda e encolhe com reticências. */
 .details > .sticky-actions.commit-actions {
   justify-content: flex-start;

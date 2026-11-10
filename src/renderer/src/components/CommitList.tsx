@@ -1,6 +1,6 @@
 import { Fragment, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangedFile, CommitInfo } from '../../../shared/types'
-import { showsWorkingChanges, type HistoryScope } from '../historyScope'
+import { LOG_MAX, showsWorkingChanges, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
 import type { MenuItem } from './ContextMenu'
@@ -73,11 +73,25 @@ interface Props {
   onOpenFileWindow(sha: string, path: string): void
   /** Abre o diff de um arquivo ainda não commitado no painel de detalhes. */
   onOpenWipFile(path: string): void
+  /** Há commits além dos carregados (e o teto não foi atingido): o rodapé pede mais uma página. */
+  canLoadMore: boolean
+  /** Lê a página seguinte do histórico (o rodapé chama quando se aproxima da área visível). */
+  onLoadMore(): void
 }
 
 type FilesState = ChangedFile[] | 'loading' | { error: string }
 
-export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onOpenFileWindow, onOpenWipFile }: Props) {
+export function CommitList({
+  scope,
+  onScope,
+  selected,
+  onSelect,
+  onOpenFile,
+  onOpenFileWindow,
+  onOpenWipFile,
+  canLoadMore,
+  onLoadMore
+}: Props) {
   const { data, repo, workspace, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
@@ -131,6 +145,29 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   const listRef = useRef<VirtualListHandle>(null)
   /** A linha de alterações é do HEAD: só aparece vendo tudo, o HEAD ou a branch atual. */
   const showWip = showsWorkingChanges(scope, actions.head)
+
+  /**
+   * Rodapé "carregando mais": um observador na lista (raiz = a própria janela de rolagem) pede a página seguinte
+   * quando o rodapé chega perto da área visível. Durante a pesquisa não carrega: ela só filtra o que já está lá.
+   */
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+  const onLoadMoreRef = useRef(onLoadMore)
+  onLoadMoreRef.current = onLoadMore
+  const showLoadMore = canLoadMore && !searching
+  useEffect(() => {
+    const el = loadMoreRef.current
+    const root = listRef.current?.element
+    if (!el || !root || !showLoadMore || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) onLoadMoreRef.current()
+      },
+      { root, rootMargin: '600px 0px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+    // Refaz o observador a cada página: um rodapé que continua à vista depois de uma página dispara de novo.
+  }, [showLoadMore, commits.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Arquivos dos commits expandidos são carregados sob demanda (e recarregados se o histórico mudar).
   useEffect(() => setFiles(new Map()), [commits])
@@ -369,6 +406,16 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
         overscan={OVERSCAN}
         // A linha de alterações é sticky no topo: a rolagem por teclado não pode esconder o item atrás dela.
         stickyTop={showWip ? ROW : 0}
+        footer={
+          showLoadMore ? (
+            <div className="history-more" ref={loadMoreRef}>
+              <Loader size="sm" />
+              <span>{t('history.loadingMore')}</span>
+            </div>
+          ) : !canLoadMore && commits.length >= LOG_MAX ? (
+            <div className="history-more muted">{t('history.limitReached', { count: commits.length })}</div>
+          ) : undefined
+        }
         header={
           <>
             {showWip && (
