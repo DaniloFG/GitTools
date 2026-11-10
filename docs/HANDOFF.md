@@ -114,10 +114,20 @@ por ele.
 2. ~~2.6 Histórico em janela real e paginação~~ (feito na janela 2). **Regressão aberta, a primeira coisa a
    fazer:** a rolagem do histórico piorou por quadro (cerca de 42 → 59 ms em média, 30 quadros de 400 px, CPU 4×),
    embora os travamentos grandes tenham sumido (seção 9 de `docs/PERFORMANCE.md`). A lista em janela monta e
-   desmonta uma linha a cada 30 px, e a linha é cara de montar: `BranchBadge` chama `useApp()`, `useBranchMenu` e
-   `data.branches.find` por etiqueta, e `GraphCell` monta um SVG. Antecipar o necessário do item 4.2 (etiqueta sem
-   contexto, mapa de branches por nome montado uma vez pela lista, manipuladores por `ref`) e medir de novo com
-   perfil (`ui.mjs` sem minificar) para achar o resto. Meta: voltar pelo menos ao "antes" (38–47 ms).
+   desmonta uma linha a cada 30 px. **Já investigado na janela 2:**
+   - Perfil de CPU (interface sem minificar, 3 rodadas): o código do projeto pesa pouco (`CommitRow` ~1,7 ms por
+     quadro; `BranchBadge`, `useApp` e `useBranchMenu` nem aparecem). O tempo vai para o React criar e remover nós
+     (`createElementNS`, `setAttribute`, `removeChild`, `completeWork`) e para o layout (17–19 ms por quadro).
+   - Experimento (mediana de 3 rolagens por variante): `contain: strict` na linha, também no contêiner,
+     `content-visibility: auto` e margem de 600 px ficaram todos entre 51 e 61 ms por quadro, dentro do ruído: a
+     mesma versão sem mudança deu 44,6 e 56,5 ms em duas rodadas. CSS de contenção não resolve.
+   - Leitura: o custo é montar o DOM de cada linha nova (~25 nós por linha: grade, botão, SVG com caminhos, spans).
+     Caminhos a testar: menos nós por linha (o SVG do grafo e as etiquetas são os maiores candidatos) ou reaproveitar
+     os nós (chave por posição na janela em vez de sha, para o React atualizar no lugar em vez de criar e remover;
+     cuidado com o foco e com os itens de altura medida, que hoje são guardados por chave).
+   - O ruído do `ui.mjs` (±15–25% na rolagem) exige 3 ou mais rodadas e mediana para qualquer conclusão.
+   - Ponderar com o usuário: no mesmo teste, o pior travamento caiu de 237–472 ms para 50–123 ms, e 400 px por
+     quadro é uma rolagem muito rápida. A regra do `CLAUDE.md` ("não piorar o hoje") pede a correção.
 3. **2.2 Diff por blocos memorizados** (`components/DiffView.tsx`): bloco de linhas memorizado, seleção que redesenha
    só o bloco tocado (hoje o `Set` de seleção está no componente de cima e cada clique redesenha as 25 mil linhas) e
    só os blocos visíveis montados. Preservar: seleção por clique, arrasto, Shift+clique, caixa de bloco e de arquivo,
