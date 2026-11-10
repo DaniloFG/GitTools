@@ -45,7 +45,19 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
 
-## 2. Estado atual (fim da janela 2)
+## 2. Estado atual (fim da janela 3)
+
+- **Fase 4 em andamento.** Janela 3: item **4.6 feito** (`7fde95b`): `sameDiff` em `src/renderer/src/diffIdentity.ts`
+  no lugar do `JSON.stringify` em `ChangesView` e `WipPanes` (diff de 5.000 linhas: 2,35 ms → 0,002 ms com `index`,
+  0,078 ms sem); `applyLines` de `SingleCommit` só limpa a seleção se o diff ainda for o mesmo. `lineAction` do
+  `ChangesView` não precisou de guarda (limpa a seleção por efeito). 730 testes passando, typecheck limpo.
+  Medições novas em `core.mjs` (linhas "comparar diff de 5000 linhas"). Não mudou: o diff do arquivo aberto ainda é
+  relido a cada mudança de `status` (necessário: a árvore de trabalho pode mudar sem mudar o status do arquivo).
+- **Base da janela 3** (`core.mjs moderate`): ATUALIZAÇÃO 5 processos, SELECIONAR 1 COMMIT 2, `buildTree` de 10 mil
+  arquivos 44,7 ms e de 30 mil 339 ms (alvo do 4.4).
+- **Container novo vem sem `node_modules`:** rode `npm ci` antes de `core.mjs` (ele precisa do `esbuild`).
+
+### Janela 2
 
 - **Fases 2 e 3 concluídas**, medidas e enviadas; resultados nas seções 9 e 10 de `docs/PERFORMANCE.md`.
 - **Verificado no último commit de código (`6cff4a2`):** `npm run typecheck` limpo, 719 testes passando,
@@ -178,7 +190,8 @@ em até 2× o `status()` simples. Ordem sugerida:
 
 ### Fase 4 — Listas e redesenhos (a próxima)
 
-Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). Ordem sugerida: 4.6 (comparação de diffs por
+Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **4.6 feito na janela 3; o próximo é o 4.4.**
+Ordem sugerida: ~~4.6~~ (comparação de diffs por
 identificador, não por `JSON.stringify`: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`, com o `applyLines` que
 chama `setSelection` depois de `await` sem guarda), 4.4 (`buildTree` com `Map`), 4.3 (branches e tags lineares),
 4.2 (itens de lista sem contexto: `BranchBadge` no histórico chama `useApp()` e `data.branches.find` por
@@ -200,8 +213,6 @@ cancelamento com a interface (núcleo pronto).
 
 ### Pendências menores já identificadas
 
-- `CommitDetails.tsx`, `WipPanes`: comparação por `JSON.stringify` do diff (regra do `CLAUDE.md`)
-  e `applyLines` que chama `setSelection` depois de `await` sem guarda. Inofensivo hoje; resolver junto da Fase 4.
 - `log()` em `repository.ts` ainda roda o `rev-parse` quando a consulta é por uma branch explícita sem `all`
   (a verificação muda o resultado se o HEAD for órfão). Aceito de propósito.
 - `analytics` em `repository.ts` tem outro `rev-parse --verify HEAD` próprio (fora do escopo da Fase 1).
@@ -227,10 +238,11 @@ Lista de conferência do commit final. Só se faz quando o usuário disser que o
 
 Cole isto como primeira mensagem da sessão nova:
 
-> Leia `docs/HANDOFF.md`, `CLAUDE.md` e as seções 6 a 8 de `docs/PERFORMANCE.md`. Siga as regras de trabalho da seção 1
+> Leia `docs/HANDOFF.md`, `CLAUDE.md` e as seções 6 a 10 de `docs/PERFORMANCE.md`. Siga as regras de trabalho da seção 1
 > do HANDOFF (a janela principal não escreve código: delega a subagentes Haiku 5.5, o mais recente, e só especifica,
 > revisa, mede e commita). Continue pela Fase 4, na ordem da seção 5 do HANDOFF. Antes de começar, confira `git status` e
 > `git log --oneline -8`, recrie o repositório de teste com `node scripts/perf/stress-repo.mjs` e rode
 > `node scripts/perf/core.mjs moderate` para ter a base. Se os tokens estiverem acabando, faça só o que der para fechar
 > bem e atualize a seção 2 e 5 do HANDOFF. Este arquivo nunca vai para develop/homolog/main; nada de PR da branch de trabalho até o fim.
+> (Num container novo, rode `npm ci` antes das medições.)
 > Ao fechar cada item ou fase, siga a regra 7 da seção 1 do HANDOFF: abra a sessão seguinte por conta própria e pare.
