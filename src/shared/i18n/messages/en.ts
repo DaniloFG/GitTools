@@ -293,7 +293,11 @@ export const en: Messages = {
     inline: 'Top and bottom',
     inlineHelp: 'Removed and added lines one below the other',
     split: 'Side by side',
-    splitHelp: 'Old version on the left, new version on the right'
+    splitHelp: 'Old version on the left, new version on the right',
+    truncated: {
+      message: 'This diff is large and was cut at {size}: the end of the file is not shown.',
+      showAll: 'Show anyway'
+    }
   },
   changes: {
     discardTitle: 'Discard changes',

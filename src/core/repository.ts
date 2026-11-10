@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { access, lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, lstat, mkdir, open, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import type { LogOptions, RepoApi } from '../shared/api'
 import type {
@@ -39,7 +39,8 @@ import type {
   StashInfo,
   TagInfo
 } from '../shared/types'
-import { buildPartialPatch, parseDiff, quotePath } from './diff'
+import { buildPartialPatch, parseDiff, quotePath, trimTruncated } from './diff'
+import { DIFF_MAX_BYTES } from '../shared/types'
 import { t } from '../shared/i18n'
 import { chunkArgs } from './chunk'
 import { GitError, runGit, type RunOptions, type RunResult } from './exec'
@@ -317,6 +318,19 @@ async function exists(path: string | undefined): Promise<boolean> {
     return true
   } catch {
     return false
+  }
+}
+
+
+/** Lê só os primeiros `bytes` bytes do arquivo (o descritor é fechado mesmo se a leitura falhar). */
+async function readFileHead(full: string, bytes: number): Promise<Buffer> {
+  const handle = await open(full, 'r')
+  try {
+    const buffer = Buffer.alloc(bytes)
+    const { bytesRead } = await handle.read(buffer, 0, bytes, 0)
+    return buffer.subarray(0, bytesRead)
+  } finally {
+    await handle.close()
   }
 }
 
@@ -611,22 +625,30 @@ export class GitRepository implements RepoApi {
   async diff(source: DiffSource): Promise<FileDiff[]> {
     const pathArgs = source.path ? ['--', source.path] : ['--']
     const args = diffArgs(source.fullFile)
+    // Teto de saída do git: sem ele, um commit de milhares de arquivos passa inteiro pelo IPC.
+    // "Mostrar mesmo assim" (uncapped) tira o teto; a chave de cache muda junto, pois o pedido é outro.
+    const limit = source.uncapped ? {} : { maxOutputBytes: DIFF_MAX_BYTES }
+    const capped = async (command: string[]): Promise<FileDiff[]> => {
+      const result = await this.git(command, limit)
+      const files = parseDiff(result.stdout)
+      return result.truncated ? trimTruncated(files) : files
+    }
     switch (source.kind) {
       case 'unstaged': {
-        if (source.path && (await this.isUntracked(source.path))) return [await this.untrackedDiff(source.path)]
-        return parseDiff((await this.git([...args, ...pathArgs])).stdout)
+        if (source.path && (await this.isUntracked(source.path))) return [await this.untrackedDiff(source.path, source.uncapped)]
+        return capped([...args, ...pathArgs])
       }
       case 'staged':
-        return parseDiff((await this.git([...args, '--cached', '-M', ...pathArgs])).stdout)
+        return capped([...args, '--cached', '-M', ...pathArgs])
       case 'commit': {
         assertRef(source.sha, 'commit')
         const parent = await this.parentOf(source.sha)
-        return parseDiff((await this.git([...args, '-M', parent, source.sha, ...pathArgs])).stdout)
+        return capped([...args, '-M', parent, source.sha, ...pathArgs])
       }
       case 'range':
         assertRef(source.from)
         assertRef(source.to)
-        return parseDiff((await this.git([...args, '-M', source.from, source.to, ...pathArgs])).stdout)
+        return capped([...args, '-M', source.from, source.to, ...pathArgs])
     }
   }
 
@@ -635,8 +657,11 @@ export class GitRepository implements RepoApi {
     return stdout.split('\0').includes(path)
   }
 
-  /** Diff sintético para um arquivo não rastreado (tudo é adição). */
-  private async untrackedDiff(path: string): Promise<FileDiff> {
+  /**
+   * Diff sintético para um arquivo não rastreado (tudo é adição). Com teto, um arquivo maior que DIFF_MAX_BYTES
+   * é lido só até o teto: não se carrega centenas de MB do disco para mostrar um trecho.
+   */
+  private async untrackedDiff(path: string, uncapped = false): Promise<FileDiff> {
     const full = join(this.root, path)
     const stat = await lstat(full)
     const mode = stat.isSymbolicLink() ? '120000' : stat.mode & 0o111 ? '100755' : '100644'
@@ -661,10 +686,18 @@ export class GitRepository implements RepoApi {
       file.binary = true
       return file
     }
-    const buffer = await readFile(full)
+    const capped = !uncapped && stat.size > DIFF_MAX_BYTES
+    let buffer = capped ? await readFileHead(full, DIFF_MAX_BYTES) : await readFile(full)
     if (buffer.subarray(0, 8000).includes(0)) {
       file.binary = true
       return file
+    }
+    if (capped) {
+      // Corta no último \n: a quebra de byte 0x0a nunca aparece dentro de um caractere UTF-8, e uma linha
+      // pela metade não vira linha do diff. Sem \n nenhum, o trecho fica vazio.
+      const cut = buffer.lastIndexOf(0x0a)
+      buffer = buffer.subarray(0, cut + 1)
+      file.truncated = true
     }
     const text = buffer.toString('utf8')
     if (text.length === 0) return file
@@ -760,7 +793,10 @@ export class GitRepository implements RepoApi {
   }
 
   private async findFile(source: DiffSource, path: string): Promise<FileDiff> {
-    const files = await this.diff({ ...source, path })
+    // Sem teto de propósito: a ação de linhas é uma alteração pedida pelo usuário e precisa do diff inteiro.
+    // As chaves `hunk:linha` dos blocos que ficaram são as mesmas com e sem teto, mas as linhas dos blocos
+    // depois do corte só existem na leitura sem teto (são as que aparecem após "mostrar mesmo assim").
+    const files = await this.diff({ ...source, path, uncapped: true })
     const file = files.find((f) => f.path === path || f.oldPath === path)
     if (!file) throw new Error(t('core.noChangesIn', { path }))
     return file

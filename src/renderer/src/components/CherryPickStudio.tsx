@@ -5,6 +5,7 @@ import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t, type MessageKey } from '../i18n'
 import { gitFor, markChanged } from '../git'
 import { DiffView, useFullFile } from './DiffView'
+import { useDiffUncapped } from '../diffLimit'
 import { Modal } from './Modal'
 import { ResizableBox } from './ResizableBox'
 import { Split } from './Split'
@@ -171,6 +172,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
 
   // Diferença usada no modo "Linhas": um commit, ou do pai do mais antigo até o mais novo marcado.
   const [fullFile] = useFullFile()
+  const uncapped = useDiffUncapped(linePath ?? undefined)
   const lineSource = useMemo<DiffSource | null>(() => {
     if (!chosen.length) return null
     if (chosen.length === 1) return { kind: 'commit', sha: chosen[0].sha, fullFile }
@@ -185,14 +187,14 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
     setLineSelection(new Set())
     if (mode !== 'lines' || !lineSource || !linePath) return
     let cancelled = false
-    src.diff({ ...lineSource, path: linePath }).then(
+    src.diff({ ...lineSource, path: linePath, uncapped }).then(
       (list) => !cancelled && setLineDiff(list.find((f) => f.path === linePath) ?? list[0] ?? null),
       (e) => !cancelled && toast('error', errorMessage(e))
     )
     return () => {
       cancelled = true
     }
-  }, [mode, lineSource, linePath, toast, src])
+  }, [mode, lineSource, linePath, toast, src, uncapped])
 
   // Mensagem de commit sugerida.
   useEffect(() => {

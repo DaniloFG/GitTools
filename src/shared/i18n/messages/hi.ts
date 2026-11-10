@@ -296,7 +296,11 @@ export const hi: Messages = {
     inline: 'ऊपर और नीचे',
     inlineHelp: 'हटाई और जोड़ी गई लाइनें एक के नीचे एक',
     split: 'अगल-बगल',
-    splitHelp: 'पुराना संस्करण बाईं ओर, नया दाईं ओर'
+    splitHelp: 'पुराना संस्करण बाईं ओर, नया दाईं ओर',
+    truncated: {
+      message: 'यह diff बड़ा है और {size} पर काट दिया गया: फ़ाइल का आख़िरी हिस्सा नहीं दिख रहा।',
+      showAll: 'फिर भी दिखाएँ'
+    }
   },
   changes: {
     discardTitle: 'बदलाव हटाएँ',

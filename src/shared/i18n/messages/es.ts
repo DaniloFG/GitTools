@@ -293,7 +293,11 @@ export const es: Messages = {
     inline: 'Arriba y abajo',
     inlineHelp: 'Líneas eliminadas y añadidas una debajo de la otra',
     split: 'Lado a lado',
-    splitHelp: 'Versión anterior a la izquierda y nueva a la derecha'
+    splitHelp: 'Versión anterior a la izquierda y nueva a la derecha',
+    truncated: {
+      message: 'Este diff es grande y se cortó en {size}: no se muestra el final del archivo.',
+      showAll: 'Mostrar de todos modos'
+    }
   },
   changes: {
     discardTitle: 'Descartar cambios',

@@ -1448,6 +1448,18 @@ button.ghost.danger-text:hover:not(:disabled) {
   background: color-mix(in srgb, var(--danger) 13%, var(--bg));
   border-bottom-color: var(--danger);
 }
+
+/* Aviso de diff cortado no teto: fica acima da tabela e não rola junto com ela. */
+.diff-truncated {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--warning) 15%, var(--bg));
+  border-bottom: 1px solid var(--warning);
+}
 .operation-title {
   display: flex;
   flex-direction: column;

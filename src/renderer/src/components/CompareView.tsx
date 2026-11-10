@@ -6,6 +6,7 @@ import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
 import { DiffView, useFullFile } from './DiffView'
+import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
 import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
@@ -79,6 +80,7 @@ export function CompareView({ request, onRequest }: Props) {
 
   const base = comparison ? (sinceBase && comparison.mergeBase ? comparison.mergeBase : comparison.from) : null
   const [fullFile] = useFullFile()
+  const uncapped = useDiffUncapped(active?.path)
   const source: DiffSource | null = comparison && base ? { kind: 'range', from: base, to: comparison.to, fullFile } : null
 
   useEffect(() => {
@@ -86,7 +88,7 @@ export function CompareView({ request, onRequest }: Props) {
     setSelection(new Set())
     if (!source || !active) return
     let cancelled = false
-    git.diff({ ...source, path: active.path }).then(
+    git.diff({ ...source, path: active.path, uncapped }).then(
       (files) => !cancelled && setDiff(files.find((f) => f.path === active.path) ?? files[0] ?? null),
       (e) => !cancelled && toast('error', errorMessage(e))
     )
@@ -94,7 +96,7 @@ export function CompareView({ request, onRequest }: Props) {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, comparison, fullFile])
+  }, [active, comparison, fullFile, uncapped])
 
   // Clicar num commit das listas só o destaca aqui: a comparação continua na tela (ir ao Histórico é pelo menu).
   const openCommit = (sha: string) => setCommit(sha)

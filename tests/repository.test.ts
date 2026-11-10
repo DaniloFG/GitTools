@@ -2,6 +2,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { changeKeys } from '../src/core/diff'
+import { DIFF_MAX_BYTES } from '../src/shared/types'
 import { createRepo, lines } from './helpers'
 
 const BASE = lines('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j')
@@ -313,5 +314,89 @@ describe('reescrever a mensagem do HEAD', () => {
     const t = await createRepo()
     await t.commit('init', { 'a.txt': 'a\n' })
     await expect(t.repo.rewordHead('   ')).rejects.toThrow()
+  })
+})
+
+/** 120.000 linhas de 40 bytes (4,8 MB, acima do teto). Com `changed`, cada 8ª linha vira uma alteração isolada. */
+function bigText(changed: boolean): string {
+  let out = ''
+  for (let i = 0; i < 120_000; i++) out += (changed && i % 8 === 0 ? 'y' : 'x') + String(i).padStart(38, '0') + '\n'
+  return out
+}
+
+describe('diff com teto de tamanho', () => {
+  it('corta o diff de arquivos rastreados no teto, mas mantém os arquivos antes do corte', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'a.txt': 'a\n', 'big.txt': bigText(false) })
+    t.write('a.txt', 'A\n')
+    t.write('big.txt', bigText(true))
+
+    const files = await t.repo.diff({ kind: 'unstaged' })
+    expect(files.map((f) => f.path)).toEqual(['a.txt', 'big.txt'])
+    expect(files[0].truncated).toBeUndefined()
+    const big = files[1]
+    expect(big.truncated).toBe(true)
+    // 15.000 blocos no total; o corte deixa uns 12 mil. Cada bloco tem um "+" e um "-".
+    expect(big.hunks.length).toBeGreaterThan(1_000)
+    expect(big.hunks.length).toBeLessThan(15_000)
+    expect(big.additions).toBe(big.hunks.length)
+    expect(big.deletions).toBe(big.hunks.length)
+  })
+
+  it('stage de linha do último bloco, que some na leitura com teto, funciona', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'big.txt': bigText(false) })
+    t.write('big.txt', bigText(true))
+
+    // Com teto, o último bloco não aparece; sem teto, aparece e pode ser escolhido.
+    const [capped] = await t.repo.diff({ kind: 'unstaged', path: 'big.txt' })
+    const [full] = await t.repo.diff({ kind: 'unstaged', path: 'big.txt', uncapped: true })
+    const lastHunk = full.hunks.length - 1
+    expect(capped.hunks.some((_, h) => h === lastHunk)).toBe(false)
+    // Último bloco: a linha removida e a adicionada (119992 é a última alteração).
+    const keys = changeKeys(full).slice(-2)
+    expect(keys.every((k) => k.startsWith(`${lastHunk}:`))).toBe(true)
+
+    await t.repo.applyLines({ kind: 'unstaged' }, 'big.txt', keys, 'stage')
+    const staged = (await t.git('show', ':big.txt')).split('\n')
+    expect(staged[119992]).toBe('y' + String(119992).padStart(38, '0'))
+  })
+
+  it('"mostrar mesmo assim" (uncapped) devolve o diff inteiro, sem marca de corte', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'big.txt': bigText(false) })
+    t.write('big.txt', bigText(true))
+
+    const [file] = await t.repo.diff({ kind: 'unstaged', path: 'big.txt', uncapped: true })
+    expect(file.truncated).toBeUndefined()
+    expect(file.hunks).toHaveLength(15_000)
+    expect(file.additions).toBe(15_000)
+  })
+
+  it('arquivo não rastreado maior que o teto é lido só até o teto, cortado numa quebra de linha', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'f.txt': 'x\n' })
+    t.write('novo.txt', bigText(false))
+
+    const [file] = await t.repo.diff({ kind: 'unstaged', path: 'novo.txt' })
+    expect(file.binary).toBe(false)
+    expect(file.truncated).toBe(true)
+    const lines = file.hunks[0].lines
+    expect(lines.length).toBeGreaterThan(0)
+    expect(lines.length).toBeLessThan(120_000)
+    expect(file.additions).toBe(lines.length)
+    // A última linha vem inteira: o corte caiu depois de uma quebra de linha.
+    expect(lines[lines.length - 1].content).toBe('x' + String(lines.length - 1).padStart(38, '0'))
+    expect(lines.reduce((bytes, l) => bytes + l.content.length + 1, 0)).toBeLessThanOrEqual(DIFF_MAX_BYTES)
+  })
+
+  it('arquivo não rastreado maior que o teto sai inteiro com "mostrar mesmo assim"', async () => {
+    const t = await createRepo()
+    await t.commit('init', { 'f.txt': 'x\n' })
+    t.write('novo.txt', bigText(false))
+
+    const [file] = await t.repo.diff({ kind: 'unstaged', path: 'novo.txt', uncapped: true })
+    expect(file.truncated).toBeUndefined()
+    expect(file.hunks[0].lines).toHaveLength(120_000)
   })
 })

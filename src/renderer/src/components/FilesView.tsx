@@ -9,6 +9,7 @@ import { useLayout } from '../layout'
 import { startResize } from '../resize'
 import { copyText } from '../copy'
 import { DiffView, useFullFile } from './DiffView'
+import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
 import { PaneSlot, useAnyShown } from '../slots'
 import { useSessionState } from '../useSessionState'
@@ -268,6 +269,7 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()
+  const uncapped = useDiffUncapped(active?.path)
 
   useEffect(() => {
     setEntries(null)
@@ -284,11 +286,11 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
     setDiff(null)
     setSelection(new Set())
     if (!active) return
-    git.diff({ kind: 'commit', sha: active.sha, path: active.path, fullFile }).then(
+    git.diff({ kind: 'commit', sha: active.sha, path: active.path, fullFile, uncapped }).then(
       (files) => setDiff(files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null),
       (e) => toast('error', errorMessage(e))
     )
-  }, [active, toast, fullFile])
+  }, [active, toast, fullFile, uncapped])
 
   if (!entries) return <HistoryMessage><Loader size="sm" label={t('loader.fileHistory')} /></HistoryMessage>
   if (entries.length === 0) return <HistoryMessage>{t('files.noCommits')}</HistoryMessage>

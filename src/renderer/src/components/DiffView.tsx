@@ -1,5 +1,5 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { DiffLine, FileDiff, LineKey } from '../../../shared/types'
+import { DIFF_MAX_BYTES, type DiffLine, type FileDiff, type LineKey } from '../../../shared/types'
 import { changeKeys, hunkKeys, lineKey, splitRows } from '../../../shared/diffKeys'
 import { DEFAULT_SETTINGS, type DiffLayout } from '../../../shared/settings'
 import { AppContext } from '../context'
@@ -12,6 +12,7 @@ import { displayCombo, resolveBindings } from '../shortcuts'
 import type { MenuItem } from './ContextMenu'
 import { ChangeRuler } from './ChangeRuler'
 import { diffViewGroups, ViewOptionsButton } from './ViewOptions'
+import { allowFullDiff } from '../diffLimit'
 
 /**
  * Escolha entre "cima e baixo" e "lado a lado": todo diff abre no modo padrão das configurações;
@@ -272,6 +273,12 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
         )}
       </div>
       <div className="diff-body-wrap">
+      {file.truncated && (
+        <div className="diff-truncated" role="status">
+          <span>{t('diff.truncated.message', { size: `${DIFF_MAX_BYTES / (1024 * 1024)} MB` })}</span>
+          <button onClick={() => allowFullDiff(file.path)}>{t('diff.truncated.showAll')}</button>
+        </div>
+      )}
       <div className="diff-body" onContextMenu={onMenu}>
       {file.binary ? (
         <p className="empty">{t('diff.binary')}</p>

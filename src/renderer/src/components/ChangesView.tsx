@@ -16,6 +16,7 @@ import { SCREEN_VIEWS, viewAvailable, type ViewId } from '../dock'
 import { PaneSlot } from '../slots'
 import { CommitBox } from './CommitBox'
 import { DiffView, useFullFile } from './DiffView'
+import { useDiffUncapped } from '../diffLimit'
 import { FileEntries } from './FileList'
 import { useFileViewGroup, ViewOptionsButton, type ViewOptionGroup } from './ViewOptions'
 import { useSessionState } from '../useSessionState'
@@ -79,6 +80,7 @@ export function ChangesView() {
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()
+  const uncapped = useDiffUncapped(active?.path)
   /** Caixas marcadas agora e ainda não confirmadas pelo git (a tela responde na hora). */
   const [pending, setPending] = useState<Record<string, boolean>>({})
   /** Arquivos marcados (Ctrl+clique) na lista de não staged: a caixa de commit os inclui. */
@@ -114,7 +116,7 @@ export function ChangesView() {
       return
     }
     let cancelled = false
-    git.diff({ kind: active.area, path: active.path, fullFile }).then(
+    git.diff({ kind: active.area, path: active.path, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
         const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
@@ -126,7 +128,7 @@ export function ChangesView() {
     return () => {
       cancelled = true
     }
-  }, [active, status, toast, fullFile])
+  }, [active, status, toast, fullFile, uncapped])
 
   useEffect(() => setSelection(new Set()), [diff])
 

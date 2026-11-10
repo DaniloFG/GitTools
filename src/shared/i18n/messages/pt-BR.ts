@@ -294,7 +294,11 @@ export const ptBR = {
     inline: 'Cima e baixo',
     inlineHelp: 'Linhas removidas e adicionadas uma embaixo da outra',
     split: 'Lado a lado',
-    splitHelp: 'Versão anterior à esquerda e nova à direita'
+    splitHelp: 'Versão anterior à esquerda e nova à direita',
+    truncated: {
+      message: 'Este diff é grande e foi cortado em {size}: o fim do arquivo não aparece.',
+      showAll: 'Mostrar mesmo assim'
+    }
   },
   changes: {
     discardTitle: 'Descartar alterações',

@@ -11,6 +11,7 @@ import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
 import { t } from '../i18n'
 import { DiffView, useFullFile } from './DiffView'
+import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
 import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
@@ -122,6 +123,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()
+  const uncapped = useDiffUncapped(active?.path)
 
   useEffect(() => {
     // Resposta atrasada (commit já deixado para trás) não altera a tela.
@@ -182,7 +184,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     if (!active) return
     // Diff atrasado de um arquivo ou commit anterior não sobrescreve o atual.
     let cancelled = false
-    git.diff({ kind: 'commit', sha, path: active.path, fullFile }).then(
+    git.diff({ kind: 'commit', sha, path: active.path, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
         setDiff(files.find((f) => f.path === active.path) ?? files[0] ?? null)
@@ -192,7 +194,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     return () => {
       cancelled = true
     }
-  }, [sha, active, toast, fullFile])
+  }, [sha, active, toast, fullFile, uncapped])
 
   if (!details) {
     return (
@@ -376,6 +378,7 @@ function WipPanes({ focus }: { focus: WipFocus }) {
   const [fullFile] = useFullFile()
   type Area = 'unstaged' | 'staged'
   const [active, setActive] = useState<{ area: Area; path: string } | null>(null)
+  const uncapped = useDiffUncapped(active?.path)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const entries: ChangeEntry[] = buildEntries(status)
   const areaOf = (e: ChangeEntry): Area => (e.unstaged ? 'unstaged' : 'staged')
@@ -413,7 +416,7 @@ function WipPanes({ focus }: { focus: WipFocus }) {
       return
     }
     let cancelled = false
-    git.diff({ kind: active.area, path: active.path, fullFile }).then(
+    git.diff({ kind: active.area, path: active.path, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
         const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
@@ -424,7 +427,7 @@ function WipPanes({ focus }: { focus: WipFocus }) {
     return () => {
       cancelled = true
     }
-  }, [active, status, toast, fullFile])
+  }, [active, status, toast, fullFile, uncapped])
 
   const ordered = entries.map((e) => ({ area: areaOf(e), path: e.path }))
   const position = active ? ordered.findIndex((f) => f.path === active.path) : -1

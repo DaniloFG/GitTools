@@ -292,7 +292,11 @@ export const zhCN: Messages = {
     inline: '上下',
     inlineHelp: '删除和新增的行上下排列',
     split: '左右对比',
-    splitHelp: '旧版本在左，新版本在右'
+    splitHelp: '旧版本在左，新版本在右',
+    truncated: {
+      message: '此差异较大，已在 {size} 处截断：文件末尾未显示。',
+      showAll: '仍然显示'
+    }
   },
   changes: {
     discardTitle: '丢弃更改',

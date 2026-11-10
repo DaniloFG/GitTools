@@ -16,6 +16,7 @@ import { useUnhandledErrors } from '../useUnhandledErrors'
 import { ContextMenu, type MenuItem, type MenuState } from './ContextMenu'
 import { Toasts } from './Toasts'
 import { DiffView, useFullFile } from './DiffView'
+import { useDiffUncapped } from '../diffLimit'
 import { LoaderPane } from './Loader'
 
 /** Fecha a janela de diff (no VS Code, o painel). */
@@ -53,6 +54,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
   useUnhandledErrors(toast)
   const [fullFile] = useFullFile()
   const { source, path } = request
+  const uncapped = useDiffUncapped(path)
   const title = request.title ?? path
   // Esta janela é de um repositório só (o da requisição): as chamadas git dela vão para ele, não para o ativo.
   setActiveRoot(request.root ?? null)
@@ -71,12 +73,12 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
   useEffect(() => applySettings(settings, locale, `${title} — GitTools`), [settings, locale, title])
 
   const load = useCallback(() => {
-    git.diff({ ...source, path, fullFile }).then(
+    git.diff({ ...source, path, fullFile, uncapped }).then(
       (files) => setDiff(files.find((f) => f.path === path || f.oldPath === path) ?? files[0] ?? { error: t('diff.noContent') }),
       (e) => setDiff({ error: errorMessage(e) })
     )
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(source), path, fullFile])
+  }, [JSON.stringify(source), path, fullFile, uncapped])
 
   useEffect(() => {
     load()
