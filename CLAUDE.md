@@ -7,6 +7,9 @@ repositórios grandes. Toda alteração é avaliada primeiro por isso.
 A análise completa, os números medidos e o plano estão em [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 Leia a seção de orçamentos antes de mexer em qualquer coisa que rode a cada tecla, quadro, clique ou atualização.
 
+Para continuar o trabalho de otimização em uma sessão nova (estado, regras de delegação, próximos passos), leia
+[`docs/HANDOFF.md`](docs/HANDOFF.md) primeiro.
+
 ## Mapa do código
 
 | Pasta | O que é | Onde roda |
