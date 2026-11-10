@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getSession } from '../repoSession'
+import { useSettled } from '../settle'
 import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { useActions } from '../actions'
@@ -35,7 +36,15 @@ export interface WipFocus {
  * Descrição, arquivos e diff do commit escolhido. São três painéis independentes (`commit.message`,
  * `commit.files` e `commit.diff`): cada um pode ficar em qualquer lugar da janela, junto de qualquer outro.
  */
-export function CommitPanes({ selected, focus, wip }: { selected: string[]; focus?: FileFocus | null; wip?: WipFocus | null }) {
+export function CommitPanes({ selected: selectedNow, focus: focusNow, wip: wipNow }: { selected: string[]; focus?: FileFocus | null; wip?: WipFocus | null }) {
+  // Seleção, foco e alterações assentam juntos: a tela nunca mistura a seleção antiga com o foco novo.
+  // A assinatura evita trocar o objeto quando o conteúdo é igual (o pai recria os arrays a cada render).
+  const signature = [selectedNow.join('\n'), focusNow ? `${focusNow.sha}\n${focusNow.path}\n${focusNow.n}` : '-', wipNow ? `${wipNow.path}\n${wipNow.n}` : '-'].join('\u0000')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const current = useMemo(() => ({ selected: selectedNow, focus: focusNow, wip: wipNow }), [signature])
+  // Espera 100 ms de rajada (tecla repetindo) antes de ler o git: só o commit parado é lido.
+  const { selected, focus, wip } = useSettled(current, 100)
+
   if (selected.length === 0 && wip) return <WipPanes focus={wip} />
   if (selected.length === 0) {
     return (
@@ -114,13 +123,19 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   const [fullFile] = useFullFile()
 
   useEffect(() => {
+    // Resposta atrasada (commit já deixado para trás) não altera a tela.
+    let cancelled = false
     git.commitDetails(sha).then(
       (d) => {
+        if (cancelled) return
         setDetails(d)
         setActive(d.files.find((f) => f.path === remembered.get(rememberKey)) ?? d.files[0] ?? null)
       },
-      (e) => toast('error', errorMessage(e))
+      (e) => !cancelled && toast('error', errorMessage(e))
     )
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sha, toast])
 
@@ -164,10 +179,18 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     setSelection(new Set())
     setDiff(null)
     if (!active) return
+    // Diff atrasado de um arquivo ou commit anterior não sobrescreve o atual.
+    let cancelled = false
     git.diff({ kind: 'commit', sha, path: active.path, fullFile }).then(
-      (files) => setDiff(files.find((f) => f.path === active.path) ?? files[0] ?? null),
-      (e) => toast('error', errorMessage(e))
+      (files) => {
+        if (cancelled) return
+        setDiff(files.find((f) => f.path === active.path) ?? files[0] ?? null)
+      },
+      (e) => !cancelled && toast('error', errorMessage(e))
     )
+    return () => {
+      cancelled = true
+    }
   }, [sha, active, toast, fullFile])
 
   if (!details) {

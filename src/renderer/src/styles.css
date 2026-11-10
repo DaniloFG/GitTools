@@ -1109,25 +1109,33 @@ mark {
   font-family: var(--mono);
   font-size: 12px;
   line-height: 18px;
+  /* Layout fixo: o navegador não mede todas as células a cada mudança (trava em diffs grandes). As larguras vêm de <col>. */
+  table-layout: fixed;
 }
 .diff-table td {
   padding: 0 6px;
   vertical-align: top;
 }
 .diff-table .sel {
-  width: 22px;
   text-align: center;
 }
 .diff-table .ln {
-  width: 1%;
-  min-width: 36px;
   text-align: end;
   color: var(--text-muted);
   opacity: 0.7;
 }
 .diff-table .sign {
-  width: 14px;
   color: var(--text-muted);
+}
+/* Tabela unificada: larguras pelas colunas. Os números cabem no maior número do arquivo (--ln-digits, em DiffView). */
+.diff-table:not(.diff-split) col.sel {
+  width: 22px;
+}
+.diff-table:not(.diff-split) col.ln {
+  width: max(36px, calc(var(--ln-digits, 4) * 1ch + 12px));
+}
+.diff-table:not(.diff-split) col.sign {
+  width: 14px;
 }
 .diff-table .code {
   white-space: pre-wrap;
@@ -1171,18 +1179,11 @@ mark {
   box-shadow: inset -3px 0 0 var(--accent);
   background-image: linear-gradient(var(--selected-line), var(--selected-line));
 }
-.diff-split {
-  table-layout: fixed;
-}
 .diff-split col.sel {
   width: 22px;
 }
 .diff-split col.ln {
   width: 46px;
-}
-.diff-split .ln {
-  width: auto;
-  min-width: 0;
 }
 .diff-split td.code {
   overflow-wrap: anywhere;

@@ -71,6 +71,16 @@ function splitRowKind(hunk: FileDiff['hunks'][number], row: { left: number | nul
   return null
 }
 
+/**
+ * Quantos dígitos cabem no maior número de linha do arquivo. Olha só os cabeçalhos dos hunks, para a largura
+ * das colunas de número ser fixa (layout fixo da tabela) sem percorrer as linhas.
+ */
+function lineNumberDigits(hunks: FileDiff['hunks']): number {
+  let max = 0
+  for (const h of hunks) max = Math.max(max, h.oldStart + h.oldCount, h.newStart + h.newCount)
+  return String(max).length
+}
+
 const TYPE_LABEL: Record<FileDiff['changeType'], MessageKey> = {
   added: 'status.untracked',
   deleted: 'status.deleted',
@@ -341,7 +351,18 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
           </tbody>
         </table>
       ) : (
-        <table className={`diff-table ${selectable ? 'selectable' : ''}`}>
+        <table
+          className={`diff-table ${selectable ? 'selectable' : ''}`}
+          style={{ '--ln-digits': lineNumberDigits(file.hunks) } as React.CSSProperties}
+        >
+          {/* Layout fixo: a largura vem destas colunas, não das células (a primeira linha é um cabeçalho com colSpan). */}
+          <colgroup>
+            <col className="sel" />
+            <col className="ln" />
+            <col className="ln" />
+            <col className="sign" />
+            <col />
+          </colgroup>
           <tbody>
             {file.hunks.map((hunk, h) => {
               const keys = hunkKeys(file, h)

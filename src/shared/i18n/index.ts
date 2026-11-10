@@ -64,6 +64,44 @@ function isoParts(d: Date): { date: string; time: string; short: string } {
 type DateOptions = Intl.DateTimeFormatOptions
 const DATE_PARTS: DateOptions = { year: 'numeric', month: '2-digit', day: '2-digit' }
 const TIME_PARTS: DateOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' }
+const SHORT_PARTS: DateOptions = { ...DATE_PARTS, hour: '2-digit', minute: '2-digit' }
+const FULL_12H: DateOptions = { ...DATE_PARTS, ...TIME_PARTS, hour12: true }
+const FULL_24H: DateOptions = { ...DATE_PARTS, ...TIME_PARTS, hour12: false }
+const SHORT_12H: DateOptions = { ...SHORT_PARTS, hour12: true }
+const SHORT_24H: DateOptions = { ...SHORT_PARTS, hour12: false }
+// Mesmo resultado de `toLocaleString(idioma)` sem opções: data e hora, todos os campos numéricos.
+const SYSTEM_DATE_TIME: DateOptions = { year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' }
+
+// Criar um Intl.DateTimeFormat custa dezenas de vezes mais que usá-lo, e estas funções rodam por linha de lista.
+// Guardamos um formatador por idioma e opções. As chaves são poucas (idiomas × formatos); o limite evita crescer sem fim.
+const FORMATTER_CACHE_LIMIT = 64
+const dateFormatters = new Map<string, Intl.DateTimeFormat>()
+const relativeFormatters = new Map<string, Intl.RelativeTimeFormat>()
+
+/**
+ * Formatador de data guardado para um idioma e opções. Escreve exatamente como
+ * `date.toLocaleString(idioma, opções)` (ou `toLocaleDateString`, sem opções para só a data).
+ */
+export function dateFormatterFor(locale: string | undefined, options?: DateOptions): Intl.DateTimeFormat {
+  const key = JSON.stringify([locale ?? null, options ?? null])
+  let formatter = dateFormatters.get(key)
+  if (!formatter) {
+    if (dateFormatters.size >= FORMATTER_CACHE_LIMIT) dateFormatters.clear()
+    formatter = new Intl.DateTimeFormat(locale, options)
+    dateFormatters.set(key, formatter)
+  }
+  return formatter
+}
+
+function relativeFormatterFor(locale: string): Intl.RelativeTimeFormat {
+  let formatter = relativeFormatters.get(locale)
+  if (!formatter) {
+    if (relativeFormatters.size >= FORMATTER_CACHE_LIMIT) relativeFormatters.clear()
+    formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+    relativeFormatters.set(locale, formatter)
+  }
+  return formatter
+}
 
 /** Data e hora com segundos (ex.: "2026-12-31 23:59:59"). */
 export function formatDateTime(ms: number): string {
@@ -72,8 +110,8 @@ export function formatDateTime(ms: number): string {
     const p = isoParts(d)
     return `${p.date} ${p.time}`
   }
-  if (dateStyle === 'system') return d.toLocaleString(systemLocale)
-  return d.toLocaleString(currentLocale, { ...DATE_PARTS, ...TIME_PARTS, hour12: dateStyle === '12h' })
+  if (dateStyle === 'system') return dateFormatterFor(systemLocale, SYSTEM_DATE_TIME).format(d)
+  return dateFormatterFor(currentLocale, dateStyle === '12h' ? FULL_12H : FULL_24H).format(d)
 }
 
 /** Data e hora sem segundos (ex.: "2026-12-31 23:59"). */
@@ -83,9 +121,8 @@ export function formatShortDateTime(ms: number): string {
     const p = isoParts(d)
     return `${p.date} ${p.short}`
   }
-  const short: DateOptions = { ...DATE_PARTS, hour: '2-digit', minute: '2-digit' }
-  if (dateStyle === 'system') return d.toLocaleString(systemLocale, short)
-  return d.toLocaleString(currentLocale, { ...short, hour12: dateStyle === '12h' })
+  if (dateStyle === 'system') return dateFormatterFor(systemLocale, SHORT_PARTS).format(d)
+  return dateFormatterFor(currentLocale, dateStyle === '12h' ? SHORT_12H : SHORT_24H).format(d)
 }
 
 /** Data e hora da coluna do histórico: no formato ISO com segundos ("2026-12-31 23:59:59"); nos demais, sem segundos para caber. */
@@ -101,14 +138,15 @@ export function getCurrentLocale(): string {
 export function formatDate(ms: number): string {
   const d = new Date(ms)
   if (dateStyle === 'iso') return isoParts(d).date
-  return d.toLocaleDateString(dateStyle === 'system' ? systemLocale : currentLocale)
+  // Sem opções: `toLocaleDateString(idioma)` equivale a `Intl.DateTimeFormat(idioma)`.
+  return dateFormatterFor(dateStyle === 'system' ? systemLocale : currentLocale).format(d)
 }
 
 /** "há 5 minutos", "5 minutes ago", "قبل 5 دقائق"… */
 export function formatRelative(ms: number, now = Date.now()): string {
   const seconds = Math.round((ms - now) / 1000)
   const abs = Math.abs(seconds)
-  const rtf = new Intl.RelativeTimeFormat(currentLocale, { numeric: 'auto' })
+  const rtf = relativeFormatterFor(currentLocale)
   if (abs < 60) return rtf.format(0, 'second')
   if (abs < 3600) return rtf.format(Math.round(seconds / 60), 'minute')
   if (abs < 86400) return rtf.format(Math.round(seconds / 3600), 'hour')
