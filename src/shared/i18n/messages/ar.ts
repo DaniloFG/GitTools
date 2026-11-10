@@ -1019,7 +1019,8 @@ export const ar: Messages = {
     historyRewritten: 'تمت إعادة كتابة السجل.',
     binaryNoLines: 'الملف الثنائي "{path}" لا يسمح بتحديد الأسطر.',
     gitNotFound: 'تعذّر تشغيل git: {error}',
-    gitFailed: 'فشل git {command} (الرمز {code})'
+    gitFailed: 'فشل git {command} (الرمز {code})',
+    gitCanceled: 'تم إلغاء أمر git.'
   },
   main: {
     editorNotFound: 'لم يُعثر على المحرر "{editor}". اختر غيره من الإعدادات ← المحرر والفروق.',

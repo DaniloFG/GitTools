@@ -733,7 +733,8 @@ export class GitRepository implements RepoApi {
     const args = diffArgs(source.fullFile)
     // Teto de saída do git: sem ele, um commit de milhares de arquivos passa inteiro pelo IPC.
     // "Mostrar mesmo assim" (uncapped) tira o teto; a chave de cache muda junto, pois o pedido é outro.
-    const limit = source.uncapped ? {} : { maxOutputBytes: DIFF_MAX_BYTES }
+    // stopAtLimit: ao passar do teto o git é parado, em vez de gerar o diff inteiro só para descartar o excedente.
+    const limit = source.uncapped ? {} : { maxOutputBytes: DIFF_MAX_BYTES, stopAtLimit: true }
     const capped = async (command: string[]): Promise<FileDiff[]> => {
       const result = await this.git(command, limit)
       const files = parseDiff(result.stdout)
@@ -1660,7 +1661,8 @@ export class GitRepository implements RepoApi {
     } else if (hasHead) args.push('HEAD')
     else return { scope, commits: [], paths: [], truncated: false, tree: [], generatedAt }
     args.push('--')
-    const { stdout } = await this.git(args)
+    // Dashboards leem milhares de commits e não têm pressa: prioridade baixa deixa a fila para a interface.
+    const { stdout } = await this.git(args, { priority: 'low' })
     const records = stdout.split(RS).filter((r) => r.trim())
     const truncated = records.length > limit
     const pathIndex = new Map<string, number>()

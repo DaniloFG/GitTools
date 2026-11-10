@@ -976,7 +976,8 @@ export const zhCN: Messages = {
     historyRewritten: '历史已改写。',
     binaryNoLines: '二进制文件“{path}”不能选择行。',
     gitNotFound: '无法运行 git：{error}',
-    gitFailed: 'git {command} 失败（代码 {code}）'
+    gitFailed: 'git {command} 失败（代码 {code}）',
+    gitCanceled: 'git 命令已取消。'
   },
   main: {
     editorNotFound: '找不到编辑器“{editor}”。请在 设置 → 编辑器和差异 中选择其他编辑器。',

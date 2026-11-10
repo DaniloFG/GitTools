@@ -1010,7 +1010,8 @@ export const en: Messages = {
     historyRewritten: 'History rewritten.',
     binaryNoLines: 'The binary file "{path}" does not allow selecting lines.',
     gitNotFound: 'Could not run git: {error}',
-    gitFailed: 'git {command} failed (code {code})'
+    gitFailed: 'git {command} failed (code {code})',
+    gitCanceled: 'Git command canceled.'
   },
   main: {
     editorNotFound: 'The editor "{editor}" was not found. Choose another in Settings → Editor and diff.',

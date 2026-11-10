@@ -1011,7 +1011,8 @@ export const ptBR = {
     historyRewritten: 'Histórico reescrito.',
     binaryNoLines: 'O arquivo binário "{path}" não permite seleção de linhas.',
     gitNotFound: 'Não foi possível executar o git: {error}',
-    gitFailed: 'git {command} falhou (código {code})'
+    gitFailed: 'git {command} falhou (código {code})',
+    gitCanceled: 'Comando git cancelado.'
   },
   main: {
     editorNotFound: 'O editor "{editor}" não foi encontrado. Escolha outro em Configurações → Editor e diff.',

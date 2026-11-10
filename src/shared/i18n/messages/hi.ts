@@ -1013,7 +1013,8 @@ export const hi: Messages = {
     historyRewritten: 'इतिहास दोबारा लिखा गया।',
     binaryNoLines: 'बाइनरी फ़ाइल "{path}" में लाइनें नहीं चुनी जा सकतीं।',
     gitNotFound: 'git नहीं चलाया जा सका: {error}',
-    gitFailed: 'git {command} विफल रहा (कोड {code})'
+    gitFailed: 'git {command} विफल रहा (कोड {code})',
+    gitCanceled: 'git कमांड रद्द किया गया।'
   },
   main: {
     editorNotFound: 'एडिटर "{editor}" नहीं मिला। सेटिंग्स → एडिटर और diff में दूसरा चुनें।',
