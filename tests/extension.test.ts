@@ -377,7 +377,13 @@ describe('detecção de vários repositórios no workspace', () => {
     await run('gittools.open')
     const panel = fake.panels[0]
     fake.folderListeners.forEach((l) => l({ added: [{ uri: Uri.file(nova.dir) }], removed: [] }))
-    await until(async () => (await openList(panel)).repos.length === 2)
+    await until(
+      async () =>
+        panel.webview.posted.some((m) => {
+          const msg = m as { type?: string; channel?: string }
+          return msg.type === 'event' && msg.channel === 'repo:changed'
+        }) && (await openList(panel)).repos.length === 2,
+    )
     const list = await openList(panel)
     expect(list.repos.map((r) => r.root)).toEqual([atual.repo.root, nova.repo.root])
     expect(list.active).toBe(atual.repo.root)
@@ -404,7 +410,13 @@ describe('detecção de vários repositórios no workspace', () => {
     watcher.emitCreate(Uri.file(join(ignorado, '.git')))
     watcher.emitCreate(Uri.file(join(sub, '.git')))
 
-    await until(async () => (await openList(panel)).repos.length === 2)
+    await until(
+      async () =>
+        panel.webview.posted.some((m) => {
+          const msg = m as { type?: string; channel?: string }
+          return msg.type === 'event' && msg.channel === 'repo:changed'
+        }) && (await openList(panel)).repos.length === 2,
+    )
     const list = await openList(panel)
     expect(list.repos.map((r) => r.root)).toEqual([atual.repo.root, await realRoot(sub)])
     expect(list.active).toBe(atual.repo.root)
