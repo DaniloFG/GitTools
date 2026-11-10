@@ -87,12 +87,12 @@ export function diffViewGroups(state: {
     {
       title: t('diff.layout'),
       options: [
-        { label: t('diff.inline'), checked: state.layout === 'inline', onSelect: () => state.setLayout('inline'), hint: t('diff.inlineHelp') },
-        { label: t('diff.split'), checked: state.layout === 'split', onSelect: () => state.setLayout('split'), hint: t('diff.splitHelp') }
+        { label: t('diff.inline'), checked: state.layout === 'inline', onSelect: () => state.setLayout('inline') },
+        { label: t('diff.split'), checked: state.layout === 'split', onSelect: () => state.setLayout('split') }
       ]
     },
     {
-      options: [{ label: t('diffExtra.fullFile'), checked: state.fullFile, onSelect: () => state.setFullFile(!state.fullFile), hint: t('diffExtra.fullFileHelp') }]
+      options: [{ label: t('diffExtra.fullFile'), checked: state.fullFile, onSelect: () => state.setFullFile(!state.fullFile) }]
     }
   ]
 }

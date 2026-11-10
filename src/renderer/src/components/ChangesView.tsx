@@ -205,7 +205,7 @@ export function ChangesView() {
   /** Escolha da visão e da forma de listar os arquivos, no menu de opções do cabeçalho das listas. */
   const modeGroup: ViewOptionGroup = {
     title: t('changes.mode.label'),
-    options: modes.map((m) => ({ label: m.label, checked: mode === m.id, onSelect: () => chooseMode(m.id), hint: m.help }))
+    options: modes.map((m) => ({ label: m.label, checked: mode === m.id, onSelect: () => chooseMode(m.id) }))
   }
   const listTools = <ViewOptionsButton groups={[modeGroup, fileGroup]} />
 

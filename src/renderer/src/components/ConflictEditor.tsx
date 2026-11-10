@@ -444,8 +444,8 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
               {
                 title: t('conflict.layout.title'),
                 options: [
-                  { label: t('conflict.layout.classic'), checked: layout.mode === 'classic', onSelect: () => setMode('classic'), hint: t('conflict.layout.classicHelp') },
-                  { label: t('conflict.layout.columns'), checked: layout.mode === 'columns', onSelect: () => setMode('columns'), hint: t('conflict.layout.columnsHelp') }
+                  { label: t('conflict.layout.classic'), checked: layout.mode === 'classic', onSelect: () => setMode('classic') },
+                  { label: t('conflict.layout.columns'), checked: layout.mode === 'columns', onSelect: () => setMode('columns') }
                 ]
               }
             ]}
