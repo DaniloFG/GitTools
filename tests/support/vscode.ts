@@ -65,8 +65,19 @@ export interface FakePanel {
   onDidDispose(listener: () => void): { dispose(): void }
 }
 
+/** Observador de arquivos criado pela extensão (`createFileSystemWatcher`). `emitCreate` simula a criação de um arquivo. */
+export interface FakeWatcher {
+  pattern: string
+  disposed: boolean
+  emitCreate(uri: Uri): void
+}
+
 /** Estado observável pelo teste. */
 export const fake = {
+  /** Ouvintes de `workspace.onDidChangeWorkspaceFolders`. */
+  folderListeners: new Set<(event: { added: { uri: Uri }[]; removed: { uri: Uri }[] }) => unknown>(),
+  /** Observadores de arquivos criados pela extensão, na ordem em que foram criados. */
+  watchers: [] as FakeWatcher[],
   commands: new Map<string, (...args: unknown[]) => unknown>(),
   executed: [] as { command: string; args: unknown[] }[],
   panels: [] as FakePanel[],
@@ -86,6 +97,8 @@ export const fake = {
     this.openDialogResult = undefined
     this.workspaceFolders = undefined
     this.activeEditor = undefined
+    this.folderListeners.clear()
+    this.watchers.length = 0
   }
 }
 
@@ -154,6 +167,30 @@ export const window = {
 export const workspace = {
   get workspaceFolders() {
     return fake.workspaceFolders
+  },
+  onDidChangeWorkspaceFolders: (listener: (event: { added: { uri: Uri }[]; removed: { uri: Uri }[] }) => unknown) => {
+    fake.folderListeners.add(listener)
+    return { dispose: () => void fake.folderListeners.delete(listener) }
+  },
+  createFileSystemWatcher: (pattern: string) => {
+    const created: ((uri: Uri) => unknown)[] = []
+    const watcher: FakeWatcher = {
+      pattern,
+      disposed: false,
+      emitCreate: (uri) => created.forEach((l) => l(uri))
+    }
+    fake.watchers.push(watcher)
+    return {
+      onDidCreate: (listener: (uri: Uri) => unknown) => {
+        created.push(listener)
+        return { dispose: () => undefined }
+      },
+      onDidChange: () => ({ dispose: () => undefined }),
+      onDidDelete: () => ({ dispose: () => undefined }),
+      dispose: () => {
+        watcher.disposed = true
+      }
+    }
   },
   fs: {
     stat: async (uri: Uri) => ({ type: statSync(uri.fsPath).isDirectory() ? FileType.Directory : FileType.File })

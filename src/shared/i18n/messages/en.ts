@@ -127,7 +127,17 @@ export const en: Messages = {
     branch: 'Branch',
     stash: 'Stash',
     stashHelp: 'Put local changes aside and clean the working tree',
-    settings: 'Settings'
+    settings: 'Settings',
+    new: 'New',
+    newHelp: 'Create a branch or a tag, or stash your changes',
+    newBranch: 'New branch…',
+    newTag: 'New tag…',
+    newMore: 'More new options',
+    itemRepo: 'Repository',
+    menu: 'Menu',
+    menuHelp: 'Settings & panels',
+    appearance: 'Appearance',
+    toolbarMenu: 'Toolbar'
   },
   welcome: {
     tagline: 'Git made simple: drag and click to merge, rebase and cherry-pick branches, commits, files and even single lines.',
@@ -144,6 +154,7 @@ export const en: Messages = {
     message: 'The tool turned out great, right?! Then give me a hand to keep improving it and build more.'
   },
   sidebar: {
+    viewMode: 'Branch display',
     hint: 'Drag a branch, commit or file onto a local branch to merge, rebase or cherry-pick.',
     branches: 'Branches',
     remote: 'Remote: {remote}',
@@ -753,13 +764,17 @@ export const en: Messages = {
     applyHelp: 'Saves the settings and keeps this window open.',
     saveHelp: 'Saves the settings and closes this window.',
     applied: 'Settings applied.',
+    searchPlaceholder: 'Search settings',
+    noResults: 'No matching settings found',
     general: {
       title: 'General',
       description: 'Language and general GitTools preferences.',
       language: 'Language',
       languageHelp: 'Changes every text in the tool. It is applied immediately.',
       systemLanguage: 'Same as system',
-      detected: 'Detected: {language}'
+      detected: 'Detected: {language}',
+      multiRepo: 'Detect several repositories in the workspace',
+      multiRepoHelp: 'When GitTools opens in VS Code, it opens each repository (.git) found in the workspace in its own tab and keeps watching for new repositories.',
     },
     appearance: {
       title: 'Appearance',
@@ -1677,6 +1692,7 @@ export const en: Messages = {
     testOk: 'The editor opened a file of the repository (by its full path).'
   },
   fileList: {
+    viewOptions: 'View options',
     viewMode: 'File display',
     viewModeHelp: 'Show files as a list (name and folder) or as a folder tree — applies to every file list',
     list: 'List',

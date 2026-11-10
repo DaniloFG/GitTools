@@ -16,7 +16,8 @@ import { git } from '../git'
 import { dateFormatKey, formatGridDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
 import { graphFor, laneColor, matchesCommit, refName, type GraphRow } from '../graph'
 import { useDrop } from '../useDrop'
-import { FileEntries, FileViewToggle } from './FileList'
+import { FileEntries } from './FileList'
+import { FileViewOptions } from './ViewOptions'
 import { LineStats } from './LineStats'
 import type { FileStatus } from '../../../shared/types'
 import { Loader } from './Loader'
@@ -330,7 +331,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
           ⓘ <code>{t('history.log.chip')}</code>
         </span>
         <span className="muted hint">{t('history.hint')}</span>
-        <FileViewToggle />
+        <FileViewOptions />
       </div>
       <div className="commit-columns" title={t('history.columns.help')} style={{ gridTemplateColumns: template }}>
         <span className="row-toggle" />

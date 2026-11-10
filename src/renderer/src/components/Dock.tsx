@@ -1,7 +1,8 @@
-import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { Fragment, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { AppContext } from '../context'
 import {
   activateView,
+  effectiveDir,
   groupsOf,
   hideIn,
   inScreen,
@@ -14,6 +15,7 @@ import {
   sizesIn,
   zoneAt,
   type DockNode,
+  type Dir,
   type DockState,
   type DropTarget,
   type ScreenId,
@@ -21,6 +23,7 @@ import {
   type ShownNode,
   type ShownSplit,
   type Side,
+  STACK_WIDTH,
   type ViewId
 } from '../dock'
 import { t } from '../i18n'
@@ -45,6 +48,8 @@ const MIN_HEIGHT = 80
 /** Em janelas muito pequenas os painéis encolhem até este tamanho, todos juntos, em vez de sair da tela. */
 const SQUEEZE_WIDTH = 48
 const SQUEEZE_HEIGHT = 40
+/** Altura mínima de cada painel quando as divisões estão empilhadas (janela estreita). Divisões aninhadas crescem com o conteúdo. */
+const STACK_MIN_HEIGHT = 180
 const KEY_STEP = 16
 
 interface Rect {
@@ -104,6 +109,20 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
   const [maximized, setMaximized] = useState<string | null>(null)
   const latest = useRef(state)
   latest.current = state
+  /** Largura medida do painel: abaixo de STACK_WIDTH as divisões em linha empilham (só na exibição). */
+  const [width, setWidth] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    setWidth(root.getBoundingClientRect().width)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    observer.observe(root)
+    return () => observer.disconnect()
+  }, [])
+  const stacked = width !== null && width < STACK_WIDTH
+  /** Direção que a divisão tem na tela agora (ver `effectiveDir`). */
+  const dirOf = (node: ShownSplit): Dir => effectiveDir(node.dir, width)
   /** Só grava quando o arranjo mudou de fato (clicar na aba que já está à frente não muda nada). */
   const onChange = (next: DockState) => {
     if (next !== latest.current) change(next)
@@ -265,10 +284,37 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
               onClick={() => onChange(activateView(latest.current, view))}
               onDoubleClick={() => setMaximized(maximized === node.id ? null : node.id)}
               onContextMenu={(e) => tabMenu(e, view, node.id, node.views.length === 1)}
+              onMouseDown={(e) => {
+                // Clique com o botão do meio oculta o painel (como no VS Code).
+                if (e.button !== 1) return
+                e.preventDefault()
+                onChange(hideIn(latest.current, view, screen))
+              }}
               title={meta[view].help}
             >
               {meta[view].label}
               {!!meta[view].badge && <span className="badge">{meta[view].badge}</span>}
+              {/* Um <button> não pode conter outro, então o X é um span com papel de botão. */}
+              <span
+                role="button"
+                tabIndex={0}
+                className="dock-tab-close"
+                aria-label={t('workbench.hide')}
+                title={t('workbench.hide')}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onChange(hideIn(latest.current, view, screen))
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onChange(hideIn(latest.current, view, screen))
+                }}
+              >
+                ✕
+              </span>
             </button>
           ))}
         </nav>
@@ -294,18 +340,20 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
     const prev = divider.previousElementSibling as HTMLElement | null
     const next = divider.nextElementSibling as HTMLElement | null
     if (!prev || !next) return
-    const row = node.dir === 'row'
+    const dir = dirOf(node)
+    const row = dir === 'row'
     const size = (el: HTMLElement) => (row ? el.getBoundingClientRect().width : el.getBoundingClientRect().height)
     const [sa, sb] = [size(prev), size(next)]
     const rtl = row && getComputedStyle(divider).direction === 'rtl'
     const start = latest.current
     startResize(e, row ? 'col-resize' : 'row-resize', (_event, dx, dy) => {
-      onChange(withPair(start, node, i, row ? (rtl ? -dx : dx) : dy, sa, sb, screen))
+      onChange(withPair(start, node, i, row ? (rtl ? -dx : dx) : dy, sa, sb, screen, dir))
     })
   }
 
   const dividerKeys = (e: KeyboardEvent<HTMLDivElement>, node: ShownSplit, i: number) => {
-    const row = node.dir === 'row'
+    const dir = dirOf(node)
+    const row = dir === 'row'
     const keys = row ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown']
     const divider = e.currentTarget
     if (!keys.includes(e.key) && e.key !== 'Enter') return
@@ -314,19 +362,20 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
     const next = divider.nextElementSibling as HTMLElement
     const size = (el: HTMLElement) => (row ? el.getBoundingClientRect().width : el.getBoundingClientRect().height)
     const rtl = row && getComputedStyle(divider).direction === 'rtl'
-    if (e.key === 'Enter') return onChange(withPair(latest.current, node, i, (size(next) - size(prev)) / 2, size(prev), size(next), screen))
+    if (e.key === 'Enter') return onChange(withPair(latest.current, node, i, (size(next) - size(prev)) / 2, size(prev), size(next), screen, dir))
     let delta = (e.key === keys[1] ? 1 : -1) * (e.shiftKey ? KEY_STEP * 5 : KEY_STEP)
     if (rtl) delta = -delta
-    onChange(withPair(latest.current, node, i, delta, size(prev), size(next), screen))
+    onChange(withPair(latest.current, node, i, delta, size(prev), size(next), screen, dir))
   }
 
   const renderNode = (node: ShownNode): React.ReactNode => {
     if (node.kind === 'group') return renderGroup(node)
-    const row = node.dir === 'row'
+    const dir = dirOf(node)
+    const row = dir === 'row'
     return (
-      <div className={`dock-split dock-${node.dir}`}>
+      <div className={`dock-split dock-${dir}`}>
         {node.children.map((child, i) => {
-          const style: CSSProperties = { flex: `${child.weight} 1 0px`, [row ? 'minWidth' : 'minHeight']: row ? SQUEEZE_WIDTH : SQUEEZE_HEIGHT }
+          const style: CSSProperties = { flex: `${child.weight} 1 0px`, [row ? 'minWidth' : 'minHeight']: row ? SQUEEZE_WIDTH : stacked ? (child.node.kind === 'group' ? STACK_MIN_HEIGHT : 'auto') : SQUEEZE_HEIGHT }
           return (
             <Fragment key={child.node.id}>
               {i > 0 && (
@@ -343,7 +392,7 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
                     const prev = el.previousElementSibling as HTMLElement
                     const next = el.nextElementSibling as HTMLElement
                     const size = (x: HTMLElement) => (row ? x.getBoundingClientRect().width : x.getBoundingClientRect().height)
-                    onChange(withPair(latest.current, node, i, (size(next) - size(prev)) / 2, size(prev), size(next), screen))
+                    onChange(withPair(latest.current, node, i, (size(next) - size(prev)) / 2, size(prev), size(next), screen, dir))
                   }}
                 />
               )}
@@ -358,7 +407,7 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
   }
 
   return (
-    <div className="dock" ref={rootRef}>
+    <div className={`dock ${stacked ? 'dock-stacked' : ''}`} ref={rootRef}>
       {tree ? (
         renderNode(maximizedGroup ?? tree)
       ) : (
@@ -410,9 +459,9 @@ function frontViews(node: ShownNode, except?: string): ViewId[] {
 }
 
 /** Novo arranjo depois de a divisória entre os filhos `i - 1` e `i` andar `delta` pixels. */
-function withPair(state: DockState, node: ShownSplit, i: number, delta: number, sizeA: number, sizeB: number, screen: ScreenId): DockState {
+function withPair(state: DockState, node: ShownSplit, i: number, delta: number, sizeA: number, sizeB: number, screen: ScreenId, dir: Dir): DockState {
   const [a, b] = [node.children[i - 1], node.children[i]]
-  const min = node.dir === 'row' ? MIN_WIDTH : MIN_HEIGHT
+  const min = dir === 'row' ? MIN_WIDTH : MIN_HEIGHT
   const [wa, wb] = resizePair(a.weight, b.weight, sizeA, sizeB, delta, min, min)
   const current = findSplit(state.root, node.id)
   if (!current) return state

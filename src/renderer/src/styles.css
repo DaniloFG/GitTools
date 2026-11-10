@@ -12,10 +12,22 @@
   --success: #5fd38d;
   --warning: #f2a93b;
   --danger: #ef6b5b;
-  --add-bg: rgba(95, 211, 141, 0.12);
+  --add-bg: rgba(63, 185, 80, 0.2);
   --add-text: #8ee6b0;
-  --del-bg: rgba(239, 107, 91, 0.12);
-  --del-text: #f4a097;
+  --add-strong: #3fb950;
+  --add-gutter: rgba(63, 185, 80, 0.36);
+  --del-bg: rgba(248, 81, 73, 0.2);
+  --del-text: #ffa198;
+  --del-strong: #f85149;
+  --del-gutter: rgba(248, 81, 73, 0.36);
+  --hunk-bg: rgba(79, 163, 255, 0.14);
+  --hunk-text: #9cc8ff;
+  /* Régua de alterações (ao lado da barra de rolagem): cada tipo de marca tem a sua cor. */
+  --ruler-add: var(--add-strong);
+  --ruler-del: var(--del-strong);
+  --ruler-mod: var(--accent);
+  --ruler-conflict: #f0883e;
+  --ruler-resolved: rgba(63, 185, 80, 0.45);
   --selected-line: rgba(79, 163, 255, 0.28);
   --radius: 6px;
   --mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace;
@@ -33,10 +45,16 @@
   --text-muted: #687080;
   --accent: #1f6fd1;
   --accent-strong: #165db3;
-  --add-bg: rgba(40, 167, 69, 0.12);
-  --add-text: #176f2c;
-  --del-bg: rgba(215, 58, 73, 0.1);
-  --del-text: #a8242f;
+  --add-bg: rgba(46, 164, 78, 0.15);
+  --add-text: #116329;
+  --add-strong: #2da44e;
+  --add-gutter: rgba(46, 164, 78, 0.3);
+  --del-bg: rgba(207, 34, 46, 0.12);
+  --del-text: #82071e;
+  --del-strong: #cf222e;
+  --del-gutter: rgba(207, 34, 46, 0.26);
+  --hunk-bg: rgba(31, 111, 209, 0.1);
+  --hunk-text: #0550ae;
   --selected-line: rgba(31, 111, 209, 0.22);
   color-scheme: light;
 }
@@ -53,10 +71,16 @@
     --text-muted: #687080;
     --accent: #1f6fd1;
     --accent-strong: #165db3;
-    --add-bg: rgba(40, 167, 69, 0.12);
-    --add-text: #176f2c;
-    --del-bg: rgba(215, 58, 73, 0.1);
-    --del-text: #a8242f;
+    --add-bg: rgba(46, 164, 78, 0.15);
+    --add-text: #116329;
+    --add-strong: #2da44e;
+    --add-gutter: rgba(46, 164, 78, 0.3);
+    --del-bg: rgba(207, 34, 46, 0.12);
+    --del-text: #82071e;
+    --del-strong: #cf222e;
+    --del-gutter: rgba(207, 34, 46, 0.26);
+    --hunk-bg: rgba(31, 111, 209, 0.1);
+    --hunk-text: #0550ae;
     --selected-line: rgba(31, 111, 209, 0.22);
     color-scheme: light;
   }
@@ -252,19 +276,6 @@ code {
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  padding: 8px 12px;
-  background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border);
-}
-.toolbar-group {
-  display: flex;
-  gap: 4px;
-}
 .toolbar-spacer {
   flex: 1;
 }
@@ -1120,11 +1131,14 @@ mark {
 }
 .diff-table .code {
   white-space: pre-wrap;
-  word-break: break-all;
+  /* Quebra só quando a palavra não cabe (sem cortar palavras no meio). */
+  word-break: normal;
+  overflow-wrap: anywhere;
 }
 .hunk-header td {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  color: var(--text-muted);
+  background: var(--hunk-bg);
+  color: var(--hunk-text);
+  font-weight: 600;
   padding-top: 3px;
   padding-bottom: 3px;
 }
@@ -1156,15 +1170,6 @@ mark {
 [dir='rtl'] .line-selected {
   box-shadow: inset -3px 0 0 var(--accent);
   background-image: linear-gradient(var(--selected-line), var(--selected-line));
-}
-/* Diff lado a lado: antes à esquerda, depois à direita, cada metade com a mesma largura. */
-.diff-layout {
-  margin-inline-start: auto;
-}
-.diff-layout button {
-  padding: 1px 8px;
-  font-size: 11px;
-  white-space: nowrap;
 }
 .diff-split {
   table-layout: fixed;
@@ -1244,11 +1249,6 @@ mark {
 }
 
 /* ----------------------------------------------------------- alterações */
-
-.changes-mode button {
-  padding: 2px 10px;
-  font-size: 12px;
-}
 
 .csection {
   display: flex;
@@ -2399,12 +2399,6 @@ button.danger .loader {
   border-radius: 50%;
   background: var(--repo);
 }
-.toolbar .current-branch {
-  max-width: 260px;
-  color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
-}
 
 /* Espera da troca de aba: o repositório que sai termina as operações dele antes de a tela mudar. */
 .repo-wait {
@@ -2441,7 +2435,7 @@ button.danger .loader {
 }
 /* Com a barra de abas, o indicador de operação desce para não cobrir a toolbar. */
 .workspace-app .busy {
-  top: 92px;
+  top: calc(var(--toolbar-h, 42px) + 10px);
 }
 
 /* ------------------------------------------------------------ toasts */
@@ -2653,14 +2647,6 @@ html[data-alt-select] [draggable] {
 }
 .settings-title:first-child {
   margin-top: 0;
-}
-.settings-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px 12px;
-  padding: 6px 0;
 }
 .segmented {
   display: flex;
@@ -3259,45 +3245,8 @@ kbd.duplicate {
 .settings-section-header p {
   margin: 0 0 14px;
 }
-.settings-group h4 {
-  margin: 14px 0 6px;
-  font-size: 13px;
-}
-.settings-group h4:first-child {
-  margin-top: 0;
-}
 .settings-help-link {
   margin-top: 12px;
-}
-.language-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 8px;
-  margin-top: 8px;
-}
-.language-option {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-.language-option input {
-  grid-row: 1 / 3;
-}
-.language-option.selected {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-}
-.language-native {
-  font-size: 14px;
-  font-weight: 600;
-  /* Alinha pelo início do cartão mesmo quando o nome é escrito da direita para a esquerda. */
-  justify-self: start;
 }
 .about-table code {
   word-break: break-all;
@@ -3383,12 +3332,6 @@ body.reordering * {
   display: flex;
   flex-direction: column;
   min-height: 100%;
-}
-.editor-command {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
 }
 
 /* ------------------------------------------------ painéis livres (abas e divisões) */
@@ -3562,16 +3505,6 @@ body.reordering * {
 }
 
 /* ------------------------------------------------------ menus: painéis de outras telas */
-/* Barra dos menus, logo abaixo da barra de ferramentas: telas à esquerda, ▦ Painéis à direita. */
-.screen-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  padding: 6px 12px;
-  background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border);
-}
 /* Quantos painéis de outras telas estão fixados num menu do topo: discreto, ao lado do nome do menu. */
 .screen-pinned {
   border: 1px solid var(--border);
@@ -4109,16 +4042,36 @@ body.docking .pane-grip {
   width: 2px;
   background: var(--accent);
 }
-@container (max-width: 520px) {
+/* Painel estreito: some Autor (<700px), depois Data/hora (<520px) e Hash (<380px). A mensagem fica com o resto.
+   Largura zerada + visibility mantém as colunas alinhadas com o cabeçalho (a grade não muda de forma). */
+@container (max-width: 699px) {
   .commit-row,
+  .wip-row,
   .commit-columns {
     --w-author: 0px;
   }
+  .commit-list .commit-author {
+    visibility: hidden;
+  }
 }
-@container (max-width: 400px) {
+@container (max-width: 519px) {
   .commit-row,
+  .wip-row,
   .commit-columns {
     --w-date: 0px;
+  }
+  .commit-list .commit-date {
+    visibility: hidden;
+  }
+}
+@container (max-width: 379px) {
+  .commit-row,
+  .wip-row,
+  .commit-columns {
+    --w-sha: 0px;
+  }
+  .commit-list .commit-sha {
+    visibility: hidden;
   }
 }
 
@@ -4158,22 +4111,8 @@ body.docking .pane-grip {
 .identity-fields input {
   width: 100%;
 }
-.language-option.disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
 .identity-effective {
   margin-top: 10px;
-}
-.diff-full {
-  padding: 2px 8px;
-  font-size: 12px;
-}
-.diff-full.active,
-.diff-full.active:hover:not(:disabled) {
-  background: var(--accent-strong);
-  border-color: var(--accent-strong);
-  color: #fff;
 }
 
 /* ------------------------------------------------- janela própria de diff */
@@ -4317,13 +4256,6 @@ body.docking .pane-grip {
   white-space: nowrap;
   font-family: var(--mono);
   font-weight: 600;
-}
-.file-view-toggle {
-  flex: none;
-}
-.file-view-toggle button {
-  padding: 1px 7px;
-  font-size: 12px;
 }
 .files-list-header {
   display: flex;
@@ -4502,15 +4434,20 @@ tr.nav-flash > td {
 .wip-row.clean .wip-title {
   font-weight: 500;
 }
+/* Os metadados (contagens) encolhem com reticências quando o painel é estreito; a ação "Abrir" fica sempre à direita. */
 .wip-chips {
   display: flex;
   align-items: center;
+  flex: 0 1 auto;
   gap: 4px;
   min-width: 0;
   overflow: hidden;
 }
 .wip-chip {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 0 7px;
   border-radius: 9px;
   background: var(--bg-hover);
@@ -4529,6 +4466,7 @@ tr.nav-flash > td {
 }
 .wip-open {
   flex: none;
+  white-space: nowrap;
   margin-inline-start: auto;
   padding: 1px 8px;
   border-color: transparent;
@@ -4541,6 +4479,12 @@ tr.nav-flash > td {
 }
 .wip-files .wip-chip {
   margin-inline-start: auto;
+}
+/* Painel estreito: some a contagem de arquivos (a de não staged segue), para a ação "Abrir" caber à direita. */
+@container (max-width: 519px) {
+  .wip-main .wip-chips > .wip-chip:first-child {
+    display: none;
+  }
 }
 /* Dica "git log" no cabeçalho da lista. */
 .log-chip {
@@ -4635,8 +4579,19 @@ tr.nav-flash > td {
   --success: var(--vscode-gitDecoration-addedResourceForeground, var(--vscode-gitDecoration-untrackedResourceForeground, #5fd38d));
   --warning: var(--vscode-gitDecoration-modifiedResourceForeground, #f2a93b);
   --danger: var(--vscode-gitDecoration-deletedResourceForeground, var(--vscode-errorForeground, #ef6b5b));
-  --add-bg: var(--vscode-diffEditor-insertedLineBackground, var(--vscode-diffEditor-insertedTextBackground, rgba(95, 211, 141, 0.12)));
-  --del-bg: var(--vscode-diffEditor-removedLineBackground, var(--vscode-diffEditor-removedTextBackground, rgba(239, 107, 91, 0.12)));
+  --add-bg: var(--vscode-diffEditor-insertedLineBackground, var(--vscode-diffEditor-insertedTextBackground, rgba(63, 185, 80, 0.2)));
+  --del-bg: var(--vscode-diffEditor-removedLineBackground, var(--vscode-diffEditor-removedTextBackground, rgba(248, 81, 73, 0.2)));
+  /* Faixa das linhas e cores da régua: as mesmas que o VS Code usa no editor de diff e na régua de visão geral. */
+  --add-strong: var(--vscode-editorGutter-addedBackground, #2ea043);
+  --add-gutter: var(--vscode-diffEditor-insertedTextBackground, rgba(63, 185, 80, 0.36));
+  --del-strong: var(--vscode-editorGutter-deletedBackground, #f85149);
+  --del-gutter: var(--vscode-diffEditor-removedTextBackground, rgba(248, 81, 73, 0.36));
+  --hunk-bg: color-mix(in srgb, var(--accent) 14%, transparent);
+  --hunk-text: var(--accent);
+  --ruler-add: var(--vscode-editorOverviewRuler-addedForeground, var(--add-strong));
+  --ruler-del: var(--vscode-editorOverviewRuler-deletedForeground, var(--del-strong));
+  --ruler-mod: var(--vscode-editorOverviewRuler-modifiedForeground, var(--accent));
+  --ruler-conflict: var(--vscode-editorOverviewRuler-conflictingForeground, #f0883e);
   --selected-line: var(--vscode-editor-selectionBackground, rgba(79, 163, 255, 0.28));
   --mono: var(--vscode-editor-font-family, Consolas, 'Courier New', monospace);
 }
@@ -4810,4 +4765,725 @@ button.blame-bubble:hover {
 .blame-bubble-when,
 .blame-bubble-text {
   color: var(--text-muted);
+}
+
+/* ---------------- abas do painel: X para ocultar */
+/* X discreto na aba: aparece na aba à frente e no hover das outras; não muda a altura da aba. */
+.dock-tab-close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-inline-start: 2px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+}
+.dock-tab.active .dock-tab-close,
+.dock-tab:hover .dock-tab-close,
+.dock-tab-close:focus-visible {
+  opacity: 1;
+}
+.dock-tab-close:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+/* ---------------------------------------------------------------- barra superior (única) */
+/* Uma só barra: repositório, branch, telas, ações do Git e o menu ⚙. O contêiner das consultas é o invólucro da barra
+   (a barra não pode consultar a si mesma). Abaixo de ~1000px as telas descem para uma segunda linha, de largura toda. */
+.toolbar-frame {
+  container: toolbar / inline-size;
+  flex: none;
+  min-width: 0;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  min-width: 0;
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+/* Em janela larga o grupo principal não tem caixa própria: os itens entram na linha, com as telas no meio. */
+.toolbar .toolbar-main {
+  display: contents;
+}
+.toolbar .toolbar-main > * {
+  flex: none;
+  order: 2;
+}
+.toolbar .toolbar-main > .repo-button {
+  order: 0;
+  flex: 0 0 auto;
+}
+.toolbar .toolbar-main > .current-branch {
+  order: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.toolbar .toolbar-main > .toolbar-spacer {
+  flex: 1 1 0;
+  min-width: 8px;
+}
+/* Na linha larga, as telas são quem encolhe primeiro (rolam); o repositório e a branch mantêm o nome. */
+.toolbar > .screen-tabs {
+  order: 1;
+  flex: 0 3 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.toolbar .repo-button {
+  height: 28px;
+  max-width: 240px;
+  padding: 0 8px;
+}
+/* O nome ocupa só o próprio texto (o ▾ vem logo depois); nomes longos truncam com reticências em até 180px.
+   Sem largura mínima fixa: um min-width em ch deixava um vão entre nomes curtos e o ▾. */
+.toolbar .repo-button strong {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.toolbar .repo-button .logo-mark,
+.toolbar .repo-button .repo-button-dot {
+  flex: none;
+}
+.toolbar .current-branch {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 28px;
+}
+/* As telas rolam na horizontal quando não cabem. Nas bordas, uma máscara de desvanecimento mostra que há mais abas;
+   o atributo data-more (do ScreenTabs) diz de que lado. */
+.toolbar .screen-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  --fade-left: 0px;
+  --fade-right: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-left), #000 calc(100% - var(--fade-right)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-left), #000 calc(100% - var(--fade-right)), transparent 100%);
+}
+.toolbar .screen-tabs[data-more~='left'] {
+  --fade-left: 28px;
+}
+.toolbar .screen-tabs[data-more~='right'] {
+  --fade-right: 28px;
+}
+.toolbar .screen-tabs::-webkit-scrollbar {
+  display: none;
+}
+.toolbar .screen-tab {
+  flex: none;
+  height: 24px;
+}
+/* Botões de ação: altura e cantos iguais, com transição suave no hover. */
+.toolbar .tb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--radius);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.toolbar .split-button > .split-arrow {
+  padding: 0 6px;
+}
+.toolbar .tb-menu {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 15px;
+  border-radius: var(--radius);
+  transition: background 0.15s;
+}
+.toolbar .tb-btn .badge {
+  margin-inline-start: 1px;
+}
+
+/* Janela média: os botões mostram só o ícone (com o nome no title e no aria-label), para as telas caberem em uma linha. */
+@container toolbar (max-width: 1400px) {
+  .toolbar .tb-label {
+    display: none;
+  }
+  .toolbar .tb-btn {
+    padding: 0 8px;
+  }
+}
+/* Janela estreita: duas linhas. A primeira tem repositório, branch e ações; a segunda, as telas em largura toda. */
+@container toolbar (max-width: 1000px) {
+  .toolbar {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .toolbar .toolbar-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .toolbar .toolbar-main > .repo-button {
+    flex: 0 1 auto;
+  }
+  .toolbar .toolbar-main > .current-branch {
+    min-width: 0;
+  }
+  .toolbar > .screen-tabs {
+    flex: 0 0 100%;
+  }
+}
+@container toolbar (max-width: 800px) {
+  .toolbar .repo-button {
+    max-width: 200px;
+  }
+  .toolbar .current-branch {
+    max-width: 160px;
+  }
+}
+/* Muito estreita: a branch some para caber as ações (o repositório segue visível). */
+@container toolbar (max-width: 520px) {
+  .toolbar .current-branch {
+    display: none;
+  }
+  .toolbar .repo-button {
+    max-width: 160px;
+  }
+}
+
+/* ---------------- Opções de visualização (botão ⋯ dos cabeçalhos e menu com ✓) */
+.view-options-btn {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--radius);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.view-options-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.view-options-btn[aria-expanded='true'] {
+  background: var(--bg-active);
+  color: var(--text);
+}
+.view-options-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.context-menu .menu-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.context-menu .menu-check {
+  flex: none;
+  width: 12px;
+  text-align: center;
+  color: var(--accent);
+}
+.sidebar-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.sidebar-head .sidebar-hint {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------------- central de configurações em linhas */
+
+/* Cada opção é uma linha: título em negrito (com a categoria em cinza antes), descrição menor e o controle logo abaixo. */
+.settings-content h4 {
+  margin: 22px 0 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.settings-content h4:first-child {
+  margin-top: 0;
+}
+.settings-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+.settings-empty {
+  padding: 18px 0;
+  text-align: center;
+}
+.settings-search {
+  position: relative;
+  max-width: 360px;
+  margin-bottom: 10px;
+}
+.settings-search input[type='search'] {
+  width: 100%;
+  padding-inline-start: 28px;
+}
+.settings-search .search-icon {
+  inset-inline-start: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.setting-row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding-block: 12px;
+  padding-inline: 16px 12px;
+  border-block-end: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border-radius: 0;
+}
+.setting-row[hidden] {
+  display: none;
+}
+.setting-row:hover {
+  background: var(--bg-hover);
+}
+/* Barra à esquerda (à direita em idiomas RTL): aparece ao passar o mouse e fica sempre nas opções alteradas. */
+.setting-row::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 2px;
+  background: transparent;
+}
+.setting-row:hover::before {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.setting-row.is-modified::before {
+  background: var(--accent);
+}
+.setting-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.setting-category {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.setting-description {
+  margin: 0;
+  max-width: 68ch;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.setting-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.setting-note {
+  margin: 0 0 6px;
+}
+.setting-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+.setting-control .segmented {
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.setting-control .segmented button {
+  border-radius: var(--radius);
+}
+.setting-select {
+  flex: 0 1 320px;
+  min-width: 0;
+  max-width: 100%;
+  width: 320px;
+}
+.setting-input {
+  width: min(100%, 320px);
+}
+.setting-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+.setting-inline input {
+  flex: 1 1 200px;
+  max-width: 420px;
+  min-width: 0;
+}
+.setting-control .range-field {
+  width: 100%;
+  max-width: 420px;
+}
+.setting-control .range-field input[type='range'] {
+  flex: 1 1 200px;
+  width: auto;
+  min-width: 0;
+}
+.setting-control .divider-preview {
+  flex: 0 0 100%;
+  max-width: 420px;
+}
+/* Checkbox com a descrição à direita, clicável (como no VS Code). */
+.setting-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.setting-check input {
+  margin-block-start: 2px;
+  flex: none;
+}
+.setting-row .setting-select:disabled {
+  opacity: 0.6;
+}
+
+/* Tabelas e listas da central (atalhos, sobre, remotes) seguem o mesmo ritmo: linhas com hover. */
+.settings-content .shortcut-table td {
+  padding-block: 7px;
+}
+.settings-content .shortcut-table tbody tr:hover td {
+  background: var(--bg-hover);
+}
+.settings-content .shortcut-table tbody tr:hover td:first-child {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.settings-content .remote-item {
+  position: relative;
+  border: none;
+  border-block-end: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border-radius: 0;
+  padding-inline: 12px;
+}
+.settings-content .remote-item:hover {
+  background: var(--bg-hover);
+}
+.settings-content .remote-item:hover::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 2px;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Telas estreitas: a lista de seções vira uma faixa rolável no topo e o conteúdo ocupa a largura toda. */
+@media (max-width: 720px) {
+  .settings-layout.split-row {
+    flex-direction: column;
+  }
+  .settings-layout > .split-divider {
+    display: none;
+  }
+  .settings-layout > .split-pane:first-child {
+    flex: 0 0 auto !important;
+    width: 100%;
+    min-width: 0;
+    border-block-end: 1px solid var(--border);
+  }
+  .settings-layout > .split-pane:last-child {
+    min-height: 0;
+    min-width: 0;
+  }
+  .settings-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px 8px;
+    scrollbar-width: thin;
+  }
+  .settings-nav button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .settings-content {
+    padding: 14px 16px;
+  }
+  .setting-select {
+    width: 100%;
+  }
+}
+
+/* ---------------- diffs: cores das linhas, barras de rolagem e régua de alterações */
+
+/* Contêiner do corpo do diff: a régua fica sobre a barra de rolagem do elemento que rola. */
+.diff-body-wrap {
+  position: relative;
+  min-height: 0;
+}
+.diff-panel .diff-body-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.diff-panel .diff-body-wrap > .diff-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Linhas alteradas: faixa de 3px no início da linha e números e sinal com um tom mais forte. */
+.line-add > td:first-child,
+.diff-split td.cell-add.sel:not(.line-selected) {
+  box-shadow: inset 3px 0 0 var(--add-strong);
+}
+.line-del > td:first-child,
+.diff-split td.cell-del.sel:not(.line-selected) {
+  box-shadow: inset 3px 0 0 var(--del-strong);
+}
+.line-add > td.sel,
+.line-add > td.ln,
+.line-add > td.sign,
+.diff-split td.cell-add.sel,
+.diff-split td.cell-add.ln {
+  background: var(--add-gutter);
+}
+.line-del > td.sel,
+.line-del > td.ln,
+.line-del > td.sign,
+.diff-split td.cell-del.sel,
+.diff-split td.cell-del.ln {
+  background: var(--del-gutter);
+}
+.diff-table .sign {
+  font-weight: 700;
+}
+
+/* Barras de rolagem dos diffs: finas, arredondadas e na cor do texto secundário. */
+.diff-body::-webkit-scrollbar,
+.diff-window::-webkit-scrollbar,
+.merge-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.diff-body::-webkit-scrollbar-track,
+.diff-window::-webkit-scrollbar-track,
+.merge-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.diff-body::-webkit-scrollbar-corner,
+.diff-window::-webkit-scrollbar-corner,
+.merge-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.diff-body::-webkit-scrollbar-thumb,
+.diff-window::-webkit-scrollbar-thumb,
+.merge-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 35%, transparent);
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background-clip: padding-box;
+}
+.diff-body::-webkit-scrollbar-thumb:hover,
+.diff-window::-webkit-scrollbar-thumb:hover,
+.merge-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-muted) 60%, transparent);
+  background-clip: padding-box;
+}
+
+/* Régua de alterações: faixa estreita, à esquerda da barra de rolagem; só as marcas e a faixa recebem o mouse. */
+.change-ruler {
+  position: fixed;
+  width: 10px;
+  z-index: 3;
+  cursor: pointer;
+}
+.change-ruler-view {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+  pointer-events: none;
+}
+.change-ruler-mark {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  min-height: 2px;
+  border-radius: 2px;
+  background: var(--ruler-mod);
+  pointer-events: none;
+}
+.change-ruler-mark.add {
+  background: var(--ruler-add);
+}
+.change-ruler-mark.del {
+  background: var(--ruler-del);
+}
+.change-ruler-mark.conflict {
+  background: var(--ruler-conflict);
+}
+.change-ruler-mark.resolved {
+  background: var(--ruler-resolved);
+}
+
+/* ---------------- responsivo: painéis */
+
+/* Janela estreita (abaixo de STACK_WIDTH): as divisões lado a lado empilham; o .dock rola se não couber. */
+.dock.dock-stacked {
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.dock.dock-stacked > .dock-split {
+  flex: 0 0 auto;
+  min-height: 100%;
+}
+.dock.dock-stacked .dock-cell {
+  flex-direction: column;
+  /* Sem corte: uma divisão aninhada maior que a célula faz a célula crescer (o .dock rola). */
+  overflow: visible;
+}
+.dock.dock-stacked .dock-cell > .dock-split {
+  min-height: auto;
+}
+
+/* Lista do histórico: a barra de filtros quebra linha em vez de cortar, e nada rola na horizontal. */
+.list-header {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.list-body {
+  overflow-x: hidden;
+}
+
+/* Cabeçalho do painel de mensagem: o botão alinha à esquerda e encolhe com reticências. */
+.details > .sticky-actions.commit-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.details > .sticky-actions button {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------- responsivo: barra e configurações */
+
+/* Diálogos: nunca maiores que a janela; o miolo rola e o cabeçalho e o rodapé ficam à vista. */
+.modal {
+  max-height: calc(100vh - 16px);
+}
+.modal-header,
+.modal-footer {
+  flex: none;
+}
+
+/* Menus de contexto: cabem na janela e rolam quando são longos. Submenus são fixos na janela (ver ContextMenu.tsx). */
+.context-menu {
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+.context-menu.context-submenu {
+  position: fixed;
+  inset: auto;
+  min-width: 200px;
+}
+
+/* Tabela de versões e atalhos: rótulo | valor, com a quebra de linha onde precisa (sem rolagem horizontal). */
+.about-table {
+  table-layout: fixed;
+  width: 100%;
+}
+.about-table td:first-child {
+  width: 38%;
+  overflow-wrap: anywhere;
+}
+.about-table td:nth-child(2) {
+  white-space: normal;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.about-table code {
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+.settings-content .shortcut-table td:first-child {
+  overflow-wrap: anywhere;
+}
+
+/* Telas estreitas: as seções viram chips que quebram linha (todas à vista) e o diálogo de configurações ocupa quase tudo. */
+@media (max-width: 720px) {
+  .modal-settings {
+    width: calc(100vw - 16px) !important;
+    height: calc(100vh - 16px) !important;
+  }
+  .settings-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 10px;
+    overflow: visible;
+  }
+  .settings-nav button {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    font-size: 12px;
+  }
+  .settings-nav button.active {
+    background: var(--bg-active);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  }
 }

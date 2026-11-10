@@ -281,6 +281,20 @@ export class Backend {
     this.watchers.delete(root)
   }
 
+  /**
+   * Inclui um repositório na sessão sem torná-lo ativo (abas novas em segundo plano, como os repositórios
+   * achados no workspace). Se ele já está aberto, não duplica. O ativo só muda com `activate: true`.
+   */
+  async addRepository(next: GitRepository, options: { activate: boolean }): Promise<RepoInfo> {
+    if (options.activate) return this.setRepository(next)
+    await this.restoreWorkspace()
+    const root = await this.adopt(next)
+    const info = await this.repos.get(root)!.info()
+    await this.rememberRepo(info.root, info.name)
+    await this.saveWorkspace()
+    return info
+  }
+
   /** Abre o repositório, ou só o ativa se já estiver aberto, e o guarda entre os recentes. */
   async setRepository(next: GitRepository): Promise<RepoInfo> {
     await this.restoreWorkspace()

@@ -20,9 +20,11 @@ import {
   type MergePane,
   type MergeSource
 } from '../mergeLayout'
+import { ChangeRuler } from './ChangeRuler'
 import { Modal } from './Modal'
 import { Split } from './Split'
 import { LoaderPane } from './Loader'
+import { ViewOptionsButton } from './ViewOptions'
 
 type Conflict = Extract<MergeChunk, { kind: 'conflict' }>
 const CONTEXT = 3
@@ -304,6 +306,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
                 <div
                   key={c}
                   data-conflict={index}
+                  data-kind={resolution ? 'resolved' : 'conflict'}
                   className={`merge-block ${index === current ? 'current' : ''} ${resolution ? 'resolved' : 'pending'}`}
                   onMouseDown={() => setCurrent(index)}
                 >
@@ -344,6 +347,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
             })}
           </div>
         </div>
+        <ChangeRuler selector="[data-conflict]" scroller=".merge-scroll" />
       </div>
     )
   }
@@ -435,15 +439,17 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
             {leftSource === 'ours' ? t('conflict.bothOursFirst') : t('conflict.bothTheirsFirst')}
           </button>
           <span className="toolbar-spacer" />
-          <span className="muted small">{t('conflict.layout.title')}</span>
-          <div className="segmented" role="group" aria-label={t('conflict.layout.title')}>
-            <button className={layout.mode === 'classic' ? 'active' : ''} title={t('conflict.layout.classicHelp')} onClick={() => setMode('classic')}>
-              ⬒ {t('conflict.layout.classic')}
-            </button>
-            <button className={layout.mode === 'columns' ? 'active' : ''} title={t('conflict.layout.columnsHelp')} onClick={() => setMode('columns')}>
-              ▥ {t('conflict.layout.columns')}
-            </button>
-          </div>
+          <ViewOptionsButton
+            groups={[
+              {
+                title: t('conflict.layout.title'),
+                options: [
+                  { label: t('conflict.layout.classic'), checked: layout.mode === 'classic', onSelect: () => setMode('classic') },
+                  { label: t('conflict.layout.columns'), checked: layout.mode === 'columns', onSelect: () => setMode('columns') }
+                ]
+              }
+            ]}
+          />
           <button title={t('conflict.layout.swapSidesHelp')} onClick={() => swap('ours', 'theirs')}>
             ⇄ {t('conflict.layout.swapSides')}
           </button>

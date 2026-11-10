@@ -596,6 +596,18 @@ export function shownTree(state: DockState, shown: (view: ViewId) => boolean, sc
 
 // ------------------------------------------------------------------------- redimensionar e soltar
 
+/** Abaixo desta largura (px) as divisões em linha viram coluna: os painéis empilham em vez de ficar espremidos. */
+export const STACK_WIDTH = 760
+
+/**
+ * Direção que uma divisão tem de fato na largura atual do painel. Só muda a exibição: o arranjo guardado
+ * continua com `dir`, então ao voltar para uma janela mais larga o arranjo original volta sozinho.
+ * `width` nulo (ainda não medido) mantém a direção guardada.
+ */
+export function effectiveDir(dir: Dir, width: number | null): Dir {
+  return dir === 'row' && width !== null && width < STACK_WIDTH ? 'column' : dir
+}
+
 /**
  * Divide o espaço de dois vizinhos ao arrastar a divisória entre eles: `sizeA` e `sizeB` são os tamanhos
  * atuais em pixels, `delta` o quanto a divisória andou; os pesos continuam somando o mesmo.

@@ -10,6 +10,8 @@ export type MenuItem =
       danger?: boolean
       disabled?: boolean
       hint?: string
+      /** Opção marcável: com `checked` (true ou false) o item ganha uma coluna à esquerda do rótulo, com ✓ quando marcado. */
+      checked?: boolean
       /** Botões pequenos ao lado do item (ex.: ★ favoritar, ✕ remover); fecham o menu ao serem usados. */
       actions?: { icon: string; title: string; onClick(): void }[]
     }
@@ -30,8 +32,8 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose(): voi
     if (!el) return
     const { width, height } = el.getBoundingClientRect()
     setPos({
-      x: Math.min(menu.x, window.innerWidth - width - 8),
-      y: Math.min(menu.y, window.innerHeight - height - 8)
+      x: Math.max(8, Math.min(menu.x, window.innerWidth - width - 8)),
+      y: Math.max(8, Math.min(menu.y, window.innerHeight - height - 8))
     })
   }, [menu])
 
@@ -95,8 +97,22 @@ function MenuItems({ items, onClose }: { items: MenuItem[]; onClose(): void }) {
                 item.onClick?.()
               }}
             >
-              <span>{item.label}</span>
-              {item.hint && <small>{item.hint}</small>}
+              {typeof item.checked === 'boolean' ? (
+                <>
+                  <span className="menu-main">
+                    <span className="menu-check" aria-hidden>
+                      {item.checked ? '✓' : ''}
+                    </span>
+                    <span>{item.label}</span>
+                  </span>
+                  {item.hint && <small>{item.hint}</small>}
+                </>
+              ) : (
+                <>
+                  <span>{item.label}</span>
+                  {item.hint && <small>{item.hint}</small>}
+                </>
+              )}
             </button>
             {item.actions?.map((action) => (
               <button
@@ -119,20 +135,31 @@ function MenuItems({ items, onClose }: { items: MenuItem[]; onClose(): void }) {
   )
 }
 
+/**
+ * Submenu: fica fixo na janela (assim o menu pai, que rola quando é longo, não o corta). Abre ao lado do item;
+ * sem espaço desse lado, abre do outro; e nunca sai da janela.
+ */
 function Submenu({ items, onClose }: { items: MenuItem[]; onClose(): void }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [flip, setFlip] = useState(false)
-  const [shift, setShift] = useState(0)
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null)
   useLayoutEffect(() => {
     const el = ref.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    // Sem espaço do lado em que abriria: abre do outro lado do menu pai.
-    setFlip(document.documentElement.dir === 'rtl' ? r.left < 8 : r.right > window.innerWidth - 8)
-    setShift(Math.min(0, window.innerHeight - 8 - r.bottom))
+    const anchor = el?.parentElement
+    if (!el || !anchor) return
+    const a = anchor.getBoundingClientRect()
+    const { width, height } = el.getBoundingClientRect()
+    const rtl = document.documentElement.dir === 'rtl'
+    const fitsRight = a.right + width <= window.innerWidth - 8
+    const fitsLeft = a.left - width >= 8
+    const openRight = fitsRight || (!fitsLeft && !rtl)
+    const left = openRight ? a.right : a.left - width
+    setPos({
+      left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
+      top: Math.max(8, Math.min(a.top - 5, window.innerHeight - height - 8))
+    })
   }, [])
   return (
-    <div ref={ref} className={`context-menu context-submenu ${flip ? 'flip' : ''}`} style={{ marginTop: shift }}>
+    <div ref={ref} className="context-menu context-submenu" style={pos ? { left: pos.left, top: pos.top } : { visibility: 'hidden' }}>
       <MenuItems items={items} onClose={onClose} />
     </div>
   )

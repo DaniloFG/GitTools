@@ -8,7 +8,8 @@ import { DiffView, useFullFile } from './DiffView'
 import { Modal } from './Modal'
 import { ResizableBox } from './ResizableBox'
 import { Split } from './Split'
-import { FileEntries, FileViewToggle } from './FileList'
+import { FileEntries } from './FileList'
+import { FileViewOptions } from './ViewOptions'
 import { LineStats } from './LineStats'
 import { LoaderPane } from './Loader'
 
@@ -473,7 +474,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
                     <div className="group-header">
                       <strong>{t('studio.changedFiles')}</strong> <span className="count">{files.length}</span>
                       <span className="toolbar-spacer" />
-                      <FileViewToggle />
+                      <FileViewOptions />
                       <button className="link" onClick={() => setCheckedFiles(new Set(files.map((f) => f.path)))}>
                         {t('common.all')}
                       </button>
