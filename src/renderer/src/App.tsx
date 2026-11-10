@@ -52,7 +52,7 @@ import { historySignature, mergeData } from './stable'
 import { dropSession, getSession, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
 import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
 import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
-import { openScreen, readScreen, useDock, useScreen } from './dockStore'
+import { openScreen, readScreen } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
 import { PaneSlot, WhenShown, useAnyShown } from './slots'
 import {
@@ -615,8 +615,6 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
   /** Chamadas presas a este repositório: uma leitura em andamento nunca termina no repositório de outra aba. */
   const gitOn = useMemo(() => gitFor(repo.root), [repo.root])
   const [data, setData] = useState<RepoData | null>(() => session.data)
-  const [dock, setDock] = useDock()
-  const [screen] = useScreen()
   const [changesMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
   const [scope, setScope] = useState<HistoryScope>(() => session.ui.scope)
   const [selected, setSelected] = useState<string[]>(() => session.ui.selected)
@@ -926,6 +924,41 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repo, workspace, data, busy, busyScope, refresh, run, toast, settings, setView, dashboardsOpen, openDiffWindow, resetLayout, askConfirm, openSettings, openShortcuts])
 
+  // Os textos trocam com o idioma (getLocale); os badges, com as alterações e os conflitos. Fica antes do retorno
+  // antecipado (sem dados), por isso usa `data` com cuidado.
+  const locale = getLocale()
+  const changeCount = data ? data.status.staged.length + data.status.unstaged.length + data.status.conflicted.length : 0
+  /** Nome, número e dica de cada painel (as abas). */
+  const meta = useMemo<Record<ViewId, ViewMeta>>(
+    () => ({
+      branches: { label: t('workbench.views.branches') },
+      tags: { label: t('sidebar.tags') },
+      stashes: { label: t('sidebar.stashes') },
+      history: { label: t('tabs.history'), help: t('history.log.tab') },
+      'commit.message': { label: t('workbench.views.commitMessage') },
+      'commit.files': { label: t('workbench.views.commitFiles') },
+      'commit.diff': { label: t('workbench.views.commitDiff') },
+      'changes.conflicts': { label: t('changes.sections.conflicts'), badge: conflicts },
+      'changes.unstaged': { label: t('changes.sections.unstaged'), badge: changeCount },
+      'changes.staged': { label: t('changes.sections.staged') },
+      'changes.files': { label: t('changes.sections.files'), badge: changeCount },
+      'changes.commit': { label: t('changes.sections.commit') },
+      'changes.diff': { label: t('workbench.views.changesDiff') },
+      'files.list': { label: t('tabs.files') },
+      'files.history': { label: t('workbench.views.filesHistory') },
+      'files.diff': { label: t('workbench.views.filesDiff') },
+      'files.editor': { label: t('files.editor') },
+      'files.blame': { label: t('files.blame') },
+      'compare.setup': { label: t('tabs.compare') },
+      'compare.files': { label: t('workbench.views.compareFiles') },
+      'compare.diff': { label: t('workbench.views.compareDiff') },
+      gitlog: { label: t('gitlog.title') }
+    }),
+    // locale: os textos de t() trocam com o idioma; badges mudam com as contagens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [locale, conflicts, changeCount]
+  )
+
   if (!context) {
     return (
       <div className="repo-loading">
@@ -934,7 +967,6 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
     )
   }
 
-  const changeCount = data!.status.staged.length + data!.status.unstaged.length + data!.status.conflicted.length
   const modalOpen = !!(studio || conflict || rebaseFrom || dialog || appModalOpen)
 
   /** Abre o diff de um arquivo no painel do diff do commit, trazendo os painéis do commit se estiverem escondidos. */
@@ -952,41 +984,12 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
     setView('history')
   }
 
-  /** Nome, número e dica de cada painel (as abas). */
-  const meta: Record<ViewId, ViewMeta> = {
-    branches: { label: t('workbench.views.branches') },
-    tags: { label: t('sidebar.tags') },
-    stashes: { label: t('sidebar.stashes') },
-    history: { label: t('tabs.history'), help: t('history.log.tab') },
-    'commit.message': { label: t('workbench.views.commitMessage') },
-    'commit.files': { label: t('workbench.views.commitFiles') },
-    'commit.diff': { label: t('workbench.views.commitDiff') },
-    'changes.conflicts': { label: t('changes.sections.conflicts'), badge: conflicts },
-    'changes.unstaged': { label: t('changes.sections.unstaged'), badge: changeCount },
-    'changes.staged': { label: t('changes.sections.staged') },
-    'changes.files': { label: t('changes.sections.files'), badge: changeCount },
-    'changes.commit': { label: t('changes.sections.commit') },
-    'changes.diff': { label: t('workbench.views.changesDiff') },
-    'files.list': { label: t('tabs.files') },
-    'files.history': { label: t('workbench.views.filesHistory') },
-    'files.diff': { label: t('workbench.views.filesDiff') },
-    'files.editor': { label: t('files.editor') },
-    'files.blame': { label: t('files.blame') },
-    'compare.setup': { label: t('tabs.compare') },
-    'compare.files': { label: t('workbench.views.compareFiles') },
-    'compare.diff': { label: t('workbench.views.compareDiff') },
-    gitlog: { label: t('gitlog.title') }
-  }
-
   return (
     <AppContext.Provider value={context}>
       <KeyboardShortcuts disabled={modalOpen} onOpenRepository={() => void workspace.openRepo()} />
       <Toolbar
         onOpenRepository={(path, create) => void workspace.openRepo(path, create)}
         onClone={workspace.openClone}
-        state={dock}
-        onChange={setDock}
-        screen={screen}
         onScreen={setView}
         meta={meta}
         available={available}
@@ -996,7 +999,7 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
       />
       <OperationBanner onShowChanges={() => setView('changes')} />
       <div className={dashboardsOpen ? 'dock-hidden' : 'dock-wrap'}>
-        <Dock state={dock} onChange={setDock} screen={screen} meta={meta} available={available} />
+        <Dock meta={meta} available={available} />
       </div>
       {dashboardsOpen && <Dashboards />}
       {/* Cada tela é desenhada aqui e levada, por portais, ao painel onde o usuário a deixou. */}

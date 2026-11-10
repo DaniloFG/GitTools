@@ -8,7 +8,7 @@
 
 import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { REPO_METHODS, type AppInfo, type DiffWindowRequest, type EditorInfo, type RecentRepo, type RepoMethod } from '../shared/api'
 import type { CherryPickOptions, CrossApply, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
 import type { BridgeChannel } from '../shared/channels'
@@ -73,6 +73,8 @@ const GIT_LOG_LIMIT = 500
 export class Backend {
   /** Repositórios abertos nesta sessão, pelo root de cada um. */
   readonly repos = new Map<string, GitRepository>()
+  /** Chave comparável de cada repositório aberto, calculada uma vez ao entrar (evita disco a cada chamada). */
+  private readonly comparableKeys = new Map<string, string>()
   /** Root do repositório ativo (o que a interface mostra), ou null. */
   activeRoot: string | null = null
   private readonly watchers = new Map<string, { watcher: FSWatcher; timer: NodeJS.Timeout | null }>()
@@ -210,15 +212,18 @@ export class Backend {
     const existing = this.keyOf(repo.root)
     if (existing !== null) return existing
     this.repos.set(repo.root, repo)
-    await this.watchRepository(repo.root)
+    this.comparableKeys.set(repo.root, comparablePath(repo.root))
+    await this.watchRepository(repo)
     return repo.root
   }
 
   /** Root de um repositório já aberto que corresponde a este caminho; null se não está aberto. */
   private keyOf(path: string): string | null {
     if (!path) return null
+    // A interface manda o root exatamente como o backend o informou: achado sem tocar no disco.
+    if (this.repos.has(path)) return path
     const wanted = comparablePath(path)
-    for (const root of this.repos.keys()) if (comparablePath(root) === wanted) return root
+    for (const [root, key] of this.comparableKeys) if (key === wanted) return root
     return null
   }
 
@@ -244,13 +249,15 @@ export class Backend {
   }
 
   /** Observa a pasta .git do repositório (HEAD, index, refs) para atualizar a interface quando algo muda por fora. */
-  private async watchRepository(root: string): Promise<void> {
+  private async watchRepository(repo: GitRepository): Promise<void> {
+    const root = repo.root
     this.unwatch(root)
     try {
-      const { stdout } = await runGit(root, ['rev-parse', '--git-dir'])
+      // Sem processo próprio: a pasta .git já veio com a abertura do repositório.
+      const gitDir = await repo.gitDir()
       // Fechado (ou já observado) enquanto o git respondia: não cria o observador.
       if (!this.repos.has(root) || this.watchers.has(root)) return
-      const watcher = watch(resolve(root, stdout.trim()), { recursive: false }, (_event, file) => this.onGitChange(root, file))
+      const watcher = watch(gitDir, { recursive: false }, (_event, file) => this.onGitChange(root, file))
       watcher.on('error', () => {
         if (this.watchers.get(root)?.watcher === watcher) this.unwatch(root)
       })
@@ -331,6 +338,7 @@ export class Backend {
     const index = roots.indexOf(key)
     this.unwatch(key)
     this.repos.delete(key)
+    this.comparableKeys.delete(key)
     if (this.activeRoot === key) {
       const neighbor = index + 1 < roots.length ? roots[index + 1] : index > 0 ? roots[index - 1] : null
       this.activeRoot = null

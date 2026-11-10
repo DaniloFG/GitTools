@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { existsSync } from 'node:fs'
-import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import type { LogOptions, RepoApi } from '../shared/api'
 import type {
@@ -103,6 +102,15 @@ function parseCommitFields(fields: string[]): CommitInfo {
     subject: subject ?? '',
     refs: refs ? refs.split(', ').filter(Boolean) : []
   }
+}
+
+/** Saída do `git log` com COMMIT_FORMAT (registros separados por RS) em commits. */
+function parseLogOutput(stdout: string): CommitInfo[] {
+  return stdout
+    .split(RS)
+    .map((r) => r.replace(/^\n/, ''))
+    .filter(Boolean)
+    .map((r) => parseCommitFields(r.split(FS)))
 }
 
 function parseNameStatus(output: string): ChangedFile[] {
@@ -301,15 +309,51 @@ const CONFLICT_BATCH = 100
 /** Mensagem legível de um erro qualquer (para o resultado de operações em lote). */
 const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
+/** Existe arquivo ou pasta neste caminho (equivale a existsSync, mas assíncrono). */
+async function exists(path: string | undefined): Promise<boolean> {
+  if (!path) return false
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export class GitRepository implements RepoApi {
   private emptyTreeSha: string | null = null
+  /** Pasta .git, resolvida uma vez (no `open` já vem junto, com o mesmo processo que acha a raiz). */
+  private gitDirPath: Promise<string> | null = null
+  /** Caminhos de MERGE_HEAD, rebase-merge etc.: não mudam enquanto o repositório está aberto. */
+  private operationPaths: Promise<string[]> | null = null
+  /** O HEAD já foi visto existindo: os próximos logs dispensam o rev-parse de verificação. */
+  private headBorn = false
 
   constructor(readonly root: string) {}
 
   static async open(path: string): Promise<GitRepository> {
-    const { stdout } = await runGit(path, ['rev-parse', '--show-toplevel'])
+    // Um processo só: a raiz e a pasta .git (duas linhas, nessa ordem). Cada processo custa caro no Windows.
+    const { stdout } = await runGit(path, ['rev-parse', '--show-toplevel', '--absolute-git-dir'])
+    const [top, gitDir] = stdout.split('\n')
     // No Windows o git informa "C:/pasta"; guardar no formato do sistema evita comparações de texto erradas.
-    return new GitRepository(resolve(stdout.trim()))
+    const repo = new GitRepository(resolve(top.trim()))
+    if (gitDir?.trim()) repo.gitDirPath = Promise.resolve(resolve(gitDir.trim()))
+    return repo
+  }
+
+  /** Pasta .git deste repositório. Só vai ao git na primeira vez (ou se a instância foi criada direto). */
+  gitDir(): Promise<string> {
+    if (!this.gitDirPath) {
+      this.gitDirPath = this.git(['rev-parse', '--absolute-git-dir']).then(
+        ({ stdout }) => resolve(this.root, stdout.trim()),
+        (error) => {
+          // Falha não fica guardada: a próxima chamada tenta de novo.
+          this.gitDirPath = null
+          throw error
+        }
+      )
+    }
+    return this.gitDirPath
   }
 
   static async init(path: string): Promise<GitRepository> {
@@ -463,10 +507,31 @@ export class GitRepository implements RepoApi {
   }
 
   async log(options: LogOptions = {}): Promise<CommitInfo[]> {
+    const refs = [...new Set(options.refs ?? [])]
+    const ref = options.ref ?? 'HEAD'
+    // Com o HEAD já visto, pula o rev-parse só nas consultas que dependem dele. Nas outras (uma branch
+    // explícita sem `all`), a verificação muda o resultado, então ela sempre roda.
+    // Se o HEAD virou órfão, o `git log` falha e cai no caminho completo, que devolve [] como antes.
+    if (this.headBorn && (options.all || refs.length > 0 || ref === 'HEAD')) {
+      const args = this.logArgs(options, refs, true)
+      let stdout: string | null = null
+      try {
+        stdout = (await this.git(args)).stdout
+      } catch {
+        this.headBorn = false
+      }
+      if (stdout !== null) return parseLogOutput(stdout)
+    }
     // Só precisamos saber se já existe commit: um rev-parse custa bem menos que um status completo.
     const hasHead = (await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })).exitCode === 0
-    const refs = [...new Set(options.refs ?? [])]
+    if (hasHead) this.headBorn = true
     if (!hasHead && !options.all && refs.length === 0) return []
+    const { stdout } = await this.git(this.logArgs(options, refs, hasHead))
+    return parseLogOutput(stdout)
+  }
+
+  /** Argumentos do `git log` de `log()`: HEAD só entra quando existe (`hasHead`). */
+  private logArgs(options: LogOptions, refs: string[], hasHead: boolean): string[] {
     const args = ['log', `--format=${COMMIT_FORMAT}`, '--topo-order', `-n${options.limit ?? 500}`]
     if (options.all) {
       args.push('--branches', '--remotes', '--tags')
@@ -480,12 +545,7 @@ export class GitRepository implements RepoApi {
       args.push(ref)
     }
     args.push('--')
-    const { stdout } = await this.git(args)
-    return stdout
-      .split(RS)
-      .map((r) => r.replace(/^\n/, ''))
-      .filter(Boolean)
-      .map((r) => parseCommitFields(r.split(FS)))
+    return args
   }
 
   async commitDetails(sha: string): Promise<CommitDetails> {
@@ -620,32 +680,52 @@ export class GitRepository implements RepoApi {
     return file
   }
 
+  /**
+   * Caminhos (MERGE_HEAD, rebase-merge…) que `operationState` confere. O git é consultado uma vez por
+   * repositório aberto: esses caminhos não mudam. Se a consulta falha, a próxima chamada tenta de novo.
+   */
+  private resolveOperationPaths(): Promise<string[]> {
+    if (!this.operationPaths) {
+      const names = ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply', 'sequencer/todo']
+      this.operationPaths = this.git(['rev-parse', ...names.flatMap((n) => ['--git-path', n])]).then(
+        ({ stdout }) => stdout.split('\n').filter(Boolean).map((p) => resolve(this.root, p)),
+        (error) => {
+          this.operationPaths = null
+          throw error
+        }
+      )
+    }
+    return this.operationPaths
+  }
+
   async operationState(): Promise<OperationState> {
-    const names = ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply', 'sequencer/todo']
-    const { stdout } = await this.git(['rev-parse', ...names.flatMap((n) => ['--git-path', n])])
-    const paths = stdout.split('\n').filter(Boolean).map((p) => resolve(this.root, p))
+    const paths = await this.resolveOperationPaths()
     const [merge, cherry, revert, rebaseMerge, rebaseApply, sequencer] = paths
     const readHead = async (p: string) => (await readFile(p, 'utf8')).trim()
     const readNumber = async (p: string) => Number((await readFile(p, 'utf8').catch(() => '0')).trim())
+    // Só o sistema de arquivos, em paralelo: são seis verificações de existência, sem processo git.
+    const [hasMerge, hasCherry, hasRevert, hasRebaseMerge, hasRebaseApply, hasSequencer] = await Promise.all(
+      [merge, cherry, revert, rebaseMerge, rebaseApply, sequencer].map(exists)
+    )
 
-    if (existsSync(rebaseMerge)) {
+    if (hasRebaseMerge) {
       return {
         kind: 'rebase',
         step: await readNumber(join(rebaseMerge, 'msgnum')),
         total: await readNumber(join(rebaseMerge, 'end'))
       }
     }
-    if (existsSync(rebaseApply)) {
+    if (hasRebaseApply) {
       return {
         kind: 'rebase',
         step: await readNumber(join(rebaseApply, 'next')),
         total: await readNumber(join(rebaseApply, 'last'))
       }
     }
-    if (existsSync(cherry)) return { kind: 'cherry-pick', head: await readHead(cherry) }
-    if (existsSync(revert)) return { kind: 'revert', head: await readHead(revert) }
-    if (existsSync(merge)) return { kind: 'merge', head: await readHead(merge) }
-    if (existsSync(sequencer)) {
+    if (hasCherry) return { kind: 'cherry-pick', head: await readHead(cherry) }
+    if (hasRevert) return { kind: 'revert', head: await readHead(revert) }
+    if (hasMerge) return { kind: 'merge', head: await readHead(merge) }
+    if (hasSequencer) {
       const todo = await readFile(sequencer, 'utf8')
       return { kind: /^\s*revert\b/.test(todo) ? 'revert' : 'cherry-pick' }
     }

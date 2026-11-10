@@ -22,6 +22,43 @@ function notify() {
   for (const listener of listeners) listener()
 }
 
+/**
+ * Lote de gravações: durante um arrasto o valor muda a cada movimento do mouse, mas só o último vale. Com lote
+ * aberto a memória e os assinantes são atualizados na hora; o disco recebe cada chave uma vez, ao fechar o lote.
+ */
+let batchDepth = 0
+/** Chaves mudadas dentro do lote, à espera de gravação. */
+const pending = new Set<string>()
+
+export function beginLayoutBatch() {
+  batchDepth += 1
+}
+
+export function endLayoutBatch() {
+  if (batchDepth === 0) return
+  batchDepth -= 1
+  if (batchDepth > 0) return
+  const keys = [...pending]
+  pending.clear()
+  for (const key of keys) persist(key, cache.get(key))
+}
+
+/** Grava no armazenamento agora; `undefined` remove a chave. */
+function persist(key: string, value: unknown) {
+  try {
+    if (value === undefined) storage()?.removeItem(PREFIX + key)
+    else storage()?.setItem(PREFIX + key, JSON.stringify(value))
+  } catch {
+    // Sem armazenamento disponível: o layout vale só até fechar o aplicativo.
+  }
+}
+
+/** Grava já, ou (dentro de um lote) marca a chave para ser gravada ao fechar o lote. */
+function store(key: string, value: unknown) {
+  if (batchDepth > 0) pending.add(key)
+  else persist(key, value)
+}
+
 export function readLayout(key: string): unknown {
   if (!cache.has(key)) {
     let value: unknown
@@ -39,12 +76,7 @@ export function readLayout(key: string): unknown {
 /** Grava um valor; `undefined` volta ao padrão. */
 export function writeLayout(key: string, value: unknown) {
   cache.set(key, value)
-  try {
-    if (value === undefined) storage()?.removeItem(PREFIX + key)
-    else storage()?.setItem(PREFIX + key, JSON.stringify(value))
-  } catch {
-    // Sem armazenamento disponível: o layout vale só até fechar o aplicativo.
-  }
+  store(key, value)
   notify()
 }
 
@@ -99,19 +131,17 @@ export function applyLayoutSnapshot(snapshot: Record<string, unknown>) {
   } catch {
     // Sem armazenamento disponível: vale só até fechar o aplicativo.
   }
+  // A remoção acima é imediata (a leitura volta ao disco para chaves fora da memória); as gravações da foto seguem o lote.
   for (const [key, value] of Object.entries(snapshot)) {
     if (key.startsWith('pref.') || value === undefined) continue
     cache.set(key, value)
-    try {
-      s?.setItem(PREFIX + key, JSON.stringify(value))
-    } catch {
-      // idem
-    }
+    store(key, value)
   }
   notify()
 }
 
-function subscribe(listener: () => void) {
+/** Avisa quando qualquer valor do layout muda (é o que `useLayout` usa; vale também dentro de um lote). */
+export function subscribeLayout(listener: () => void) {
   listeners.add(listener)
   return () => {
     listeners.delete(listener)
@@ -120,7 +150,7 @@ function subscribe(listener: () => void) {
 
 /** Como useState, mas guardado no layout. `parse` valida o que foi lido (e dá o padrão). */
 export function useLayout<T>(key: string, parse: (value: unknown) => T): [T, (next: T | undefined | ((prev: T) => T | undefined)) => void] {
-  const raw = useSyncExternalStore(subscribe, () => readLayout(key))
+  const raw = useSyncExternalStore(subscribeLayout, () => readLayout(key))
   const set = (next: T | undefined | ((prev: T) => T | undefined)) =>
     writeLayout(key, typeof next === 'function' ? (next as (prev: T) => T | undefined)(parse(readLayout(key))) : next)
   return [parse(raw), set]
