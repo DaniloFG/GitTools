@@ -204,4 +204,37 @@ describe('Backend: processos git na abertura', () => {
     await backend.setRepository(await GitRepository.open(t.dir))
     expect((await backend.openRepositories()).repos).toHaveLength(1)
   })
+
+  it('commitDetails abre exatamente 1 processo, no commit normal, no raiz e no merge', async () => {
+    const t = await createRepo()
+    const root = await t.commit('raiz', { 'a.txt': 'a\n' })
+    await t.commit('segundo', { 'a.txt': 'b\n', 'b.txt': 'b\n' })
+    await t.git('checkout', '-q', '-b', 'feat')
+    await t.commit('feat', { 'f.txt': 'f\n' })
+    await t.git('checkout', '-q', 'main')
+    await t.commit('main', { 'm.txt': 'm\n' })
+    await t.git('merge', '-q', '--no-edit', 'feat')
+    const merge = (await t.git('rev-parse', 'HEAD')).trim()
+    const repo = await GitRepository.open(t.dir)
+    for (const sha of [root, merge, 'HEAD~1']) {
+      const { result, processes } = await countGit(() => repo.commitDetails(sha))
+      expect(processes).toHaveLength(1)
+      expect(result.files.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('diff de commit normal abre 1 processo; no commit raiz, 3 (a tentativa com ^, a árvore vazia e a diff)', async () => {
+    const t = await createRepo()
+    const root = await t.commit('raiz', { 'a.txt': 'a\n' })
+    const second = await t.commit('segundo', { 'a.txt': 'b\n' })
+    const repo = await GitRepository.open(t.dir)
+    const normal = await countGit(() => repo.diff({ kind: 'commit', sha: second }))
+    expect(normal.processes).toHaveLength(1)
+    expect(normal.result).toHaveLength(1)
+    // Instância nova: a árvore vazia ainda não está guardada, então ela entra na conta.
+    const fresh = await GitRepository.open(t.dir)
+    const rootDiff = await countGit(() => fresh.diff({ kind: 'commit', sha: root }))
+    expect(rootDiff.processes).toHaveLength(3)
+    expect(rootDiff.result).toHaveLength(1)
+  })
 })

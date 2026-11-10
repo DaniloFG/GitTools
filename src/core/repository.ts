@@ -155,6 +155,56 @@ function withStats<T extends { path: string }>(files: T[], stats: Map<string, Li
   return files.map((f) => ({ ...f, ...stats.get(f.path) }))
 }
 
+/**
+ * Formato de `git show` que traz o commit inteiro numa chamada: os campos de COMMIT_FORMAT, depois committer e
+ * corpo. Os mesmos campos que `commitDetails` lia antes com `git show -s`, agora seguidos do RS que fecha o cabeçalho.
+ */
+const COMMIT_DETAILS_FORMAT = ['%H', '%P', '%an', '%ae', '%at', '%s', '%D', '%cn', '%b'].join('%x1f') + '%x1e'
+
+/**
+ * Lê a saída de `git show --format=COMMIT_DETAILS_FORMAT -z --raw --numstat -M -m --first-parent <sha>`.
+ *
+ * Com `-z` a saída tem, nesta ordem: o cabeçalho (campos, depois RS) terminado em NUL; um '\n' de separação
+ * (só se houver arquivos); as entradas `--raw` (`:modoA modoB shaA shaB STATUS` NUL caminho NUL, e em
+ * renomeação/cópia `STATUS` NUL antigo NUL novo NUL); e as do `--numstat` (`adições TAB remoções TAB` NUL caminho NUL,
+ * e em renomeação o caminho vem vazio e são dois caminhos depois: antigo NUL novo NUL).
+ *
+ * O cabeçalho não tem NUL (git não aceita NUL numa mensagem), então o primeiro NUL o separa do resto. No resto,
+ * as entradas `--raw` começam sempre com ':' e as do `--numstat` nunca: o parser avança pelo número de caminhos
+ * que cada entrada ocupa e só testa o início das entradas. Assim um caminho que começa com ':' ou com dígito
+ * nunca é confundido com uma entrada.
+ */
+export function parseCommitShow(output: string): CommitDetails {
+  const nul = output.indexOf('\0')
+  const header = (nul < 0 ? output : output.slice(0, nul)).replace(/\x1e$/, '')
+  const fields = header.split(FS)
+  const info = parseCommitFields(fields)
+  const rest = nul < 0 ? '' : output.slice(nul + 1).replace(/^\n/, '')
+  const parts = rest.split('\0')
+  if (parts[parts.length - 1] === '') parts.pop()
+  const files: ChangedFile[] = []
+  let i = 0
+  while (i < parts.length && parts[i].startsWith(':')) {
+    // Metadado: ":modoA modoB shaA shaB STATUS". O STATUS é o último campo; R/C trazem dois caminhos.
+    const meta = parts[i].split(' ')
+    const status = meta[meta.length - 1][0]
+    if (status === 'R' || status === 'C') {
+      files.push({ status, oldPath: parts[i + 1], path: parts[i + 2] })
+      i += 3
+    } else {
+      files.push({ status, path: parts[i + 1] })
+      i += 2
+    }
+  }
+  const stats = parseNumstat(parts.slice(i).join('\0'))
+  return {
+    ...info,
+    committer: fields[7],
+    body: (fields[8] ?? '').trim(),
+    files: withStats(files, stats)
+  }
+}
+
 /** Soma contagens (ex.: o mesmo arquivo em vários commits). */
 function addStats(a: LineStats, b: LineStats): LineStats {
   if (a.binary || b.binary) return { binary: true }
@@ -566,24 +616,27 @@ export class GitRepository implements RepoApi {
     return args
   }
 
+  /**
+   * Cabeçalho e arquivos do commit em um processo só. `-m --first-parent` faz o merge mostrar a diferença contra o
+   * primeiro pai (o mesmo que `parents[0]`); o commit raiz sai contra a árvore vazia, como o `git show` faz por padrão.
+   */
   async commitDetails(sha: string): Promise<CommitDetails> {
     assertRef(sha, 'commit')
     const { stdout } = await this.git([
       'show',
-      '-s',
-      `--format=%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%s%x1f%D%x1f%cn%x1f%b`,
+      `--format=${COMMIT_DETAILS_FORMAT}`,
+      '-z',
+      '--raw',
+      '--numstat',
+      '-M',
+      '--no-color',
+      '--no-ext-diff',
+      '-m',
+      '--first-parent',
       sha,
       '--'
     ])
-    const fields = stdout.split(FS)
-    const info = parseCommitFields(fields)
-    const files = await this.changedFiles(info.sha, info.parents)
-    return { ...info, committer: fields[7], body: (fields[8] ?? '').trim(), files }
-  }
-
-  private async changedFiles(sha: string, parents: string[]): Promise<ChangedFile[]> {
-    const base = parents[0] ?? (await this.emptyTree())
-    return this.filesBetween(base, sha)
+    return parseCommitShow(stdout)
   }
 
   /** Arquivos diferentes entre duas versões, com as linhas adicionadas/removidas de cada um. */
@@ -616,12 +669,6 @@ export class GitRepository implements RepoApi {
     return this.emptyTreeSha
   }
 
-  private async parentOf(sha: string): Promise<string> {
-    const { stdout } = await this.git(['rev-list', '--parents', '-n1', sha, '--'])
-    const [, parent] = stdout.trim().split(' ')
-    return parent ?? (await this.emptyTree())
-  }
-
   async diff(source: DiffSource): Promise<FileDiff[]> {
     const pathArgs = source.path ? ['--', source.path] : ['--']
     const args = diffArgs(source.fullFile)
@@ -642,8 +689,15 @@ export class GitRepository implements RepoApi {
         return capped([...args, '--cached', '-M', ...pathArgs])
       case 'commit': {
         assertRef(source.sha, 'commit')
-        const parent = await this.parentOf(source.sha)
-        return capped([...args, '-M', parent, source.sha, ...pathArgs])
+        // `sha^` é o primeiro pai (o mesmo que parents[0]), sem o `rev-list` que antes achava o pai: um processo a menos.
+        try {
+          return await capped([...args, '-M', `${source.sha}^`, source.sha, ...pathArgs])
+        } catch (error) {
+          // Commit raiz não tem `^`: o git recusa a revisão e a base passa a ser a árvore vazia. Outros erros
+          // (sha inexistente, por exemplo) seguem como estavam: a segunda tentativa falharia do mesmo jeito.
+          if (!(error instanceof GitError) || !/bad revision|unknown revision|ambiguous argument/.test(error.stderr)) throw error
+          return capped([...args, '-M', await this.emptyTree(), source.sha, ...pathArgs])
+        }
       }
       case 'range':
         assertRef(source.from)

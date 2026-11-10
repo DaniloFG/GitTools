@@ -1,7 +1,9 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { changeKeys } from '../src/core/diff'
+import { changeKeys, parseDiff } from '../src/core/diff'
+import { runGit } from '../src/core/exec'
+import { parseNumstat } from '../src/core/repository'
 import { DIFF_MAX_BYTES } from '../src/shared/types'
 import { createRepo, lines } from './helpers'
 
@@ -398,5 +400,143 @@ describe('diff com teto de tamanho', () => {
     const [file] = await t.repo.diff({ kind: 'unstaged', path: 'novo.txt', uncapped: true })
     expect(file.truncated).toBeUndefined()
     expect(file.hunks[0].lines).toHaveLength(120_000)
+  })
+})
+
+/** Árvore vazia do repositório de teste (o git grava o objeto na primeira vez). */
+async function emptyTree(dir: string): Promise<string> {
+  return (await runGit(dir, ['hash-object', '-t', 'tree', '--stdin'], { input: '' })).stdout.trim()
+}
+
+/**
+ * Caminho anterior de `commitDetails`, só para comparar: `git show -s` para o cabeçalho e `name-status` mais
+ * `numstat` contra o primeiro pai (ou a árvore vazia, no commit raiz).
+ */
+async function legacyDetails(dir: string, sha: string) {
+  const header = (
+    await runGit(dir, ['show', '-s', '--format=%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%s%x1f%D%x1f%cn%x1f%b', sha, '--'])
+  ).stdout
+  const fields = header.split('\x1f')
+  const parents = fields[1] ? fields[1].split(' ') : []
+  const base = parents[0] ?? (await emptyTree(dir))
+  const names = (await runGit(dir, ['diff', '--name-status', '-z', '-M', '--no-color', base, sha, '--'])).stdout
+  const numstat = (await runGit(dir, ['diff', '--numstat', '-z', '-M', '--no-color', '--no-ext-diff', base, sha, '--'])).stdout
+  const parts = names.split('\0').filter((p) => p !== '')
+  const files: { status: string; path: string; oldPath?: string }[] = []
+  for (let i = 0; i < parts.length; i++) {
+    const status = parts[i][0]
+    if (status === 'R' || status === 'C') {
+      files.push({ status, oldPath: parts[i + 1], path: parts[i + 2] })
+      i += 2
+    } else {
+      files.push({ status, path: parts[i + 1] })
+      i += 1
+    }
+  }
+  const stats = parseNumstat(numstat)
+  return {
+    committer: fields[7],
+    body: (fields[8] ?? '').trim(),
+    files: files.map((f) => ({ ...f, ...stats.get(f.path) }))
+  }
+}
+
+/** Diff de um commit pelo caminho anterior: `rev-list` para achar o pai, depois `git diff` com as mesmas opções. */
+async function legacyCommitDiff(dir: string, sha: string, path?: string) {
+  const parents = (await runGit(dir, ['rev-list', '--parents', '-n1', sha, '--'])).stdout.trim().split(' ')
+  const base = parents[1] ?? (await emptyTree(dir))
+  const args = ['diff', '--no-color', '--no-ext-diff', '--no-textconv', '--full-index', '--src-prefix=a/', '--dst-prefix=b/', '-U3', '-M', base, sha]
+  args.push('--', ...(path ? [path] : []))
+  return parseDiff((await runGit(dir, args)).stdout)
+}
+
+describe('commitDetails e diff de commit: iguais ao caminho anterior', () => {
+  it('commitDetails cobre raiz, vários arquivos, renomeação, binário, vazio, merge e mensagem difícil', async () => {
+    const t = await createRepo()
+    const shas: string[] = []
+    shas.push(
+      await t.commit('raiz', {
+        'com espaço é.txt': 'a\nb\nc\n',
+        'old.txt': lines('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
+        'bin.dat': 'bin\0x',
+        ':estranho.txt': 'e\n',
+        '1 dígito.txt': 'd\n'
+      })
+    )
+    shas.push(
+      await t.commit('título: "x" \\ & ç\n\nlinha 2\n\n  recuo\nSigned-off-by: X <x@y>', {
+        'com espaço é.txt': 'a\nB\nc\n',
+        'novo.txt': 'n\n',
+        ':estranho.txt': 'e2\n'
+      })
+    )
+    await t.git('mv', 'old.txt', 'renomeado ç.txt')
+    t.write('renomeado ç.txt', lines('1', '2', '3', 'CINCO', '5', '6', '7', '8', '9', '10'))
+    await t.git('add', '-A')
+    await t.git('commit', '-q', '-m', 'renomeia com mudança')
+    shas.push((await t.git('rev-parse', 'HEAD')).trim())
+    await t.git('mv', 'bin.dat', 'bin2.dat')
+    await t.git('commit', '-q', '-m', 'renomeia sem mudança')
+    shas.push((await t.git('rev-parse', 'HEAD')).trim())
+    t.write('bin2.dat', 'outro\0bin')
+    shas.push(await t.commit('binário mudou', {}))
+    await t.git('commit', '-q', '--allow-empty', '-m', 'vazio')
+    shas.push((await t.git('rev-parse', 'HEAD')).trim())
+    await t.git('checkout', '-q', '-b', 'feat')
+    shas.push(await t.commit('feat', { 'feat.txt': 'f\n' }))
+    await t.git('checkout', '-q', 'main')
+    await t.commit('main', { 'm.txt': 'm\n' })
+    await t.git('merge', '-q', '--no-edit', 'feat')
+    shas.push((await t.git('rev-parse', 'HEAD')).trim())
+
+    for (const sha of shas) {
+      const details = await t.repo.commitDetails(sha)
+      const legacy = await legacyDetails(t.dir, sha)
+      expect({ files: details.files, body: details.body, committer: details.committer }).toEqual(legacy)
+    }
+
+    // Valores escritos à mão para os casos que mais importam.
+    // shas[6] é o commit do feature (não é o merge): fica de fora da desestruturação.
+    const [root, multi, rename, pureRename, binary, empty, , merge] = await Promise.all(shas.map((s) => t.repo.commitDetails(s)))
+    expect(root.parents).toEqual([])
+    expect(root.files.map((f) => f.path)).toContain('com espaço é.txt')
+    expect(multi.subject).toBe('título: "x" \\ & ç')
+    expect(multi.body).toBe('linha 2\n\n  recuo\nSigned-off-by: X <x@y>')
+    expect(multi.files).toEqual(
+      expect.arrayContaining([
+        { status: 'M', path: 'com espaço é.txt', additions: 1, deletions: 1 },
+        { status: 'A', path: 'novo.txt', additions: 1, deletions: 0 },
+        { status: 'M', path: ':estranho.txt', additions: 1, deletions: 1 }
+      ])
+    )
+    expect(rename.files).toEqual([{ status: 'R', oldPath: 'old.txt', path: 'renomeado ç.txt', additions: 1, deletions: 1 }])
+    // bin.dat tem NUL, então é binário: a renomeação sem mudança não tem contagem de linhas.
+    expect(pureRename.files).toEqual([{ status: 'R', oldPath: 'bin.dat', path: 'bin2.dat', binary: true }])
+    expect(binary.files).toEqual([{ status: 'M', path: 'bin2.dat', binary: true }])
+    expect(empty.files).toEqual([])
+    expect(merge.parents).toHaveLength(2)
+    expect(merge.files).toEqual([{ status: 'A', path: 'feat.txt', additions: 1, deletions: 0 }])
+  })
+
+  it('diff de commit (normal, merge, raiz e com caminho) sai igual ao caminho anterior', async () => {
+    const t = await createRepo()
+    const root = await t.commit('raiz', { 'a.txt': lines('a', 'b', 'c'), 'sp ace.txt': 'x\n' })
+    const second = await t.commit('segundo', { 'a.txt': lines('a', 'B', 'c'), 'sp ace.txt': 'y\n' })
+    await t.git('checkout', '-q', '-b', 'feat')
+    await t.commit('feat', { 'feat.txt': 'f\n' })
+    await t.git('checkout', '-q', 'main')
+    await t.commit('main', { 'm.txt': 'm\n' })
+    await t.git('merge', '-q', '--no-edit', 'feat')
+    const merge = (await t.git('rev-parse', 'HEAD')).trim()
+
+    for (const sha of [root, second, merge]) {
+      expect(await t.repo.diff({ kind: 'commit', sha })).toEqual(await legacyCommitDiff(t.dir, sha))
+    }
+    expect(await t.repo.diff({ kind: 'commit', sha: second, path: 'sp ace.txt' })).toEqual(
+      await legacyCommitDiff(t.dir, second, 'sp ace.txt')
+    )
+    // O merge mostra só o que o feature trouxe (contra o primeiro pai, a main).
+    const [mergeFile] = await t.repo.diff({ kind: 'commit', sha: merge })
+    expect(mergeFile.path).toBe('feat.txt')
   })
 })
