@@ -25,12 +25,25 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    remova `docs/HANDOFF.md` e a linha que o menciona no `CLAUDE.md`, e só então abra o PR. Não há exceção para
    "driblar" a trava: se algo precisar ser entregue antes, pergunte ao usuário.
 
-## 2. Estado atual (fim da janela 1)
+## 2. Estado atual (janela 2, em andamento)
+
+- **Janela 2 (Fase 2):** itens **2.1** (lista em janela: `virtual.ts`, `components/VirtualList.tsx`), **2.6**
+  (histórico em janela e paginação além de 500 commits, até 10.000) e **2.3** (teto de 4 MB no diff, com "mostrar
+  mesmo assim") feitos, medidos e enviados (`865422b` a `2c36748`). Resultado na seção 9 de `docs/PERFORMANCE.md`.
+  O roteiro `ui.mjs` agora rola só 30 quadros dentro dos primeiros 500 commits (os números de rolagem anteriores a
+  `4fa9eeb` não são comparáveis com os novos).
+- **Verificado no último commit:** `npm run typecheck` limpo, 653 testes passando, `npm run build:extension` ok,
+  conferência de comportamento do histórico no navegador (10 itens OK).
+- **Faltam na Fase 2:** 2.2 + 2.4 (diff em blocos e régua, que andam juntos) e 2.5 (blame em janela).
+- Conferência de comportamento do histórico: o roteiro descartável fica no scratchpad da sessão e some com ela. Ele
+  usa `scripts/readme-media/harness.mjs` (`launch`) e confere clique, setas (60×), foco, rolagem até o fim, commit
+  expandido, pesquisa e paginação (1 processo git por página). Vale recriá-lo (delegado) se o histórico mudar de novo.
+
+### Janela 1
 
 - **Entregue e enviado** na branch (7 commits sobre `develop`, `8b52873` a `7296ca9`): análise e plano
   (`docs/PERFORMANCE.md`), roteiros de medição (`scripts/perf/`), `CLAUDE.md` e a **Fase 1 inteira** (itens 1.1 a 1.8).
 - **Verificado no estado final:** `npm run typecheck` limpo, 604 testes passando, `npm run build` ok.
-- **Árvore limpa**, branch igual à do remoto. Nenhum trabalho pela metade.
 - Resultado medido da Fase 1: seção 8 de `docs/PERFORMANCE.md`. Em resumo: processos git muito menores (10 setas:
   50 → 10; stage: 17 → 9; foco: 7 → 4), pacote do Electron de 2,08 MB para 1,25 MB, formatação de datas 20 vezes mais
   rápida. **Sem ganho** em arrasto de divisória, rolagem do histórico e diff grande.
@@ -95,26 +108,26 @@ Ordem recomendada; tamanhos e metas completos na seção 6 e 7 de `docs/PERFORMA
 É onde estão os travamentos que o usuário sente. Os itens dependem do componente de lista em janela, então começam
 por ele.
 
-1. **2.1 Componente único de lista em janela** (novo módulo, ex. `src/renderer/src/components/VirtualList.tsx` com a
-   lógica pura de janela em `src/renderer/src/virtual.ts`, testável sem navegador). Altura fixa primeiro (o histórico
-   tem `ROW = 30`); altura medida é opcional e só se algum consumidor precisar. Requisitos: monta só as linhas visíveis
-   mais uma margem; mantém o foco e a rolagem por teclado do histórico; não mede o DOM em laço; deve funcionar dentro
-   do `Split`/`Dock` (a altura vem do contêiner, via `ResizeObserver` de um elemento só).
-2. **2.6 Histórico em janela real** (`components/CommitList.tsx`): troca o acréscimo por lotes (`INITIAL_ROWS`,
-   `MORE_ROWS`, `LOAD_AHEAD`) pela lista em janela. Atenção: as linhas de arquivos expandidos (`CommitFiles`) e a
-   linha de alterações (`WipRow`, `position: sticky`) têm altura diferente de 30 px; o consumo precisa tratar isso
-   (por exemplo, expandidos como itens de altura calculada). Depois, paginação além de 500 commits (`limit` do `log`).
-   **Medir:** o arrasto com 500 linhas montadas deve cair para perto dos 113 ms do caso de 120 linhas.
+1. ~~2.1 Componente único de lista em janela~~ (feito na janela 2). `VirtualList` aceita altura fixa e itens de
+   altura medida (por chave, `ResizeObserver` só neles), `header` e `footer` no fluxo, `stickyTop`, `scrollToIndex`
+   calculado dos dados e proteção de foco quando a linha focada é desmontada. Use-o no 2.2 e no 2.5.
+2. ~~2.6 Histórico em janela real e paginação~~ (feito na janela 2). **Regressão aberta, a primeira coisa a
+   fazer:** a rolagem do histórico piorou por quadro (cerca de 42 → 59 ms em média, 30 quadros de 400 px, CPU 4×),
+   embora os travamentos grandes tenham sumido (seção 9 de `docs/PERFORMANCE.md`). A lista em janela monta e
+   desmonta uma linha a cada 30 px, e a linha é cara de montar: `BranchBadge` chama `useApp()`, `useBranchMenu` e
+   `data.branches.find` por etiqueta, e `GraphCell` monta um SVG. Antecipar o necessário do item 4.2 (etiqueta sem
+   contexto, mapa de branches por nome montado uma vez pela lista, manipuladores por `ref`) e medir de novo com
+   perfil (`ui.mjs` sem minificar) para achar o resto. Meta: voltar pelo menos ao "antes" (38–47 ms).
 3. **2.2 Diff por blocos memorizados** (`components/DiffView.tsx`): bloco de linhas memorizado, seleção que redesenha
    só o bloco tocado (hoje o `Set` de seleção está no componente de cima e cada clique redesenha as 25 mil linhas) e
    só os blocos visíveis montados. Preservar: seleção por clique, arrasto, Shift+clique, caixa de bloco e de arquivo,
    navegação entre alterações (`changeBlocks` usa `querySelectorAll` em `tr.hunk-header, tr.line`), cópia (`data-copy`)
    e a régua de alterações.
-4. **2.3 Teto de tamanho do diff no núcleo** (`src/core/repository.ts`): `maxOutputBytes` já existe em `runGit`
-   (hoje só o terminal usa). Cortar o diff de um arquivo e o diff de um commit inteiro (12,6 MB para 3.000 arquivos)
-   acima de um limite, marcar como cortado no tipo (`FileDiff`/resultado) e a interface mostra aviso com "mostrar mesmo
-   assim". Também um teto para `fullFile` (`-U1000000`). Tipos novos em `src/shared/types.ts`; as 6 traduções em
-   `src/shared/i18n/messages/` (o TypeScript reprova catálogo incompleto).
+4. ~~2.3 Teto de tamanho do diff no núcleo~~ (feito na janela 2): `DIFF_MAX_BYTES` (4 MB crus) em
+   `src/shared/types.ts`, `trimTruncated` em `src/core/diff.ts`, `diffLimit.ts` na interface. Pendências: o git
+   ainda gera a saída inteira (o excedente é descartado na leitura; matar o processo no teto exigiria mudar
+   `exec.ts`); um arquivo cujo único bloco passa do teto aparece vazio com o aviso; o formato em objetos ocupa
+   cerca de 2,8× a saída crua (formato compacto é assunto do 2.2).
 5. **2.4 Régua de alterações** (`components/ChangeRuler.tsx`, `changeRuler.ts`): calcular as marcas a partir dos dados
    do diff (índices das linhas), desenhar num elemento só, ouvir só o elemento que rola (hoje há ouvinte global de
    `scroll` em captura e `MutationObserver` com `attributes` na subárvore, ambos proibidos pelo `CLAUDE.md`).
@@ -169,7 +182,7 @@ Cole isto como primeira mensagem da sessão nova:
 
 > Leia `docs/HANDOFF.md`, `CLAUDE.md` e as seções 6 a 8 de `docs/PERFORMANCE.md`. Siga as regras de trabalho da seção 1
 > do HANDOFF (a janela principal não escreve código: delega a subagentes Haiku 5.5, o mais recente, e só especifica,
-> revisa, mede e commita). Comece pela Fase 2, itens 2.1 e 2.6. Antes de começar, confira `git status` e
+> revisa, mede e commita). Continue a Fase 2 pelo que a seção 5 do HANDOFF ainda lista (2.2 + 2.4, depois 2.5). Antes de começar, confira `git status` e
 > `git log --oneline -8`, recrie o repositório de teste com `node scripts/perf/stress-repo.mjs` e rode
 > `node scripts/perf/core.mjs moderate` para ter a base. Se os tokens estiverem acabando, faça só o que der para fechar
 > bem e atualize a seção 2 e 5 do HANDOFF. Este arquivo nunca vai para develop/homolog/main; nada de PR da branch de trabalho até o fim.
