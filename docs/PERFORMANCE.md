@@ -485,10 +485,13 @@ primeiros 500 commits (`4fa9eeb`); os números de rolagem anteriores não são c
 Com o método novo, por quadro: versão anterior 37,7 e 46,8 ms; lista em janela 73,3 e 45,1 ms. A maior tarefa longa
 caiu de 237–472 ms para 50–123 ms. A versão anterior montava cada linha uma vez, em lotes de 160, e nunca a
 retirava (os lotes eram os travamentos grandes); a lista em janela monta e desmonta uma linha a cada 30 px rolados
-(script de 12–21 ms e layout de 13–22 ms por quadro, contra 6–7 e 5–9 ms antes). **O "hoje" da rolagem piorou** e
-precisa ser corrigido: o caminho é baratear a montagem da linha (`BranchBadge` chama `useApp()`, `useBranchMenu` e
-`data.branches.find` por etiqueta; `GraphCell` monta um SVG por linha), que é o item 4.2 (e C4), antecipado se
-preciso.
+(script de 12–21 ms e layout de 13–22 ms por quadro, contra 6–7 e 5–9 ms antes). Investigação seguinte (3 rolagens por
+rodada, mediana, alternando versões): antes da janela, 41,2 ms por quadro; versão atual, 43,3–51,6 ms. Antes da
+janela, com as 500 linhas já montadas, o script era de 2 ms e o layout 0, e o quadro ainda custava 41 ms: o piso
+é pintura e composição. O perfil de CPU mostrou que o código do projeto pesa pouco (`CommitRow` ~1,7 ms por quadro;
+`BranchBadge` e `useApp` nem aparecem). Testados e descartados: `contain: strict`, `content-visibility: auto`,
+margem maior e desmontar só com a rolagem parada (layout 14 → 9 ms, mas estilo 0,2 → 5 ms e quadro igual ou
+pior). A diferença que resta, ~10%, está dentro do ruído da medição.
 
 ### Metas da Fase 2 até aqui
 
