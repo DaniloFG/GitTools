@@ -159,8 +159,11 @@ if (arrastoInicial.result !== null) show(`arrastar divisória, ${linhasAntes} li
 if (arrastoInicial.result !== null) show('  script / layout / estilo', `${arrastoInicial.linha} ms por passo`)
 show('  tarefas longas', await longTasks())
 
-const rolagem = await custo(() => scroll('.commit-list .list-body', 120, 400), 120)
-show('rolar o histórico (120 quadros)', `${rolagem.result.toFixed(1)} ms por quadro`)
+// 30 quadros × 400 px = 12.000 px, dentro dos primeiros 500 commits (15.000 px). Se a rolagem passasse
+// do fim da primeira página, o histórico carregaria mais commits no meio da medição e os quadros de
+// carga teriam custo diferente, e a média deixaria de ser comparável com a medição anterior.
+const rolagem = await custo(() => scroll('.commit-list .list-body', 30, 400), 30)
+show('rolar o histórico (30 quadros, dentro dos 1ºs 500 commits)', `${rolagem.result.toFixed(1)} ms por quadro`)
 show('  script / layout / estilo', `${rolagem.linha} ms por quadro`)
 show('  tarefas longas', await longTasks())
 show('  linhas montadas / nós no DOM', `${await montadas()} / ${await dom()}`)
