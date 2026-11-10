@@ -1,6 +1,7 @@
 // Mede a interface de verdade (Chromium + Backend real) com a CPU limitada, para simular um computador fraco.
-// Mostra, para cada interação: quantos processos git ela abre, as tarefas longas (>50 ms, que travam a tela)
-// e o tempo por quadro ao rolar e arrastar. Precisa do mesmo que os roteiros de scripts/readme-media:
+// Mostra, para cada interação: quantos processos git ela abre, as tarefas longas (>50 ms, que travam a tela),
+// o tempo por quadro ao rolar e por passo ao arrastar, e a divisão desse tempo em script, layout e cálculo de
+// estilo (o que é do navegador, não do React). Precisa do mesmo que os roteiros de scripts/readme-media:
 //   npm run build:extension        (a interface empacotada)
 //   playwright instalado           (PLAYWRIGHT_MODULE e CHROMIUM apontam para outra instalação)
 //
@@ -19,6 +20,8 @@ const app = await launch({ repo: dir, language: 'en' })
 const { page, backend } = app
 const cdp = await page.context().newCDPSession(page)
 await cdp.send('Emulation.setCPUThrottlingRate', { rate })
+// Contadores de tempo do navegador (script, layout, estilo) acumulados desde aqui.
+await cdp.send('Performance.enable')
 
 const show = (label, value) => console.log(`${label.padEnd(58)} ${value}`)
 const wait = (ms) => page.waitForTimeout(ms)
@@ -57,6 +60,25 @@ const watchLongTasks = () =>
     }).observe({ entryTypes: ['longtask'] })
   })
 
+/** Tempo acumulado do navegador (ms) em script, layout e cálculo de estilo. */
+async function acumulado() {
+  const { metrics } = await cdp.send('Performance.getMetrics')
+  const v = Object.fromEntries(metrics.map((m) => [m.name, m.value]))
+  return { script: v.ScriptDuration * 1000, layout: v.LayoutDuration * 1000, estilo: v.RecalcStyleDuration * 1000 }
+}
+
+/**
+ * Roda `fn` e devolve o resultado dela e a divisão do custo do navegador por `n` unidades (quadros ou passos),
+ * no formato `script / layout / estilo`. Mostra se o tempo vai para o JavaScript ou para o próprio navegador.
+ */
+async function custo(fn, n) {
+  const antes = await acumulado()
+  const result = await fn()
+  const depois = await acumulado()
+  const por = (k) => ((depois[k] - antes[k]) / n).toFixed(1)
+  return { result, linha: `${por('script')} / ${por('layout')} / ${por('estilo')}` }
+}
+
 /** Rola o elemento `steps` vezes, um passo por quadro, e devolve o tempo médio por quadro. */
 const scroll = (selector, steps, step) =>
   page.evaluate(
@@ -72,16 +94,25 @@ const scroll = (selector, steps, step) =>
     [selector, steps, step]
   )
 
-/** Arrasta a primeira divisória entre painéis `steps` passos e devolve o tempo médio por passo. */
+/**
+ * Arrasta a primeira divisória entre painéis e devolve o tempo médio por passo. Metade dos passos vai para um
+ * lado e a outra metade volta ao ponto de partida, para uma medição não deixar a divisória deslocada para a
+ * seguinte. `steps` é par.
+ */
 async function dragDivider(steps) {
   const box = await page.locator('.dock-divider').first().boundingBox()
   if (!box) return null
   const x = box.x + box.width / 2
   const y = box.y + box.height / 2
+  const half = steps / 2
+  const offsets = [
+    ...Array.from({ length: half }, (_, i) => (i + 1) * 4),
+    ...Array.from({ length: half }, (_, i) => (half - i - 1) * 4)
+  ]
   const start = Date.now()
   await page.mouse.move(x, y)
   await page.mouse.down()
-  for (let i = 1; i <= steps; i++) await page.mouse.move(x + i * 4, y + i * 4)
+  for (const d of offsets) await page.mouse.move(x + d, y + d)
   await page.mouse.up()
   return (Date.now() - start) / steps
 }
@@ -89,6 +120,7 @@ async function dragDivider(steps) {
 const row = (n) => page.locator('.commit-row').nth(n)
 const screen = (name) => page.locator(`.toolbar >> text=${name}`).first()
 const dom = () => page.evaluate(() => document.querySelectorAll('*').length)
+const montadas = () => page.locator('.commit-row').count()
 
 console.log(`\n== interface — CPU ${rate}× mais lenta, cenário ${scenario} ==`)
 
@@ -120,22 +152,35 @@ await wait(3000)
 show('10× seta ↓ no histórico: processos git', await gitProcesses())
 show('  tarefas longas', await longTasks())
 
-show('rolar o histórico (120 quadros)', `${(await scroll('.commit-list .list-body', 120, 400)).toFixed(1)} ms por quadro`)
+// Arrasto com só as linhas iniciais montadas (antes de qualquer rolagem).
+const linhasAntes = await montadas()
+const arrastoInicial = await custo(() => dragDivider(30), 30)
+if (arrastoInicial.result !== null) show(`arrastar divisória, ${linhasAntes} linhas montadas (30 passos)`, `${arrastoInicial.result.toFixed(0)} ms por passo`)
+if (arrastoInicial.result !== null) show('  script / layout / estilo', `${arrastoInicial.linha} ms por passo`)
 show('  tarefas longas', await longTasks())
-show('  linhas montadas / nós no DOM', `${await page.locator('.commit-row').count()} / ${await dom()}`)
+
+const rolagem = await custo(() => scroll('.commit-list .list-body', 120, 400), 120)
+show('rolar o histórico (120 quadros)', `${rolagem.result.toFixed(1)} ms por quadro`)
+show('  script / layout / estilo', `${rolagem.linha} ms por quadro`)
+show('  tarefas longas', await longTasks())
+show('  linhas montadas / nós no DOM', `${await montadas()} / ${await dom()}`)
 
 await page.evaluate(() => (document.querySelector('.commit-list .list-body').scrollTop = 0))
 await row(8).click()
 await wait(1500)
 await longTasks()
-const typical = await dragDivider(30)
-if (typical !== null) show('arrastar divisória, diff pequeno (30 passos)', `${typical.toFixed(0)} ms por passo`)
+// Arrasto depois da rolagem: as linhas roladas continuam montadas (o histórico nunca as retira).
+const linhasDepois = await montadas()
+const typical = await custo(() => dragDivider(30), 30)
+if (typical.result !== null) show(`arrastar divisória, ${linhasDepois} linhas montadas (30 passos)`, `${typical.result.toFixed(0)} ms por passo`)
+if (typical.result !== null) show('  script / layout / estilo', `${typical.linha} ms por passo`)
 show('  tarefas longas', await longTasks())
 
 await gitProcesses()
 start = Date.now()
 await screen('Changes').click()
-await page.waitForSelector('.diff-file, .empty', { timeout: 60000 })
+// `.diff-file` existe no histórico também (diff do commit selecionado); só a tela Changes põe um dentro de `.csection-diff`.
+await page.waitForSelector('.csection-diff .diff-file', { timeout: 60000 })
 show('abrir a tela Changes', `${Date.now() - start} ms`)
 await wait(2500)
 show('  processos git', await gitProcesses())
@@ -179,8 +224,9 @@ const clicks = await page.evaluate(async () => {
   return times
 })
 show('marcar 1 linha nesse diff (5 cliques)', `${clicks.join(', ')} ms`)
-const extreme = await dragDivider(5)
-if (extreme !== null) show('arrastar divisória com esse diff (5 passos)', `${extreme.toFixed(0)} ms por passo`)
+const extreme = await custo(() => dragDivider(6), 6)
+if (extreme.result !== null) show('arrastar divisória com esse diff (6 passos)', `${extreme.result.toFixed(0)} ms por passo`)
+if (extreme.result !== null) show('  script / layout / estilo', `${extreme.linha} ms por passo`)
 
 if (app.errors.length) console.log('erros da página:', app.errors.slice(0, 5))
 await app.close()
