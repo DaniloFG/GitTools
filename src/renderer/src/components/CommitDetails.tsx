@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getSession } from '../repoSession'
 import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../shared/types'
-import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
+import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { useActions } from '../actions'
 import { useApp } from '../context'
 import { copyText } from '../copy'
@@ -13,7 +13,8 @@ import { DiffView, useFullFile } from './DiffView'
 import { revealView } from '../dockStore'
 import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
-import { FileEntries, FileViewToggle } from './FileList'
+import { FileEntries } from './FileList'
+import { FileViewOptions } from './ViewOptions'
 import { LineStats } from './LineStats'
 import { LoaderPane } from './Loader'
 
@@ -245,7 +246,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
             {t('details.takeChecked', { count: checked.size, target: head })}
           </button>
         )}
-        <FileViewToggle />
+        <FileViewOptions />
       </div>
       <ul className="file-list">
         <FileEntries
@@ -376,6 +377,12 @@ function WipPanes({ focus }: { focus: WipFocus }) {
     setActive(inList(other) ? { area: other, path: active.path } : null)
   }, [status, active])
 
+  // Sem arquivo escolhido, abre o primeiro (só preenche o vazio: não troca o que o usuário já escolheu).
+  useEffect(() => {
+    const first = firstChange(status)
+    if (first) setActive((prev) => prev ?? first)
+  }, [status, active])
+
   useEffect(() => {
     if (!active) {
       setDiff(null)
@@ -414,18 +421,22 @@ function WipPanes({ focus }: { focus: WipFocus }) {
       <div className="group-header">
         <strong>{t('common.fileList')}</strong> <span className="count">{entries.length + status.conflicted.length}</span>
         <span className="toolbar-spacer" />
-        <FileViewToggle />
+        <FileViewOptions />
       </div>
       {status.conflicted.length > 0 && (
         <ul className="file-list">
-          {status.conflicted.map((f) => (
-            <li key={f.path} className="file-item" onClick={() => openConflict(f.path)} title={t('changes.conflictedHint')}>
-              <span className="status status-U">U</span>
-              <span className="file-label" data-status="U">
-                <span className="file-name">{f.path}</span>
-              </span>
-            </li>
-          ))}
+          <FileEntries
+            items={status.conflicted}
+            pathOf={(f) => f.path}
+            oldPathOf={(f) => f.origPath}
+            statusOf={() => 'U'}
+            render={(f, { label, style }) => (
+              <li key={f.path} style={style} className="file-item" onClick={() => openConflict(f.path)} title={t('changes.conflictedHint')}>
+                <span className="status status-U">U</span>
+                {label}
+              </li>
+            )}
+          />
         </ul>
       )}
       {entries.length === 0 && status.conflicted.length === 0 ? (

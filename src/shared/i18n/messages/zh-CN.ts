@@ -126,7 +126,17 @@ export const zhCN: Messages = {
     branch: '分支',
     stash: '贮藏',
     stashHelp: '暂时收起本地更改并清理工作区',
-    settings: '设置'
+    settings: '设置',
+    new: '新建',
+    newHelp: '创建分支或标签，或暂存你的更改',
+    newBranch: '新建分支…',
+    newTag: '新建标签…',
+    newMore: '更多新建选项',
+    itemRepo: '仓库',
+    menu: '菜单',
+    menuHelp: '设置与面板',
+    appearance: '外观',
+    toolbarMenu: '工具栏'
   },
   welcome: {
     tagline: '轻松使用 Git：拖放和点击即可合并、变基和拣选分支、提交、文件，甚至单独的行。',
@@ -143,6 +153,7 @@ export const zhCN: Messages = {
     message: '这个工具很棒，对吧？！那就支持我一下，让它越来越好，也做出更多工具。'
   },
   sidebar: {
+    viewMode: '分支显示方式',
     hint: '将分支、提交或文件拖到本地分支上，即可合并、变基或拣选。',
     branches: '分支',
     remote: '远程：{remote}',
@@ -722,13 +733,17 @@ export const zhCN: Messages = {
     applyHelp: '保存设置并保持此窗口打开。',
     saveHelp: '保存设置并关闭此窗口。',
     applied: '设置已应用。',
+    searchPlaceholder: '搜索设置',
+    noResults: '未找到匹配的设置',
     general: {
       title: '常规',
       description: 'GitTools 的语言和常规偏好。',
       language: '语言',
       languageHelp: '更改工具中的所有文字，立即生效。',
       systemLanguage: '跟随系统',
-      detected: '检测到：{language}'
+      detected: '检测到：{language}',
+      multiRepo: '检测工作区中的多个仓库',
+      multiRepoHelp: '在 VS Code 中打开 GitTools 时，会为工作区中找到的每个仓库（.git）各开一个标签页，并持续监视新出现的仓库。',
     },
     appearance: {
       title: '外观',
@@ -1641,6 +1656,7 @@ export const zhCN: Messages = {
     testOk: '编辑器已按完整路径打开了仓库中的一个文件。'
   },
   fileList: {
+    viewOptions: '视图选项',
     viewMode: '文件显示方式',
     viewModeHelp: '以列表（文件名和文件夹）或文件夹树显示文件——适用于所有文件列表',
     list: '列表',

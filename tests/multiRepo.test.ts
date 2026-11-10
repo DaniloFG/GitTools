@@ -537,3 +537,40 @@ describe('applyAcross: arquivos e linhas de outro repositório', () => {
     expect(await subjects()).toEqual(['base destino', 'dois arquivos'])
   })
 })
+
+describe('addRepository: abrir em segundo plano', () => {
+  it('inclui o repositório sem trocar o ativo, sem duplicar e guardando a lista', async () => {
+    const ativo = await createRepo()
+    await ativo.commit('ativo', { 'a.txt': 'a\n' })
+    const extra = await createRepo()
+    await extra.commit('extra', { 'b.txt': 'b\n' })
+    const { backend, data } = fakeHost()
+
+    await openRepo(backend, ativo.dir)
+    await backend.addRepository(await GitRepository.open(extra.dir), { activate: false })
+    await backend.addRepository(await GitRepository.open(extra.dir), { activate: false })
+
+    const list = await openList(backend)
+    expect(list.repos.map((r) => r.root)).toEqual([ativo.repo.root, extra.repo.root])
+    expect(list.active).toBe(ativo.repo.root)
+    expect(backend.repo?.root).toBe(ativo.repo.root)
+    expect(watcherCount(backend)).toBe(2)
+
+    // A lista aberta vai para workspace.json: uma nova sessão reabre os dois, com o mesmo ativo.
+    const again = fakeHost(data).backend
+    const restored = await openList(again)
+    expect(restored.repos.map((r) => r.root).sort()).toEqual([ativo.repo.root, extra.repo.root].sort())
+    expect(restored.active).toBe(ativo.repo.root)
+  })
+
+  it('com activate: true faz o mesmo que setRepository', async () => {
+    const a = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    const b = await createRepo()
+    await b.commit('b', { 'b.txt': 'b\n' })
+    const { backend } = fakeHost()
+    await openRepo(backend, a.dir)
+    await backend.addRepository(await GitRepository.open(b.dir), { activate: true })
+    expect(backend.repo?.root).toBe(b.repo.root)
+  })
+})

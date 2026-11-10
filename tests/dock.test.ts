@@ -5,6 +5,7 @@ import {
   DOCK_VERSION,
   defaultDock,
   effectiveActive,
+  effectiveDir,
   findGroup,
   groupsOf,
   hideIn,
@@ -23,6 +24,7 @@ import {
   setSizes,
   showScreen,
   shownTree,
+  STACK_WIDTH,
   toggleIn,
   toggleScreenIn,
   toggleView,
@@ -572,5 +574,27 @@ describe('tamanhos das divisões por tela', () => {
     const moved = moveView(withSizes, 'gitlog', { kind: 'tabs', group: 'g-main' })
     expect(groupsOf(moved.root).some((g) => g.id === 'g-log')).toBe(false)
     expect(moved.screenSizes).toEqual({})
+  })
+})
+
+describe('effectiveDir', () => {
+  it('empilha as divisões em linha só abaixo da largura de empilhamento', () => {
+    expect(effectiveDir('row', STACK_WIDTH - 1)).toBe('column')
+    expect(effectiveDir('row', STACK_WIDTH)).toBe('row')
+    expect(effectiveDir('row', 600)).toBe('column')
+  })
+
+  it('mantém colunas e larguras ainda não medidas', () => {
+    expect(effectiveDir('column', 600)).toBe('column')
+    expect(effectiveDir('column', 1440)).toBe('column')
+    expect(effectiveDir('row', null)).toBe('row')
+  })
+
+  it('não altera o arranjo guardado: voltar para uma janela larga restaura a linha', () => {
+    const state = defaultDock()
+    const before = JSON.stringify(state)
+    expect(effectiveDir('row', 500)).toBe('column')
+    expect(effectiveDir('row', 1400)).toBe('row')
+    expect(JSON.stringify(state)).toBe(before)
   })
 })

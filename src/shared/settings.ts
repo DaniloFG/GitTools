@@ -65,11 +65,13 @@ export interface Settings {
   diffFullFile: boolean
   /** Assistente de git no editor: balão ao final da linha do cursor dizendo quem a alterou, quando e o que o commit fez. */
   inlineBlame: boolean
+  /** Detectar vários repositórios no workspace do VS Code e acompanhar novos dinamicamente. */
+  multiRepoDetection: boolean
   /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
   shortcuts: Record<string, string>
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', dateFormat: 'iso', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
+export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', dateFormat: 'iso', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, multiRepoDetection: true, toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
 
 export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6]
 export const DIVIDER_WIDTHS = [1, 2, 3, 4, 6, 8]
@@ -110,6 +112,7 @@ export function normalizeSettings(value: unknown): Settings {
     statusLetters: raw.statusLetters !== false,
     diffFullFile: raw.diffFullFile === true,
     inlineBlame: raw.inlineBlame !== false,
+    multiRepoDetection: raw.multiRepoDetection !== false,
     editor: typeof raw.editor === 'string' ? raw.editor.trim() : DEFAULT_SETTINGS.editor,
     toast: normalizeToast(raw.toast),
     shortcuts: shortcuts as Record<string, string>

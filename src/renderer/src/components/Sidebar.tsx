@@ -1,4 +1,4 @@
-import { Fragment, useRef, type ReactNode } from 'react'
+import { Fragment, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { BranchInfo, StashInfo } from '../../../shared/types'
 import { ALL_SCOPE, checkedRefs, toggleGroup, toggleRef, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
@@ -11,6 +11,9 @@ import { relativeDate } from '../format'
 import { commitColors, laneColor } from '../graph'
 import { useDrop } from '../useDrop'
 import { useLayout } from '../layout'
+import { useFileViewMode } from './FileList'
+import { FileViewOptions } from './ViewOptions'
+import { buildTree, flattenTree } from '../fileTree'
 import { moveItem, parseOrder, startReorder } from '../reorder'
 import { t } from '../i18n'
 import { PaneSlot } from '../slots'
@@ -71,14 +74,24 @@ function BranchesPanel({ scope, onScope }: Props) {
     remotes.set(b.remote!, [...(remotes.get(b.remote!) ?? []), b])
   }
 
+  /** Uma linha por branch; no modo árvore, as com "/" no nome (feature/x) ficam em pastas. */
+  const branchRows = (list: BranchInfo[], remote?: string) => (
+    <NameRows
+      items={list}
+      nameOf={(b) => (remote ? b.name.slice(remote.length + 1) : b.name)}
+      keyOf={(b) => b.fullRef}
+      render={(b, label, style) => (
+        <BranchItem key={b.fullRef} branch={b} label={label} style={style} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} checked={checked.includes(b.name)} onToggle={toggle} onScope={onScope} />
+      )}
+    />
+  )
+
   const sections: { id: string; node: ReactNode }[] = [
     {
       id: 'branches',
       node: (
         <Section id="branches" title={t('sidebar.branches')} count={local.length} onReorder={move} action={groupAction(local)}>
-          {local.map((b) => (
-            <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} checked={checked.includes(b.name)} onToggle={toggle} onScope={onScope} />
-          ))}
+          {branchRows(local)}
         </Section>
       )
     },
@@ -86,9 +99,7 @@ function BranchesPanel({ scope, onScope }: Props) {
       id: `remote.${remote}`,
       node: (
         <Section id={`remote.${remote}`} title={t('sidebar.remote', { remote })} count={list.length} collapsed onReorder={move} action={groupAction(list)}>
-          {list.map((b) => (
-            <BranchItem key={b.fullRef} branch={b} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} checked={checked.includes(b.name)} onToggle={toggle} onScope={onScope} />
-          ))}
+          {branchRows(list, remote)}
         </Section>
       )
     }))
@@ -101,7 +112,10 @@ function BranchesPanel({ scope, onScope }: Props) {
 
   return (
     <aside className="sidebar">
-      <p className="sidebar-hint">{t('sidebar.hint')}</p>
+      <div className="sidebar-head">
+        <p className="sidebar-hint">{t('sidebar.hint')}</p>
+        <FileViewOptions title={t('sidebar.viewMode')} />
+      </div>
       {/* Sempre presente, com a mesma altura: marcar branches não desloca a lista abaixo. */}
       <div className={`sidebar-filter ${checked.length > 0 ? 'active' : ''}`} role="status">
         <span title={checked.length > 0 ? t('sidebar.filterActive', { count: checked.length }) : t('sidebar.filterNone')}>
@@ -123,10 +137,13 @@ function TagsPanel() {
   const actions = useActions()
   return (
     <aside className="sidebar">
-      <Section id="tags" title={t('sidebar.tags')} count={data.tags.length} action={{ label: '＋', title: t('actions.newTag.title'), run: () => actions.createTag() }}>
-        {data.tags.map((tag) => (
-          <TagItem key={tag.name} name={tag.name} sha={tag.sha} />
-        ))}
+      <Section id="tags" title={t('sidebar.tags')} count={data.tags.length} action={{ label: '＋', title: t('actions.newTag.title'), run: () => actions.createTag() }} extra={<FileViewOptions title={t('sidebar.viewMode')} />}>
+        <NameRows
+          items={data.tags}
+          nameOf={(tag) => tag.name}
+          keyOf={(tag) => tag.name}
+          render={(tag, label, style) => <TagItem key={tag.name} name={tag.name} label={label} style={style} sha={tag.sha} />}
+        />
       </Section>
     </aside>
   )
@@ -156,9 +173,11 @@ interface SectionProps {
   onReorder?(id: string, target: string): void
   /** Botão no cabeçalho (ex.: criar tag). */
   action?: { label: string; title: string; run(): void }
+  /** Outro controle do cabeçalho (ex.: opções de visualização). */
+  extra?: ReactNode
 }
 
-function Section({ id, title, count, children, collapsed = false, onReorder, action }: SectionProps) {
+function Section({ id, title, count, children, collapsed = false, onReorder, action, extra }: SectionProps) {
   const [open, setOpen] = useLayout(`sidebar.${id}.open`, (value) => (typeof value === 'boolean' ? value : !collapsed))
   return (
     <section className="sidebar-section" data-reorder={onReorder ? 'sidebar' : undefined} data-reorder-id={onReorder ? id : undefined}>
@@ -176,14 +195,78 @@ function Section({ id, title, count, children, collapsed = false, onReorder, act
             {action.label}
           </button>
         )}
+        {extra}
       </div>
       {open && <ul>{children}</ul>}
     </section>
   )
 }
 
+/** Recuo (em px) de cada nível da árvore; o mesmo da lista de arquivos. */
+const TREE_INDENT = 14
+
+interface NameRowsProps<T> {
+  items: readonly T[]
+  /** Nome que vai para a árvore (o "/" separa as pastas) e para a linha no modo lista. */
+  nameOf(item: T): string
+  keyOf(item: T): string
+  /** Desenha uma linha; `label` é o nome a mostrar e `style` o recuo (só no modo árvore). */
+  render(item: T, label: string, style: CSSProperties | undefined): ReactNode
+}
+
+/**
+ * Linhas de branches ou tags no modo escolhido para o app (o mesmo das listas de arquivos): em lista, uma
+ * por item; em árvore, agrupadas pelas barras do nome, com pastas recolhíveis.
+ */
+function NameRows<T>({ items, nameOf, keyOf, render }: NameRowsProps<T>) {
+  const [mode] = useFileViewMode()
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
+  if (mode === 'list') {
+    return (
+      <>
+        {items.map((item) => (
+          <Fragment key={keyOf(item)}>{render(item, nameOf(item), undefined)}</Fragment>
+        ))}
+      </>
+    )
+  }
+  const rows = flattenTree(buildTree(items, nameOf), collapsed)
+  const toggle = (path: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(path)) next.add(path)
+      return next
+    })
+  return (
+    <>
+      {rows.map((row) =>
+        row.kind === 'file' ? (
+          <Fragment key={keyOf(row.node.item)}>{render(row.node.item, row.node.name, { paddingInlineStart: 6 + TREE_INDENT * row.depth + 16 })}</Fragment>
+        ) : (
+          <li
+            key={`dir:${row.node.path}`}
+            className="tree-dir"
+            style={{ paddingInlineStart: 6 + TREE_INDENT * row.depth }}
+            onClick={() => toggle(row.node.path)}
+            title={`${row.node.path} — ${row.node.fileCount}`}
+            aria-expanded={!row.collapsed}
+          >
+            <span className="tree-caret">{row.collapsed ? '▸' : '▾'}</span>
+            <span className="tree-dir-name">{row.node.name}</span>
+            <span className="count">{row.node.fileCount}</span>
+          </li>
+        )
+      )}
+    </>
+  )
+}
+
 interface BranchItemProps {
   branch: BranchInfo
+  /** Nome mostrado (sem o remoto; no modo árvore, só o último pedaço). */
+  label: string
+  /** Recuo na árvore (ausente no modo lista). */
+  style?: CSSProperties
   /** Cor da trilha da branch no grafo (ausente quando o commit não está no histórico carregado). */
   color: number | undefined
   active: boolean
@@ -193,7 +276,7 @@ interface BranchItemProps {
   onScope: Props['onScope']
 }
 
-function BranchItem({ branch, color, active, checked, onToggle, onScope }: BranchItemProps) {
+function BranchItem({ branch, label, style: indent, color, active, checked, onToggle, onScope }: BranchItemProps) {
   const { showMenu } = useApp()
   const actions = useActions()
   const branchMenu = useBranchMenu(onScope)
@@ -205,7 +288,6 @@ function BranchItem({ branch, color, active, checked, onToggle, onScope }: Branc
 
   const menu = (e: React.MouseEvent) => showMenu(e, branchMenu(branch))
 
-  const label = isRemote ? branch.name.slice(branch.remote!.length + 1) : branch.name
   return (
     <li
       className={`branch-item ${branch.current ? 'current' : ''} ${active ? 'active' : ''} ${drop.over ? 'drop-over' : ''}`}
@@ -219,7 +301,7 @@ function BranchItem({ branch, color, active, checked, onToggle, onScope }: Branc
       onDoubleClick={() => !branch.current && actions.checkout(branch.name)}
       onContextMenu={menu}
       title={`${branch.name}${branch.current ? ` (${t('toolbar.currentBranch')})` : ''}\n${branch.subject}\n${relativeDate(branch.date)}\n\n${t('sidebar.branchTooltip')}`}
-      style={color === undefined ? undefined : ({ '--branch-color': laneColor(color) } as React.CSSProperties)}
+      style={{ ...(color === undefined ? {} : { '--branch-color': laneColor(color) }), ...indent } as CSSProperties}
       {...drop.props}
     >
       <input
@@ -246,12 +328,13 @@ function BranchItem({ branch, color, active, checked, onToggle, onScope }: Branc
   )
 }
 
-function TagItem({ name, sha }: { name: string; sha: string }) {
+function TagItem({ name, label, style: indent, sha }: { name: string; label: string; style?: CSSProperties; sha: string }) {
   const { selectCommit, showMenu } = useApp()
   const actions = useActions()
   return (
     <li
       className="branch-item"
+      style={indent}
       // Na tela de branches o clique não troca para o histórico.
       onClick={() => readScreen() !== 'branches' && selectCommit(sha)}
       onContextMenu={(e) =>
@@ -264,7 +347,7 @@ function TagItem({ name, sha }: { name: string; sha: string }) {
       }
     >
       <span className="branch-icon">⌂</span>
-      <span className="branch-name">{name}</span>
+      <span className="branch-name">{label}</span>
     </li>
   )
 }

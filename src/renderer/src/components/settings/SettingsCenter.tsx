@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Settings } from '../../../../shared/settings'
 import { t } from '../../i18n'
 import { Modal } from '../Modal'
 import { Split } from '../Split'
 import { SETTINGS_SECTIONS } from './sections'
+import { SettingsSearchContext } from './SettingRow'
 
 interface Props {
   settings: Settings
@@ -23,6 +24,22 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
   )
   const section = SETTINGS_SECTIONS.find((s) => s.id === sectionId)!
   const Section = section.component
+  const [query, setQuery] = useState('')
+  const contentRef = useRef<HTMLElement>(null)
+  const [noMatch, setNoMatch] = useState(false)
+  /** Pesquisa só vale nas seções com linhas de configuração; em cada troca de seção ela começa vazia. */
+  const searchText = section.searchable ? query : ''
+
+  const chooseSection = (id: string) => {
+    setSectionId(id)
+    setQuery('')
+  }
+
+  // Sem nenhuma linha visível na pesquisa, a seção avisa em vez de ficar em branco.
+  useLayoutEffect(() => {
+    const rows = [...(contentRef.current?.querySelectorAll<HTMLElement>('.setting-row') ?? [])]
+    setNoMatch(searchText.trim() !== '' && rows.length > 0 && rows.every((r) => r.hidden))
+  }, [searchText, sectionId, draft])
 
   useEffect(() => {
     onPreview(draft)
@@ -75,23 +92,40 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
       <Split id="settings" className="settings-layout" fixed initial={210} min={[140, 320]} collapsible={[false, false]} arrangeable={false}>
         <nav className="settings-nav" aria-label={t('settings.title')}>
           {SETTINGS_SECTIONS.map((s) => (
-            <button key={s.id} className={s.id === sectionId ? 'active' : ''} onClick={() => setSectionId(s.id)}>
+            <button key={s.id} className={s.id === sectionId ? 'active' : ''} onClick={() => chooseSection(s.id)}>
               <span className="settings-nav-icon">{s.icon}</span>
               <span>{t(s.title)}</span>
               {errors.some((e) => e.id === s.id) && <span className="settings-nav-error">!</span>}
             </button>
           ))}
         </nav>
-        <section className="settings-content">
+        <section className="settings-content" ref={contentRef}>
           <header className="settings-section-header">
             <h3>{t(section.title)}</h3>
             <p className="muted">{t(section.description)}</p>
           </header>
-          <Section
-            draft={draft}
-            update={(patch) => setDraft((d) => ({ ...d, ...patch }))}
-            replace={setDraft}
-          />
+          {section.searchable && (
+            <div className="settings-search">
+              <span className="search-icon" aria-hidden>
+                ⌕
+              </span>
+              <input
+                type="search"
+                value={query}
+                placeholder={t('settings.searchPlaceholder')}
+                aria-label={t('settings.searchPlaceholder')}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+          )}
+          <SettingsSearchContext.Provider value={searchText}>
+            <Section
+              draft={draft}
+              update={(patch) => setDraft((d) => ({ ...d, ...patch }))}
+              replace={setDraft}
+            />
+          </SettingsSearchContext.Provider>
+          {noMatch && <p className="empty settings-empty">{t('settings.noResults')}</p>}
           {section.id === 'shortcuts' && (
             <button className="link settings-help-link" onClick={onShowShortcuts}>
               {t('settings.shortcuts.showList')}

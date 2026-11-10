@@ -9,7 +9,8 @@ import { DiffView, useFullFile } from './DiffView'
 import { revealView } from '../dockStore'
 import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
-import { FileEntries, FileViewToggle } from './FileList'
+import { FileEntries } from './FileList'
+import { FileViewOptions } from './ViewOptions'
 import { useSessionState } from '../useSessionState'
 import { LineStats } from './LineStats'
 import { Loader, LoaderPane, LoadingOverlay } from './Loader'
@@ -188,7 +189,7 @@ export function CompareView({ request, onRequest }: Props) {
         <div className="group-header">
           <strong>{t('compare.differentFiles')}</strong> <span className="count">{comparison.files.length}</span>
           <span className="toolbar-spacer" />
-          <FileViewToggle />
+          <FileViewOptions />
         </div>
         {comparison.files.length === 0 ? (
           <p className="empty small">{t('compare.identical')}</p>

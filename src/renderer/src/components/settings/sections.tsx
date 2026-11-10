@@ -26,6 +26,8 @@ export interface SettingsSectionDef {
   title: MessageKey
   description: MessageKey
   component: ComponentType<SettingsSectionProps>
+  /** Seção com linhas de configuração (SettingRow): ganha o campo de pesquisa no topo. */
+  searchable?: boolean
   /** Retorna uma mensagem de erro quando o rascunho não pode ser salvo. */
   validate?(draft: Settings): MessageKey | null
 }
@@ -36,35 +38,39 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     icon: '🌐',
     title: 'settings.general.title',
     description: 'settings.general.description',
-    component: GeneralSection
+    component: GeneralSection,
+    searchable: true
   },
   {
     id: 'appearance',
     icon: '🎨',
     title: 'settings.appearance.title',
     description: 'settings.appearance.description',
-    component: AppearanceSection
+    component: AppearanceSection,
+    searchable: true
   },
   {
     id: 'notifications',
     icon: '🔔',
     title: 'settings.notifications.title',
     description: 'settings.notifications.description',
-    component: NotificationsSection
+    component: NotificationsSection,
+    searchable: true
   },
   {
     id: 'git',
     icon: '👤',
     title: 'identity.title',
     description: 'identity.description',
-    component: IdentitySection
+    component: IdentitySection,
   },
   {
     id: 'editor',
     icon: '✎',
     title: 'settings.editor.title',
     description: 'settings.editor.description',
-    component: EditorSection
+    component: EditorSection,
+    searchable: true
   },
   {
     id: 'shortcuts',
@@ -79,6 +85,6 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     icon: 'ℹ',
     title: 'settings.about.title',
     description: 'settings.about.description',
-    component: AboutSection
+    component: AboutSection,
   }
 ]
