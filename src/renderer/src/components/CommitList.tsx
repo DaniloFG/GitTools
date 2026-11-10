@@ -1,4 +1,4 @@
-import { Fragment, memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangedFile, CommitInfo } from '../../../shared/types'
 import { showsWorkingChanges, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
@@ -21,14 +21,15 @@ import { FileViewOptions } from './ViewOptions'
 import { LineStats } from './LineStats'
 import type { FileStatus } from '../../../shared/types'
 import { Loader } from './Loader'
+import { VirtualList, type VirtualListHandle } from './VirtualList'
 
 const ROW = 30
 const LANE = 14
-/** Linhas desenhadas de início; o resto aparece conforme a lista rola (500 linhas de uma vez pesam em máquinas fracas). */
-const INITIAL_ROWS = 120
-const MORE_ROWS = 160
-/** Quanto falta para o fim da lista (em px) para desenhar mais linhas. */
-const LOAD_AHEAD = 900
+/**
+ * Margem montada acima e abaixo da área visível (cerca de 10 linhas de cada lado). Só o que está na tela
+ * e nessa margem fica no DOM: rolar não acumula linhas, e cada arrasto de divisória refaz pouco layout.
+ */
+const OVERSCAN = 300
 /** Distância do início da linha até o grafo: margem + botão ▸ + espaçamento (ver .row-toggle). */
 const GRAPH_OFFSET = 30
 
@@ -83,7 +84,6 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
   const [query, setQuery] = useState('')
   /** A pesquisa filtra a lista com um pequeno atraso, para a digitação não travar em históricos grandes. */
   const deferredQuery = useDeferredValue(query)
-  const [limit, setLimit] = useState(INITIAL_ROWS)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [files, setFiles] = useState<Map<string, FilesState>>(new Map())
   const [columns, moveColumn] = useOrder('history.columns', COLUMNS)
@@ -128,20 +128,9 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
     () => (searching ? commits.flatMap((c, i) => (matchesCommit(c, deferredQuery, locale) ? [i] : [])) : commits.map((_, i) => i)),
     [commits, deferredQuery, searching, locale]
   )
-  const shown = visible.length > limit ? visible.slice(0, limit) : visible
-  const bodyRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<VirtualListHandle>(null)
   /** A linha de alterações é do HEAD: só aparece vendo tudo, o HEAD ou a branch atual. */
   const showWip = showsWorkingChanges(scope, actions.head)
-  // Janela muito alta: as linhas desenhadas podem não bastar para gerar rolagem (e nenhum evento de scroll viria).
-  useEffect(() => {
-    const el = bodyRef.current
-    if (limit < visible.length && el && el.scrollHeight - el.clientHeight < LOAD_AHEAD) setLimit((l) => l + MORE_ROWS)
-  })
-  /** Desenha mais linhas quando falta pouco para o fim do que está desenhado. */
-  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget
-    if (limit < visible.length && el.scrollHeight - el.scrollTop - el.clientHeight < LOAD_AHEAD) setLimit((l) => l + MORE_ROWS)
-  }
 
   // Arquivos dos commits expandidos são carregados sob demanda (e recarregados se o histórico mudar).
   useEffect(() => setFiles(new Map()), [commits])
@@ -201,15 +190,25 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
       anchor.current = next
       onSelect([nextSha])
     }
-    // A linha pode ainda não estar desenhada (lista parcial): desenha até ela e rola no quadro seguinte.
-    if (next >= limit) setLimit(next + MORE_ROWS)
-    requestAnimationFrame(() => document.querySelectorAll('.commit-row')[next]?.scrollIntoView({ block: 'nearest' }))
+    // O índice vem dos dados: a linha pode não estar montada, então o índice no DOM não serve para rolar.
+    const list = listRef.current
+    const onRow = e.target instanceof HTMLElement && (e.target.classList.contains('commit-row') || e.target === e.currentTarget)
+    list?.scrollToIndex(next)
+    // Com o foco numa linha (ou no contêiner), leva o foco para a linha nova: Ctrl+C copia o `data-copy` dela.
+    if (onRow) {
+      requestAnimationFrame(() => list?.element?.querySelector<HTMLElement>(`.commit-row[data-pos="${next}"]`)?.focus({ preventScroll: true }))
+    }
   }
 
   /** Funções de sempre-atuais para as linhas, que ficam memorizadas e não podem depender delas diretamente. */
   const handlers = useRef({} as RowHandlers)
   const stableColumns = useMemo(() => columns, [columns.join()]) // eslint-disable-line react-hooks/exhaustive-deps
   const dateKey = dateFormatKey()
+
+  // A janela pede chave e altura por posição em `visible`. Estáveis: cada mudança de identidade refaz as posições.
+  const keyOf = useCallback((pos: number) => commits[visible[pos]].sha, [commits, visible])
+  // Commit aberto (com os arquivos) é um item só, de altura medida.
+  const isVariable = useCallback((pos: number) => expanded.has(commits[visible[pos]].sha), [commits, visible, expanded])
 
   const dragShas = (commit: CommitInfo) => (selectedSet.has(commit.sha) ? commits.filter((c) => selectedSet.has(c.sha)).map((c) => c.sha) : [commit.sha])
 
@@ -318,7 +317,8 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
                 e.preventDefault()
                 anchor.current = 0
                 onSelect([commits[visible[0]].sha])
-                document.querySelector<HTMLElement>('.commit-list .list-body')?.focus()
+                listRef.current?.scrollToIndex(0)
+                listRef.current?.element?.focus()
               }
             }}
           />
@@ -357,30 +357,46 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
           </span>
         ))}
       </div>
-      <div ref={bodyRef} className="list-body" tabIndex={0} onKeyDown={onKeyDown} onScroll={onScroll}>
-        {showWip && (
-          <WipRow
-            status={data.status}
-            template={template}
-            columns={stableColumns}
-            graphWidth={graphWidth}
-            searching={searching}
-            headRow={rows.find((r) => r.sha === data.status.headSha)}
-            indent={graphFirst}
-            onOpenChanges={() => setView('changes')}
-            onOpenConflict={openConflict}
-            onOpenFile={onOpenWipFile}
-            onOpenDiff={(source, path, title) => openDiffWindow({ source, path, title })}
-          />
-        )}
-        {commits.length === 0 && <p className="empty">{t('history.empty')}</p>}
-        {searching && commits.length > 0 && visible.length === 0 && <p className="empty">{t('history.search.none', { query: deferredQuery })}</p>}
-        {shown.map((index, pos) => {
+      <VirtualList
+        ref={listRef}
+        className="list-body"
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        count={visible.length}
+        rowHeight={ROW}
+        keyOf={keyOf}
+        isVariable={isVariable}
+        overscan={OVERSCAN}
+        // A linha de alterações é sticky no topo: a rolagem por teclado não pode esconder o item atrás dela.
+        stickyTop={showWip ? ROW : 0}
+        header={
+          <>
+            {showWip && (
+              <WipRow
+                status={data.status}
+                template={template}
+                columns={stableColumns}
+                graphWidth={graphWidth}
+                searching={searching}
+                headRow={rows.find((r) => r.sha === data.status.headSha)}
+                indent={graphFirst}
+                onOpenChanges={() => setView('changes')}
+                onOpenConflict={openConflict}
+                onOpenFile={onOpenWipFile}
+                onOpenDiff={(source, path, title) => openDiffWindow({ source, path, title })}
+              />
+            )}
+            {commits.length === 0 && <p className="empty">{t('history.empty')}</p>}
+            {searching && commits.length > 0 && visible.length === 0 && <p className="empty">{t('history.search.none', { query: deferredQuery })}</p>}
+          </>
+        }
+        renderItem={(pos) => {
+          const index = visible[pos]
           const commit = commits[index]
           const row = rows[index]
           const open = expanded.has(commit.sha)
           return (
-            <Fragment key={commit.sha}>
+            <>
               <CommitRow
                 commit={commit}
                 row={row}
@@ -408,10 +424,10 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
                   onOpenFileWindow={(path) => onOpenFileWindow(commit.sha, path)}
                 />
               )}
-            </Fragment>
+            </>
           )
-        })}
-      </div>
+        }}
+      />
     </div>
   )
 }
@@ -451,6 +467,7 @@ const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, te
       className={`commit-row ${selected ? 'selected' : ''} ${open ? 'expanded' : ''}`}
       style={{ gridTemplateColumns: template }}
       tabIndex={-1}
+      data-pos={pos}
       data-copy={commit.subject}
       data-copy-what="message"
       onClick={(e) => handlers.current.click(e, pos)}

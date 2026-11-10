@@ -202,6 +202,46 @@ export const VirtualList = forwardRef<VirtualListHandle, VirtualListProps>(funct
     }
   }, [sync])
 
+  /**
+   * Elemento que tinha o foco dentro do contêiner. Quando a linha focada sai da janela, o React a desmonta e o
+   * navegador põe o foco no `body`, e as setas param de chegar ao contêiner. Então, após cada desenho, o foco volta
+   * ao contêiner, mas só se o elemento guardado foi desmontado (`!isConnected`) e o foco caiu no `body`.
+   * Um clique numa área sem foco fora da lista não desmonta nada, então não rouba o foco numa atualização.
+   * `focusout` sem destino (`relatedTarget` nulo) mantém a referência: é o caso da remoção.
+   * Limite: se o usuário clica fora e depois rola a lista até a linha clicada sair da janela, o foco volta à lista.
+   */
+  const focused = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onFocusIn = (e: FocusEvent) => {
+      focused.current = e.target as HTMLElement
+    }
+    const onFocusOut = (e: FocusEvent) => {
+      const next = e.relatedTarget as Node | null
+      if (next && !el.contains(next)) focused.current = null
+    }
+    el.addEventListener('focusin', onFocusIn)
+    el.addEventListener('focusout', onFocusOut)
+    return () => {
+      el.removeEventListener('focusin', onFocusIn)
+      el.removeEventListener('focusout', onFocusOut)
+    }
+  }, [])
+
+  // Sem lista de dependências de propósito: a remoção de uma linha focada acontece em qualquer desenho.
+  useLayoutEffect(() => {
+    const el = containerRef.current
+    const lost = focused.current
+    if (!el || !lost || lost.isConnected) return
+    const active = document.activeElement
+    if (active === null || active === document.body) {
+      focused.current = null
+      // O foco no contêiner dispara `focusin` e volta a guardá-lo.
+      el.focus({ preventScroll: true })
+    }
+  })
+
   const scrollToIndex = useCallback(
     (index: number) => {
       const el = containerRef.current
