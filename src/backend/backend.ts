@@ -10,7 +10,8 @@ import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { REPO_METHODS, type AppInfo, type DiffWindowRequest, type EditorInfo, type RecentRepo, type RepoMethod } from '../shared/api'
-import type { CherryPickOptions, CrossApply, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
+import type { CherryPickOptions, CrossApply, FileDiff, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
+import { encodeDiffs } from '../shared/diffWire'
 import type { BridgeChannel } from '../shared/channels'
 import { t } from '../shared/i18n'
 import { normalizeSettings, type Settings } from '../shared/settings'
@@ -521,7 +522,9 @@ export class Backend {
         const repo = this.repoAt(args[2])
         if (!repo) throw new Error(t('main.noRepository'))
         const fn = repo[method] as (...a: unknown[]) => Promise<unknown>
-        return fn.apply(repo, (args[1] as unknown[]) ?? [])
+        const result = await fn.apply(repo, (args[1] as unknown[]) ?? [])
+        // O diff vai no formato compacto (diffWire.ts): menos objetos para copiar pelo IPC. A interface decodifica em git.ts.
+        return method === 'diff' ? encodeDiffs(result as FileDiff[]) : result
       }
     }
   }

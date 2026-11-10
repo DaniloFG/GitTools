@@ -1,4 +1,5 @@
 import type { RepoApi } from '../../shared/api'
+import { decodeDiffs, isWireDiffs } from '../../shared/diffWire'
 import { t } from './i18n'
 import { Limiter, ReadCache } from './readCache'
 import { CallGate } from './workspace'
@@ -31,10 +32,22 @@ export function getActiveRoot(): string | null {
 
 type Invoke = (root: string, method: string, ...args: unknown[]) => Promise<unknown>
 
-/** Faz a chamada de verdade, contando-a no portão do repositório. */
+/**
+ * Resposta do backend para uma leitura. O diff chega no formato compacto (diffWire.ts) e volta a FileDiff[] aqui,
+ * antes de qualquer cache ou componente: a interface continua recebendo o mesmo objeto de sempre.
+ */
+function fromBackend(method: string, value: unknown): unknown {
+  if (method !== 'diff' || !isWireDiffs(value)) return value
+  return decodeDiffs(value)
+}
+
+/**
+ * Faz a chamada de verdade, contando-a no portão do repositório. Todo caminho de leitura (`callOn`,
+ * `callInBackground`, `gitFor`, `gitInBackground`) passa por aqui, então a decodificação fica num lugar só.
+ */
 function send(root: string, method: string, args: unknown[]): Promise<unknown> {
   const invoke = window.gittools.invokeOn as unknown as Invoke
-  return gitCalls.enter(root).then((leave) => invoke(root, method, ...args).finally(leave))
+  return gitCalls.enter(root).then((leave) => invoke(root, method, ...args).finally(leave).then((value) => fromBackend(method, value)))
 }
 
 /** Chama um método de um repositório aberto pelo cache. */
