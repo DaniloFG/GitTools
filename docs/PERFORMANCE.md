@@ -343,6 +343,8 @@ Fase concluída. Os resultados medidos, as metas atingidas e as que não foram a
 Meta: nenhuma tela com mais de 5.000 nós no DOM; abrir o diff de 5.000 linhas em menos de 300 ms e marcar uma
 linha em menos de 50 ms, com a CPU 4× mais lenta.
 
+Fase concluída. Resultados, metas atingidas e não atingidas na [seção 9](#9-resultado-da-fase-2).
+
 ### Fase 3 — Menos git (cerca de 1 semana)
 
 | # | Mudança | Achado | Tamanho |
@@ -383,7 +385,7 @@ Meta: JavaScript da primeira carga em até 700 KB; carga inicial com até 8 proc
 
 ## 7. Orçamentos
 
-Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/ui.mjs 4`. "Hoje" é a medição mais recente (itens 2.1, 2.3 e 2.6 da Fase 2; as linhas de git e de carga não mudaram desde a Fase 1); a meta é o que o plano busca. Enquanto a meta não é atingida, a regra é **não piorar o "hoje"**.
+Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/ui.mjs 4`. "Hoje" é a medição ao fim da Fase 2 (as linhas de processos git não mudaram desde a Fase 1); a meta é o que o plano busca. Enquanto a meta não é atingida, a regra é **não piorar o "hoje"**.
 
 | Métrica | Hoje | Meta |
 | --- | --- | --- |
@@ -392,12 +394,12 @@ Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/
 | Processos git: selecionar 1 commit | 5 | ≤ 2 |
 | Processos git: 10× seta no histórico | 10 | ≤ 6 |
 | Processos git: carga inicial | 11 | ≤ 8 |
-| Rolar o histórico (CPU 4×, 30 quadros de 400 px) | 45–73 ms por quadro | ≤ 16 ms |
+| Rolar o histórico (CPU 4×, 30 quadros de 400 px) | 45–73 ms por quadro (antes da janela: ~41) | ≤ 16 ms |
 | Tarefas longas ao rolar o histórico (CPU 4×) | 1–13 (maior 50–123 ms) | 0 |
-| Arrastar divisória (CPU 4×) | 71–116 ms por passo (34–41 linhas montadas) | ≤ 16 ms |
-| Abrir diff de 5.000 linhas alteradas (CPU 4×) | 18–20 s | ≤ 300 ms |
-| Marcar 1 linha nesse diff (CPU 4×) | 1,6–2,4 s | ≤ 50 ms |
-| Nós no DOM, em qualquer tela | 160.711 (o diff de 5.000 linhas); histórico: 1.030–1.292 | ≤ 5.000 |
+| Arrastar divisória (CPU 4×) | 71–122 ms por passo (34–41 linhas montadas); com o diff de 5.000 linhas, 151–160 ms | ≤ 16 ms |
+| Abrir diff de 5.000 linhas alteradas (CPU 4×) | 1,0–1,3 s | ≤ 300 ms |
+| Marcar 1 linha nesse diff (CPU 4×) | 26–61 ms | ≤ 50 ms |
+| Nós no DOM, em qualquer tela | ≤ 1.645 (histórico, diff de 5.000 linhas, blame de 20 mil) | ≤ 5.000 |
 | `status` no cenário `heavy` | 331–421 ms | ≤ 2× o `status()` simples |
 | JavaScript da primeira carga (Electron) | 1.251 KB | ≤ 700 KB |
 
@@ -459,10 +461,10 @@ foi desfeita; a lista em janela da Fase 2 é o caminho previsto para os dois cas
 - Os 372 ms de "abrir a tela Changes" da linha de base (seção 3) vieram do marcador antigo e de uma rodada só: não
   servem de comparação.
 
-## 9. Resultado da Fase 2 (em andamento)
+## 9. Resultado da Fase 2
 
-Feitos: 2.1 (lista em janela), 2.6 (histórico em janela e paginação) e 2.3 (teto do diff). Faltam 2.2, 2.4 e 2.5.
-Medições com `ui.mjs 4 moderate`, alternando versão nova e anterior na mesma máquina, duas rodadas de cada.
+Fase concluída: 2.1 a 2.6. Medições com `ui.mjs 4 moderate`, duas rodadas (as do histórico alternando versão nova e
+anterior na mesma máquina).
 
 ### O que foi feito
 
@@ -472,8 +474,23 @@ Medições com `ui.mjs 4 moderate`, alternando versão nova e anterior na mesma 
 | 2.6 Histórico em janela | `CommitList` usa o `VirtualList`: commit aberto é um item de altura medida; a linha de alterações (sticky) vai no cabeçalho; setas rolam pelo índice nos dados e levam o foco à linha selecionada | Arrasto de divisória depois de rolar: 252–325 → 71–116 ms por passo (layout 88–123 → 15–22 ms). Nós no DOM depois de rolar: 8.161 → 1.204–1.292 (500 → 45 linhas montadas). Carga a frio: 2.035 → 1.030 nós |
 | 2.6 Paginação | `skip` em `LogOptions`; o rodapé da lista pede a página seguinte (500 commits, 1 processo git, sem reler status nem refs); teto de 10.000 com aviso | 1 processo git por página (`log -n500 --skip=N`). Carga, foco, setas e stage com os mesmos processos de antes |
 | 2.3 Teto do diff | 4 MB de saída crua do git; o último bloco, que pode estar incompleto, sai; não rastreado lido só até o teto; ação de linhas relê sem teto; aviso com "mostrar mesmo assim" | Mesmos processos git. Diff do commit de 3.000 arquivos: 12.570 → 11.457 KB de objetos (a saída crua dele mal passava dos 4 MB; os objetos ocupam ~2,8× a saída crua) |
+| 2.4 Régua | Marcas calculadas dos dados (`marksFromRows`), desenhadas num `canvas` só; a área visível é um `div` movido por estilo num quadro; `scroll` só no elemento que rola; sem `MutationObserver` nem ouvinte na `window` | Sem custo próprio visível no perfil (`marksFromRows` de 25 mil linhas: ~17 ms com CPU 4×) |
+| 2.2 Diff em blocos | `diffBlocks.ts` (linhas como dados, blocos de 40); cada bloco é uma tabela própria com o mesmo `colgroup`, memorizada, medida; seleção por assinatura do bloco; navegação e régua pelos dados; o `.diff-body` rola em todo lugar | Diff de 5.000 linhas: abrir 18–21 s → 1,0–1,3 s; nós 160.711 → 1.245; marcar uma linha 1,6–2,4 s → 26–61 ms; rolar 730–870 → 54–64 ms por quadro; arrastar divisória com o diff 5,9–7,4 s → 151–160 ms por passo |
+| 2.5 Blame em janela | `VirtualList` em blocos de 40; cor de calor por commit e primeira/segunda linha calculadas uma vez (`blameRows.ts`); dica ao passar o mouse; relê só quando muda o HEAD ou o próprio arquivo | Arquivo de 20 mil linhas: 80 linhas montadas e 661 nós no DOM (antes, uma linha de tabela por linha do arquivo) |
 
-Pacote da interface: 1.251.651 → 1.260.567 bytes (+8,9 KB, os três itens juntos).
+Pacote da interface: 1.251.651 → 1.265.420 bytes (+13,8 KB, a fase inteira). Carga a frio até a 1ª linha do histórico:
+1.029–1.430 → 869–910 ms (2.035 → 1.036 nós). Processos git: sem mudança em nenhuma ação (carga 11, foco 4, 10 setas
+10–15, stage 9, selecionar um commit 5).
+
+### Abrir o diff: o que restava era o harness de medição
+
+Com o diff já em janela, abrir ainda levava 4,0 s, com uma tarefa longa de 2,7 s. O perfil mostrou o JavaScript do
+projeto abaixo de 100 ms nesse caminho; o resto era o Playwright entregando à página a resposta de 2,9 MB como
+objeto (um objeto de 3,5 MB leva 2,6–3,5 s com CPU 4×; como texto com `JSON.parse`, 0,56–0,73 s). O harness passou
+a mandar texto JSON (`6bc6069`), que é como a mensagem do webview do VS Code trafega. Os tempos de respostas grandes
+medidos antes disso não são comparáveis com os de depois. O que sobra (1,0–1,3 s) é o transporte e a conversão de
+2,9 MB de objetos (~580 bytes por linha de diff): o caminho para a meta de 300 ms é um formato compacto do diff
+(por exemplo, linhas como texto e tipos num vetor), assunto do item 3.x de leituras mais leves.
 
 ### Rolagem do histórico: regressão por quadro, travamentos menores
 
@@ -493,10 +510,11 @@ janela, com as 500 linhas já montadas, o script era de 2 ms e o layout 0, e o q
 margem maior e desmontar só com a rolagem parada (layout 14 → 9 ms, mas estilo 0,2 → 5 ms e quadro igual ou
 pior). A diferença que resta, ~10%, está dentro do ruído da medição.
 
-### Metas da Fase 2 até aqui
+### Metas da Fase 2
 
 | Meta | Resultado | Situação |
 | --- | --- | --- |
-| Nenhuma tela com mais de 5.000 nós | Histórico: 1.030–1.292; diff de 5.000 linhas: 160.711 | Histórico atingido; diff depende do 2.2 |
+| Nenhuma tela com mais de 5.000 nós | Histórico 1.036–1.299; diff de 5.000 linhas 1.245 (lado a lado 1.645); blame de 20 mil linhas 661 | Atingida |
 | Arrasto de divisória perto do caso de 120 linhas (113–157 ms) | 71–116 ms por passo | Atingida |
-| Abrir o diff de 5.000 linhas em ≤ 300 ms; marcar uma linha em ≤ 50 ms | 18–21 s; 1,6–2,4 s | Depende do 2.2 |
+| Abrir o diff de 5.000 linhas em ≤ 300 ms | 1,0–1,3 s | Não atingida (transporte de 2,9 MB; ver acima) |
+| Marcar uma linha em ≤ 50 ms | 26–61 ms (mediana ~45) | Praticamente atingida |

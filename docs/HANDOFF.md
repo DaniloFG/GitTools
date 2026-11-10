@@ -25,19 +25,19 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    remova `docs/HANDOFF.md` e a linha que o menciona no `CLAUDE.md`, e só então abra o PR. Não há exceção para
    "driblar" a trava: se algo precisar ser entregue antes, pergunte ao usuário.
 
-## 2. Estado atual (janela 2, em andamento)
+## 2. Estado atual (fim da janela 2)
 
-- **Janela 2 (Fase 2):** itens **2.1** (lista em janela: `virtual.ts`, `components/VirtualList.tsx`), **2.6**
-  (histórico em janela e paginação além de 500 commits, até 10.000) e **2.3** (teto de 4 MB no diff, com "mostrar
-  mesmo assim") feitos, medidos e enviados (`865422b` a `2c36748`). Resultado na seção 9 de `docs/PERFORMANCE.md`.
-  O roteiro `ui.mjs` agora rola só 30 quadros dentro dos primeiros 500 commits (os números de rolagem anteriores a
-  `4fa9eeb` não são comparáveis com os novos).
-- **Verificado no último commit:** `npm run typecheck` limpo, 653 testes passando, `npm run build:extension` ok,
-  conferência de comportamento do histórico no navegador (10 itens OK).
-- **Faltam na Fase 2:** 2.2 + 2.4 (diff em blocos e régua, que andam juntos) e 2.5 (blame em janela).
-- Conferência de comportamento do histórico: o roteiro descartável fica no scratchpad da sessão e some com ela. Ele
-  usa `scripts/readme-media/harness.mjs` (`launch`) e confere clique, setas (60×), foco, rolagem até o fim, commit
-  expandido, pesquisa e paginação (1 processo git por página). Vale recriá-lo (delegado) se o histórico mudar de novo.
+- **Fase 2 concluída** (itens 2.1 a 2.6), medida e enviada; resultado na seção 9 de `docs/PERFORMANCE.md`. Commits da
+  janela 2: `865422b` a `5f45958`, mais os de documento.
+- **Verificado no último commit de código:** `npm run typecheck` limpo, 684 testes passando, `npm run build` e
+  `npm run build:extension` ok, conferências no navegador do histórico (10 itens), do diff (21) e do blame (10).
+- **Mudanças de medição na janela 2:** `ui.mjs` rola o histórico só 30 quadros dentro dos primeiros 500 commits
+  (`4fa9eeb`) e espera o diff por `data-rows` (`0527760`); o harness entrega as respostas como texto JSON
+  (`6bc6069`). Números anteriores a esses commits, nessas linhas, não são comparáveis.
+- **Roteiros descartáveis** (somem com o scratchpad; recriar delegando se precisar): conferência do histórico
+  (`check-history.mjs`), do diff (`check-diff.mjs`), do blame (`check-blame.mjs`), rolagem com mediana
+  (`scroll-only.mjs`) e perfis de CPU (`prof-*.mjs`). Todos usam `launch` de `scripts/readme-media/harness.mjs`.
+- **A seguir: Fase 3** (seção 5).
 
 ### Janela 1
 
@@ -103,7 +103,7 @@ Cuidados aprendidos:
 
 Ordem recomendada; tamanhos e metas completos na seção 6 e 7 de `docs/PERFORMANCE.md`.
 
-### Fase 2 — Fim dos travamentos (a próxima)
+### Fase 2 — Fim dos travamentos (concluída na janela 2)
 
 É onde estão os travamentos que o usuário sente. Os itens dependem do componente de lista em janela, então começam
 por ele.
@@ -141,11 +141,24 @@ por ele.
 linha em ≤ 50 ms (CPU 4×). Ordem sugerida de entrega (cada uma com testes, medição e commit): 2.1 + 2.6, depois 2.3,
 2.2 e 2.4 (o diff e a régua andam juntos), depois 2.5.
 
+### Fase 3 — Menos git (a próxima)
+
+Metas: selecionar um commit com 2 processos (hoje 5); 10 setas com até 6 (hoje 10–15); `status` do cenário `heavy`
+em até 2× o `status()` simples. Ordem sugerida:
+
+1. **3.2** `commitDetails` em 1 processo (`git show --raw --numstat -z -m --first-parent`, no lugar de `show` + dois
+   `diff`; testes de equivalência com o resultado de hoje: arquivo normal, renomeado, binário, commit raiz, merge,
+   commit vazio) e o `diff` de commit sem `rev-list` (`sha^` e, só no commit raiz, a árvore vazia).
+2. **3.1** `status` leve no caminho de atualização; as contagens de linhas (dois `numstat` e a leitura dos não
+   rastreados) só para as telas que as mostram, por `Wants`, com limite de quantidade e fila de poucas leituras.
+3. **3.3** `AbortSignal` até o `runGit` (matar o processo de uma leitura substituída) e, junto, parar o git no teto de
+   saída do diff (hoje o excedente é lido e descartado).
+4. **3.4** fila de processos git no `Backend`, com prioridade para o que está na tela.
+5. Formato compacto do diff (as linhas como texto e os tipos num vetor), que é o que falta para abrir o diff de
+   5.000 linhas em 300 ms (hoje 1,0–1,3 s, quase tudo transporte de 2,9 MB).
+
 ### Fases seguintes (resumo; detalhes no documento)
 
-- **Fase 3 — Menos git:** `status` leve por padrão com contagens de linhas sob demanda (B2); `commitDetails` em 1
-  processo e `diff` de commit sem `rev-list` (B3); cancelamento real até o `runGit` (`AbortSignal`); fila de processos
-  git no `Backend` com prioridade (B6). O item 3.5 (eco do observador) já foi feito na Fase 1.
 - **Fase 4 — Listas e redesenhos:** contexto `useApp()` dividido (C2); itens de lista sem contexto (C2/C4);
   branches/tags com agrupamento linear (C4); `buildTree` com `Map` (C5); ícones por símbolo reutilizado (C6);
   comparação de diffs por identificador, não por `JSON.stringify` (C7: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`).
@@ -184,7 +197,7 @@ Cole isto como primeira mensagem da sessão nova:
 
 > Leia `docs/HANDOFF.md`, `CLAUDE.md` e as seções 6 a 8 de `docs/PERFORMANCE.md`. Siga as regras de trabalho da seção 1
 > do HANDOFF (a janela principal não escreve código: delega a subagentes Haiku 5.5, o mais recente, e só especifica,
-> revisa, mede e commita). Continue a Fase 2 pelo que a seção 5 do HANDOFF ainda lista (2.2 + 2.4, depois 2.5). Antes de começar, confira `git status` e
+> revisa, mede e commita). Continue pela Fase 3, na ordem da seção 5 do HANDOFF. Antes de começar, confira `git status` e
 > `git log --oneline -8`, recrie o repositório de teste com `node scripts/perf/stress-repo.mjs` e rode
 > `node scripts/perf/core.mjs moderate` para ter a base. Se os tokens estiverem acabando, faça só o que der para fechar
 > bem e atualize a seção 2 e 5 do HANDOFF. Este arquivo nunca vai para develop/homolog/main; nada de PR da branch de trabalho até o fim.
