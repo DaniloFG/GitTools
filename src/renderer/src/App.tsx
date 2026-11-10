@@ -43,13 +43,13 @@ import { RepoTabs } from './components/RepoTabs'
 import { Dock, type ViewMeta } from './components/Dock'
 import { installCopy } from './copy'
 import { errorMessage, shortSha } from './format'
-import { gitCalls, gitFor, gitInBackground, markChanged, readCache, setActiveRoot } from './git'
+import { gitCalls, gitFor, gitInBackground, markChanged, OWN_CHANGE_WINDOW_MS, readCache, setActiveRoot } from './git'
 import { draftPaths } from './editorDrafts'
 import { getLocale, setLocale, t, type MessageKey } from './i18n'
 import { resetLayout as clearLayout, useLayout } from './layout'
 import { clearCurrentLayout } from './savedLayouts'
 import { historySignature, mergeData } from './stable'
-import { dropSession, getSession, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
+import { dropSession, getSession, isOwnEcho, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
 import { checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
 import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
 import { openScreen, readScreen } from './dockStore'
@@ -99,6 +99,21 @@ function describeWork(work: UnsavedReason[]): string {
 /** Mesma lista (mesmos repositórios, na mesma ordem e com o mesmo ativo)? */
 function sameOpened(a: OpenRepositories, b: OpenRepositories): boolean {
   return a.active === b.active && a.repos.length === b.repos.length && a.repos.every((r, i) => r.root === b.repos[i].root)
+}
+
+/**
+ * O aviso do observador para `root` é eco de uma alteração feita por esta interface, e os dados já foram lidos
+ * depois dela (ver `isOwnEcho`). O ouvinte do app e o da aba usam esta mesma função: nenhum invalida antes.
+ */
+function isEcho(root: string): boolean {
+  const session = peekSession(root)
+  return isOwnEcho({
+    ownChange: readCache.hasRecentChange(root, OWN_CHANGE_WINDOW_MS),
+    generation: readCache.generation(root),
+    lastLoaded: session?.loaded?.generation ?? null,
+    loadingGeneration: session?.loadingGeneration ?? null,
+    again: session?.again ?? false
+  })
 }
 
 /**
@@ -188,17 +203,26 @@ export function App() {
     })
   }, [])
 
-  /** Atualiza o resumo de um repositório (branch, alterações, conflito, operação) sem trocar para ele. */
-  const refreshSummary = useCallback(async (root: string) => {
-    try {
-      const background = gitInBackground(root)
-      const [status, operation] = await Promise.all([background.status(), background.operationState()])
-      const next = summarize(status, operation.kind)
-      setSummaries((prev) => (JSON.stringify(prev[root]) === JSON.stringify(next) ? prev : { ...prev, [root]: next }))
-    } catch {
-      // Repositório que sumiu da pasta ou da sessão: a aba fica sem indicadores.
-    }
+  /** Guarda o resumo de um repositório; se for igual ao que já está, a lista de abas nem redesenha. */
+  const applySummary = useCallback((root: string, next: RepoSummary) => {
+    setSummaries((prev) => (JSON.stringify(prev[root]) === JSON.stringify(next) ? prev : { ...prev, [root]: next }))
   }, [])
+
+  /** Atualiza o resumo de um repositório (branch, alterações, conflito, operação) sem trocar para ele. */
+  const refreshSummary = useCallback(
+    async (root: string) => {
+      // A aba ativa não é lida aqui: a tela dela já leu status e operação, e envia o resumo (ver RepoView).
+      if (root === openedRef.current.active) return
+      try {
+        const background = gitInBackground(root)
+        const [status, operation] = await Promise.all([background.status(), background.operationState()])
+        applySummary(root, summarize(status, operation.kind))
+      } catch {
+        // Repositório que sumiu da pasta ou da sessão: a aba fica sem indicadores.
+      }
+    },
+    [applySummary]
+  )
 
   const refreshAll = useCallback(
     (roots?: string[]) => Promise.all((roots ?? openedRef.current.repos.map((r) => r.root)).map((root) => refreshSummary(root))),
@@ -433,6 +457,8 @@ export function App() {
     () =>
       window.gittools.onRepositoryChanged((root) => {
         if (root !== undefined) {
+          // Eco de uma alteração desta interface: os dados já foram lidos depois dela. Nada a invalidar.
+          if (isEcho(root)) return
           // Mudou por fora (ou por outra aba): o que estava guardado deste repositório deixa de valer.
           readCache.invalidate(root)
           if (openedRef.current.repos.some((r) => r.root === root)) void refreshSummary(root)
@@ -558,6 +584,7 @@ export function App() {
           several={opened.repos.length > 1}
           workspace={workspace}
           settings={settings}
+          onSummary={applySummary}
           notify={toast}
           appModalOpen={appModalOpen}
           openSettings={(section) => setSettingsOpen(section ?? 'general')}
@@ -596,6 +623,8 @@ interface RepoViewProps {
   several: boolean
   workspace: WorkspaceApi
   settings: Settings
+  /** Entrega o resumo de um repositório (calculado dos dados que a própria tela já leu, sem outra leitura do git). */
+  onSummary(root: string, summary: RepoSummary): void
   /** Avisa no nível do app (o prefixo do repositório já foi acrescentado, quando cabe). */
   notify(kind: ToastKind, text: string, action?: ToastAction): void
   /** Configurações, ajuda ou clonagem abertas no nível do app: os atalhos desta aba ficam quietos. */
@@ -607,7 +636,7 @@ interface RepoViewProps {
 /**
  * A tela de um repositório (uma aba). Todo o estado daqui é deste repositório, e a aba é remontada a cada troca.
  */
-function RepoView({ repo, several, workspace, settings, notify, appModalOpen, openSettings, openShortcuts }: RepoViewProps) {
+function RepoView({ repo, several, workspace, settings, onSummary, notify, appModalOpen, openSettings, openShortcuts }: RepoViewProps) {
   // As chamadas do proxy `git` passam a ir para este repositório (ver git.ts).
   setActiveRoot(repo.root)
   /** Sessão do repositório: sobrevive à troca de aba e devolve os dados e a tela como estavam (ver repoSession.ts). */
@@ -718,6 +747,7 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
       const needs: Wants = { log: wantsRef.current.log || prev === null, stashes: wantsRef.current.stashes }
       // Geração anotada antes de ler: se algo mudar durante a leitura, o resultado já nasce como "stale".
       const generation = readCache.generation(repo.root)
+      session.loadingGeneration = generation
       const [status, refs, operation, stashes] = await Promise.all([
         gitOn.status(true),
         gitOn.refs(),
@@ -771,6 +801,7 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
         } while (session.again)
       } finally {
         session.inflight = null
+        session.loadingGeneration = null
       }
     })()
     session.inflight = round
@@ -805,6 +836,13 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
     return runLoad()
   }, [repo.root, runLoad])
 
+  // O resumo da aba (indicador) sai dos dados que esta tela já leu: não há leitura extra do git para ele.
+  const repoStatus = data?.status
+  const repoOperation = data?.operation
+  useEffect(() => {
+    if (repoStatus && repoOperation) onSummary(repo.root, summarize(repoStatus, repoOperation.kind))
+  }, [repoStatus, repoOperation, onSummary, repo.root])
+
   // Ao abrir a aba, ao mudar o filtro de branches ou quando um painel novo aparece: lê só o que falta.
   useEffect(() => {
     void ensureFresh()
@@ -815,6 +853,8 @@ function RepoView({ repo, several, workspace, settings, notify, appModalOpen, op
     const off = window.gittools.onRepositoryChanged((root) => {
       // Mudança em outro repositório não mexe nos dados desta aba (o indicador dela fica no nível do app).
       if (root !== undefined && root !== repo.root) return
+      // Eco de uma alteração desta interface: os dados já foram lidos depois dela (o ouvinte do app decide igual).
+      if (root !== undefined && isEcho(root)) return
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => void refresh(), 150)
     })

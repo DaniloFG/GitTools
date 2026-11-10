@@ -313,3 +313,50 @@ describe('Limiter', () => {
     expect(await limiter.run(async () => 'ok')).toBe('ok')
   })
 })
+
+describe('alteração própria recente (eco do observador)', () => {
+  const WINDOW = 1000
+
+  it('no início não houve alteração própria', () => {
+    expect(new ReadCache().hasRecentChange('/a', WINDOW, 0)).toBe(false)
+  })
+
+  it('durante uma alteração em andamento é verdadeira, mesmo muito depois', async () => {
+    const cache = new ReadCache()
+    const change = fakeCall('ok')
+    const done = cache.call('/a', 'stage', [], change.run)
+    expect(cache.hasRecentChange('/a', WINDOW, Date.now() + 60_000)).toBe(true)
+    change.finish()
+    await done
+  })
+
+  it('logo depois de terminar é verdadeira, e falsa passada a janela', async () => {
+    const cache = new ReadCache()
+    await cache.call('/a', 'stage', [], instant('ok').run)
+    const at = Date.now()
+    expect(cache.hasRecentChange('/a', WINDOW, at)).toBe(true)
+    expect(cache.hasRecentChange('/a', WINDOW, at + WINDOW)).toBe(true)
+    expect(cache.hasRecentChange('/a', WINDOW, at + WINDOW + 1)).toBe(false)
+  })
+
+  it('carimbo por fora (markChanged) vale como alteração própria', () => {
+    const cache = new ReadCache()
+    cache.stampChange('/a', 5000)
+    expect(cache.hasRecentChange('/a', WINDOW, 5500)).toBe(true)
+    expect(cache.hasRecentChange('/a', WINDOW, 6001)).toBe(false)
+  })
+
+  it('drop esquece a alteração recente', async () => {
+    const cache = new ReadCache()
+    await cache.call('/a', 'stage', [], instant('ok').run)
+    cache.drop('/a')
+    expect(cache.hasRecentChange('/a', WINDOW)).toBe(false)
+  })
+
+  it('a alteração de um repositório não afeta o outro', async () => {
+    const cache = new ReadCache()
+    await cache.call('/a', 'stage', [], instant('ok').run)
+    expect(cache.hasRecentChange('/a', WINDOW)).toBe(true)
+    expect(cache.hasRecentChange('/b', WINDOW)).toBe(false)
+  })
+})

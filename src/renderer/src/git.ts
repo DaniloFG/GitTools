@@ -76,7 +76,17 @@ export function gitInBackground(root: string): RepoApi {
   return proxyFor(() => root, callInBackground)
 }
 
+/**
+ * Por quanto tempo, depois de uma alteração feita pela própria interface, um aviso do observador da pasta `.git`
+ * ainda é tratado como eco dela. O observador avisa ~250 ms depois da última escrita; 1 s dá folga para rajadas.
+ */
+export const OWN_CHANGE_WINDOW_MS = 1000
+
 /** Algo mudou em `root` sem passar pelo proxy (comando digitado no terminal, cherry-pick entre repositórios…). */
 export function markChanged(...roots: string[]): void {
-  for (const root of roots) readCache.invalidate(root)
+  const now = Date.now()
+  for (const root of roots) {
+    readCache.invalidate(root)
+    readCache.stampChange(root, now)
+  }
 }

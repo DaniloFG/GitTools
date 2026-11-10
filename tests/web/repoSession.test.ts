@@ -4,10 +4,12 @@ import {
   covers,
   dropSession,
   getSession,
+  isOwnEcho,
   peekSession,
   planFor,
   sessionState,
   trimSessions,
+  type EchoInput,
   type Loaded,
   type StateInput
 } from '../../src/renderer/src/repoSession'
@@ -126,5 +128,39 @@ describe('sessões por repositório', () => {
   it('não faz nada abaixo do limite', () => {
     getSession('/a').data = {} as never
     expect(trimSessions('/a', 3)).toEqual([])
+  })
+})
+
+describe('aviso do observador é eco da própria alteração', () => {
+  const base: EchoInput = { ownChange: true, generation: 5, lastLoaded: 5, loadingGeneration: null, again: false }
+
+  it('sem alteração própria recente nunca é eco (ex.: commit no terminal)', () => {
+    expect(isOwnEcho({ ...base, ownChange: false })).toBe(false)
+    expect(isOwnEcho({ ...base, ownChange: false, loadingGeneration: 5 })).toBe(false)
+  })
+
+  it('leitura em andamento começada depois da alteração é eco', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: null, loadingGeneration: 5 })).toBe(true)
+  })
+
+  it('leitura em andamento de geração antiga, sem outra rodada na fila, não é eco', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: 4, loadingGeneration: 4, again: false })).toBe(false)
+  })
+
+  it('leitura em andamento de geração antiga, com outra rodada na fila, é eco', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: 4, loadingGeneration: 4, again: true })).toBe(true)
+  })
+
+  it('sem leitura em andamento: eco se a última leitura concluída é da geração atual', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: 5 })).toBe(true)
+    expect(isOwnEcho({ ...base, lastLoaded: 4 })).toBe(false)
+  })
+
+  it('sem nenhuma leitura concluída não é eco', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: null })).toBe(false)
+  })
+
+  it('a sessão nova começa sem leitura em andamento', () => {
+    expect(getSession('/novo').loadingGeneration).toBeNull()
   })
 })
