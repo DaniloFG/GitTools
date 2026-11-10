@@ -62,6 +62,24 @@ export function rulerMarks(rows: RulerRow[], totalHeight: number, minPx: number)
   return merged.map((m) => ({ top: m.top / totalHeight, height: (m.end - m.top) / totalHeight, kind: m.kind }))
 }
 
+/** Linha alterada pela posição (`index`) numa lista de linhas de mesma altura. */
+export interface RulerIndexRow {
+  index: number
+  kind: string
+}
+
+/**
+ * Marcas a partir de posições de linha, sem medir o DOM (modo por dados, usado pelo diff por janela).
+ * Cada linha ocupa 1/`total` da altura, então a fração de `index` é `index / total`. Linhas seguidas do mesmo
+ * tipo viram uma marca, como em `rulerMarks`. `minFraction` é a altura mínima de cada marca (0 a 1).
+ * Linear: `rulerMarks` ordena com TimSort, que em lista já ordenada (a das linhas do diff) só percorre a lista.
+ */
+export function marksFromRows(rows: readonly RulerIndexRow[], total: number, minFraction: number): RulerMark[] {
+  if (!(total > 0)) return []
+  const spans: RulerRow[] = rows.map((r) => ({ top: r.index, height: 1, kind: r.kind }))
+  return rulerMarks(spans, total, minFraction * total)
+}
+
 /**
  * Área visível (viewport) em frações da altura total: a parte que aparece na tela, para desenhar sobre a régua.
  */

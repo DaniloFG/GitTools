@@ -347,7 +347,8 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
             })}
           </div>
         </div>
-        <ChangeRuler selector="[data-conflict]" scroller=".merge-scroll" />
+        {/* version = as escolhas e o texto do resultado: quando mudam, os blocos são medidos de novo. */}
+        <ChangeRuler selector="[data-conflict]" scroller=".merge-scroll" version={resolutions} />
       </div>
     )
   }
