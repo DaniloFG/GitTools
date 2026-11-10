@@ -6,6 +6,7 @@ import { useApp } from '../context'
 import { currentDrag, endDrag, startDrag } from '../dnd'
 import { stepIndex } from '../diffNav'
 import { errorMessage, statusLabel } from '../format'
+import { sameDiff } from '../diffIdentity'
 import { git } from '../git'
 import { copyText } from '../copy'
 import { t } from '../i18n'
@@ -121,7 +122,7 @@ export function ChangesView() {
         if (cancelled) return
         const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
         // Mantém a mesma referência (e a seleção) se nada mudou desde a última leitura.
-        setDiff((prev) => (prev && next && JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+        setDiff((prev) => (prev && next && sameDiff(prev, next) ? prev : next))
       },
       (e) => !cancelled && toast('error', errorMessage(e))
     )

@@ -25,6 +25,7 @@ writeFileSync(
     `export { GitRepository } from ${src('src/core/repository')}`,
     `export { onGitCommand, runGit } from ${src('src/core/exec')}`,
     `export { buildTree } from ${src('src/renderer/src/fileTree')}`,
+    `export { sameDiff } from ${src('src/renderer/src/diffIdentity')}`,
     `export { mergeData } from ${src('src/renderer/src/stable')}`,
     `export { computeGraph } from ${src('src/renderer/src/graph')}`,
     `export { formatShortDateTime, formatRelative, setDateFormat, setLocale, t } from ${src('src/shared/i18n')}`
@@ -116,4 +117,33 @@ const after = JSON.parse(JSON.stringify(before))
 pure('mergeData: status de 2300 arquivos + 1100 branches', () => m.mergeData(before, after), 50)
 const commits = Array.from({ length: 5000 }, (_, i) => ({ sha: `c${i}`, parents: i % 9 === 0 ? [`c${i + 1}`, `c${i + 13}`] : [`c${i + 1}`] }))
 pure('computeGraph: 5000 commits', () => m.computeGraph(commits, 'c0'))
+// Diff de 1 arquivo com 5.000 linhas alteradas, montado igual ao que a leitura devolve (objetos distintos e iguais).
+// Com `index` (arquivo rastreado) e sem (não rastreado, como em `untrackedDiff`).
+const bigDiff = (withIndex) => ({
+  oldPath: 'big/huge.ts',
+  newPath: 'big/huge.ts',
+  path: 'big/huge.ts',
+  changeType: 'modified',
+  binary: false,
+  headerLines: withIndex
+    ? ['diff --git a/big/huge.ts b/big/huge.ts', 'index 3f2a1b0..9c8d7e6 100644', '--- a/big/huge.ts', '+++ b/big/huge.ts']
+    : ['diff --git a/big/huge.ts b/big/huge.ts', 'new file mode 100644', '--- /dev/null', '+++ b/big/huge.ts'],
+  hunks: [
+    {
+      oldStart: 1,
+      oldCount: 5000,
+      newStart: 1,
+      newCount: 5000,
+      section: 'main()',
+      lines: Array.from({ length: 5000 }, (_, i) => ({ kind: i % 2 ? 'add' : 'del', content: `  const value${i} = compute(${i}) // alterado`, oldLine: i + 1, newLine: i + 1 }))
+    }
+  ],
+  additions: 2500,
+  deletions: 2500
+})
+const [withIndexA, withIndexB] = [bigDiff(true), bigDiff(true)]
+const [noIndexA, noIndexB] = [bigDiff(false), bigDiff(false)]
+pure('comparar diff de 5000 linhas: JSON.stringify', () => JSON.stringify(withIndexA) === JSON.stringify(withIndexB), 20)
+pure('comparar diff de 5000 linhas: sameDiff (com index)', () => m.sameDiff(withIndexA, withIndexB), 200)
+pure('comparar diff de 5000 linhas: sameDiff (sem index)', () => m.sameDiff(noIndexA, noIndexB), 200)
 applyScenario(dir, 'clean')

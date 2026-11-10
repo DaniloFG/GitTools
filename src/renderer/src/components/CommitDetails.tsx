@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getSession } from '../repoSession'
+import { sameDiff } from '../diffIdentity'
 import { useSettled } from '../settle'
 import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
@@ -121,6 +122,9 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [active, setActive] = useState<ChangedFile | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
+  // Diff atual para quem espera uma ação: a seleção só é limpa se ainda for o mesmo diff de quando a ação começou.
+  const diffRef = useRef(diff)
+  diffRef.current = diff
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()
   const uncapped = useDiffUncapped(active?.path)
@@ -233,7 +237,8 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       t('details.linesContext', { path: diff.path, sha: shortSha(sha), subject: details.subject }),
       `${details.subject}\n\n${t('messages.linesFrom', { path: diff.path, sha: details.sha })}`
     )
-    if (done) setSelection(new Set())
+    // Se o usuário trocou de commit ou de arquivo enquanto a ação esperava, a seleção é de outra tela: não mexe nela.
+    if (done && diffRef.current === diff) setSelection(new Set())
   }
 
   const messagePane = (
@@ -420,7 +425,7 @@ function WipPanes({ focus }: { focus: WipFocus }) {
       (files) => {
         if (cancelled) return
         const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
-        setDiff((prev) => (prev && next && JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+        setDiff((prev) => (prev && next && sameDiff(prev, next) ? prev : next))
       },
       (e) => !cancelled && toast('error', errorMessage(e))
     )
