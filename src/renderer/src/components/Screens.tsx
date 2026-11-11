@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useApp } from '../context'
+import { useAppActions } from '../context'
 import { inScreen, pinnedIn, SCREEN_IDS, SCREEN_VIEWS, toggleIn, type DockState, type ScreenId, type ViewId } from '../dock'
 import { t } from '../i18n'
 import { applySavedLayout, deleteSavedLayout, findByName, saveCurrentLayout, useCurrentLayoutName, useSavedLayouts } from '../savedLayouts'
@@ -112,7 +112,7 @@ export function ScreenTabs({ state, meta, screen, available, onScreen, changeCou
  * restaurar o padrão). Fica no menu único ⚙/☰ da barra, em Aparência.
  */
 export function usePanelsItems({ state, onChange, screen, meta, available }: Pick<ScreenProps, 'state' | 'onChange' | 'screen' | 'meta' | 'available'>): MenuItem[] {
-  const { resetLayout, prompt, confirm, toast } = useApp()
+  const { resetLayout, prompt, confirm, toast } = useAppActions()
   const [saved, setSaved] = useSavedLayouts()
   const currentName = useCurrentLayoutName()
 

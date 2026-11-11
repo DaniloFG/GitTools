@@ -1,9 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DiffWindowRequest } from '../../../shared/api'
 import { DEFAULT_SETTINGS, type Settings } from '../../../shared/settings'
 import type { FileDiff } from '../../../shared/types'
 import { applyDateFormat, applySettings, resolveLocale } from '../appearance'
-import { AppContext, type AppContextValue, type ToastKind } from '../context'
+import {
+  AppActionsContext,
+  AppContext,
+  AppSettingsContext,
+  BusyContext,
+  RepoDataContext,
+  type AppActions,
+  type AppContextValue,
+  type AppSettingsValue,
+  type BusyValue,
+  type ToastKind
+} from '../context'
 import { addToast, type Toast } from '../feedback'
 import { errorMessage } from '../format'
 import { getActiveRoot, git, markChanged, setActiveRoot } from '../git'
@@ -109,40 +120,63 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
   useEffect(() => installCopy({ show: setMenu, notify: toast }), [toast])
 
   // O diff lê as preferências (modo cima/baixo ou lado a lado) e mostra menus e avisos por este contexto.
-  const context = {
-    settings,
-    toast,
-    showMenu: (event: React.MouseEvent, items: MenuItem[]) => {
-      event.preventDefault()
-      event.stopPropagation()
-      setMenu({ x: event.clientX, y: event.clientY, items })
-    }
-  } as AppContextValue
+  // Os componentes leem as fatias (`AppSettingsContext`, `AppActionsContext`...), então esta janela fornece as quatro,
+  // cada uma memorizada, além do valor combinado para quem ainda lê `AppContext`. Os valores são parciais: esta
+  // janela não tem dados de repositório (fatia nula) nem as outras ações, como antes da divisão.
+  // As ações mudam com o idioma (como na janela principal), para os textos de quem só lê ações se renovarem.
+  const actions = useMemo(
+    () =>
+      ({
+        toast,
+        showMenu: (event: React.MouseEvent, items: MenuItem[]) => {
+          event.preventDefault()
+          event.stopPropagation()
+          setMenu({ x: event.clientX, y: event.clientY, items })
+        }
+      }) as unknown as AppActions,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [toast, locale]
+  )
+  const settingsValue = useMemo<AppSettingsValue>(() => ({ settings, dashboardsOpen: false }), [settings])
+  const busyValue = useMemo<BusyValue>(() => ({ busy: null, busyScope: [] }), [])
+  const context = useMemo(
+    () => ({ ...busyValue, ...actions, ...settingsValue }) as AppContextValue,
+    [busyValue, actions, settingsValue]
+  )
 
+  // Sem repositório nesta janela: a fatia de dados é nula, e quem a lê direto trata a ausência (como `DialogHost`).
   return (
-    <AppContext.Provider value={context}>
-      <div className="diff-window-app">
-        <header className="toolbar">
-          <span className="logo-mark">⑂</span>
-          <strong className="diff-window-title" title={title}>
-            {title}
-          </strong>
-          <span className="toolbar-spacer" />
-          <button onClick={() => window.gittools.openInEditor(path, request.root).catch((e) => toast('error', errorMessage(e)))}>{t('common.openInEditor')}</button>
-          <button onClick={() => closeWindow()}>{t('common.close')}</button>
-        </header>
-        <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((item) => item.id !== id))} />
-        <div className="diff-window">
-          {diff === null ? (
-            <LoaderPane label={t('loader.diff')} />
-          ) : 'error' in diff ? (
-            <p className="empty">{diff.error}</p>
-          ) : (
-            <DiffView file={diff} />
-          )}
-        </div>
-        {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
-      </div>
-    </AppContext.Provider>
+    <RepoDataContext.Provider value={null}>
+      <BusyContext.Provider value={busyValue}>
+        <AppActionsContext.Provider value={actions}>
+          <AppSettingsContext.Provider value={settingsValue}>
+            <AppContext.Provider value={context}>
+              <div className="diff-window-app">
+                <header className="toolbar">
+                  <span className="logo-mark">⑂</span>
+                  <strong className="diff-window-title" title={title}>
+                    {title}
+                  </strong>
+                  <span className="toolbar-spacer" />
+                  <button onClick={() => window.gittools.openInEditor(path, request.root).catch((e) => toast('error', errorMessage(e)))}>{t('common.openInEditor')}</button>
+                  <button onClick={() => closeWindow()}>{t('common.close')}</button>
+                </header>
+                <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((item) => item.id !== id))} />
+                <div className="diff-window">
+                  {diff === null ? (
+                    <LoaderPane label={t('loader.diff')} />
+                  ) : 'error' in diff ? (
+                    <p className="empty">{diff.error}</p>
+                  ) : (
+                    <DiffView file={diff} />
+                  )}
+                </div>
+                {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
+              </div>
+            </AppContext.Provider>
+          </AppSettingsContext.Provider>
+        </AppActionsContext.Provider>
+      </BusyContext.Provider>
+    </RepoDataContext.Provider>
   )
 }

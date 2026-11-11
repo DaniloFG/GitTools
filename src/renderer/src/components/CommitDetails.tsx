@@ -5,7 +5,7 @@ import { useSettled } from '../settle'
 import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { useActions } from '../actions'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { copyText } from '../copy'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
@@ -86,7 +86,7 @@ function NothingToShow() {
 }
 
 function MultiSelection({ shas }: { shas: string[] }) {
-  const { openStudio } = useApp()
+  const { openStudio } = useAppActions()
   const actions = useActions()
   return (
     <>
@@ -112,7 +112,8 @@ function MultiSelection({ shas }: { shas: string[] }) {
 }
 
 function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) {
-  const { toast, openFileView, openDiffWindow, openInEditor, showMenu, repo } = useApp()
+  const { repo } = useRepoData()
+  const { toast, openFileView, openDiffWindow, openInEditor, showMenu } = useAppActions()
   const actions = useActions()
   const head = actions.head
   /** Arquivo aberto neste commit, lembrado ao navegar para outra tela ou aba de repositório e voltar. */
@@ -378,7 +379,8 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
  * histórico): a lista dos arquivos e, embaixo, o diff do escolhido — igual ao de um commit.
  */
 function WipPanes({ focus }: { focus: WipFocus }) {
-  const { data, toast, setView, openConflict, openDiffWindow } = useApp()
+  const { data } = useRepoData()
+  const { toast, setView, openConflict, openDiffWindow } = useAppActions()
   const { status } = data
   const [fullFile] = useFullFile()
   type Area = 'unstaged' | 'staged'

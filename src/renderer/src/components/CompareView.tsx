@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ChangedFile, CommitInfo, Comparison, DiffSource, FileDiff, LineKey } from '../../../shared/types'
 import { useActions } from '../actions'
-import { currentBranch, useApp, type CompareRequest } from '../context'
+import { currentBranch, useAppActions, useRepoData, type CompareRequest } from '../context'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
@@ -26,7 +26,8 @@ interface Props {
  * cada lado (`compare.setup`), os arquivos diferentes (`compare.files`) e o diff do arquivo (`compare.diff`).
  */
 export function CompareView({ request, onRequest }: Props) {
-  const { data, run, toast, selectCommit, openFileView, showMenu, openDiffWindow } = useApp()
+  const { data } = useRepoData()
+  const { run, toast, selectCommit, openFileView, showMenu, openDiffWindow } = useAppActions()
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { BranchCommit, BranchInfo, ChangedFile, CrossApply, DiffSource, FileApplyMode, FileDiff, LineKey, OperationResult } from '../../../shared/types'
-import { currentBranch, useApp, type StudioRequest } from '../context'
+import { currentBranch, useAppActions, useRepoData, type StudioRequest } from '../context'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t, type MessageKey } from '../i18n'
 import { gitFor, markChanged } from '../git'
@@ -30,7 +30,8 @@ const SELECTION = '\u0000selection'
 const CROSS_LIMIT = 300
 
 export function CherryPickStudio({ request, onClose }: { request: StudioRequest; onClose(): void }) {
-  const { data, run, toast, repo, workspace } = useApp()
+  const { data, repo, workspace } = useRepoData()
+  const { run, toast } = useAppActions()
   const head = currentBranch(data)
   const fromSelection = !!request.commits?.length && !request.source
 

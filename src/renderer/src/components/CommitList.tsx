@@ -5,7 +5,7 @@ import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
 import type { MenuItem } from './ContextMenu'
 import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { copyText } from '../copy'
 import { endDrag, startDrag, type DragPayload } from '../dnd'
 import { errorMessage, fullDate, relativeDate, shortSha, statusLabel } from '../format'
@@ -92,7 +92,9 @@ export function CommitList({
   canLoadMore,
   onLoadMore
 }: Props) {
-  const { data, repo, workspace, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
+  // Dados e abas vêm da fatia de dados; as funções, da fatia de ações (estável): a lista não redesenha com a operação.
+  const { data, repo, workspace } = useRepoData()
+  const { showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useAppActions()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
   // Menu da branch (botão direito na etiqueta): as etiquetas não chamam useBranchMenu, quem o chama é este componente.
@@ -848,7 +850,7 @@ function CommitFiles({
   onOpenFile(path: string): void
   onOpenFileWindow(path: string): void
 }) {
-  const { showMenu, openFileView, openInEditor } = useApp()
+  const { showMenu, openFileView, openInEditor } = useAppActions()
   const actions = useActions()
   const head = actions.head
   const pathsOf = (f: ChangedFile) => (f.oldPath ? [f.path, f.oldPath] : [f.path])

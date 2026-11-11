@@ -2,7 +2,7 @@ import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState, ty
 import { DIFF_MAX_BYTES, type DiffLine, type FileDiff, type LineKey } from '../../../shared/types'
 import { changeKeys, hunkKeys, lineKey } from '../../../shared/diffKeys'
 import { DEFAULT_SETTINGS, type DiffLayout } from '../../../shared/settings'
-import { AppContext } from '../context'
+import { AppActionsContext, AppSettingsContext } from '../context'
 import { copyAndNotify, copyItemsAt, selectionText } from '../copy'
 import { diffLinesText, markedDiffLines } from '../copyText'
 import { stepIndex, useDiffNav } from '../diffNav'
@@ -22,7 +22,7 @@ import { marksFromRows, type RulerIndexRow } from '../changeRuler'
  * os botões do cabeçalho trocam o modo só enquanto o diff está aberto.
  */
 export function useDiffLayout(): [DiffLayout, (layout: DiffLayout) => void] {
-  const preferred = useContext(AppContext)?.settings.diffLayout ?? DEFAULT_SETTINGS.diffLayout
+  const preferred = useContext(AppSettingsContext)?.settings.diffLayout ?? DEFAULT_SETTINGS.diffLayout
   const [override, setOverride] = useState<{ preferred: DiffLayout; layout: DiffLayout } | null>(null)
   // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
   const layout = override && override.preferred === preferred ? override.layout : preferred
@@ -35,7 +35,7 @@ export function useDiffLayout(): [DiffLayout, (layout: DiffLayout) => void] {
  * guardada até o padrão das configurações mudar. Quem busca o diff a inclui no pedido (`fullFile`).
  */
 export function useFullFile(): [boolean, (full: boolean) => void] {
-  const preferred = useContext(AppContext)?.settings.diffFullFile ?? DEFAULT_SETTINGS.diffFullFile
+  const preferred = useContext(AppSettingsContext)?.settings.diffFullFile ?? DEFAULT_SETTINGS.diffFullFile
   const [override, setOverride] = useLayout<{ preferred: boolean; full: boolean } | undefined>('diff.fullFile', parseFullFileOverride)
   // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
   const full = override && override.preferred === preferred ? override.full : preferred
@@ -58,7 +58,7 @@ interface Props {
 
 /** Teclas atuais de uma ação (as personalizadas das configurações, se houver). */
 function useShortcutOf(): (action: string) => string {
-  const overrides = useContext(AppContext)?.settings.shortcuts
+  const overrides = useContext(AppSettingsContext)?.settings.shortcuts
   return (action) => displayCombo(resolveBindings(overrides ?? {})[action])
 }
 
@@ -438,7 +438,8 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
     if (dragMode.current) update([key], dragMode.current === 'add')
   }
 
-  const app = useContext(AppContext)
+  // Só as ações (menu e aviso de cópia): o diff não redesenha com a operação em andamento nem com os dados.
+  const actions = useContext(AppActionsContext)
 
   // O código é texto selecionável: o mouse sobre ele só seleciona. Marcar a linha é clicar nela (sem texto
   // selecionado) ou usar as colunas à esquerda (caixa, números e sinal), onde o arrastar marca várias.
@@ -461,12 +462,12 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
 
   /** Botão direito no diff: copiar as linhas marcadas e o que estiver na linha ou selecionado. */
   const onMenu = (e: React.MouseEvent) => {
-    if (!app?.showMenu) return
+    if (!actions?.showMenu) return
     const marked = selection && selection.size ? markedDiffLines(file, selection) : []
     const items: MenuItem[] = []
-    if (marked.length) items.push({ label: t('copy.markedLines', { count: marked.length }), onClick: () => void copyAndNotify(diffLinesText(marked), app.toast) })
-    items.push(...copyItemsAt(e.target, app.toast))
-    if (items.length) app.showMenu(e, items)
+    if (marked.length) items.push({ label: t('copy.markedLines', { count: marked.length }), onClick: () => void copyAndNotify(diffLinesText(marked), actions.toast) })
+    items.push(...copyItemsAt(e.target, actions.toast))
+    if (items.length) actions.showMenu(e, items)
   }
 
   // Os blocos leem a seleção e os manipuladores daqui. Atualizada a cada desenho, antes de qualquer evento.

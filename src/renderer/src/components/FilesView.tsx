@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { BlameResult, FileDiff, FileHistoryEntry, LineKey } from '../../../shared/types'
-import { currentBranch, useApp } from '../context'
+import { currentBranch, useAppActions, useRepoData } from '../context'
 import { useActions } from '../actions'
 import { errorMessage, fullDate, relativeDate, shortSha } from '../format'
 import { t } from '../i18n'
@@ -73,7 +73,7 @@ export function FilesPanes({ path, onPath }: { path: string | null; onPath(path:
 }
 
 function FileHeader({ path, title }: { path: string; title: string }) {
-  const { openInEditor } = useApp()
+  const { openInEditor } = useAppActions()
   return (
     <div className="file-header">
       <strong>{title}</strong>
@@ -85,7 +85,8 @@ function FileHeader({ path, title }: { path: string; title: string }) {
 }
 
 function FilesList({ path, onPath }: { path: string | null; onPath(path: string): void }) {
-  const { data, toast, repo } = useApp()
+  const { data, repo } = useRepoData()
+  const { toast } = useAppActions()
   const [files, setFiles] = useState<string[]>([])
   const [filter, setFilter] = useSessionState('files.filter', '')
   // Arquivos com alterações ainda não salvas no editor.
@@ -231,7 +232,8 @@ const BlameBlock = memo(function BlameBlock({ blame, colors, start, end, live }:
  * contêiner `.blame-body` rola. A releitura só acontece quando a assinatura muda (ver blameSignature).
  */
 function BlameView({ path, rev, onClearRev }: { path: string; rev?: string; onClearRev(): void }) {
-  const { selectCommit, showMenu, data, repo } = useApp()
+  const { data, repo } = useRepoData()
+  const { selectCommit, showMenu } = useAppActions()
   const [blame, setBlame] = useState<BlameResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [gutter, setGutter] = useLayout('blame.gutter', parseGutter)
@@ -339,7 +341,8 @@ function HistoryMessage({ children }: { children: React.ReactNode }) {
 }
 
 function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: string): void }) {
-  const { data, run, confirm, toast, selectCommit, openDiffWindow } = useApp()
+  const { data } = useRepoData()
+  const { run, confirm, toast, selectCommit, openDiffWindow } = useAppActions()
   const actions = useActions()
   const head = currentBranch(data)
   const [entries, setEntries] = useState<FileHistoryEntry[] | null>(null)

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { getSession } from './repoSession'
-import { useApp } from './context'
+import { useRepoData } from './context'
 
 /**
  * Como `useState`, mas o valor fica guardado na sessão do repositório: ao sair da tela (ou da aba do repositório)
@@ -8,7 +8,7 @@ import { useApp } from './context'
  * Cada repositório tem os seus valores; a `key` identifica o painel (ex.: "changes.active").
  */
 export function useSessionState<T>(key: string, initial: T): [T, Dispatch<SetStateAction<T>>] {
-  const { repo } = useApp()
+  const { repo } = useRepoData()
   const panes = getSession(repo.root).ui.panes
   const [value, setValue] = useState<T>(() => (panes.has(key) ? (panes.get(key) as T) : initial))
   // O valor mais recente, para o `set` poder ser estável e ainda assim aceitar uma função.

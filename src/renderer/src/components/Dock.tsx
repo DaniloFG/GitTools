@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { AppContext } from '../context'
+import { AppActionsContext, BusyContext } from '../context'
 import {
   activateView,
   effectiveDir,
@@ -103,7 +103,9 @@ export function Dock({ meta, available }: DockProps) {
   const [state, setDockState] = useDock()
   /** Tela aberta: só aparecem os painéis dela e os fixados nela. */
   const [screen] = useScreen()
-  const app = useContext(AppContext)
+  // Só as ações (menus e "restaurar layout"): o indicador de operação lê a fatia de ocupado em `GroupBody`,
+  // e assim o arranjo inteiro não redesenha 2× a cada operação. As ações mudam com o idioma, e os textos acompanham.
+  const actions = useContext(AppActionsContext)
   const rootRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ view: ViewId; hit: Hit | null } | null>(null)
   /** Grupo que ocupa a janela toda (null = todos à vista). Não é guardado: o arranjo continua o mesmo. */
@@ -252,7 +254,7 @@ export function Dock({ meta, available }: DockProps) {
   /** Menu da aba: as mesmas mudanças do arrastar, para quem não arrasta. */
   const tabMenu = (e: React.MouseEvent, view: ViewId, groupId: string, lonely: boolean) => {
     const sides: Side[] = ['left', 'right', 'top', 'bottom']
-    app?.showMenu(e, [
+    actions?.showMenu(e, [
       {
         label: t('workbench.splitMenu'),
         disabled: lonely,
@@ -266,7 +268,7 @@ export function Dock({ meta, available }: DockProps) {
       { label: maximized === groupId ? t('workbench.restoreSize') : t('workbench.maximize'), onClick: () => setMaximized(maximized === groupId ? null : groupId) },
       // Num painel de outra tela (fixado aqui), "ocultar" é deixar de fixá-lo nesta tela.
       { label: t('workbench.hide'), onClick: () => onChange(hideIn(latest.current, view, screen)) },
-      { label: t('workbench.resetLayout'), onClick: () => void app.resetLayout() }
+      { label: t('workbench.resetLayout'), onClick: () => void actions?.resetLayout() }
     ])
   }
 
@@ -414,7 +416,7 @@ export function Dock({ meta, available }: DockProps) {
       ) : (
         <div className="dock-empty">
           <p className="empty">{t('workbench.allHidden')}</p>
-          <button onClick={() => void app?.resetLayout()}>{t('workbench.resetLayout')}</button>
+          <button onClick={() => void actions?.resetLayout()}>{t('workbench.resetLayout')}</button>
         </div>
       )}
       {drag?.hit && (
@@ -435,9 +437,9 @@ export function Dock({ meta, available }: DockProps) {
  * ele é coberto pelo indicador de carregamento, que bloqueia cliques só nesse painel.
  */
 function GroupBody({ group, view, children }: { group: string; view: ViewId; children: ReactNode }) {
-  const app = useContext(AppContext)
-  const label = useLastDefined(app?.busy ?? null)
-  const covered = app?.busy != null && app.busyScope.includes(view)
+  const busyValue = useContext(BusyContext)
+  const label = useLastDefined(busyValue?.busy ?? null)
+  const covered = busyValue?.busy != null && busyValue.busyScope.includes(view)
   return (
     <LoadingOverlay active={covered} label={label ? `${label}…` : undefined} className="dock-body" data-group={group}>
       {children}

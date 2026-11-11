@@ -2,7 +2,7 @@ import type { BranchInfo } from '../../shared/types'
 import type { HistoryScope } from './App'
 import { useActions } from './actions'
 import type { MenuItem } from './components/ContextMenu'
-import { useApp } from './context'
+import { useAppActions } from './context'
 import { git } from './git'
 import { t } from './i18n'
 
@@ -11,7 +11,7 @@ import { t } from './i18n'
  * O checkout é sempre o primeiro item e leva para a branch clicada — nunca para um HEAD destacado.
  */
 export function useBranchMenu(onScope: (scope: HistoryScope) => void) {
-  const { run, openStudio, openCompare } = useApp()
+  const { run, openStudio, openCompare } = useAppActions()
   const actions = useActions()
   const head = actions.head
 

@@ -3,7 +3,7 @@ import type { BranchInfo, StashInfo } from '../../../shared/types'
 import { ALL_SCOPE, checkedRefs, toggleGroup, toggleRef, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
-import { useApp } from '../context'
+import { useAppActions, useRepoData, type AppActions } from '../context'
 import { endDrag, startDrag, type DragPayload } from '../dnd'
 import { git } from '../git'
 import { readScreen } from '../dockStore'
@@ -51,7 +51,7 @@ export function SidebarPanes({ scope, onScope }: Props) {
  * cores continuam as da última vez em que ele mostrava tudo.
  */
 function useBranchColors(scope: HistoryScope): (b: BranchInfo) => number | undefined {
-  const { data, repo } = useApp()
+  const { data, repo } = useRepoData()
   const full = useRef<{ root: string; colors: Map<string, number> }>({ root: repo.root, colors: new Map() })
   if (full.current.root !== repo.root) full.current = { root: repo.root, colors: new Map() }
   // Mapa de ~500 commits: refeito só quando o histórico ou o HEAD mudam, não a cada desenho.
@@ -61,7 +61,8 @@ function useBranchColors(scope: HistoryScope): (b: BranchInfo) => number | undef
 }
 
 function BranchesPanel({ scope, onScope }: Props) {
-  const { data, showMenu } = useApp()
+  const { data } = useRepoData()
+  const { showMenu } = useAppActions()
   const actions = useActions()
   const branchMenu = useBranchMenu(onScope)
   const colorOf = useBranchColors(scope)
@@ -148,7 +149,8 @@ function BranchesPanel({ scope, onScope }: Props) {
 }
 
 function TagsPanel() {
-  const { data, selectCommit, showMenu } = useApp()
+  const { data } = useRepoData()
+  const { selectCommit, showMenu } = useAppActions()
   const actions = useActions()
   const handlers = useRef({} as TagHandlers)
   handlers.current = {
@@ -176,7 +178,8 @@ function TagsPanel() {
 }
 
 function StashesPanel() {
-  const { data, run, confirm } = useApp()
+  const { data } = useRepoData()
+  const { run, confirm } = useAppActions()
   const handlers = useRef({} as StashHandlers)
   handlers.current = { run, confirm }
   return (
@@ -397,8 +400,8 @@ const TagItem = memo(function TagItem({ name, label, indent, sha, handlers }: { 
 
 /** Ações das linhas de stash (ver BranchHandlers). */
 interface StashHandlers {
-  run: ReturnType<typeof useApp>['run']
-  confirm: ReturnType<typeof useApp>['confirm']
+  run: AppActions['run']
+  confirm: AppActions['confirm']
 }
 
 /** Memorizada, como BranchItem. */

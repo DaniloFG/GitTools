@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ConflictDetails } from '../../../shared/types'
 import { buildResult, parseConflicts, resolveChunk, type ChunkResolution, type MergeChunk } from '../../../shared/conflicts'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { BULK_RESOLUTIONS, bulkHelp, bulkLabel, useResolveAll } from '../bulkConflicts'
 import { errorMessage } from '../format'
 import { git } from '../git'
@@ -44,7 +44,8 @@ const withArrow = (label: string, arrow: string) => (LEADING_ARROWS.has(arrow) ?
  * Os painéis rolam juntos, e cada bloco em conflito ocupa a mesma altura nos três.
  */
 export function ConflictEditor({ path, onClose }: { path: string; onClose(): void }) {
-  const { run, toast, showMenu, repo } = useApp()
+  const { run, toast, showMenu } = useAppActions()
+  const { repo } = useRepoData()
   const resolveAll = useResolveAll()
   const [details, setDetails] = useState<ConflictDetails | null>(null)
   const [resolutions, setResolutions] = useState<(ChunkResolution | undefined)[]>([])
@@ -500,7 +501,7 @@ function ResultActions({
   theirsLabel: string
   onResolve(resolution: ChunkResolution | undefined): void
 }) {
-  const { showMenu } = useApp()
+  const { showMenu } = useAppActions()
   const is = (kind: ChunkResolution['kind']) => resolution?.kind === kind
   const neither = resolution?.kind === 'custom' && resolution.text === ''
   const more: { label: string; resolution: ChunkResolution; active: boolean; hint?: string }[] = [

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { FileDiff, FileStatus, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { parseChangesMode, type ChangesMode, type SectionId } from '../changesMode'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { currentDrag, endDrag, startDrag } from '../dnd'
 import { stepIndex } from '../diffNav'
 import { errorMessage, statusLabel } from '../format'
@@ -69,7 +69,9 @@ const fileHasHistory = (f: FileStatus) => !f.untracked && f.index !== 'A'
 const entryHasHistory = (e: Entry) => (e.staged ? e.staged.index !== 'A' : !e.unstaged!.untracked)
 
 export function ChangesView() {
-  const { data, run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow, showMenu } = useApp()
+  // Só o status é lido dos dados; as funções vêm da fatia de ações (estável), então a tela não redesenha a cada operação.
+  const { data } = useRepoData()
+  const { run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow, showMenu } = useAppActions()
   /** Operações desta tela (stage, descarte, aplicar linhas): o indicador cobre só os painéis dela. */
   const runChanges = <T,>(label: string, fn: () => Promise<T>) => run(label, fn, SCREEN_VIEWS.changes)
   const { status } = data
