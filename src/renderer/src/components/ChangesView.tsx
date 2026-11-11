@@ -79,7 +79,9 @@ export function ChangesView() {
   const fileGroup = useFileViewGroup()
   const [mode, setMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
   // O arquivo aberto no diff é lembrado ao navegar para outra tela ou outra aba de repositório e voltar.
-  const [active, setActive] = useSessionState<Active | null>('changes.active', null)
+  // Na primeira montagem o arquivo inicial já vem do status (quando não há valor guardado): o diff começa a ser lido
+  // junto com a tela, sem um desenho extra só para trocar `null` pelo primeiro arquivo (ver o efeito abaixo).
+  const [active, setActive] = useSessionState<Active | null>('changes.active', firstChange(status))
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()
@@ -92,9 +94,13 @@ export function ChangesView() {
   const entries = buildEntries(status)
 
   // Some da marcação os arquivos que saíram da lista de não staged (ex.: foram para o stage ou para o commit).
+  // Só chama o `set` quando há algo a tirar: um `set` com o mesmo valor, feito dentro de efeito, ainda redesenha a tela
+  // (o React não consegue descartá-lo antes de renderizar). Este efeito roda logo após o render que trouxe o status,
+  // então `pickedUnstaged` é o valor desse render.
   useEffect(() => {
     const present = new Set(status.unstaged.map((f) => f.path))
-    setPickedUnstaged((prev) => (prev.size === 0 || [...prev].every((p) => present.has(p)) ? prev : new Set([...prev].filter((p) => present.has(p)))))
+    if (pickedUnstaged.size === 0 || [...pickedUnstaged].every((p) => present.has(p))) return
+    setPickedUnstaged(new Set([...pickedUnstaged].filter((p) => present.has(p))))
   }, [status])
 
   // Se o arquivo ativo saiu da lista (ex.: foi todo para o stage), acompanha-o na outra lista.
@@ -113,27 +119,36 @@ export function ChangesView() {
     if (first) setActive(first)
   }, [status, active])
 
+  // Diff mostrado agora, por referência. Trocar de diff zera a seleção no mesmo lote do `setDiff`: um efeito que
+  // zerasse a seleção depois (`useEffect` em [diff]) forçava mais um desenho da tela a cada diff lido.
+  const shownDiff = useRef<FileDiff | null>(null)
+  const showDiff = (next: FileDiff | null) => {
+    const prev = shownDiff.current
+    // Mantém a mesma referência (e a seleção) se nada mudou desde a última leitura.
+    if (prev === next || (prev && next && sameDiff(prev, next))) return
+    shownDiff.current = next
+    setDiff(next)
+    setSelection(new Set())
+  }
+
   useEffect(() => {
     if (!active) {
-      setDiff(null)
+      showDiff(null)
       return
     }
     let cancelled = false
     git.diff({ kind: active.area, path: active.path, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
-        const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
-        // Mantém a mesma referência (e a seleção) se nada mudou desde a última leitura.
-        setDiff((prev) => (prev && next && sameDiff(prev, next) ? prev : next))
+        showDiff(files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null)
       },
       (e) => !cancelled && toast('error', errorMessage(e))
     )
     return () => {
       cancelled = true
     }
+    // `showDiff` só usa refs e setters estáveis; ficar fora das dependências evita refazer a leitura a cada render.
   }, [active, status, toast, fullFile, uncapped])
-
-  useEffect(() => setSelection(new Set()), [diff])
 
   const discard = async (paths: string[]) => {
     const ok = await confirm({
