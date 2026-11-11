@@ -13,7 +13,7 @@ export const COMMIT_BATCH = 200
  * Teto de linhas montadas na lista de commits. Passando dele a tela pede para refinar a busca. O teto vale dentro de
  * `batchSlice`, então não depende de quem chama lembrar dele.
  */
-export const MAX_SHOWN = 600
+export const MAX_SHOWN = 500
 
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
 

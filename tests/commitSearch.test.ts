@@ -171,8 +171,8 @@ describe('20.000 commits sintéticos', () => {
   })
 
   it('o teto de MAX_SHOWN vale mesmo quando quem chama pede mais', () => {
-    expect(MAX_SHOWN).toBe(600)
-    expect(batchSlice(grande, 100000)).toHaveLength(600)
+    expect(MAX_SHOWN).toBe(500)
+    expect(batchSlice(grande, 100000)).toHaveLength(500)
     expect(batchSlice(grande, 100000)).toHaveLength(MAX_SHOWN)
   })
 })
@@ -180,8 +180,8 @@ describe('20.000 commits sintéticos', () => {
 describe('crescimento do lote', () => {
   it('cada "Mostrar mais" soma um lote, até o teto', () => {
     expect(growBatch(COMMIT_BATCH)).toBe(400)
-    expect(growBatch(400)).toBe(600)
-    expect(growBatch(600)).toBe(600)
+    expect(growBatch(400)).toBe(500)
+    expect(growBatch(500)).toBe(500)
   })
 })
 
