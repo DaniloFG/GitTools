@@ -9,8 +9,10 @@ import { t } from './i18n'
 /**
  * Menu de botão direito de uma branch (barra lateral e etiquetas do histórico).
  * O checkout é sempre o primeiro item e leva para a branch clicada — nunca para um HEAD destacado.
+ * `forcePush: false` tira o "Force push (com lease)" (#76): o menu da etiqueta no histórico não o oferece; a barra
+ * lateral (o padrão) continua oferecendo.
  */
-export function useBranchMenu(onScope: (scope: HistoryScope) => void) {
+export function useBranchMenu(onScope: (scope: HistoryScope) => void, { forcePush = true }: { forcePush?: boolean } = {}) {
   const { run, openStudio, openCompare } = useAppActions()
   const actions = useActions()
   const head = actions.head
@@ -45,7 +47,7 @@ export function useBranchMenu(onScope: (scope: HistoryScope) => void) {
         : [
             'separator' as const,
             { label: t('sidebar.menu.push'), onClick: () => actions.pushDialog(branch.name) },
-            { label: t('sidebar.menu.pushForce'), onClick: () => actions.push({ branch: branch.name, force: 'lease' }) },
+            ...(forcePush ? [{ label: t('sidebar.menu.pushForce'), onClick: () => actions.push({ branch: branch.name, force: 'lease' }) }] : []),
             'separator' as const,
             { label: t('sidebar.menu.rename'), onClick: () => actions.renameBranch(branch) },
             { label: t('sidebar.menu.delete'), onClick: () => actions.deleteBranch(branch), danger: true, disabled: branch.current }

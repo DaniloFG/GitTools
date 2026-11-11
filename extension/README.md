@@ -18,6 +18,32 @@
 
 ![GitTools Dashboards inside VS Code: KPIs, commits over time, top contributors, activity calendar and most changed files](media/readme/dashboards-overview.png)
 
+## Why GitTools?
+
+> **Tired of one tool for the graph, another for conflicts, and yet another to pick what goes into a commit?**
+> GitTools brings together the best of what the top Git tools on the market do — in a single, lightweight,
+> free interface that lives right inside VS Code.
+
+- 🌳 **A beautiful history graph** like the best visual clients: colored lanes, search, tags and columns you can rearrange.
+- ✅ **Pick your commit with checkboxes**, or drag files between *staged* and *unstaged* — choose the view you like, in the same screen.
+- ✂️ **Line-by-line staging**: commit only the lines that matter, straight from the diff.
+- 🔀 **Side-by-side conflict editor** (*current × result × incoming*), block by block, no terminal needed.
+- 🍒 **Cherry-pick on another level**: a whole branch, commits, **files** or **lines** — just drag.
+- 🧹 **Visual interactive rebase**, **blame**, file history and branch comparison — one click away.
+- 🧩 **A workspace your way**: move panels and tabs wherever you want, like in a modern editor.
+- 🔒 **No account, no cloud, no telemetry.** It uses the git you already have installed. Open source (MIT).
+
+*One tool. The whole Git workflow. No more switching windows.*
+
+- [Dashboards](#-dashboards--your-repositorys-history-in-numbers)
+- [Highlights](#highlights)
+- [Getting started](#getting-started)
+- [Keyboard shortcuts](#keyboard-shortcuts-inside-the-panel)
+- [Settings](#settings)
+- [Requirements](#requirements)
+- [Privacy](#privacy)
+- [Support](#-support-the-project)
+
 ## 📊 Dashboards — your repository's history, in numbers
 
 The new **Dashboards** tab (`Ctrl+5`) sits at the top, fills the whole panel and turns `git log` into management,
@@ -60,23 +86,6 @@ and nothing leaves your machine.
 GitTools turns the git commands that are hard to remember — especially **cherry-pick** — into things you can
 simply **drag and drop**. It runs on the git that is already installed on your machine, needs no account and
 sends nothing anywhere.
-
-## Why GitTools?
-
-> **Tired of one tool for the graph, another for conflicts, and yet another to pick what goes into a commit?**
-> GitTools brings together the best of what the top Git tools on the market do — in a single, lightweight,
-> free interface that lives right inside VS Code.
-
-- 🌳 **A beautiful history graph** like the best visual clients: colored lanes, search, tags and columns you can rearrange.
-- ✅ **Pick your commit with checkboxes**, or drag files between *staged* and *unstaged* — choose the view you like, in the same screen.
-- ✂️ **Line-by-line staging**: commit only the lines that matter, straight from the diff.
-- 🔀 **Side-by-side conflict editor** (*current × result × incoming*), block by block, no terminal needed.
-- 🍒 **Cherry-pick on another level**: a whole branch, commits, **files** or **lines** — just drag.
-- 🧹 **Visual interactive rebase**, **blame**, file history and branch comparison — one click away.
-- 🧩 **A workspace your way**: move panels and tabs wherever you want, like in a modern editor.
-- 🔒 **No account, no cloud, no telemetry.** It uses the git you already have installed. Open source (MIT).
-
-*One tool. The whole Git workflow. No more switching windows.*
 
 ## Highlights
 
@@ -257,13 +266,12 @@ The tool turned out great, right?! Then give me a hand to keep improving it and 
 Any amount helps — one-time or monthly, through [GitHub Sponsors](https://github.com/sponsors/DaniloFG).
 You'll also find the **♥** button inside GitTools (toolbar, welcome screen and **Settings → About**) and a
 **Sponsor** button on this extension's page in VS Code. It only opens the page in your browser; GitTools still makes no
-network calls of its own. Can't sponsor right now? A ⭐ on the repository or a Marketplace review helps a lot too.
+network calls of its own. Can't sponsor right now? A Marketplace review helps a lot too.
 
 ## Links
 
-- 💻 Source code & issues: <https://github.com/DaniloFG/GitTools>
 - 💖 Sponsor: <https://github.com/sponsors/DaniloFG>
-- 🖥️ Also available as a standalone desktop app (Windows, macOS, Linux) from the same repository.
+- 🖥️ Also available as a standalone desktop app (Windows, macOS, Linux).
 
 Released under the [MIT License](https://github.com/DaniloFG/GitTools/blob/main/LICENSE).
 

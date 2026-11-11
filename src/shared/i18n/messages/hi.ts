@@ -39,6 +39,10 @@ export const hi: Messages = {
     discard: 'हटाएँ',
     open: 'खोलें',
     openInEditor: 'एडिटर में खोलें',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: 'VSCode एडिटर में खोलें',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'GitTools संपादक',
     all: 'सभी',
     none: 'कोई नहीं',
     file: 'फ़ाइल',
@@ -107,7 +111,6 @@ export const hi: Messages = {
     untracked: 'नई'
   },
   toolbar: {
-    openInEditorHelp: 'सेटिंग्स में चुने गए एडिटर में प्रोजेक्ट खोलें',
     tagHelp: 'वर्तमान कमिट पर टैग बनाएँ',
     tag: 'टैग',
     openRepository: 'Repository खोलें…',
@@ -140,7 +143,9 @@ export const hi: Messages = {
     menu: 'मेनू',
     menuHelp: 'सेटिंग्स और पैनल',
     appearance: 'दिखावट',
-    toolbarMenu: 'टूलबार'
+    toolbarMenu: 'टूलबार',
+    dynamicPanels: 'डायनामिक पैनल',
+    screensMenu: 'स्क्रीन'
   },
   welcome: {
     tagline: 'आसान Git: खींचें और क्लिक करें — branches, commits, फ़ाइलों और यहाँ तक कि अलग-अलग लाइनों का merge, rebase और cherry-pick करें।',
@@ -340,8 +345,6 @@ export const hi: Messages = {
     amendButton: 'Commit सुधारें',
     commit: 'Commit',
     commitInto: '{branch} में commit',
-    commitStageAll: 'सभी फ़ाइलें शामिल करें (stage)',
-    commitStageAllHelp: 'Commit से पहले बदली हुई सभी फ़ाइलों को stage करता है',
     commitPicked: { one: '{count} चुनी हुई फ़ाइल के साथ commit', other: '{count} चुनी हुई फ़ाइलों के साथ commit' },
     commitPickedHint: 'Not staged सूची में चुनी गई फ़ाइलें इस commit में शामिल होती हैं।',
     pushAfter: 'इसके बाद Push करें',
@@ -524,6 +527,11 @@ export const hi: Messages = {
     nothingToBring: 'लाने को कुछ नहीं: {target} में {source} का सब कुछ पहले से है।',
     alreadyApplied: 'पहले से लागू',
     alreadyAppliedHelp: 'लक्ष्य में समान commit पहले से मौजूद है',
+    searchPlaceholder: 'hash, संदेश, लेखक या तारीख (YYYY-MM-DD) से खोजें',
+    noMatches: 'इस खोज से कोई commit मेल नहीं खाता।',
+    showMore: { one: 'और दिखाएँ (1 शेष)', other: 'और दिखाएँ ({count} शेष)' },
+    refineSearch: 'बचे {count} commits देखने के लिए खोज को और सीमित करें।',
+    checkedOutside: 'खोज के बाहर {count} चुने गए',
     applyCommits: { one: '{target} में {count} commit लागू करें', other: '{target} में {count} commits लागू करें' },
     applyFiles: { one: '{target} में {count} फ़ाइल लागू करें', other: '{target} में {count} फ़ाइलें लागू करें' },
     willCheckout: 'लागू करने से पहले "{target}" का checkout किया जाएगा।',
@@ -671,6 +679,7 @@ export const hi: Messages = {
     linesContext: '{path} से ({from} → {to})',
     copyVersion: '{ref} का संस्करण कॉपी करें',
     copyVersionHelp: '{target} की फ़ाइल {ref} वाली जैसी हो जाएगी',
+    applyFile: '{target} पर पूरी फ़ाइल लागू करें',
     noCommits: 'कोई commit नहीं।',
     openInHistory: 'इतिहास में खोलें'
   },
@@ -1685,6 +1694,7 @@ export const hi: Messages = {
     loading: 'Git कॉन्फ़िगरेशन पढ़ा जा रहा है…'
   },
   diffExtra: {
+    options: 'विकल्प',
     fullFile: 'पूरी फ़ाइल',
     fullFileHelp: 'सिर्फ़ बदले हुए हिस्से नहीं, पूरी फ़ाइल दिखाएँ',
     changesOnlyHelp: 'फिर से सिर्फ़ बदले हुए हिस्से दिखाएँ',

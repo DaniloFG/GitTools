@@ -36,6 +36,9 @@ function start() {
   const root = temp('gittools-ext-disc-')
   mkdirSync(join(root, 'dist', 'webview'), { recursive: true })
   writeFileSync(join(root, 'dist', 'webview', 'index.html'), INDEX)
+  // Estes testes medem a varredura do workspace, que agora vem desligada por padrão: liga explicitamente.
+  mkdirSync(join(root, 'storage'), { recursive: true })
+  writeFileSync(join(root, 'storage', 'settings.json'), JSON.stringify({ multiRepoDetection: true }))
   const state = new Memento()
   const stateWrites: unknown[] = []
   const update = state.update.bind(state)

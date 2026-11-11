@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useRecentRepos } from '../recent'
 import { useActions } from '../actions'
 import type { RecentRepo } from '../../../shared/api'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useBusy, useRepoData } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { useLayout } from '../layout'
@@ -16,6 +16,7 @@ import {
   toggleToolbarItem,
   type ToolbarItemId
 } from '../toolbarItems'
+import { TOP_SCREEN_IDS, TOP_SCREEN_LABELS, parseHiddenScreens, toggleScreen, type TopScreenId } from '../screenVisibility'
 import { normalizeRoot, repoColor } from '../workspace'
 import { ScreenTabs, usePanelsItems, type ScreenProps } from './Screens'
 import { SponsorButton } from './Sponsor'
@@ -32,7 +33,9 @@ interface ToolbarProps extends Omit<ScreenProps, 'state' | 'onChange' | 'screen'
  */
 export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, changeCount, dashboards, onDashboards }: ToolbarProps) {
   const { repo, data, workspace } = useRepoData()
-  const { toast, showMenu, openStudio, openSettings, openInEditor } = useAppActions()
+  const { toast, showMenu, openStudio, openSettings } = useAppActions()
+  // Operação em andamento: Buscar, Puxar e Enviar (e o menu dele) ficam desligados até ela terminar.
+  const { busy } = useBusy()
   const { head, createBranch, createTag, stash, push, pushDialog, fetchRemote, pullRemote } = useActions()
   const { status } = data
   // Arranjo e tela são lidos aqui (e não recebidos da tela do repositório), para o arrasto de painéis não a redesenhar.
@@ -40,7 +43,9 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
   const [screen] = useScreen()
   const [hidden, setHidden] = useLayout<ToolbarItemId[]>('pref.toolbar.hidden', parseHiddenToolbarItems)
   const shown = (id: ToolbarItemId) => isToolbarItemShown(hidden, id)
-  const panelItems = usePanelsItems({ state, onChange, screen, meta, available })
+  // Telas do topo escondidas (Aparência → Telas): a aba some da barra, mas a tela aberta nunca some.
+  const [hiddenScreens, setHiddenScreens] = useLayout<TopScreenId[]>('pref.screens.hidden', parseHiddenScreens)
+  const panels = usePanelsItems({ state, onChange, screen, meta, available })
   const frameRef = useRef<HTMLDivElement>(null)
 
   // A altura real da barra (uma ou duas linhas) vai para --toolbar-h, para o indicador de operação descer junto.
@@ -116,19 +121,38 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
       { label: t('toolbar.stash'), onClick: () => stash() }
     ])
 
-  /** ⚙ Menu: configurações; a aparência (painéis e layouts); e quais itens aparecem nesta barra. */
+  /**
+   * ⚙ Menu: configurações e a aparência. Em Aparência ficam a barra (quais itens aparecem), os painéis da tela
+   * aberta, as telas (quais abas aparecem) e o resto dos painéis, layouts e restaurar o padrão.
+   */
   const barMenu = (e: React.MouseEvent) =>
     showMenu(e, [
       { label: t('toolbar.settings'), onClick: () => openSettings() },
       'separator',
-      { label: t('toolbar.appearance'), submenu: panelItems },
       {
-        label: t('toolbar.toolbarMenu'),
-        submenu: TOOLBAR_ITEM_IDS.map((id) => ({
-          label: t(TOOLBAR_ITEM_LABELS[id]),
-          checked: shown(id),
-          onClick: () => setHidden((prev) => toggleToolbarItem(prev, id))
-        }))
+        label: t('toolbar.appearance'),
+        submenu: [
+          {
+            label: t('toolbar.toolbarMenu'),
+            submenu: TOOLBAR_ITEM_IDS.map((id) => ({
+              label: t(TOOLBAR_ITEM_LABELS[id]),
+              checked: shown(id),
+              onClick: () => setHidden((prev) => toggleToolbarItem(prev, id))
+            }))
+          },
+          'separator',
+          ...(panels.current.length ? [{ label: t('toolbar.dynamicPanels'), submenu: panels.current }] : []),
+          {
+            label: t('toolbar.screensMenu'),
+            submenu: TOP_SCREEN_IDS.map((id) => ({
+              label: t(TOP_SCREEN_LABELS[id]),
+              // Marcado = a preferência (mostrar). Esconder a tela aberta é permitido; ela só continua à vista até trocar.
+              checked: !hiddenScreens.includes(id),
+              onClick: () => setHiddenScreens((prev) => toggleScreen(prev, id))
+            }))
+          },
+          ...panels.rest
+        ]
       }
     ])
 
@@ -151,13 +175,13 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
           )}
           <div className="toolbar-spacer" />
           {shown('fetch') && (
-        <button className="tb-btn" onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')} aria-label={t('toolbar.fetch')}>
+        <button className="tb-btn" disabled={busy !== null} onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')} aria-label={t('toolbar.fetch')}>
           <span aria-hidden>⟳</span>
           <span className="tb-label">{t('toolbar.fetch')}</span>
         </button>
       )}
       {shown('pull') && (
-        <button className="tb-btn" onClick={() => pullRemote()} title={t('toolbar.pullHelp')} aria-label={t('toolbar.pull')}>
+        <button className="tb-btn" disabled={busy !== null} onClick={() => pullRemote()} title={t('toolbar.pullHelp')} aria-label={t('toolbar.pull')}>
           <span aria-hidden>↓</span>
           <span className="tb-label">{t('toolbar.pull')}</span>
           {status.behind > 0 && <span className="badge">{status.behind}</span>}
@@ -165,12 +189,12 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
       )}
       {shown('push') && (
         <span className="split-button">
-          <button className="tb-btn" onClick={() => push()} onContextMenu={pushMenu} title={t('toolbar.pushHelp')} aria-label={t('toolbar.push')}>
+          <button className="tb-btn" disabled={busy !== null} onClick={() => push()} onContextMenu={pushMenu} title={t('toolbar.pushHelp')} aria-label={t('toolbar.push')}>
             <span aria-hidden>↑</span>
             <span className="tb-label">{t('toolbar.push')}</span>
             {status.ahead > 0 && <span className="badge">{status.ahead}</span>}
           </button>
-          <button className="split-arrow tb-btn" onClick={pushMenu} title={t('toolbar.pushMore')} aria-label={t('toolbar.pushMore')} aria-haspopup="menu">
+          <button className="split-arrow tb-btn" disabled={busy !== null} onClick={pushMenu} title={t('toolbar.pushMore')} aria-label={t('toolbar.pushMore')} aria-haspopup="menu">
             ▾
           </button>
         </span>
@@ -186,12 +210,6 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
           </button>
         </span>
       )}
-      {shown('editor') && (
-        <button className="tb-btn" onClick={() => openInEditor()} title={t('toolbar.openInEditorHelp')} aria-label={t('common.openInEditor')}>
-          <span aria-hidden>✎</span>
-          <span className="tb-label">{t('common.openInEditor')}</span>
-        </button>
-      )}
       {shown('studio') && (
         <button className="primary tb-btn" onClick={() => openStudio({ target: head ?? undefined })} aria-label={t('studio.name')}>
           <span aria-hidden>🍒</span>
@@ -204,7 +222,7 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
           </button>
         </div>
         {shown('screens') && (
-          <ScreenTabs state={state} meta={meta} screen={screen} onScreen={onScreen} available={available} changeCount={changeCount} dashboards={dashboards} onDashboards={onDashboards} />
+          <ScreenTabs state={state} meta={meta} screen={screen} onScreen={onScreen} available={available} changeCount={changeCount} dashboards={dashboards} onDashboards={onDashboards} hiddenScreens={hiddenScreens} />
         )}
       </header>
     </div>

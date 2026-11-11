@@ -55,10 +55,11 @@ describe('configurações de exibição', () => {
 })
 
 describe('detecção de vários repositórios', () => {
-  it('vem ligada, e só desliga se o usuário pedir', () => {
-    expect(DEFAULT_SETTINGS.multiRepoDetection).toBe(true)
-    expect(normalizeSettings({}).multiRepoDetection).toBe(true)
-    expect(normalizeSettings({ multiRepoDetection: false }).multiRepoDetection).toBe(false)
-    expect(normalizeSettings({ multiRepoDetection: 'não' }).multiRepoDetection).toBe(true)
+  // Vem desligada: abrir o app não varre pasta e subpastas por padrão (desempenho). Só `true` literal liga.
+  it('vem desligada, e só liga se o usuário pedir `true`', () => {
+    expect(DEFAULT_SETTINGS.multiRepoDetection).toBe(false)
+    expect(normalizeSettings({}).multiRepoDetection).toBe(false)
+    expect(normalizeSettings({ multiRepoDetection: true }).multiRepoDetection).toBe(true)
+    expect(normalizeSettings({ multiRepoDetection: 'sim' }).multiRepoDetection).toBe(false)
   })
 })

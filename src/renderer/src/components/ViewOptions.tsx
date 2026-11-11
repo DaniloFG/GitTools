@@ -3,6 +3,7 @@ import { useAppActions } from '../context'
 import { t } from '../i18n'
 import { useFileViewMode } from './FileList'
 import type { MenuItem } from './ContextMenu'
+import { withActionsSubmenu } from '../viewMenu'
 
 /** Uma opção de visualização (mostrada com ✓ quando é a escolhida). */
 export interface ViewOption {
@@ -22,7 +23,7 @@ export interface ViewOptionGroup {
  * Botão discreto do cabeçalho que reúne as opções de visualização (lista/árvore, layout do diff…)
  * num menu, para o cabeçalho ficar só com as ações. O menu abre logo abaixo do botão.
  */
-export function ViewOptionsButton({ groups, label }: { groups: ViewOptionGroup[]; label?: string }) {
+export function ViewOptionsButton({ groups, label, submenu }: { groups: ViewOptionGroup[]; label?: string; submenu?: { label: string; items: MenuItem[] } }) {
   const { showMenu } = useAppActions()
   const ref = useRef<HTMLButtonElement>(null)
   const title = label ?? t('fileList.viewOptions')
@@ -32,7 +33,7 @@ export function ViewOptionsButton({ groups, label }: { groups: ViewOptionGroup[]
     if (!rect) return
     // showMenu só usa as coordenadas do evento: um MouseEvent avulso posiciona o menu sob o botão.
     const at = new MouseEvent('contextmenu', { clientX: rect.left, clientY: rect.bottom + 4 }) as unknown as React.MouseEvent
-    showMenu(at, groupsToMenu(groups))
+    showMenu(at, withActionsSubmenu(groupsToMenu(groups), submenu))
   }
 
   return (

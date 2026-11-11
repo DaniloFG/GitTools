@@ -4,7 +4,9 @@
 import type { MessageKey } from '../../shared/i18n'
 
 /** Ids dos itens, na ordem em que aparecem na barra. O Sponsor e o botão de menu não entram: estão sempre à vista. */
-export const TOOLBAR_ITEM_IDS = ['repo', 'branch', 'screens', 'fetch', 'pull', 'push', 'new', 'editor', 'studio'] as const
+// 'editor' (Abrir no editor) saiu da barra: o botão foi retirado (#58). Um id antigo salvo é descartado por
+// parseHiddenToolbarItems, como qualquer id desconhecido.
+export const TOOLBAR_ITEM_IDS = ['repo', 'branch', 'screens', 'fetch', 'pull', 'push', 'new', 'studio'] as const
 
 export type ToolbarItemId = (typeof TOOLBAR_ITEM_IDS)[number]
 
@@ -17,7 +19,6 @@ export const TOOLBAR_ITEM_LABELS: Record<ToolbarItemId, MessageKey> = {
   pull: 'toolbar.pull',
   push: 'toolbar.push',
   new: 'toolbar.new',
-  editor: 'common.openInEditor',
   studio: 'studio.name'
 }
 

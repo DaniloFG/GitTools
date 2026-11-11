@@ -2,8 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { FileDiff, FileStatus, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { parseChangesMode, type ChangesMode, type SectionId } from '../changesMode'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useAppSettings, useRepoData } from '../context'
 import { currentDrag, endDrag, startDrag } from '../dnd'
+import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
+import { insideVsCode } from '../vscodeBridge'
 import { stepIndex } from '../diffNav'
 import { errorMessage, statusLabel } from '../format'
 import { sameDiff } from '../diffIdentity'
@@ -72,8 +74,11 @@ export function ChangesView() {
   // Só o status é lido dos dados; as funções vêm da fatia de ações (estável), então a tela não redesenha a cada operação.
   const { data } = useRepoData()
   const { run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow, showMenu } = useAppActions()
+  const { settings } = useAppSettings()
+  /** Rótulo e ação do item "abrir no editor" dos menus de arquivo (#82). */
+  const editor = editorKind(settings.editor, insideVsCode())
   /** Operações desta tela (stage, descarte, aplicar linhas): o indicador cobre só os painéis dela. */
-  const runChanges = <T,>(label: string, fn: () => Promise<T>) => run(label, fn, SCREEN_VIEWS.changes)
+  const runChanges = <T,>(label: string, fn: () => Promise<T>, options?: { queue?: boolean }) => run(label, fn, SCREEN_VIEWS.changes, options)
   const { status } = data
   /** Opções de visualização da lista (modo das alterações e lista/árvore) ficam num menu do cabeçalho. */
   const fileGroup = useFileViewGroup()
@@ -239,7 +244,7 @@ export function ChangesView() {
             'separator' as const
           ]
         : []),
-      { label: t('common.openInEditor'), onClick: () => openInEditor(path) },
+      { label: t(editorLabelKey(editor)), onClick: openEditorItem(editor, path, { openFileView, openInEditor }) },
       { label: t('history.files.copyPath'), onClick: () => copyText(path) }
     ])
 
@@ -252,7 +257,7 @@ export function ChangesView() {
       actions: staged ? (
         <>
           {files.length > 0 && (
-            <button className="ghost" onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles(files.map((f) => f.path)))}>
+            <button className="ghost" onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles(files.map((f) => f.path)), { queue: true })}>
               {t('changes.unstageAll')} ↑
             </button>
           )}
@@ -262,7 +267,7 @@ export function ChangesView() {
         <>
           {files.length > 0 && (
             <>
-              <button className="ghost" onClick={() => runChanges(t('busy.stage'), () => git.stageFiles(files.map((f) => f.path)))}>
+              <button className="ghost" onClick={() => runChanges(t('busy.stage'), () => git.stageFiles(files.map((f) => f.path)), { queue: true })}>
                 {t('changes.stageAll')} ↓
               </button>
               <button className="ghost danger-text" onClick={() => discard(files.map((f) => f.path))}>
@@ -276,7 +281,7 @@ export function ChangesView() {
       body: (
         <DropBody
           area={area}
-          onDropFiles={(paths) => (staged ? runChanges(t('busy.stage'), () => git.stageFiles(paths)) : runChanges(t('busy.unstage'), () => git.unstageFiles(paths)))}
+          onDropFiles={(paths) => (staged ? runChanges(t('busy.stage'), () => git.stageFiles(paths), { queue: true }) : runChanges(t('busy.unstage'), () => git.unstageFiles(paths), { queue: true }))}
           trash={!staged ? discard : undefined}
         >
           <FileRows
@@ -289,7 +294,7 @@ export function ChangesView() {
             onMenu={(ev, f) => fileMenu(ev, f.path, fileHasHistory(f))}
             fileActions={(f) =>
               staged ? (
-                <button title={t('changes.unstage')} onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles([f.path]))}>
+                <button title={t('changes.unstage')} onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles([f.path]), { queue: true })}>
                   －
                 </button>
               ) : (
@@ -297,7 +302,7 @@ export function ChangesView() {
                   <button title={t('common.discard')} onClick={() => discard([f.path])}>
                     ↺
                   </button>
-                  <button title={t('changes.stage')} onClick={() => runChanges(t('busy.stage'), () => git.stageFiles([f.path]))}>
+                  <button title={t('changes.stage')} onClick={() => runChanges(t('busy.stage'), () => git.stageFiles([f.path]), { queue: true })}>
                     ＋
                   </button>
                 </>
@@ -405,44 +410,38 @@ export function ChangesView() {
         <p className="section-empty">{t('changes.selectFile')}</p>
       ) : (
         <div className="diff-panel">
-          <div className="selection-bar">
-            <button
-              onClick={() => openDiffWindow({ source: { kind: active.area }, path: active.path, title: `${active.path} · ${t(active.area === 'staged' ? 'changes.staged' : 'changes.unstaged')}` })}
-              title={t('diffExtra.openWindowHelp')}
-            >
-              ⧉
-            </button>
-            {bothSides && (
-              <div className="segmented" role="group" dir="ltr">
-                {(['unstaged', 'staged'] as const).map((area) => (
-                  <button key={area} className={active.area === area ? 'active' : ''} aria-pressed={active.area === area} onClick={() => setActive({ area, path: active.path })}>
-                    {t(area === 'staged' ? 'changes.sections.staged' : 'changes.sections.unstaged')}
-                  </button>
-                ))}
-              </div>
-            )}
-            {active.area === 'unstaged' ? (
-              <>
-                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={() => lineAction('stage')}>
-                  {t('changes.stageLines', { count: selection.size })}
-                </button>
-                <button className="danger subtle" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={() => lineAction('discard')}>
-                  {t('changes.discardLines')}
-                </button>
-                <button onClick={() => runChanges(t('busy.stage'), () => git.stageFiles([active.path]))}>{t('changes.stageFile')}</button>
-                <button onClick={() => openInEditor(active.path)}>{t('common.openInEditor')}</button>
-                <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
-              </>
-            ) : (
-              <>
-                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={() => lineAction('unstage')}>
-                  {t('changes.unstageLines', { count: selection.size })}
-                </button>
-                <button onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles([active.path]))}>{t('changes.unstageFile')}</button>
-              </>
-            )}
-          </div>
-          <DiffView file={diff} selection={selection} onSelectionChange={setSelection} fileNav={fileNav} />
+          <DiffView
+            file={diff}
+            selection={selection}
+            onSelectionChange={setSelection}
+            fileNav={fileNav}
+            panelActions={[
+              ...(bothSides
+                ? (['unstaged', 'staged'] as const).map((area) => ({
+                    label: t(area === 'staged' ? 'changes.sections.staged' : 'changes.sections.unstaged'),
+                    checked: active.area === area,
+                    onClick: () => setActive({ area, path: active.path })
+                  }))
+                : []),
+              {
+                label: `⧉ ${t('diffExtra.openWindow')}`,
+                hint: t('diffExtra.openWindowHelp'),
+                onClick: () => openDiffWindow({ source: { kind: active.area }, path: active.path, title: `${active.path} · ${t(active.area === 'staged' ? 'changes.staged' : 'changes.unstaged')}` })
+              },
+              ...(active.area === 'unstaged'
+                ? [
+                    { label: t('changes.stageLines', { count: selection.size }), disabled: !selection.size, hint: selection.size ? undefined : t('feedback.blocked.noSelection'), onClick: () => lineAction('stage') },
+                    { label: t('changes.discardLines'), danger: true, disabled: !selection.size, hint: selection.size ? undefined : t('feedback.blocked.noSelection'), onClick: () => lineAction('discard') },
+                    { label: t('changes.stageFile'), onClick: () => runChanges(t('busy.stage'), () => git.stageFiles([active.path]), { queue: true }) },
+                    { label: t('common.openInEditor'), onClick: () => openInEditor(active.path) },
+                    { label: t('common.blameHistory'), onClick: () => openFileView(active.path) }
+                  ]
+                : [
+                    { label: t('changes.unstageLines', { count: selection.size }), disabled: !selection.size, hint: selection.size ? undefined : t('feedback.blocked.noSelection'), onClick: () => lineAction('unstage') },
+                    { label: t('changes.unstageFile'), onClick: () => runChanges(t('busy.unstage'), () => git.unstageFiles([active.path]), { queue: true }) }
+                  ])
+            ]}
+          />
         </div>
       )
   }

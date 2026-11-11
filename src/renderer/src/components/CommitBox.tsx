@@ -1,15 +1,11 @@
-import { useState } from 'react'
-import type { PushForce } from '../../../shared/types'
+import { useRef, useState } from 'react'
 import { useActions } from '../actions'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useBusy, useRepoData } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
-import { commitBlock, type CommitBlock } from '../feedback'
+import { commitBlock, effectivePushMode, parsePushMode, type CommitBlock, type PushMode } from '../feedback'
 import { useLayout } from '../layout'
 import { t, type MessageKey } from '../i18n'
-
-type PushMode = 'normal' | PushForce
-const parsePushMode = (v: unknown): PushMode => (v === 'lease' || v === 'force' ? v : 'normal')
 
 /** Explicação de cada motivo que impede o commit. */
 const BLOCK_TEXT: Record<CommitBlock, MessageKey> = {
@@ -26,12 +22,16 @@ const drafts = new Map<string, { message: string; amend: boolean }>()
 const draftOf = (root: string) => drafts.get(root) ?? { message: '', amend: false }
 
 /**
- * Caixa de commit: as opções se combinam livremente — corrigir o último commit (amend), incluir tudo,
- * e enviar em seguida (normal, force com lease ou force). O botão diz o que vai acontecer.
+ * Caixa de commit: as opções se combinam livremente — corrigir o último commit (amend) e enviar em seguida
+ * (normal, force com lease ou force). O botão diz o que vai acontecer.
  */
 export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onCommitted?(): void }) {
   const { data, repo } = useRepoData()
   const { run, toast } = useAppActions()
+  // Operação em andamento: Commit e Ctrl+Enter não disparam outro commit enquanto a primeira não termina.
+  const { busy } = useBusy()
+  // Pergunta de force push aberta: `busy` ainda é null nela, então este guarda é o que impede uma segunda pergunta.
+  const confirming = useRef(false)
   const { confirmForce } = useActions()
   const [message, setMessageState] = useState(() => draftOf(repo.root).message)
   const [amend, setAmendState] = useState(() => draftOf(repo.root).amend)
@@ -44,27 +44,32 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
     setAmendState(on)
     keep({ amend: on })
   }
-  const [stageAll, setStageAll] = useLayout<boolean>('pref.commitStageAll', (v) => v === true)
   const [push, setPush] = useLayout<boolean>('pref.commitPush', (v) => v === true)
   const [chosenMode, setMode] = useLayout<PushMode>('pref.commitPushMode', parsePushMode)
   const { status } = data
-  const pending = status.unstaged.length
-  const useStageAll = stageAll && pending > 0
-  const block = commitBlock({ message, staged: status.staged.length, picked: picked.length, amend, stageAll: useStageAll, conflicted: status.conflicted.length })
+  const block = commitBlock({ message, staged: status.staged.length, picked: picked.length, amend, conflicted: status.conflicted.length })
   const canCommit = block === null
-  // Corrigir um commit que já está no remoto reescreve o histórico dele: o push comum seria recusado.
-  const needsForce = push && amend && !!status.upstream && status.ahead === 0
-  const mode: PushMode = needsForce && chosenMode === 'normal' ? 'lease' : chosenMode
+  const { needsForce, mode } = effectivePushMode({ push, amend, hasUpstream: !!status.upstream, ahead: status.ahead, chosen: chosenMode })
   const forced = push && mode !== 'normal'
 
   const commit = async () => {
+    // Com operação em andamento, ou com a pergunta de force push já aberta, a chamada extra (Ctrl+Enter repetido) não faz nada.
+    if (busy !== null || confirming.current) return
     if (block) return toast('warning', t(BLOCK_TEXT[block]))
-    if (push && mode === 'force' && !(await confirmForce('force', status.branch))) return
+    if (push && mode === 'force') {
+      confirming.current = true
+      let confirmed: boolean
+      try {
+        confirmed = await confirmForce('force', status.branch)
+      } finally {
+        confirming.current = false
+      }
+      if (!confirmed) return
+    }
     let committed = false
     const result = await run(push ? t('busy.commitPush') : amend ? t('busy.amending') : t('busy.commit'), async () => {
-      if (useStageAll) await git.stageFiles(status.unstaged.map((f) => f.path))
       // Os arquivos marcados na lista de não staged entram no commit: são staged antes dele.
-      else if (picked.length > 0) await git.stageFiles(picked)
+      if (picked.length > 0) await git.stageFiles(picked)
       await git.commit(message, amend)
       committed = true
       if (!push) return true
@@ -74,6 +79,9 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
         throw new Error(t('changes.pushFailedAfterCommit', { error: errorMessage(error) }))
       }
     })
+    // O modo de envio é de uma vez só: depois de uma tentativa de push (mesmo que tenha falhado), volta a normal.
+    // Sem isso, um force escolhido para um commit passava a valer para o próximo commit+push sem aviso (#57).
+    if (push && committed) setMode(undefined)
     // O commit já foi feito mesmo que o push tenha falhado: limpar a caixa evita repeti-lo.
     if (result || committed) {
       setMessage('')
@@ -104,7 +112,7 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
         placeholder={t('changes.commitPlaceholder')}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && commit()}
+        onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && busy === null && commit()}
         rows={3}
       />
       <div className="commit-options">
@@ -124,12 +132,6 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
           />
           {t('changes.amend')}
         </label>
-        {pending > 0 && (
-          <label className="checkbox" title={t('changes.commitStageAllHelp')}>
-            <input type="checkbox" checked={stageAll} onChange={(e) => setStageAll(e.target.checked)} />
-            {t('changes.commitStageAll')}
-          </label>
-        )}
         <label className="checkbox">
           <input
             type="checkbox"
@@ -155,7 +157,7 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
       <div className="commit-actions">
         <button
           className={mode === 'force' && push ? 'danger' : 'primary'}
-          disabled={!canCommit}
+          disabled={!canCommit || busy !== null}
           title={block ? t(BLOCK_TEXT[block]) : undefined}
           onClick={commit}
         >

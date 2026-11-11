@@ -51,10 +51,11 @@ import { getLocale, t, type MessageKey } from './i18n'
 import { resetLayout as clearLayout, useLayout } from './layout'
 import { clearCurrentLayout } from './savedLayouts'
 import { historySignature, mergeData } from './stable'
+import { createSingleFlight, SKIPPED } from './singleFlight'
 import { dropSession, getSession, isOwnEcho, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
 import { canLoadMoreLog, checkedRefs, logLimitFor, nextLogPage, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
 import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
-import { openScreen, readScreen } from './dockStore'
+import { forgetScreen, openScreen, readScreen, setScreenRoot } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
 import { PaneSlot, WhenShown, useAnyShown } from './slots'
 import {
@@ -221,6 +222,8 @@ export function App() {
     for (const { root } of openedRef.current.repos) {
       if (roots.has(root)) continue
       dropSession(root)
+      // A tela da aba também é esquecida: reabri-la começa no Histórico (ver dockStore.ts).
+      forgetScreen(root)
       readCache.drop(root)
     }
     openedRef.current = next
@@ -586,6 +589,7 @@ export function App() {
   if (!activeRepo) {
     // Sem repositório na tela, nenhuma chamada git deve ir para o último que saiu.
     setActiveRoot(null)
+    setScreenRoot('')
     return (
       <>
         <Welcome
@@ -742,6 +746,8 @@ interface RepoViewProps {
 function RepoView({ repo, several, workspace, settings, onSummary, notify, appModalOpen, openSettings, openShortcuts }: RepoViewProps) {
   // As chamadas do proxy `git` passam a ir para este repositório (ver git.ts).
   setActiveRoot(repo.root)
+  // A tela aberta (menu do topo) é de cada aba: a aba ativa é a raiz deste repositório (ver dockStore.ts).
+  setScreenRoot(repo.root)
   /** Sessão do repositório: sobrevive à troca de aba e devolve os dados e a tela como estavam (ver repoSession.ts). */
   const session = getSession(repo.root)
   /** Chamadas presas a este repositório: uma leitura em andamento nunca termina no repositório de outra aba. */
@@ -1032,29 +1038,51 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   /**
    * Executa uma operação com progresso (indicador no topo e overlay nos painéis do `scope`), mostra o resultado e
    * atualiza a tela no fim. O padrão do `scope` são os painéis que mostram dados do repositório.
+   * Uma por vez: enquanto outra não termina (inclusive a atualização do fim), a chamada é ignorada sem toast nem
+   * atualização, para que um clique duplo não execute a operação duas vezes. Com `options.queue`, a chamada espera
+   * as anteriores terminarem, em ordem, e só então executa (para ações que não podem se perder, como stage em
+   * sequência). Ver `singleFlight.ts`.
+   * O indicador de operação (`busy`) só cai depois da atualização do fim, junto com o bloqueio: os botões ficam
+   * desligados enquanto a operação e a atualização estiverem em curso.
+   * Não chame `run` de dentro do callback de outro `run`: sem `queue`, a chamada interna é ignorada em silêncio;
+   * com `queue`, trava.
    */
+  // Inicialização preguiçosa: o bloqueio é criado uma vez, e não a cada renderização do RepoView.
+  const [flight] = useState(createSingleFlight)
   const run = useCallback(
-    async <T,>(label: string, fn: () => Promise<T>, scope: readonly ViewId[] = REPO_VIEWS): Promise<T | undefined> => {
-      setOperation({ label, scope })
-      try {
-        const result = await fn()
-        if (isOperationResult(result)) {
-          if (result.ok) toast('success', result.message)
-          else {
-            toast('warning', result.message)
-            setView('changes')
+    async <T,>(
+      label: string,
+      fn: () => Promise<T>,
+      scope: readonly ViewId[] = REPO_VIEWS,
+      options?: { queue?: boolean }
+    ): Promise<T | undefined> => {
+      const outcome = await flight.run(async (): Promise<T | undefined> => {
+        setOperation({ label, scope })
+        try {
+          const result = await fn()
+          if (isOperationResult(result)) {
+            if (result.ok) toast('success', result.message)
+            else {
+              toast('warning', result.message)
+              setView('changes')
+            }
+          } else if (typeof result === 'string' && result) toast('info', result)
+          return result
+        } catch (error) {
+          toast('error', errorMessage(error))
+          return undefined
+        } finally {
+          // Atualiza primeiro e só então tira o indicador: `busy` cai junto com o bloqueio.
+          try {
+            await refresh()
+          } finally {
+            setOperation(null)
           }
-        } else if (typeof result === 'string' && result) toast('info', result)
-        return result
-      } catch (error) {
-        toast('error', errorMessage(error))
-        return undefined
-      } finally {
-        setOperation(null)
-        await refresh()
-      }
+        }
+      }, options)
+      return outcome === SKIPPED ? undefined : outcome
     },
-    [refresh, toast, setView]
+    [flight, refresh, toast, setView]
   )
 
   const openDiffWindow = useCallback(

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { RebaseAction, RebasePlan } from '../../../shared/types'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useBusy, useRepoData } from '../context'
 import { errorMessage, relativeDate, shortSha } from '../format'
 import { t, type MessageKey } from '../i18n'
 import { git } from '../git'
@@ -28,6 +28,8 @@ const ACTIONS: { id: RebaseAction; label: MessageKey; help: MessageKey }[] = [
 export function RebaseEditor({ fromSha, onClose }: { fromSha: string; onClose(): void }) {
   const { run, toast } = useAppActions()
   const { data } = useRepoData()
+  // Operação em andamento: Aplicar não reescreve o histórico duas vezes enquanto a primeira não termina.
+  const { busy } = useBusy()
   const [plan, setPlan] = useState<RebasePlan | null>(null)
   const [rows, setRows] = useState<Row[]>([])
   const [dragging, setDragging] = useState<number | null>(null)
@@ -93,7 +95,7 @@ export function RebaseEditor({ fromSha, onClose }: { fromSha: string; onClose():
                 : ''}
           </span>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" disabled={!plan || !changed || !!invalid} onClick={apply}>
+          <button className="primary" disabled={!plan || !changed || !!invalid || busy !== null} onClick={apply}>
             {t('rebase.apply')}
           </button>
         </>

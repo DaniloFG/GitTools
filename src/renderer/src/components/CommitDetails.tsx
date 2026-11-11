@@ -5,8 +5,10 @@ import { useSettled } from '../settle'
 import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { useActions } from '../actions'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useAppSettings, useRepoData } from '../context'
 import { copyText } from '../copy'
+import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
+import { insideVsCode } from '../vscodeBridge'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
@@ -114,6 +116,8 @@ function MultiSelection({ shas }: { shas: string[] }) {
 function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) {
   const { repo } = useRepoData()
   const { toast, openFileView, openDiffWindow, openInEditor, showMenu } = useAppActions()
+  const { settings } = useAppSettings()
+  const editor = editorKind(settings.editor, insideVsCode())
   const actions = useActions()
   const head = actions.head
   /** Arquivo aberto neste commit, lembrado ao navegar para outra tela ou aba de repositório e voltar. */
@@ -168,7 +172,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       { label: `⧉ ${t('diffExtra.openWindow')}`, onClick: () => openWindow(file) },
       ...(head ? [{ label: t('history.files.take', { target: head }), onClick: () => actions.filesOntoBranch(sha, pathsOf([file]), head) }] : []),
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
-      { label: t('common.openInEditor'), onClick: () => openInEditor(file.path) },
+      { label: t(editorLabelKey(editor)), onClick: openEditorItem(editor, file.path, { openFileView, openInEditor }) },
       'separator',
       { label: t('history.files.copyPath'), onClick: () => copyText(file.path) }
     ])
@@ -360,27 +364,27 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
         <section className="details">
           {diff ? (
             <div className="diff-panel">
-              {!head && (
-                <div className="selection-bar">
-                  <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
-                    ⧉ {t('diffExtra.openWindow')}
-                  </button>
-                </div>
-              )}
-              {head && (
-                <div className="selection-bar">
-                  <span className="muted">{t('details.selectLinesHelp')}</span>
-                  <button onClick={() => openWindow(active!)} title={t('diffExtra.openWindowHelp')}>
-                    ⧉ {t('diffExtra.openWindow')}
-                  </button>
-                  <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
-                    {t('common.applyLinesInto', { count: selection.size, target: head })}
-                  </button>
-                  <button onClick={() => actions.filesOntoBranch(sha, pathsOf([active!]), head)}>{t('details.takeWholeFile')}</button>
-                  <button onClick={() => openFileView(diff.path)}>{t('common.blameHistory')}</button>
-                </div>
-              )}
-              <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} fileNav={fileNav} />
+              <DiffView
+                file={diff}
+                selection={head ? selection : undefined}
+                onSelectionChange={setSelection}
+                fileNav={fileNav}
+                panelActions={[
+                  { label: `⧉ ${t('diffExtra.openWindow')}`, hint: t('diffExtra.openWindowHelp'), onClick: () => openWindow(active!) },
+                  ...(head
+                    ? [
+                        {
+                          label: t('common.applyLinesInto', { count: selection.size, target: head }),
+                          hint: selection.size ? undefined : t('details.selectLinesHelp'),
+                          disabled: !selection.size,
+                          onClick: applyLines
+                        },
+                        { label: t('details.takeWholeFile'), onClick: () => actions.filesOntoBranch(sha, pathsOf([active!]), head) },
+                        { label: t('common.blameHistory'), onClick: () => openFileView(diff.path) }
+                      ]
+                    : [])
+                ]}
+              />
             </div>
           ) : active ? (
             <LoaderPane label={t('loader.diff')} />
@@ -546,21 +550,21 @@ function WipPanes({ focus }: { focus: WipFocus }) {
         <section className="details">
           {diff && active ? (
             <div className="diff-panel">
-              <div className="selection-bar">
-                {both && (
-                  <div className="segmented" role="group" dir="ltr">
-                    {(['unstaged', 'staged'] as const).map((area) => (
-                      <button key={area} className={active.area === area ? 'active' : ''} aria-pressed={active.area === area} onClick={() => setActive({ area, path: active.path })}>
-                        {t(area === 'staged' ? 'changes.sections.staged' : 'changes.sections.unstaged')}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button onClick={() => openWindow(active.path, active.area)} title={t('diffExtra.openWindowHelp')}>
-                  ⧉ {t('diffExtra.openWindow')}
-                </button>
-              </div>
-              <DiffView file={diff} fileNav={fileNav} />
+              <DiffView
+                file={diff}
+                fileNav={fileNav}
+                panelActions={[
+                  ...(both
+                    ? (['unstaged', 'staged'] as const)
+                        .map((area) => ({
+                          label: t(area === 'staged' ? 'changes.sections.staged' : 'changes.sections.unstaged'),
+                          checked: active.area === area,
+                          onClick: () => setActive({ area, path: active.path })
+                        }))
+                    : []),
+                  { label: `⧉ ${t('diffExtra.openWindow')}`, hint: t('diffExtra.openWindowHelp'), onClick: () => openWindow(active.path, active.area) }
+                ]}
+              />
             </div>
           ) : active ? (
             <LoaderPane label={t('loader.diff')} />

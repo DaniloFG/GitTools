@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangedFile, CommitInfo, Comparison, DiffSource, FileDiff, LineKey } from '../../../shared/types'
 import { useActions } from '../actions'
-import { currentBranch, useAppActions, useRepoData, type CompareRequest } from '../context'
+import { currentBranch, useAppActions, useAppSettings, useRepoData, type CompareRequest } from '../context'
+import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
+import { insideVsCode } from '../vscodeBridge'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
+import { copyText } from '../copy'
+import { canApplyFile, fileMenuItems, wholeFileKeys } from '../fileMenu'
 import { DiffView, useFullFile } from './DiffView'
 import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
@@ -27,7 +31,9 @@ interface Props {
  */
 export function CompareView({ request, onRequest }: Props) {
   const { data } = useRepoData()
-  const { run, toast, selectCommit, openFileView, showMenu, openDiffWindow } = useAppActions()
+  const { run, toast, selectCommit, openFileView, showMenu, openDiffWindow, openInEditor } = useAppActions()
+  const { settings } = useAppSettings()
+  const editor = editorKind(settings.editor, insideVsCode())
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''
@@ -42,6 +48,11 @@ export function CompareView({ request, onRequest }: Props) {
   const [commit, setCommit] = useState<string | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
+  /**
+   * Há uma "Aplicar arquivo inteiro" em curso (#59). Um segundo clique enquanto a pergunta stage/commit ou a
+   * operação estão abertas é ignorado: não fica um segundo cherry-pick disputando o índice.
+   */
+  const applying = useRef(false)
 
   const refs = [
     'HEAD',
@@ -108,6 +119,59 @@ export function CompareView({ request, onRequest }: Props) {
       actions.copyMessageMenu([sha])
     ])
 
+  /**
+   * Aplica no `head` tudo o que há no arquivo da comparação (#59), sem abrir o diff para marcar linhas. Busca o diff
+   * completo (`uncapped`) e marca todas as linhas alteradas; daí segue o mesmo caminho de "Aplicar linhas", que
+   * pergunta stage ou commit e chama `cherryPickLines`.
+   */
+  const applyFile = async (file: ChangedFile) => {
+    if (!head || !source || !comparison || applying.current) return
+    applying.current = true
+    try {
+      let files: FileDiff[]
+      try {
+        files = await git.diff({ ...source, path: file.path, uncapped: true })
+      } catch (e) {
+        toast('error', errorMessage(e))
+        return
+      }
+      const whole = wholeFileKeys(files, file.path)
+      if ('error' in whole) {
+        toast('error', t(whole.error === 'binary' ? 'core.binaryNoLines' : 'core.noChangesIn', { path: file.path }))
+        return
+      }
+      await actions.applyLines(
+        head,
+        source,
+        file.path,
+        whole.keys,
+        t('compare.linesContext', { path: file.path, from: comparison.from, to: comparison.to }),
+        t('messages.linesFromRef', { path: file.path, ref: comparison.to })
+      )
+    } finally {
+      applying.current = false
+    }
+  }
+
+  /**
+   * Menu de contexto de um arquivo da lista (#82). Arquivo apagado na comparação (status D) não existe na árvore de
+   * trabalho, então o menu não oferece "Abrir no editor". Pelo mesmo motivo, "Aplicar arquivo inteiro" (#59)
+   * não é oferecido para D: não há o que trazer para a branch atual. E não se oferece quando a branch atual já é a
+   * própria `to`: aplicar a branch nela mesma não faz sentido.
+   */
+  const fileMenu = (e: React.MouseEvent, f: ChangedFile) =>
+    showMenu(
+      e,
+      fileMenuItems({
+        path: f.path,
+        canOpen: f.status !== 'D',
+        openInEditor: (p) => openEditorItem(editor, p, { openFileView, openInEditor })(),
+        copy: copyText,
+        labels: { openInEditor: t(editorLabelKey(editor)), copyPath: t('history.files.copyPath') },
+        apply: head && canApplyFile({ head, to: comparison?.to, status: f.status }) ? { label: t('compare.applyFile', { target: head }), onClick: () => applyFile(f) } : undefined
+      })
+    )
+
   const swap = () => {
     setFrom(to)
     setTo(from)
@@ -144,14 +208,14 @@ export function CompareView({ request, onRequest }: Props) {
         </datalist>
         <label className="field inline">
           <span>{t('compare.from')}</span>
-          <input list="compare-refs" value={from} onChange={(e) => setFrom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doCompare()} placeholder={t('compare.refPlaceholder')} />
+          <input list="compare-refs" value={from} onChange={(e) => setFrom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !loading && doCompare()} placeholder={t('compare.refPlaceholder')} />
         </label>
         <button className="icon-button" onClick={swap} title={t('compare.swap')}>
           ⇄
         </button>
         <label className="field inline">
           <span>{t('compare.to')}</span>
-          <input list="compare-refs" value={to} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doCompare()} placeholder={t('compare.refPlaceholder')} />
+          <input list="compare-refs" value={to} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !loading && doCompare()} placeholder={t('compare.refPlaceholder')} />
         </label>
         <label className="checkbox" title={t('compare.sinceBaseHelp')}>
           <input type="checkbox" checked={sinceBase} onChange={(e) => setSinceBase(e.target.checked)} />
@@ -213,6 +277,7 @@ export function CompareView({ request, onRequest }: Props) {
                     setActive(f)
                     revealView('compare.diff')
                   }}
+                  onContextMenu={(e) => fileMenu(e, f)}
                 >
                   <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
                     {f.status}
@@ -237,32 +302,31 @@ export function CompareView({ request, onRequest }: Props) {
         <LoaderPane label={t('loader.diff')} />
       ) : (
         <div className="diff-panel">
-          <div className="selection-bar">
-            <span className="muted">
-              {shortSha(base!)} → {comparison.to}
-            </span>
-            <button
-              onClick={() => source && openDiffWindow({ source, path: active.path, title: `${active.path} · ${shortSha(base!)} → ${comparison.to}` })}
-              title={t('diffExtra.openWindowHelp')}
-            >
-              ⧉ {t('diffExtra.openWindow')}
-            </button>
-            {head && (
-              <>
-                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
-                  {t('common.applyLinesInto', { count: selection.size, target: head })}
-                </button>
-                <button onClick={() => copyVersion(active)} title={t('compare.copyVersionHelp', { target: head, ref: comparison.to })}>
-                  {t('compare.copyVersion', { ref: comparison.to })}
-                </button>
-              </>
-            )}
-            <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
-          </div>
           <DiffView
             file={diff}
             selection={head ? selection : undefined}
             onSelectionChange={setSelection}
+            panelActions={[
+              // As refs comparadas ficavam na barra removida; no menu continuam à vista.
+              { label: `${shortSha(base!)} → ${comparison.to}`, disabled: true },
+              {
+                label: `⧉ ${t('diffExtra.openWindow')}`,
+                hint: t('diffExtra.openWindowHelp'),
+                onClick: () => source && openDiffWindow({ source, path: active.path, title: `${active.path} · ${shortSha(base!)} → ${comparison.to}` })
+              },
+              ...(head
+                ? [
+                    {
+                      label: t('common.applyLinesInto', { count: selection.size, target: head }),
+                      disabled: !selection.size,
+                      hint: selection.size ? undefined : t('feedback.blocked.noSelection'),
+                      onClick: applyLines
+                    },
+                    { label: t('compare.copyVersion', { ref: comparison.to }), hint: t('compare.copyVersionHelp', { target: head, ref: comparison.to }), onClick: () => copyVersion(active) }
+                  ]
+                : []),
+              { label: t('common.blameHistory'), onClick: () => openFileView(active.path) }
+            ]}
             fileNav={{
               index: Math.max(0, comparison.files.findIndex((f) => f.path === active?.path)),
               count: comparison.files.length,

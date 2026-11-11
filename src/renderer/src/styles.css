@@ -1880,6 +1880,15 @@ button.ghost.danger-text:hover:not(:disabled) {
 .studio-commit-list .commit-subject {
   flex: 1;
 }
+/* Campo de busca no cabeçalho da lista: largura fixa, para não disputar espaço com os links Todos/Nenhum. */
+.studio-search {
+  flex: 0 1 180px;
+  min-width: 0;
+}
+.studio-show-more {
+  align-self: flex-start;
+  margin-top: 4px;
+}
 .studio-main {
   display: flex;
   flex-direction: column;
@@ -4056,6 +4065,11 @@ body.docking .pane-grip {
   display: flex;
   align-items: center;
 }
+/* A alça fica na borda, metade fora da célula: o cabeçalho herda `overflow: hidden` de `.commit-author` etc. e cortava
+   a alça (sobrava 1px para clicar, #86). O rótulo já corta o próprio texto. */
+.commit-columns .commit-column-head {
+  overflow: visible;
+}
 .commit-column-label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4066,21 +4080,21 @@ body.docking .pane-grip {
   position: absolute;
   top: -2px;
   bottom: -2px;
-  width: 9px;
+  width: 12px;
   cursor: col-resize;
   touch-action: none;
 }
 .resize-start > .column-resize {
-  inset-inline-start: -8px;
+  inset-inline-start: -10px;
 }
 .resize-end > .column-resize {
-  inset-inline-end: -8px;
+  inset-inline-end: -10px;
 }
 .column-resize::after {
   content: '';
   position: absolute;
   inset-block: 3px;
-  inset-inline-start: 4px;
+  inset-inline-start: 5px;
   width: 1px;
   background: var(--border);
 }
@@ -5116,6 +5130,28 @@ button.blame-bubble:hover {
   transform: translateY(-50%);
   color: var(--text-muted);
   pointer-events: none;
+}
+/* Pesquisa: cada seção com resultado traz o nome dela (clicável, leva à seção). Seção sem linha visível some inteira. */
+.settings-result {
+  margin-block-start: 14px;
+}
+.settings-result:not(:has(.setting-row:not([hidden]))) {
+  display: none;
+}
+.settings-result-heading {
+  display: block;
+  margin: 0 0 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  text-align: start;
+}
+.settings-result-heading:hover {
+  text-decoration: underline;
 }
 
 .setting-row {

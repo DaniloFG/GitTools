@@ -1607,12 +1607,17 @@ export class GitRepository implements RepoApi {
   // ---------------------------------------------------- editor de conflitos
 
   async conflictDetails(path: string): Promise<ConflictDetails> {
+    // Antes de qualquer leitura: "../" e caminho absoluto são recusados, como nos demais métodos de arquivo.
+    const full = resolveInside(this.root, path)
     const stage = async (n: number) => {
       const { stdout, exitCode } = await this.git(['show', `:${n}:${path}`], { okExitCodes: [0, 128] })
       return exitCode === 0 ? stdout : null
     }
     const [base, ours, theirs] = await Promise.all([stage(1), stage(2), stage(3)])
-    const buffer = await readFile(join(this.root, path)).catch(() => null)
+    // Arquivo de trabalho só é lido se for arquivo comum e couber no teto do editor (o mesmo de readFile).
+    // Acima do teto, ou se não for arquivo comum (pasta, link), o conteúdo fica de fora.
+    const info = await lstat(full).catch(() => null)
+    const buffer = info?.isFile() && info.size <= EDITABLE_MAX_BYTES ? await readFile(full).catch(() => null) : null
     const working = buffer ? buffer.toString('utf8') : null
     const binary = !!buffer?.subarray(0, 8000).includes(0) || [base, ours, theirs].some((t) => t?.includes('\0'))
     return { path, base, ours, theirs, working, binary }
