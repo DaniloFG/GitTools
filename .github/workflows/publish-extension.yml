@@ -2,8 +2,10 @@ name: Publicar extensão do VS Code
 
 # Publica a extensão no VS Code Marketplace (e, se houver o token, no Open VSX) depois de compilar,
 # testar e empacotar. Quando roda:
-#  - a cada merge na main que mexa no que vai para a extensão (a versão é a de extension/package.json;
-#    se ela já estiver publicada, não há nada a fazer e o workflow termina sem erro);
+#  - a cada merge na main que mexa no que vai para a extensão. A versão é a de extension/package.json se ela
+#    for maior que a última tag v*; senão, a última tag com o último número + 1 (ver scripts/extension-version.mjs).
+#    Para uma minor ou major, suba extension/package.json à mão. Se a versão já estiver publicada, o workflow
+#    termina sem erro;
 #  - ao criar uma tag "v0.5.1" (a versão publicada é a da tag);
 #  - manualmente, em Actions → Run workflow.
 on:
@@ -25,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versão a publicar (ex.: 0.5.1). Em branco usa a do extension/package.json.'
+        description: 'Versão a publicar (ex.: 0.5.1). Em branco, a automática: a do extension/package.json se for maior que a última tag v*, senão a última tag + 1 no último número.'
         required: false
 
 permissions:
@@ -41,6 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # as tags vêm junto: a versão automática sai delas
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -57,6 +61,7 @@ jobs:
         run: |
           VERSION="${{ github.event.inputs.version }}"
           if [ -z "$VERSION" ] && [ "${{ github.ref_type }}" = "tag" ]; then VERSION="${GITHUB_REF_NAME#v}"; fi
+          if [ -z "$VERSION" ]; then VERSION=$(node scripts/extension-version.mjs); fi
           if [ -n "$VERSION" ]; then
             node -e "const fs=require('fs');const p='extension/package.json';const j=JSON.parse(fs.readFileSync(p,'utf8'));j.version=process.argv[1];fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n')" "$VERSION"
           fi
@@ -84,7 +89,7 @@ jobs:
           if [ "$CODE" -eq 0 ]; then
             echo "published=true" >> "$GITHUB_OUTPUT"
           elif echo "$OUT" | grep -qi "already exists"; then
-            echo "::notice::A versão ${{ steps.version.outputs.version }} já está publicada: nada a fazer. Para publicar de novo, suba a versão em extension/package.json."
+            echo "::notice::A versão ${{ steps.version.outputs.version }} já está publicada: nada a fazer. A versão automática já pula as publicadas; confira as tags v* (o checkout precisa de fetch-depth: 0)."
             echo "published=false" >> "$GITHUB_OUTPUT"
           else
             exit "$CODE"
