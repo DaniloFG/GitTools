@@ -6,6 +6,9 @@ import { Split } from '../Split'
 import { SETTINGS_SECTIONS } from './sections'
 import { SettingsSearchContext } from './SettingRow'
 
+/** Seções que entram na pesquisa; só são montadas enquanto há texto digitado (ver `searching`). */
+const SEARCHABLE_SECTIONS = SETTINGS_SECTIONS.filter((s) => s.searchable)
+
 interface Props {
   settings: Settings
   initialSection: string
@@ -27,19 +30,21 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
   const [query, setQuery] = useState('')
   const contentRef = useRef<HTMLElement>(null)
   const [noMatch, setNoMatch] = useState(false)
-  /** Pesquisa só vale nas seções com linhas de configuração; em cada troca de seção ela começa vazia. */
-  const searchText = section.searchable ? query : ''
+  // Uma pesquisa só, para a Central inteira: com texto, as seções pesquisáveis aparecem uma após a outra,
+  // cada uma com o nome dela (que leva à seção e limpa a busca). Sem texto, vale só a seção escolhida.
+  const searching = query.trim() !== ''
 
-  const chooseSection = (id: string) => {
+  /** Cabeçalho de resultado: vai para a seção e limpa a pesquisa (é a saída da tela de resultados). */
+  const openResultSection = (id: string) => {
     setSectionId(id)
     setQuery('')
   }
 
-  // Sem nenhuma linha visível na pesquisa, a seção avisa em vez de ficar em branco.
+  // Sem nenhuma linha visível na pesquisa, a Central avisa em vez de ficar em branco.
   useLayoutEffect(() => {
     const rows = [...(contentRef.current?.querySelectorAll<HTMLElement>('.setting-row') ?? [])]
-    setNoMatch(searchText.trim() !== '' && rows.length > 0 && rows.every((r) => r.hidden))
-  }, [searchText, sectionId, draft])
+    setNoMatch(query.trim() !== '' && rows.length > 0 && rows.every((r) => r.hidden))
+  }, [query, sectionId, draft])
 
   useEffect(() => {
     onPreview(draft)
@@ -91,8 +96,9 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
     >
       <Split id="settings" className="settings-layout" fixed initial={210} min={[140, 320]} collapsible={[false, false]} arrangeable={false}>
         <nav className="settings-nav" aria-label={t('settings.title')}>
+          {/* Escolher uma seção no menu sai da tela de resultados (senão o clique não mudaria nada na tela). */}
           {SETTINGS_SECTIONS.map((s) => (
-            <button key={s.id} className={s.id === sectionId ? 'active' : ''} onClick={() => chooseSection(s.id)}>
+            <button key={s.id} className={s.id === sectionId ? 'active' : ''} onClick={() => openResultSection(s.id)}>
               <span className="settings-nav-icon">{s.icon}</span>
               <span>{t(s.title)}</span>
               {errors.some((e) => e.id === s.id) && <span className="settings-nav-error">!</span>}
@@ -100,33 +106,43 @@ export function SettingsCenter({ settings, initialSection, onPreview, onSave, on
           ))}
         </nav>
         <section className="settings-content" ref={contentRef}>
-          <header className="settings-section-header">
-            <h3>{t(section.title)}</h3>
-            <p className="muted">{t(section.description)}</p>
-          </header>
-          {section.searchable && (
-            <div className="settings-search">
-              <span className="search-icon" aria-hidden>
-                ⌕
-              </span>
-              <input
-                type="search"
-                value={query}
-                placeholder={t('settings.searchPlaceholder')}
-                aria-label={t('settings.searchPlaceholder')}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-          )}
-          <SettingsSearchContext.Provider value={searchText}>
-            <Section
-              draft={draft}
-              update={(patch) => setDraft((d) => ({ ...d, ...patch }))}
-              replace={setDraft}
+          <div className="settings-search">
+            <span className="search-icon" aria-hidden>
+              ⌕
+            </span>
+            <input
+              type="search"
+              value={query}
+              placeholder={t('settings.searchPlaceholder')}
+              aria-label={t('settings.searchPlaceholder')}
+              onChange={(e) => setQuery(e.target.value)}
             />
+          </div>
+          {/* Na pesquisa, o cabeçalho da seção escolhida some: cada resultado traz o nome da própria seção. */}
+          {!searching && (
+            <header className="settings-section-header">
+              <h3>{t(section.title)}</h3>
+              <p className="muted">{t(section.description)}</p>
+            </header>
+          )}
+          <SettingsSearchContext.Provider value={query}>
+            {searching
+              ? SEARCHABLE_SECTIONS.map((s) => {
+                  const Results = s.component
+                  return (
+                    // Seção sem linha visível some inteira, cabeçalho junto (ver `.settings-result` em styles.css).
+                    <div key={s.id} className="settings-result">
+                      <button className="settings-result-heading" onClick={() => openResultSection(s.id)}>
+                        {t(s.title)}
+                      </button>
+                      <Results draft={draft} update={(patch) => setDraft((d) => ({ ...d, ...patch }))} replace={setDraft} />
+                    </div>
+                  )
+                })
+              : <Section draft={draft} update={(patch) => setDraft((d) => ({ ...d, ...patch }))} replace={setDraft} />}
           </SettingsSearchContext.Provider>
           {noMatch && <p className="empty settings-empty">{t('settings.noResults')}</p>}
-          {section.id === 'shortcuts' && (
+          {!searching && section.id === 'shortcuts' && (
             <button className="link settings-help-link" onClick={onShowShortcuts}>
               {t('settings.shortcuts.showList')}
             </button>

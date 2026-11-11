@@ -13,9 +13,9 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E5, commit `0de61d7`: #62 (tela aberta por aba em `dockStore.ts`, em memória, por raiz; aba nova abre em History; `dock` segue global). typecheck, 850 testes, `perf:bundle` (683.328 de 700.000) verdes; conferido no Chromium com duas abas e com a visibilidade de telas da E4; `code-review` medium feito.
+**Última etapa fechada:** E6, commit `COMMIT`: #70 (`multiRepoDetection` desligado por padrão; só `true` literal liga) e #71 (um campo de busca na Central de Configurações; com texto, todas as seções pesquisáveis aparecem com o nome, clicável). typecheck, 855 testes, `perf:bundle` (tudo dentro dos tetos) verdes; busca conferida no Chromium ("tema" -> Aparência, "editor" -> Editor e diff, clique no cabeçalho limpa a busca).
 
-**A seguir:** `E6` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
+**A seguir:** `E7` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
@@ -24,7 +24,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E3 | #83 #86 | Diff: botões vão para submenu "Options"; colunas do History redimensionáveis | feito | 6179d6d |
 | E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | feito | bdf185b |
 | E5 | #62 | Tela inicial History; estado de tela/layout independente por aba | feito | 0de61d7 |
-| E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | a fazer | |
+| E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | feito | COMMIT |
 | E7 | #59 #84 | Compare: "apply" do arquivo inteiro; busca no Cherry-pick Studio | a fazer | |
 | E8 | #85 | Botões assíncronos: bloqueio contra clique duplo + loading onde falta | a fazer | |
 | E9 | #72 #60 | READMEs: seções e chamadas no topo; tirar menções ao repo do GitHub | a fazer | |
@@ -36,17 +36,6 @@ Não se aplica (nenhuma etapa persegue meta de desempenho). E5, E8 e E10 medem a
 contagem de processos git antes e depois.
 
 ## 4. Plano
-
-### Etapa E6 — configurações (#70 #71)
-- **Orquestra**: sonnet
-- **Arquivos prováveis**: `src/shared/settings.ts:74,115`, `GeneralSection.tsx:29-39`, `extension/src/extension.ts:94-96,153-160`,
-  `SettingsCenter.tsx:107-127`, `sections.tsx:30`, `SettingRow.tsx:7,28`
-- **Ler antes**: issues #70 #71. #70: trocar o padrão e conferir quem lê `multiRepoDetection !== false`; sem teste de
-  detecção hoje, criar um. #71: busca única que diz em qual submenu está a configuração.
-- **Aceite**: teste do padrão novo; busca encontra configuração de outra seção; `npm test` verde
-- **Testes**: unidade e tela
-- **Segurança**: não
-- **Depende de**: —
 
 ### Etapa E7 — Compare e Cherry-pick Studio (#59 #84)
 - **Orquestra**: topo
@@ -99,6 +88,7 @@ contagem de processos git antes e depois.
 - 2026-11-11 E4: Dashboards escondido e aberto continua na barra até trocar de tela (de propósito). `SCREENS`/`SCREEN_NAMES` em `Screens.tsx` duplicam `TOP_SCREEN_LABELS`. Sem separador entre Painéis dinâmicos e Telas. Pendente: ver o menu na tela e `code-review` sobre E4.
 
 - 2026-11-11 E5: só a tela aberta ficou por aba; o arranjo `dock` e as `pref.*` seguem globais (decisão minha, não do dono: confirmar se o arranjo de painéis também deve ser por repositório). `dashboardsOpen` (local de RepoView) volta a falso ao trocar de aba. `pref.screen` antigo fica órfão no localStorage (inofensivo). E4 conferida na tela: menu Aparência > Telas ok.
+- 2026-11-11 E6: com a detecção desligada (agora o padrão) `discoverWorkspace` usa `setRepository` (`extension.ts:160`), que ativa a 1ª pasta e pode sobrescrever a escolha do usuário se ela vier antes do fim da descoberta (corrida; o teste do seletor de pasta espera `openList`). Não corrigido. Busca: Identidade, Atalhos e Sobre seguem fora; sem normalizar acentos; `EditorSection` monta (e chama `detectEditors`) ao buscar; `:has()` esconde seção sem resultado (visto no Chromium, não no VS Code). `code-review` formal não rodado (diff revisto à mão).
 
 ## 6. Encerramento
 
