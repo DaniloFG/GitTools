@@ -13,9 +13,9 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E8, #85 (clique duplo). `src/renderer/src/singleFlight.ts` (puro, 12 testes) bloqueia `run` do App: chamada extra durante outra é ignorada em silêncio; `queue: true` (só stage/unstage do ChangesView) espera em ordem. `busy` cai só depois do `refresh`. `disabled` com `busy !== null` em Aplicar do Studio, Commit (botão, Ctrl+Enter, pergunta de force push), Fetch/Pull/Push, ConflictEditor, abortar/continuar/pular, Aplicar rebase; Enter do Compare e do Remotes respeita o estado. typecheck, 914 testes e perf:bundle verdes (685.097 de 700.000). Tela (Chromium): clique duplo em Stage move 1 vez, clique duplo em Commit gera 1 `git commit`, 156 nós, sem erros. `code-review` medium feito (achados 1,2,3,4,5 corrigidos).
+**Última etapa fechada:** E9, #72 e #60 (READMEs). Nos dois READMEs, "Por que o GitTools?" (citação "Cansado de…" e bullets) sobe para logo depois da imagem principal, seguido de um índice de links âncora (pt-BR 6, en 8; âncoras conferidas pela regra de slug do GitHub, não num preview). Removidas as menções ao repositório: "Source code & issues", "from the same repository" e a ⭐ "no repositório" nos dois idiomas. Links do GitHub Sponsors e da licença MIT mantidos (o dono não respondeu). Só documentação: typecheck e testes não rodados.
 
-**A seguir:** `E9`
+**A seguir:** `E10`
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | feito | b296a96 |
 | E7 | #59 #84 | Compare: "apply" do arquivo inteiro; busca no Cherry-pick Studio | feito | ver git log |
 | E8 | #85 | Botões assíncronos: bloqueio contra clique duplo + loading onde falta | feito | ver git log |
-| E9 | #72 #60 | READMEs: seções e chamadas no topo; tirar menções ao repo do GitHub | a fazer | |
+| E9 | #72 #60 | READMEs: seções e chamadas no topo; tirar menções ao repo do GitHub | feito | ver git log |
 | E10 | #61 | Auditoria de conflitos com cenários de dezenas a milhares de arquivos | a fazer | |
 
 ## 3. Base de medição
@@ -36,14 +36,6 @@ Não se aplica (nenhuma etapa persegue meta de desempenho). E5, E8 e E10 medem a
 contagem de processos git antes e depois.
 
 ## 4. Plano
-
-### Etapa E9 — READMEs (#72 #60)
-- **Orquestra**: sonnet
-- **Arquivos prováveis**: `README.md` (links nas linhas 7, 571, 573), `extension/README.md` (15, 16, 255, 257, 264-268)
-- **Ler antes**: issues #72 #60. Links de patrocínio e licença: confirmar com o dono se saem junto.
-- **Aceite**: `grep -n github.com` nos dois READMEs sem menção ao repo; índice de seções no topo; chamadas de impacto primeiro
-- **Segurança**: não
-- **Depende de**: —
 
 ### Etapa E10 — auditoria de conflitos (#61)
 - **Orquestra**: topo
@@ -72,6 +64,7 @@ contagem de processos git antes e depois.
 
 - 2026-11-11 E7: "Aplicar arquivo inteiro" lê o diff completo no renderer e o core o refaz (`findFile`): leitura dupla, e as chaves de milhares de linhas cruzam o IPC; melhor seria `buildPartialPatch(file, 'all')` num método próprio. Lista do Studio: linhas inline sem `memo` (exceção comentada no código, teto 600); busca não normaliza acentos; Aplicar arquivo renomeado (R) cria só o caminho novo e não remove o antigo: o diff com pathspec no caminho novo vira adição (limitação, decisão de produto; teste de caracterização). `applyLines` não passa por `resolveInside`: caminho `..`/absoluto só é barrado pelo git ("outside repository"). Todos pré-marcados na abertura (como antes): "Aplicar N commits" mostra o total, inclusive fora da busca.
 - 2026-11-11 E8, aceitos e não feitos: (a) ação ignorada pelo bloqueio (ex.: Commit/Descartar logo após stage) some sem toast e `run` devolve `undefined` como em falha; avisar pede texto novo nos 6 catálogos. (b) `fn` que nunca termina (fetch pendurado) trava todo `run` do repositório até reabrir; sem timeout. (c) sem `disabled` ainda: botões por arquivo do OperationBanner, resolução em lote, copiar versão e aplicar linhas do Compare, menus de CommitList/Sidebar/CommitDetails, Welcome, KeyboardShortcuts (só o `run` os protege). (d) Sem tela: force push com Ctrl+Enter repetido, overlay agora dura até o fim do `refresh`. (e) Toolbar e outros redesenham ao mudar `busy` (useBusy). (f) Spinner extra pedido na issue não foi acrescentado: o indicador do `run` já cobre.
+- 2026-11-11 E9, dúvida para o dono: os links de patrocínio (GitHub Sponsors) e o da licença (`extension/README.md:15`, aponta para `github.com/DaniloFG/GitTools/blob/main/LICENSE`) ficaram; sair junto com #60? `package.json`, `extension/package.json` e `CONTRIBUTING.md` também citam o repositório (metadados/contribuição), fora do que a issue pede com clareza; não tocados. Índice sem título próprio.
 
 ## 6. Encerramento
 
