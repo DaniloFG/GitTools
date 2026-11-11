@@ -54,7 +54,7 @@ import { historySignature, mergeData } from './stable'
 import { dropSession, getSession, isOwnEcho, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
 import { canLoadMoreLog, checkedRefs, logLimitFor, nextLogPage, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
 import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
-import { openScreen, readScreen } from './dockStore'
+import { forgetScreen, openScreen, readScreen, setScreenRoot } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
 import { PaneSlot, WhenShown, useAnyShown } from './slots'
 import {
@@ -221,6 +221,8 @@ export function App() {
     for (const { root } of openedRef.current.repos) {
       if (roots.has(root)) continue
       dropSession(root)
+      // A tela da aba também é esquecida: reabri-la começa no Histórico (ver dockStore.ts).
+      forgetScreen(root)
       readCache.drop(root)
     }
     openedRef.current = next
@@ -586,6 +588,7 @@ export function App() {
   if (!activeRepo) {
     // Sem repositório na tela, nenhuma chamada git deve ir para o último que saiu.
     setActiveRoot(null)
+    setScreenRoot('')
     return (
       <>
         <Welcome
@@ -742,6 +745,8 @@ interface RepoViewProps {
 function RepoView({ repo, several, workspace, settings, onSummary, notify, appModalOpen, openSettings, openShortcuts }: RepoViewProps) {
   // As chamadas do proxy `git` passam a ir para este repositório (ver git.ts).
   setActiveRoot(repo.root)
+  // A tela aberta (menu do topo) é de cada aba: a aba ativa é a raiz deste repositório (ver dockStore.ts).
+  setScreenRoot(repo.root)
   /** Sessão do repositório: sobrevive à troca de aba e devolve os dados e a tela como estavam (ver repoSession.ts). */
   const session = getSession(repo.root)
   /** Chamadas presas a este repositório: uma leitura em andamento nunca termina no repositório de outra aba. */

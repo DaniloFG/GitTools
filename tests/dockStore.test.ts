@@ -1,7 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { inScreen, pinnedIn, setSizes } from '../src/renderer/src/dock'
-import { openScreen, readDock, readScreen, revealScreen, revealView, toggleScreenShown, updateDock } from '../src/renderer/src/dockStore'
-import { readLayout, resetLayout, snapshotLayout, writeLayout } from '../src/renderer/src/layout'
+import {
+  forgetScreen,
+  openScreen,
+  readDock,
+  readScreen,
+  revealScreen,
+  revealView,
+  setScreenRoot,
+  subscribeScreen,
+  toggleScreenShown,
+  updateDock
+} from '../src/renderer/src/dockStore'
+import { resetLayout, snapshotLayout, writeLayout } from '../src/renderer/src/layout'
 
 /** localStorage de mentira (os testes rodam sem navegador). */
 function fakeStorage() {
@@ -20,19 +31,96 @@ function fakeStorage() {
 
 describe('troca de menu e painéis fixados (estado guardado)', () => {
   const original = (globalThis as { localStorage?: unknown }).localStorage
+  let storage: ReturnType<typeof fakeStorage>
   beforeEach(() => {
-    ;(globalThis as { localStorage?: unknown }).localStorage = fakeStorage()
+    storage = fakeStorage()
+    ;(globalThis as { localStorage?: unknown }).localStorage = storage
+    setScreenRoot('/repo')
   })
   afterEach(() => {
     resetLayout()
-    writeLayout('pref.screen', undefined)
+    // Esquece as abas usadas pelos testes (e a ativa), para um teste não herdar a tela do outro.
+    for (const root of ['/repo', '/a', '/b', '/c']) forgetScreen(root)
+    setScreenRoot('')
     ;(globalThis as { localStorage?: unknown }).localStorage = original
   })
 
-  it('começa no Histórico e lembra o menu aberto', () => {
+  it('começa no Histórico e lembra o menu aberto na aba', () => {
     expect(readScreen()).toBe('history')
     openScreen('files')
     expect(readScreen()).toBe('files')
+  })
+
+  it('cada aba tem a sua tela: trocar de aba não leva o menu de uma para a outra', () => {
+    setScreenRoot('/a')
+    openScreen('files')
+    setScreenRoot('/b')
+    expect(readScreen()).toBe('history')
+    setScreenRoot('/a')
+    expect(readScreen()).toBe('files')
+  })
+
+  it('a tela escolhida não vai para o armazenamento (nova execução começa no Histórico)', () => {
+    openScreen('files')
+    expect([...storage.data.keys()].some((k) => k.endsWith('pref.screen'))).toBe(false)
+  })
+
+  it('aba fechada e reaberta volta ao Histórico', () => {
+    setScreenRoot('/a')
+    openScreen('files')
+    forgetScreen('/a')
+    setScreenRoot('/b')
+    setScreenRoot('/a')
+    expect(readScreen()).toBe('history')
+  })
+
+  it('setScreenRoot avisa os assinantes só quando a tela visível muda, e depois do render (microtask)', async () => {
+    setScreenRoot('/a')
+    openScreen('files')
+    setScreenRoot('/repo')
+    // O aviso de 'files' -> 'history' acima é uma microtask: espera ele sair antes de assinar.
+    await Promise.resolve()
+    let calls = 0
+    const unsubscribe = subscribeScreen(() => {
+      calls += 1
+    })
+    setScreenRoot('/a') // history -> files: muda
+    expect(calls).toBe(0)
+    await Promise.resolve()
+    expect(calls).toBe(1)
+    setScreenRoot('/b') // files -> history: muda
+    await Promise.resolve()
+    expect(calls).toBe(2)
+    setScreenRoot('/c') // history -> history: não muda
+    await Promise.resolve()
+    expect(calls).toBe(2)
+    unsubscribe()
+  })
+
+  it('sem aba ativa (troca para ""), a escolha não grava na aba fechada nem cria entrada nova', () => {
+    setScreenRoot('/a')
+    openScreen('files')
+    forgetScreen('/a')
+    setScreenRoot('')
+    expect(readScreen()).toBe('history')
+    openScreen('compare')
+    expect(readScreen()).toBe('history')
+    setScreenRoot('/a')
+    expect(readScreen()).toBe('history')
+  })
+
+  it('subscribeScreen só avisa quando a tela muda de fato', () => {
+    let calls = 0
+    const unsubscribe = subscribeScreen(() => {
+      calls += 1
+    })
+    openScreen('files')
+    expect(calls).toBe(1)
+    openScreen('files')
+    expect(calls).toBe(1)
+    unsubscribe()
+    openScreen('compare')
+    expect(calls).toBe(1)
   })
 
   it('mostrar um painel de outra tela, com ela aberta, fixa o painel nesta tela', () => {
@@ -81,6 +169,6 @@ describe('troca de menu e painéis fixados (estado guardado)', () => {
     openScreen('compare')
     revealScreen('compare')
     expect(pinnedIn(readDock(), 'files')).toEqual(['changes.diff'])
-    expect(readLayout('pref.screen')).toBe('compare')
+    expect(readScreen()).toBe('compare')
   })
 })
