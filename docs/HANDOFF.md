@@ -44,6 +44,10 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    que ele pediu, como as contagens de linhas em todas as listas); verificação vermelha que não se resolve; ou se o
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
+8. **Temporário (pedido do usuário na janela 8, vale até ele mandar desfazer): "opusfast" em todas as fases.** Os
+   subagentes rodam em **Opus no modo rápido** no lugar do Haiku da regra 1 (na ferramenta `Agent`,
+   `model: "opus"`). O resto da regra 1 continua: a janela principal não escreve código. Ao criar a sessão
+   seguinte (regra 7), mantenha esta regra até o usuário dizer que acabou; quando ele disser, apague este item.
 
 ## 2. Estado atual (fim da janela 7)
 
