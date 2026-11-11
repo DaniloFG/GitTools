@@ -82,7 +82,8 @@ mão e diga isso.
 | IPC, execução do git, terminal, caminho de arquivo, webview, dependência, workflow | `security-review` e `.claude/rules/seguranca.md` |
 | Gráficos e dashboards (`src/renderer/src/analytics`) | `dataviz` |
 | Permissões, hooks, variáveis de ambiente | `update-config`; menos pedidos de permissão: `fewer-permission-prompts` |
-| Repetir ou vigiar algo; acompanhar PR | `loop`; `subscribe_pr_activity` |
+| Abrir, acompanhar ou fazer merge de PR | skill `pr`: sessão em Haiku, esforço `low` |
+| Repetir ou vigiar algo | `loop` |
 | Abre muitos agentes ou gasta crédito: `batch` (um PR por unidade, fora do fluxo de branches), `code-review` nos níveis `max` e `ultra` | Só com a palavra do dono: sugira e espere |
 
 Comandos que só o dono digita; sugira em uma linha: `/clear` ao mudar de assunto; `/context` e `/compact <o que

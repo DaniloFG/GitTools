@@ -3,7 +3,7 @@
 
 ## Etapa do fluxo
 <!-- Marque a etapa que este PR representa. O check "Validar fluxo de branches" confere a mesma regra. -->
-- [ ] `feature/*` (ou `fix/`, `docs/`, `chore/`, `refactor/`, `claude/`) → `develop`
+- [ ] `feature/*` (ou `fix/`, `docs/`, `chore/`, `refactor/`) → `develop`
 - [ ] `develop` → `homolog` (promoção para homologação)
 - [ ] `homolog` → `main` (publicação em produção)
 
