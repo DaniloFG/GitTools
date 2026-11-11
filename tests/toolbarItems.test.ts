@@ -10,7 +10,7 @@ import {
 
 describe('itens da barra de ferramentas', () => {
   it('tem os ids esperados, sem repetição', () => {
-    expect(TOOLBAR_ITEM_IDS).toEqual(['repo', 'branch', 'screens', 'fetch', 'pull', 'push', 'new', 'editor', 'studio'])
+    expect(TOOLBAR_ITEM_IDS).toEqual(['repo', 'branch', 'screens', 'fetch', 'pull', 'push', 'new', 'studio'])
     expect(new Set(TOOLBAR_ITEM_IDS).size).toBe(TOOLBAR_ITEM_IDS.length)
   })
 
@@ -34,6 +34,10 @@ describe('itens da barra de ferramentas', () => {
   it('descarta ids desconhecidos e repetidos, e devolve na ordem da barra', () => {
     expect(parseHiddenToolbarItems(['studio', 'nope', 'fetch', 'studio', 42, null])).toEqual(['fetch', 'studio'])
     expect(parseHiddenToolbarItems(['sponsor', 'menu'])).toEqual([])
+  })
+
+  it('item retirado da barra (editor) salvo na configuração antiga é descartado', () => {
+    expect(parseHiddenToolbarItems(['editor', 'push'])).toEqual(['push'])
   })
 
   it('alterna a visibilidade sem mudar as outras', () => {

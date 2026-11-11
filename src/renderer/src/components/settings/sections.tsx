@@ -26,7 +26,7 @@ export interface SettingsSectionDef {
   title: MessageKey
   description: MessageKey
   component: ComponentType<SettingsSectionProps>
-  /** Seção com linhas de configuração (SettingRow): ganha o campo de pesquisa no topo. */
+  /** Seção com linhas de configuração (SettingRow): entra na pesquisa da Central (com texto, aparece com o nome dela). */
   searchable?: boolean
   /** Retorna uma mensagem de erro quando o rascunho não pode ser salvo. */
   validate?(draft: Settings): MessageKey | null

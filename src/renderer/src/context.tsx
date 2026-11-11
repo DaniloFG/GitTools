@@ -89,8 +89,9 @@ export interface AppActions {
   /**
    * Executa uma operação mostrando progresso, erros e resultado, e atualiza a tela no fim.
    * `scope`: painéis que a operação atinge (padrão: todos os que mostram dados do repositório).
+   * `options.queue`: espera as operações em andamento terminarem, em vez de ser descartada (ver `singleFlight.ts`).
    */
-  run<T>(label: string, fn: () => Promise<T>, scope?: readonly ViewId[]): Promise<T | undefined>
+  run<T>(label: string, fn: () => Promise<T>, scope?: readonly ViewId[], options?: { queue?: boolean }): Promise<T | undefined>
   /** Aviso; com mais de um repositório aberto, cita o repositório (ver `prefixToast`). */
   toast(kind: ToastKind, text: string, action?: ToastAction): void
   confirm(request: ConfirmRequest): Promise<boolean>

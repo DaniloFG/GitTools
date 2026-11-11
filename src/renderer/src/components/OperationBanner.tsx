@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useBusy, useRepoData } from '../context'
 import { git } from '../git'
 import { shortSha } from '../format'
 import { t, type MessageKey } from '../i18n'
@@ -18,6 +18,8 @@ const FILTER_FROM = 8
 export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
   const { data } = useRepoData()
   const { run, confirm, openConflict, openInEditor } = useAppActions()
+  // Operação em andamento: abortar, continuar e pular não disparam outra enquanto a primeira não termina.
+  const { busy } = useBusy()
   const resolveAll = useResolveAll()
   const [filter, setFilter] = useState('')
   const { operation, status } = data
@@ -108,20 +110,20 @@ export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
           <>
             <button
               className="primary"
-              disabled={conflicts.length > 0}
+              disabled={conflicts.length > 0 || busy !== null}
               title={conflicts.length > 0 ? t('feedback.blocked.conflicts') : undefined}
               onClick={() => run(t('busy.continuing'), () => git.continueOperation())}
             >
               {t('operation.continue')}
             </button>
             {operation.kind !== 'merge' && (
-              <button onClick={() => run(t('busy.skipping'), () => git.skipOperation())}>{t('operation.skip')}</button>
+              <button disabled={busy !== null} onClick={() => run(t('busy.skipping'), () => git.skipOperation())}>{t('operation.skip')}</button>
             )}
           </>
         ) : (
           <button onClick={onShowChanges}>{t('operation.showChanges')}</button>
         )}
-        <button className="danger" onClick={abort}>
+        <button className="danger" disabled={busy !== null} onClick={abort}>
           {t('operation.abort')}
         </button>
       </div>

@@ -39,6 +39,10 @@ export const zhCN: Messages = {
     discard: '丢弃',
     open: '打开',
     openInEditor: '在编辑器中打开',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: '在 VSCode 编辑器中打开',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'GitTools 编辑器',
     all: '全选',
     none: '全不选',
     file: '文件',
@@ -103,7 +107,6 @@ export const zhCN: Messages = {
     untracked: '新文件'
   },
   toolbar: {
-    openInEditorHelp: '在设置中选择的编辑器中打开项目',
     tagHelp: '在当前提交上创建标签',
     tag: '标签',
     openRepository: '打开仓库…',
@@ -136,7 +139,9 @@ export const zhCN: Messages = {
     menu: '菜单',
     menuHelp: '设置与面板',
     appearance: '外观',
-    toolbarMenu: '工具栏'
+    toolbarMenu: '工具栏',
+    dynamicPanels: '动态面板',
+    screensMenu: '界面'
   },
   welcome: {
     tagline: '轻松使用 Git：拖放和点击即可合并、变基和拣选分支、提交、文件，甚至单独的行。',
@@ -330,8 +335,6 @@ export const zhCN: Messages = {
     amendButton: '修改提交',
     commit: '提交',
     commitInto: '提交到 {branch}',
-    commitStageAll: '包含所有文件（暂存）',
-    commitStageAllHelp: '提交前先暂存所有已更改的文件',
     commitPicked: { other: '提交所选的 {count} 个文件' },
     commitPickedHint: '“未暂存”列表中选中的文件会包含在本次提交中。',
     pushAfter: '提交后推送',
@@ -511,6 +514,11 @@ export const zhCN: Messages = {
     nothingToBring: '无需带来任何内容：{target} 已包含 {source} 的全部内容。',
     alreadyApplied: '已应用',
     alreadyAppliedHelp: '目标中已存在等效的提交',
+    searchPlaceholder: '按哈希、消息、作者或日期（YYYY-MM-DD）搜索',
+    noMatches: '没有符合搜索的提交。',
+    showMore: { one: '显示更多（剩余 1 个）', other: '显示更多（剩余 {count} 个）' },
+    refineSearch: '请缩小搜索范围，以查看其余 {count} 个提交。',
+    checkedOutside: '搜索之外已选 {count} 个',
     applyCommits: { other: '将 {count} 个提交应用到 {target}' },
     applyFiles: { other: '将 {count} 个文件应用到 {target}' },
     willCheckout: '应用前将检出“{target}”。',
@@ -637,6 +645,7 @@ export const zhCN: Messages = {
     linesContext: '来自 {path}（{from} → {to}）',
     copyVersion: '复制 {ref} 中的版本',
     copyVersionHelp: '{target} 中的文件将与 {ref} 中的完全一致',
+    applyFile: '将整个文件应用到 {target}',
     noCommits: '没有提交。',
     openInHistory: '在历史中打开'
   },
@@ -1647,6 +1656,7 @@ export const zhCN: Messages = {
     loading: '正在读取 git 配置…'
   },
   diffExtra: {
+    options: '选项',
     fullFile: '整个文件',
     fullFileHelp: '显示整个文件，而不只是修改的部分',
     changesOnlyHelp: '恢复为只显示修改的部分',

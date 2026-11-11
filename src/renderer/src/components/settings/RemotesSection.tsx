@@ -128,7 +128,7 @@ export function RemotesSection() {
                     autoFocus
                     value={editing.url}
                     onChange={(e) => setEditing({ ...editing, url: e.target.value })}
-                    onKeyDown={(e) => (e.key === 'Enter' ? void saveUrl() : e.key === 'Escape' && setEditing(null))}
+                    onKeyDown={(e) => (e.key === 'Enter' ? !busy && void saveUrl() : e.key === 'Escape' && setEditing(null))}
                   />
                   <button className="primary" disabled={busy || !editing.url.trim() || editing.url.trim() === remote.fetchUrl} onClick={saveUrl}>
                     {t('common.save')}

@@ -1,13 +1,16 @@
 import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { BlameResult, FileDiff, FileHistoryEntry, LineKey } from '../../../shared/types'
-import { currentBranch, useAppActions, useRepoData } from '../context'
+import { currentBranch, useAppActions, useAppSettings, useRepoData } from '../context'
 import { useActions } from '../actions'
+import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
+import { insideVsCode } from '../vscodeBridge'
 import { errorMessage, fullDate, relativeDate, shortSha } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
 import { copyText } from '../copy'
+import { fileMenuItems } from '../fileMenu'
 import { DiffView, useFullFile } from './DiffView'
 import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
@@ -92,12 +95,29 @@ function FileHeader({ path, title }: { path: string; title: string }) {
 
 function FilesList({ path, onPath }: { path: string | null; onPath(path: string): void }) {
   const { data, repo } = useRepoData()
-  const { toast } = useAppActions()
+  const { toast, showMenu, openInEditor, openFileView } = useAppActions()
+  const { settings } = useAppSettings()
+  const editor = editorKind(settings.editor, insideVsCode())
   const [files, setFiles] = useState<string[]>([])
   const [filter, setFilter] = useSessionState('files.filter', '')
   // Arquivos com alterações ainda não salvas no editor.
   useDraftsVersion()
   const unsaved = new Set(draftPaths(repo.root))
+
+  // Menu de contexto de um arquivo da lista (#82): abrir no editor em uso e copiar o caminho, como no Histórico.
+  // Fica aqui, e não no <li>, para a linha não ler contexto; os textos são lidos só ao abrir o menu.
+  // No editor do GitTools o arquivo já está nesta tela: `openFileView` só o seleciona.
+  const fileMenu = (e: React.MouseEvent, f: string) =>
+    showMenu(
+      e,
+      fileMenuItems({
+        path: f,
+        canOpen: true,
+        openInEditor: (p) => openEditorItem(editor, p, { openFileView, openInEditor })(),
+        copy: copyText,
+        labels: { openInEditor: t(editorLabelKey(editor)), copyPath: t('history.files.copyPath') }
+      })
+    )
 
   useEffect(() => {
     git.listFiles().then(setFiles, (e) => toast('error', errorMessage(e)))
@@ -136,6 +156,7 @@ function FilesList({ path, onPath }: { path: string | null; onPath(path: string)
                 revealView('files.editor')
               }}
               title={f}
+              onContextMenu={(e) => fileMenu(e, f)}
             >
               {label}
               {unsaved.has(f) && (
@@ -434,23 +455,33 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
       <PaneSlot id="files.diff">
         {active ? (
           <div className="diff-panel file-history-diff">
-            <div className="selection-bar">
-              <button
-                onClick={() => openDiffWindow({ source: { kind: 'commit', sha: active.sha }, path: active.path, title: `${active.path} · ${shortSha(active.sha)}` })}
-                title={t('diffExtra.openWindowHelp')}
-              >
-                ⧉ {t('diffExtra.openWindow')}
-              </button>
-              <button onClick={() => selectCommit(active.sha)}>{t('files.viewCommit')}</button>
-              <button onClick={() => onBlameAt(active.sha)}>{t('files.blameThisVersion')}</button>
-              <button onClick={() => restore(active)}>{t('files.restoreThisVersion')}</button>
-              {head && (
-                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
-                  {t('common.applyLinesInto', { count: selection.size, target: head })}
-                </button>
-              )}
-            </div>
-            {diff ? <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} /> : <LoaderPane label={t('loader.diff')} />}
+            {diff ? (
+              <DiffView
+                file={diff}
+                selection={head ? selection : undefined}
+                onSelectionChange={setSelection}
+                panelActions={[
+                  {
+                    label: `⧉ ${t('diffExtra.openWindow')}`,
+                    hint: t('diffExtra.openWindowHelp'),
+                    onClick: () => openDiffWindow({ source: { kind: 'commit', sha: active.sha }, path: active.path, title: `${active.path} · ${shortSha(active.sha)}` })
+                  },
+                  { label: t('files.viewCommit'), onClick: () => selectCommit(active.sha) },
+                  { label: t('files.blameThisVersion'), onClick: () => onBlameAt(active.sha) },
+                  { label: t('files.restoreThisVersion'), onClick: () => restore(active) },
+                  ...(head
+                    ? [
+                        {
+                          label: t('common.applyLinesInto', { count: selection.size, target: head }),
+                          disabled: !selection.size,
+                          hint: selection.size ? undefined : t('feedback.blocked.noSelection'),
+                          onClick: applyLines
+                        }
+                      ]
+                    : [])
+                ]}
+              />
+            ) : <LoaderPane label={t('loader.diff')} />}
           </div>
         ) : (
           <p className="empty">{t('files.noCommits')}</p>

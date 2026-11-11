@@ -54,6 +54,8 @@ interface Props {
   onSelectionChange?(selection: Set<LineKey>): void
   /** Quando há uma lista de arquivos ao lado: posição do arquivo e como ir para o anterior/próximo. */
   fileNav?: { index: number; count: number; go(delta: 1 | -1): void }
+  /** Ações do painel (abrir em janela, aplicar linhas…), mostradas no submenu "Opções" do menu ⋯ do cabeçalho. */
+  panelActions?: MenuItem[]
 }
 
 /** Teclas atuais de uma ação (as personalizadas das configurações, se houver). */
@@ -298,7 +300,7 @@ const DiffBlock = memo(function DiffBlock({ file, rows, start, end, layout, live
  * O corpo é uma lista em janela de blocos (BLOCK_ROWS linhas). Só os blocos perto da tela são montados; a
  * seleção só redesenha os blocos cuja assinatura mudou.
  */
-export function DiffView({ file, selection, onSelectionChange, fileNav }: Props) {
+export function DiffView({ file, selection, onSelectionChange, fileNav, panelActions }: Props) {
   const selectable = !!selection && !!onSelectionChange && !file.binary
   const [layout, setLayout] = useDiffLayout()
   const [fullFile, setFullFile] = useFullFile()
@@ -539,8 +541,11 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
             </button>
           </div>
         )}
-        {!file.binary && file.hunks.length > 0 && (
-          <ViewOptionsButton groups={diffViewGroups({ layout, setLayout, fullFile, setFullFile })} />
+        {((!file.binary && file.hunks.length > 0) || (panelActions && panelActions.length > 0)) && (
+          <ViewOptionsButton
+            groups={!file.binary && file.hunks.length > 0 ? diffViewGroups({ layout, setLayout, fullFile, setFullFile }) : []}
+            submenu={panelActions ? { label: t('diffExtra.options'), items: panelActions } : undefined}
+          />
         )}
       </div>
       <div className="diff-body-wrap">

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { ConflictDetails } from '../../../shared/types'
 import { buildResult, parseConflicts, resolveChunk, type ChunkResolution, type MergeChunk } from '../../../shared/conflicts'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useBusy, useRepoData } from '../context'
 import { BULK_RESOLUTIONS, bulkHelp, bulkLabel, useResolveAll } from '../bulkConflicts'
 import { errorMessage } from '../format'
 import { git } from '../git'
@@ -46,6 +46,8 @@ const withArrow = (label: string, arrow: string) => (LEADING_ARROWS.has(arrow) ?
 export function ConflictEditor({ path, onClose }: { path: string; onClose(): void }) {
   const { run, toast, showMenu } = useAppActions()
   const { repo } = useRepoData()
+  // Operação em andamento: Salvar e as escolhas de arquivo inteiro não disparam outra enquanto a primeira não termina.
+  const { busy } = useBusy()
   const resolveAll = useResolveAll()
   const [details, setDetails] = useState<ConflictDetails | null>(null)
   const [resolutions, setResolutions] = useState<(ChunkResolution | undefined)[]>([])
@@ -181,10 +183,10 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
       <Modal title={t('conflict.titleShort', { path })} onClose={onClose} size="medium">
         <p>{reason}</p>
         <div className="choice-list">
-          <button className="choice" onClick={() => resolveWhole('ours')}>
+          <button className="choice" disabled={busy !== null} onClick={() => resolveWhole('ours')}>
             <strong>{details.ours === null ? t('conflict.deleteFile') : t('conflict.keepOurs')}</strong>
           </button>
-          <button className="choice" onClick={() => resolveWhole('theirs')}>
+          <button className="choice" disabled={busy !== null} onClick={() => resolveWhole('theirs')}>
             <strong>{details.theirs === null ? t('conflict.deleteFile') : t('conflict.keepTheirs')}</strong>
           </button>
           <button className="choice" onClick={() => window.gittools.openFile(path, repo.root)}>
@@ -413,7 +415,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
           </button>
           <button onClick={() => window.gittools.openFile(path, repo.root)}>{t('common.openInEditor')}</button>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" disabled={resolvedCount < conflicts.length} onClick={save}>
+          <button className="primary" disabled={resolvedCount < conflicts.length || busy !== null} onClick={save}>
             {t('conflict.save')}
           </button>
         </>
