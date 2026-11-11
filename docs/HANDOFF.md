@@ -13,9 +13,9 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E9, #72 e #60 (READMEs). Nos dois READMEs, "Por que o GitTools?" (citação "Cansado de…" e bullets) sobe para logo depois da imagem principal, seguido de um índice de links âncora (pt-BR 6, en 8; âncoras conferidas pela regra de slug do GitHub, não num preview). Removidas as menções ao repositório: "Source code & issues", "from the same repository" e a ⭐ "no repositório" nos dois idiomas. Links do GitHub Sponsors e da licença MIT mantidos (o dono não respondeu). Só documentação: typecheck e testes não rodados.
+**Última etapa fechada:** E10, #61 (auditoria de conflitos). `tests/conflicts-scale.test.ts` (21 testes, git de verdade, 1500 arquivos; 300 no Windows) cobre merge, cherry-pick, rebase, revert, stash pop e `apply --3way` com tipos mistos e ours/theirs/resolved/continue/skip/abort. Bug corrigido: `conflictDetails` lia `join(root, path)` e devolvia arquivo de fora do repositório com `../`; agora `resolveInside` e teto de 2 MB. Medido: `resolveConflicts` de 1500 arquivos = 32 processos git (teste do cenário 8). `typecheck` e `npm test` verdes (936). `security-review` pela skill falhou (sem `origin/HEAD`): diff pequeno revisto à mão. `code-review` high rodou; achados na seção 5.
 
-**A seguir:** `E10`
+**A seguir:** `ENCERRAMENTO` (só com a palavra do dono)
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
@@ -28,7 +28,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E7 | #59 #84 | Compare: "apply" do arquivo inteiro; busca no Cherry-pick Studio | feito | ver git log |
 | E8 | #85 | Botões assíncronos: bloqueio contra clique duplo + loading onde falta | feito | ver git log |
 | E9 | #72 #60 | READMEs: seções e chamadas no topo; tirar menções ao repo do GitHub | feito | ver git log |
-| E10 | #61 | Auditoria de conflitos com cenários de dezenas a milhares de arquivos | a fazer | |
+| E10 | #61 | Auditoria de conflitos com cenários de dezenas a milhares de arquivos | feito | ver git log |
 
 ## 3. Base de medição
 
@@ -37,14 +37,7 @@ contagem de processos git antes e depois.
 
 ## 4. Plano
 
-### Etapa E10 — auditoria de conflitos (#61)
-- **Orquestra**: topo
-- **Arquivos prováveis**: `tests/conflicts.test.ts`, `tests/conflicts-bulk.test.ts`, `tests/mergeLayout.test.ts`, telas de conflito
-- **Ler antes**: issue #61. Merge, cherry-pick e demais origens de conflito; cenários de dezenas a poucos milhares de arquivos.
-- **Aceite**: relatório de achados no HANDOFF; cada bug corrigido com teste; o que não couber vira issue
-- **Testes**: unidade, integração e medição
-- **Segurança**: sim
-- **Depende de**: E7
+(sem etapas pendentes)
 
 ## 5. Decisões e armadilhas
 
@@ -65,6 +58,7 @@ contagem de processos git antes e depois.
 - 2026-11-11 E7: "Aplicar arquivo inteiro" lê o diff completo no renderer e o core o refaz (`findFile`): leitura dupla, e as chaves de milhares de linhas cruzam o IPC; melhor seria `buildPartialPatch(file, 'all')` num método próprio. Lista do Studio: linhas inline sem `memo` (exceção comentada no código, teto 600); busca não normaliza acentos; Aplicar arquivo renomeado (R) cria só o caminho novo e não remove o antigo: o diff com pathspec no caminho novo vira adição (limitação, decisão de produto; teste de caracterização). `applyLines` não passa por `resolveInside`: caminho `..`/absoluto só é barrado pelo git ("outside repository"). Todos pré-marcados na abertura (como antes): "Aplicar N commits" mostra o total, inclusive fora da busca.
 - 2026-11-11 E8, aceitos e não feitos: (a) ação ignorada pelo bloqueio (ex.: Commit/Descartar logo após stage) some sem toast e `run` devolve `undefined` como em falha; avisar pede texto novo nos 6 catálogos. (b) `fn` que nunca termina (fetch pendurado) trava todo `run` do repositório até reabrir; sem timeout. (c) sem `disabled` ainda: botões por arquivo do OperationBanner, resolução em lote, copiar versão e aplicar linhas do Compare, menus de CommitList/Sidebar/CommitDetails, Welcome, KeyboardShortcuts (só o `run` os protege). (d) Sem tela: force push com Ctrl+Enter repetido, overlay agora dura até o fim do `refresh`. (e) Toolbar e outros redesenham ao mudar `busy` (useBusy). (f) Spinner extra pedido na issue não foi acrescentado: o indicador do `run` já cobre.
 - 2026-11-11 E9, dúvida para o dono: os links de patrocínio (GitHub Sponsors) e o da licença (`extension/README.md:15`, aponta para `github.com/DaniloFG/GitTools/blob/main/LICENSE`) ficaram; sair junto com #60? `package.json`, `extension/package.json` e `CONTRIBUTING.md` também citam o repositório (metadados/contribuição), fora do que a issue pede com clareza; não tocados. Índice sem título próprio.
+- 2026-11-11 E10, achados abertos de conflitos (candidatos a issue): (a) `abortOperation` sem operação registrada (`apply --3way`, `repository.ts:1439`) só restaura os arquivos em conflito: arquivos aplicados sem conflito e novos do patch ficam no índice (teste de caracterização em `conflicts-scale.test.ts`; corrigir sem apagar trabalho do usuário pede decisão). (b) `conflictDetails`: blobs dos estágios 1–3 sem teto (cortar truncaria o lado e o editor poderia salvar texto incompleto); `ConflictDetails` sem `tooLarge` (a tela mostra "ilegível"); `git show :n:path` usa o caminho cru, não o normalizado; `resolveInside` é léxico (pasta-pai que é link para fora passa; `readFile` igual); `lstat`+`readFile` sem `fstat`. (c) `resolveConflict` (um arquivo) marca "resolvido" sem checar marcadores, ao contrário do lote. (d) `rebase(branch, onto)` + abort volta para `branch`, não para a branch em que o usuário estava (comportamento do git). (e) Rename+edição resolvido por ours/theirs cai só no caminho novo. (f) Não medido nem testado em tela: layout do `ConflictEditor`/lista com milhares de conflitos (só o core).
 
 ## 6. Encerramento
 
