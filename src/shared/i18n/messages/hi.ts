@@ -341,8 +341,6 @@ export const hi: Messages = {
     amendButton: 'Commit सुधारें',
     commit: 'Commit',
     commitInto: '{branch} में commit',
-    commitStageAll: 'सभी फ़ाइलें शामिल करें (stage)',
-    commitStageAllHelp: 'Commit से पहले बदली हुई सभी फ़ाइलों को stage करता है',
     commitPicked: { one: '{count} चुनी हुई फ़ाइल के साथ commit', other: '{count} चुनी हुई फ़ाइलों के साथ commit' },
     commitPickedHint: 'Not staged सूची में चुनी गई फ़ाइलें इस commit में शामिल होती हैं।',
     pushAfter: 'इसके बाद Push करें',

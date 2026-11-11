@@ -339,8 +339,6 @@ export const ptBR = {
     amendButton: 'Corrigir commit',
     commit: 'Commit',
     commitInto: 'Commit em {branch}',
-    commitStageAll: 'Incluir todos os arquivos (stage)',
-    commitStageAllHelp: 'Faz o stage de todos os arquivos alterados antes de confirmar',
     commitPicked: { one: 'Commit com {count} arquivo selecionado', other: 'Commit com {count} arquivos selecionados' },
     commitPickedHint: 'Os arquivos marcados na lista de não staged entram neste commit.',
     pushAfter: 'Enviar (push) em seguida',

@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { addToast, cleanErrorText, commitBlock, DEDUPE_WINDOW_MS, dismissDelay, isIgnorableError, type Toast } from '../src/renderer/src/feedback'
+import {
+  addToast,
+  cleanErrorText,
+  commitBlock,
+  DEDUPE_WINDOW_MS,
+  dismissDelay,
+  effectivePushMode,
+  isIgnorableError,
+  parsePushMode,
+  type Toast
+} from '../src/renderer/src/feedback'
 
 describe('texto de erro', () => {
   it('tira o prefixo que o Electron acrescenta ao erro vindo do processo principal', () => {
@@ -74,7 +84,7 @@ describe('tempo na tela', () => {
 })
 
 describe('motivo de o commit não poder ser feito', () => {
-  const ok = { message: 'feat: algo', staged: 1, amend: false, stageAll: false, conflicted: 0 }
+  const ok = { message: 'feat: algo', staged: 1, amend: false, conflicted: 0 }
 
   it('libera o commit quando há mensagem e algo no stage', () => {
     expect(commitBlock(ok)).toBeNull()
@@ -86,9 +96,13 @@ describe('motivo de o commit não poder ser feito', () => {
     expect(commitBlock({ ...ok, staged: 0 })).toBe('nothing')
   })
 
-  it('amend e "incluir tudo" também liberam o commit sem nada no stage', () => {
+  it('amend também libera o commit sem nada no stage', () => {
     expect(commitBlock({ ...ok, staged: 0, amend: true })).toBeNull()
-    expect(commitBlock({ ...ok, staged: 0, stageAll: true })).toBeNull()
+  })
+
+  it('arquivos não staged que não foram marcados não liberam o commit', () => {
+    // commitBlock não recebe a lista de não staged: sem stage e sem marcação, o resultado é sempre 'nothing'.
+    expect(commitBlock({ ...ok, staged: 0, picked: 0 })).toBe('nothing')
   })
 
   it('arquivos marcados na lista de não staged liberam o commit mesmo sem nada no stage', () => {
@@ -96,5 +110,38 @@ describe('motivo de o commit não poder ser feito', () => {
     expect(commitBlock({ ...ok, staged: 0, picked: 0 })).toBe('nothing')
     expect(commitBlock({ ...ok, staged: 0 })).toBe('nothing')
     expect(commitBlock({ ...ok, staged: 0, picked: 1, message: '' })).toBe('message')
+  })
+})
+
+describe('modo de envio', () => {
+  const base = { push: true, amend: false, hasUpstream: true, ahead: 0, chosen: 'normal' as const }
+
+  it('commit normal sem corrigir o anterior segue no modo escolhido', () => {
+    expect(effectivePushMode(base)).toEqual({ needsForce: false, mode: 'normal' })
+  })
+
+  it('corrigir um commit já enviado (upstream, ahead 0) força lease quando o escolhido é normal', () => {
+    expect(effectivePushMode({ ...base, amend: true })).toEqual({ needsForce: true, mode: 'lease' })
+  })
+
+  it('corrigir com commits locais à frente (ahead > 0) continua normal', () => {
+    expect(effectivePushMode({ ...base, amend: true, ahead: 1 })).toEqual({ needsForce: false, mode: 'normal' })
+  })
+
+  it('sem upstream ou sem push, corrigir não exige force', () => {
+    expect(effectivePushMode({ ...base, amend: true, hasUpstream: false })).toEqual({ needsForce: false, mode: 'normal' })
+    expect(effectivePushMode({ ...base, amend: true, push: false })).toEqual({ needsForce: false, mode: 'normal' })
+  })
+
+  it('um modo escolhido à mão (lease ou force) é mantido', () => {
+    expect(effectivePushMode({ ...base, amend: true, chosen: 'force' })).toEqual({ needsForce: true, mode: 'force' })
+    expect(effectivePushMode({ ...base, chosen: 'lease' })).toEqual({ needsForce: false, mode: 'lease' })
+  })
+
+  it('valor salvo que não é modo conhecido vira normal', () => {
+    expect(parsePushMode('lease')).toBe('lease')
+    expect(parsePushMode('force')).toBe('force')
+    expect(parsePushMode('qualquer coisa')).toBe('normal')
+    expect(parsePushMode(undefined)).toBe('normal')
   })
 })

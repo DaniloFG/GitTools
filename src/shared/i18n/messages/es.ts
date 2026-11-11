@@ -338,8 +338,6 @@ export const es: Messages = {
     amendButton: 'Corregir commit',
     commit: 'Commit',
     commitInto: 'Commit en {branch}',
-    commitStageAll: 'Incluir todos los archivos (stage)',
-    commitStageAllHelp: 'Hace stage de todos los archivos modificados antes de confirmar',
     commitPicked: { one: 'Commit con {count} archivo seleccionado', other: 'Commit con {count} archivos seleccionados' },
     commitPickedHint: 'Los archivos seleccionados en la lista No staged se incluyen en este commit.',
     pushAfter: 'Enviar (push) después',

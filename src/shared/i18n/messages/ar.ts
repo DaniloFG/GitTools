@@ -347,8 +347,6 @@ export const ar: Messages = {
     amendButton: 'تعديل الإيداع',
     commit: 'إيداع',
     commitInto: 'إيداع في {branch}',
-    commitStageAll: 'تضمين كل الملفات (stage)',
-    commitStageAllHelp: 'يجهّز كل الملفات المعدّلة قبل الإيداع',
     commitPicked: { one: 'إيداع ملف واحد محدد', two: 'إيداع ملفين محددين', few: 'إيداع {count} ملفات محددة', many: 'إيداع {count} ملفًا محددًا', other: 'إيداع {count} ملف محدد' },
     commitPickedHint: 'الملفات المحددة في قائمة غير المجهزة تدخل في هذا الإيداع.',
     pushAfter: 'الدفع بعد ذلك',

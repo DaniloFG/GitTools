@@ -331,8 +331,6 @@ export const zhCN: Messages = {
     amendButton: '修改提交',
     commit: '提交',
     commitInto: '提交到 {branch}',
-    commitStageAll: '包含所有文件（暂存）',
-    commitStageAllHelp: '提交前先暂存所有已更改的文件',
     commitPicked: { other: '提交所选的 {count} 个文件' },
     commitPickedHint: '“未暂存”列表中选中的文件会包含在本次提交中。',
     pushAfter: '提交后推送',

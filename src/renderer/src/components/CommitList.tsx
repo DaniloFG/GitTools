@@ -677,7 +677,12 @@ function WipRow({ status, template, columns, graphWidth, searching, headRow, ind
       <div
         className={`wip-row ${dirty ? 'dirty' : 'clean'} ${expanded ? 'expanded' : ''}`}
         style={{ gridTemplateColumns: template }}
-        onClick={toggle}
+        onClick={() => {
+          // Clicar na linha também atualiza o painel de detalhes, sem arquivo específico (path vazio): o painel
+          // mostra o primeiro arquivo, ou "limpo" quando não há nada. O botão ▸ só expande e não passa por aqui.
+          onOpenFile('')
+          toggle()
+        }}
         title={dirty ? t('history.wip.help') : undefined}
       >
         <button
