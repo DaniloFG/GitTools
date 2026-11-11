@@ -1,14 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import type { OpenRepositories, RepoInfo } from '../../shared/types'
 import type { RecentRepo } from '../../shared/api'
 import { applyDateFormat, applySettings, resolveLocale } from './appearance'
 import { insideVsCode } from './vscodeBridge'
 import {
+  AppActionsContext,
   AppContext,
+  AppSettingsContext,
+  BusyContext,
+  RepoDataContext,
+  type AppActions,
   type AppContextValue,
+  type AppSettingsValue,
+  type BusyValue,
   type CompareRequest,
   type RepoData,
+  type RepoDataValue,
   type StudioRequest,
   type ToastAction,
   type ToastKind,
@@ -189,6 +197,11 @@ export function App() {
   }, [])
 
   useUnhandledErrors(toast)
+
+  // Abrir configurações e atalhos só troca estado com setters estáveis. Sem isto, a função mudaria a cada aviso
+  // (o App redesenha ao mudar `toasts`) e arrastaria junto o valor de ações de cada repositório (ver RepoView).
+  const openSettings = useCallback((section?: string) => setSettingsOpen(section ?? 'general'), [])
+  const openShortcuts = useCallback(() => setHelpOpen(true), [])
 
   // A Central de Configurações pede um aviso de exemplo para ver onde as notificações aparecem.
   useEffect(() => {
@@ -609,8 +622,8 @@ export function App() {
           onSummary={applySummary}
           notify={toast}
           appModalOpen={appModalOpen}
-          openSettings={(section) => setSettingsOpen(section ?? 'general')}
-          openShortcuts={() => setHelpOpen(true)}
+          openSettings={openSettings}
+          openShortcuts={openShortcuts}
         />
         {crossBusy && (
           <div className="busy" role="status" aria-live="polite">
@@ -636,6 +649,38 @@ export function App() {
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
       <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />
     </>
+  )
+}
+
+/**
+ * Monta as quatro fatias (dados, operação, ações, configurações) e o valor combinado de `AppContext`, que quem ainda
+ * lê o contexto direto usa. A ordem dos provedores não muda nada: cada um só é lido pelos seus hooks.
+ */
+function AppProviders({
+  repoData,
+  busy,
+  actions,
+  settings,
+  app,
+  children
+}: {
+  repoData: RepoDataValue
+  busy: BusyValue
+  actions: AppActions
+  settings: AppSettingsValue
+  app: AppContextValue
+  children: ReactNode
+}) {
+  return (
+    <RepoDataContext.Provider value={repoData}>
+      <BusyContext.Provider value={busy}>
+        <AppActionsContext.Provider value={actions}>
+          <AppSettingsContext.Provider value={settings}>
+            <AppContext.Provider value={app}>{children}</AppContext.Provider>
+          </AppSettingsContext.Provider>
+        </AppActionsContext.Provider>
+      </BusyContext.Provider>
+    </RepoDataContext.Provider>
   )
 }
 
@@ -729,11 +774,23 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   const wantsRef = useRef(wants)
   wantsRef.current = wants
 
-  /** Avisos desta aba: citam o repositório quando há mais de um aberto. */
-  const toast = useCallback(
-    (kind: ToastKind, text: string, action?: ToastAction) => notify(kind, prefixToast(text, repo.name, several), action),
-    [notify, repo.name, several]
-  )
+  /**
+   * Avisos desta aba: citam o repositório quando há mais de um aberto. Nome, contagem e `notify` vão por ref, para
+   * `toast` ser estável (ele entra nas dependências de quase todas as ações; ver `actions` abaixo).
+   */
+  const toastSource = useRef({ notify, name: repo.name, several })
+  toastSource.current = { notify, name: repo.name, several }
+  const toast = useCallback((kind: ToastKind, text: string, action?: ToastAction) => {
+    const source = toastSource.current
+    source.notify(kind, prefixToast(text, source.name, source.several), action)
+  }, [])
+
+  /**
+   * Configurações lidas no momento da chamada (ver `openInEditor`). Por ref, a ação não muda quando elas mudam.
+   * Vale para `settings` salvas, não para a pré-visualização, como antes.
+   */
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
 
   /** Quais painéis existem agora (ex.: Conflitos só com conflitos; Staged só na visão de listas separadas). */
   const conflicts = data?.status.conflicted.length ?? 0
@@ -972,14 +1029,26 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
     [toast, repo.root]
   )
 
-  const context = useMemo<AppContextValue | null>(() => {
-    if (!data) return null
-    return {
-      repo,
-      workspace,
-      data,
-      busy,
-      busyScope,
+  // Os textos trocam com o idioma: `getLocale()` entra nas dependências das ações de propósito (ver abaixo).
+  const locale = getLocale()
+
+  /** Dados do repositório. Sem `data` (ainda carregando), a tela mostra o carregamento e nenhum provedor é montado. */
+  const repoDataValue = useMemo<RepoDataValue | null>(() => (data ? { repo, workspace, data } : null), [repo, workspace, data])
+  /** Operação em andamento: fica numa fatia própria porque muda duas vezes em cada operação. */
+  const busyValue = useMemo<BusyValue>(() => ({ busy, busyScope }), [busy, busyScope])
+  /** Configurações e a tela de Dashboards. */
+  const settingsValue = useMemo<AppSettingsValue>(() => ({ settings, dashboardsOpen }), [settings, dashboardsOpen])
+
+  /**
+   * Ações. O valor só muda quando o idioma ou o repositório ativo muda: cada função abaixo precisa ser estável.
+   * Os setters do `useState` já são; `refresh`, `run`, `toast`, `setView`, `openDiffWindow`, `resetLayout` e
+   * `askConfirm` só mudam com o repositório; `openSettings` e `openShortcuts` vêm estáveis do App. O que muda com
+   * frequência (`settings`) é lido por ref, no momento da chamada.
+   * `locale` entra de propósito: os textos de `t()` dentro das ações se renovam quando o idioma troca.
+   */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const actions = useMemo<AppActions>(
+    () => ({
       refresh,
       run,
       toast,
@@ -1004,7 +1073,6 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
         setView('history')
         setSelected([sha])
       },
-      dashboardsOpen,
       setDashboards,
       setView,
       openDiffWindow,
@@ -1020,25 +1088,27 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       },
       openRebase: (sha) => setRebaseFrom(sha),
       openInEditor: (path = '.') => {
+        // Lê a configuração no clique (ref): assim a ação não precisa mudar quando as configurações mudam.
         // No VS Code os arquivos abrem no próprio editor dele: não há editor a escolher.
-        if (!settings.editor && !insideVsCode()) {
+        if (!settingsRef.current.editor && !insideVsCode()) {
           toast('info', t('editor.chooseFirst'))
           openSettings('editor')
           return
         }
         window.gittools.openInEditor(path, repo.root).catch((error) => toast('error', errorMessage(error)))
       },
-      settings,
       openSettings,
       openShortcuts
-    }
-    // locale: força novos textos nos componentes quando o idioma muda.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repo, workspace, data, busy, busyScope, refresh, run, toast, settings, setView, dashboardsOpen, openDiffWindow, resetLayout, askConfirm, openSettings, openShortcuts])
+    }),
+    [locale, repo.root, refresh, run, toast, setView, openDiffWindow, resetLayout, askConfirm, openSettings, openShortcuts]
+  )
 
-  // Os textos trocam com o idioma (getLocale); os badges, com as alterações e os conflitos. Fica antes do retorno
-  // antecipado (sem dados), por isso usa `data` com cuidado.
-  const locale = getLocale()
+  /** Valor combinado (o de `useApp`): só para quem ainda lê `AppContext` direto. Redesenha com qualquer fatia. */
+  const context = useMemo<AppContextValue | null>(
+    () => (repoDataValue && { ...repoDataValue, ...busyValue, ...actions, ...settingsValue }),
+    [repoDataValue, busyValue, actions, settingsValue]
+  )
+
   const changeCount = data ? data.status.staged.length + data.status.unstaged.length + data.status.conflicted.length : 0
   /** Nome, número e dica de cada painel (as abas). */
   const meta = useMemo<Record<ViewId, ViewMeta>>(
@@ -1071,7 +1141,7 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
     [locale, conflicts, changeCount]
   )
 
-  if (!context) {
+  if (!repoDataValue || !context) {
     return (
       <div className="repo-loading">
         <Loader size="sm" label={t('welcome.loading')} />
@@ -1097,7 +1167,7 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   }
 
   return (
-    <AppContext.Provider value={context}>
+    <AppProviders repoData={repoDataValue} busy={busyValue} actions={actions} settings={settingsValue} app={context}>
       <KeyboardShortcuts disabled={modalOpen} onOpenRepository={() => void workspace.openRepo()} />
       <Toolbar
         onOpenRepository={(path, create) => void workspace.openRepo(path, create)}
@@ -1164,6 +1234,6 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
           <Loader size="sm" label={`${busyLabel}…`} />
         </div>
       )}
-    </AppContext.Provider>
+    </AppProviders>
   )
 }
