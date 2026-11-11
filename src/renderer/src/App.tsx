@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { Settings } from '../../shared/settings'
 import type { OpenRepositories, RepoInfo } from '../../shared/types'
 import type { RecentRepo } from '../../shared/api'
@@ -23,24 +23,18 @@ import {
   type View,
   type WorkspaceApi
 } from './context'
-import { CherryPickStudio } from './components/CherryPickStudio'
 import { ChangesView } from './components/ChangesView'
-import { CloneDialog } from './components/CloneDialog'
 import { CommitPanes, type FileFocus, type WipFocus } from './components/CommitDetails'
 import { CommitList } from './components/CommitList'
-import { CompareView } from './components/CompareView'
-import { ConflictEditor } from './components/ConflictEditor'
 import { ContextMenu, type MenuItem, type MenuState } from './components/ContextMenu'
-import { DialogHost, type ConfirmRequest, type DialogScope, type DialogState } from './components/Dialogs'
+// Só tipos: a tela de diálogos é carregada sob demanda (ver lazyScreens.ts).
+import type { ConfirmRequest, DialogScope, DialogState } from './components/Dialogs'
+import { CherryPickStudio, CloneDialog, CompareView, ConflictEditor, Dashboards, DialogHost, RebaseEditor, SettingsCenter, ShortcutsHelp } from './lazyScreens'
 import { FilesPanes } from './components/FilesView'
 import { GitLogView } from './components/GitLogView'
 import { KeyboardShortcuts } from './components/KeyboardShortcuts'
 import { OperationBanner } from './components/OperationBanner'
-import { RebaseEditor } from './components/RebaseEditor'
-import { SettingsCenter } from './components/settings/SettingsCenter'
-import { ShortcutsHelp } from './components/settings/ShortcutsHelp'
 import { SidebarPanes } from './components/Sidebar'
-import { Dashboards } from './components/Dashboards'
 import { Loader, useDelayedLoading, useLastDefined } from './components/Loader'
 import { Toasts } from './components/Toasts'
 import { addToast, type Toast } from './feedback'
@@ -548,30 +542,40 @@ export function App() {
     setMenu({ x, y, items })
   }
 
+  // Um Suspense por tela sob demanda: se uma delas suspende pela primeira vez enquanto outra já está aberta, um
+  // Suspense compartilhado esconderia a já aberta até o pedaço novo chegar. Separados, cada um só segura a sua.
   const settingsDialogs = (
     <>
       {settingsOpen && (
-        <SettingsCenter
-          settings={settings}
-          initialSection={settingsOpen}
-          onPreview={setPreview}
-          onSave={saveSettings}
-          onClose={() => {
-            setPreview(null)
-            setSettingsOpen(null)
-          }}
-          onShowShortcuts={() => setHelpOpen(true)}
-        />
+        <Suspense fallback={null}>
+          <SettingsCenter
+            settings={settings}
+            initialSection={settingsOpen}
+            onPreview={setPreview}
+            onSave={saveSettings}
+            onClose={() => {
+              setPreview(null)
+              setSettingsOpen(null)
+            }}
+            onShowShortcuts={() => setHelpOpen(true)}
+          />
+        </Suspense>
       )}
-      {helpOpen && <ShortcutsHelp settings={settings} onClose={() => setHelpOpen(false)} />}
+      {helpOpen && (
+        <Suspense fallback={null}>
+          <ShortcutsHelp settings={settings} onClose={() => setHelpOpen(false)} />
+        </Suspense>
+      )}
       {cloneOpen && (
-        <CloneDialog
-          onClose={() => setCloneOpen(false)}
-          onCloned={() => {
-            setCloneOpen(false)
-            void transition(true, () => window.gittools.openRepositories())
-          }}
-        />
+        <Suspense fallback={null}>
+          <CloneDialog
+            onClose={() => setCloneOpen(false)}
+            onCloned={() => {
+              setCloneOpen(false)
+              void transition(true, () => window.gittools.openRepositories())
+            }}
+          />
+        </Suspense>
       )}
     </>
   )
@@ -591,7 +595,9 @@ export function App() {
           onSettings={() => setSettingsOpen('general')}
         />
         {settingsDialogs}
-        {dialog && <DialogHost dialog={dialog.state} scope={dialog.scope} onDone={() => setDialog(null)} />}
+        <Suspense fallback={null}>
+          {dialog && <DialogHost dialog={dialog.state} scope={dialog.scope} onDone={() => setDialog(null)} />}
+        </Suspense>
         <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />
       </>
     )
@@ -644,7 +650,9 @@ export function App() {
         </div>
       )}
       {settingsDialogs}
-      {dialog && <DialogHost dialog={dialog.state} scope={dialog.scope} onDone={() => setDialog(null)} />}
+      <Suspense fallback={null}>
+        {dialog && <DialogHost dialog={dialog.state} scope={dialog.scope} onDone={() => setDialog(null)} />}
+      </Suspense>
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
       <Toasts toasts={toasts} onDismiss={(id) => setToasts((l) => l.filter((t) => t.id !== id))} />
     </>
@@ -703,13 +711,13 @@ const KeyboardShortcutsPane = paneMemo(KeyboardShortcuts)
 const ToolbarPane = paneMemo(Toolbar)
 const OperationBannerPane = paneMemo(OperationBanner)
 const DockPane = paneMemo(Dock)
-const DashboardsPane = paneMemo(Dashboards)
+const DashboardsPane = memo(Dashboards)
 const SidebarPanesPane = paneMemo(SidebarPanes)
 const CommitListPane = paneMemo(CommitList)
 const CommitPanesPane = paneMemo(CommitPanes)
 const ChangesViewPane = paneMemo(ChangesView)
 const FilesPanesPane = paneMemo(FilesPanes)
-const CompareViewPane = paneMemo(CompareView)
+const CompareViewPane = memo(CompareView)
 const GitLogViewPane = paneMemo(GitLogView)
 
 interface RepoViewProps {
@@ -1242,7 +1250,11 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       <div className={dashboardsOpen ? 'dock-hidden' : 'dock-wrap'}>
         <DockPane locale={locale} meta={meta} available={available} />
       </div>
-      {dashboardsOpen && <DashboardsPane locale={locale} />}
+      {dashboardsOpen && (
+        <Suspense fallback={null}>
+          <DashboardsPane locale={locale} />
+        </Suspense>
+      )}
       {/* Cada tela é desenhada aqui e levada, por portais, ao painel onde o usuário a deixou. */}
       <SidebarPanesPane locale={locale} scope={scope} onScope={changeScope} />
       <PaneSlot id="history">
@@ -1269,15 +1281,33 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
         <FilesPanesPane locale={locale} path={filePath} onPath={setFilePath} />
       </WhenShown>
       <WhenShown views={COMPARE_VIEWS}>
-        <CompareViewPane locale={locale} request={compare} onRequest={setCompare} />
+        <Suspense fallback={null}>
+          <CompareViewPane locale={locale} request={compare} onRequest={setCompare} />
+        </Suspense>
       </WhenShown>
       <PaneSlot id="gitlog">
         <GitLogViewPane locale={locale} />
       </PaneSlot>
-      {studio && <CherryPickStudio request={studio} onClose={() => setStudio(null)} />}
-      {conflict && <ConflictEditor path={conflict} onClose={() => setConflict(null)} />}
-      {rebaseFrom && <RebaseEditor fromSha={rebaseFrom} onClose={() => setRebaseFrom(null)} />}
-      {dialog && <DialogHost dialog={dialog} onDone={() => setDialog(null)} />}
+      {studio && (
+        <Suspense fallback={null}>
+          <CherryPickStudio request={studio} onClose={() => setStudio(null)} />
+        </Suspense>
+      )}
+      {conflict && (
+        <Suspense fallback={null}>
+          <ConflictEditor path={conflict} onClose={() => setConflict(null)} />
+        </Suspense>
+      )}
+      {rebaseFrom && (
+        <Suspense fallback={null}>
+          <RebaseEditor fromSha={rebaseFrom} onClose={() => setRebaseFrom(null)} />
+        </Suspense>
+      )}
+      {dialog && (
+        <Suspense fallback={null}>
+          <DialogHost dialog={dialog} onDone={() => setDialog(null)} />
+        </Suspense>
+      )}
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
       {busyVisible && (
         <div className="busy" role="status" aria-live="polite">

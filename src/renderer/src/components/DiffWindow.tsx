@@ -35,18 +35,6 @@ const closeWindow = () => {
   if (!closeVsCodePanel()) window.close()
 }
 
-/** Lê o pedido que a janela principal passou na URL desta janela. */
-export function diffWindowRequest(search: string): DiffWindowRequest | null {
-  const params = new URLSearchParams(search)
-  if (params.get('window') !== 'diff') return null
-  try {
-    const request = JSON.parse(params.get('request') ?? '') as DiffWindowRequest
-    return request && typeof request.path === 'string' && request.source ? request : null
-  } catch {
-    return null
-  }
-}
-
 /**
  * Janela própria (do sistema) com o diff de um arquivo: pode ir para outro monitor e ficar aberta ao
  * lado da janela principal. Recarrega o diff quando volta a ter o foco.

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { BlameResult, FileDiff, FileHistoryEntry, LineKey } from '../../../shared/types'
 import { currentBranch, useAppActions, useRepoData } from '../context'
 import { useActions } from '../actions'
@@ -14,7 +14,7 @@ import { revealView } from '../dockStore'
 import { PaneSlot, useAnyShown } from '../slots'
 import { useSessionState } from '../useSessionState'
 import { LineStats } from './LineStats'
-import { FileEditor } from './FileEditor'
+import { FileEditor } from '../lazyScreens'
 import { draftPaths, useDraftsVersion } from '../editorDrafts'
 import { FileEntries, useFileViewMode } from './FileList'
 import { firstFileShown } from '../fileTree'
@@ -45,7 +45,13 @@ export function FilesPanes({ path, onPath }: { path: string | null; onPath(path:
         <FilesList path={path} onPath={onPath} />
       </PaneSlot>
       <PaneSlot id="files.editor">
-        {path ? <FileEditor key={path} path={path} /> : <p className="empty">{t('files.empty')}</p>}
+        {path ? (
+          <Suspense fallback={<Loader size="sm" />}>
+            <FileEditor key={path} path={path} />
+          </Suspense>
+        ) : (
+          <p className="empty">{t('files.empty')}</p>
+        )}
       </PaneSlot>
       <PaneSlot id="files.blame">
         <section className="details file-details">

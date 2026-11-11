@@ -1,8 +1,9 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
-import { App } from './App'
 import { bootLocale, loadFallbacksLater } from './appearance'
-import { DiffWindowApp, diffWindowRequest } from './components/DiffWindow'
+import { diffWindowRequest } from './diffWindowRequest'
+import { App } from './App'
+import { DiffWindowApp } from './lazyScreens'
 import './styles.css'
 import { installAltTextSelection } from './textSelect'
 import { installVsCodeBridge } from './vscodeBridge'
@@ -20,7 +21,7 @@ const diffRequest = diffWindowRequest(window.__gittoolsBoot?.search ?? window.lo
 // configurações e um pedaço do pacote), para a tela não aparecer com chaves cruas nem trocar de idioma em seguida.
 void bootLocale().finally(() => {
   createRoot(document.getElementById('root')!).render(
-    <StrictMode>{diffRequest ? <DiffWindowApp request={diffRequest} /> : <App />}</StrictMode>
+    <StrictMode>{diffRequest ? <Suspense fallback={null}><DiffWindowApp request={diffRequest} /></Suspense> : <App />}</StrictMode>
   )
   loadFallbacksLater()
 })

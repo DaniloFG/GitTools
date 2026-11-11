@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { GitCommandEntry } from '../../../shared/types'
 import { useAppActions, useRepoData } from '../context'
 import { getCurrentLocale, t } from '../i18n'
 import { useLayout } from '../layout'
-import { GitTerminal } from './GitTerminal'
+import { GitTerminal } from '../lazyScreens'
 import { Loader } from './Loader'
 import { RepoChip } from './RepoChip'
 import { repoNameOf, sameRoot } from '../workspace'
@@ -198,7 +198,9 @@ export function GitLogView() {
           )}
         </div>
       ) : (
-        <GitTerminal />
+        <Suspense fallback={<Loader size="sm" />}>
+          <GitTerminal />
+        </Suspense>
       )}
     </div>
   )
