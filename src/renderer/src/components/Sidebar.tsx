@@ -1,10 +1,10 @@
-import { Fragment, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, memo, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { BranchInfo, StashInfo } from '../../../shared/types'
 import { ALL_SCOPE, checkedRefs, toggleGroup, toggleRef, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
 import { useApp } from '../context'
-import { endDrag, startDrag } from '../dnd'
+import { endDrag, startDrag, type DragPayload } from '../dnd'
 import { git } from '../git'
 import { readScreen } from '../dockStore'
 import { relativeDate } from '../format'
@@ -61,12 +61,23 @@ function useBranchColors(scope: HistoryScope): (b: BranchInfo) => number | undef
 }
 
 function BranchesPanel({ scope, onScope }: Props) {
-  const { data } = useApp()
+  const { data, showMenu } = useApp()
+  const actions = useActions()
+  const branchMenu = useBranchMenu(onScope)
   const colorOf = useBranchColors(scope)
   const checked = checkedRefs(scope)
   // `includes` por linha era quadrático com muitas branches marcadas: um conjunto dá a consulta em tempo constante.
   const checkedSet = useMemo(() => new Set(checked), [scope])
   const toggle = (name: string) => onScope(toggleRef(scope, name), { reveal: false })
+  // Funções de sempre-atuais para as linhas, que são memorizadas: reatribuídas a cada desenho e lidas só nos eventos.
+  const handlers = useRef({} as BranchHandlers)
+  handlers.current = {
+    toggle,
+    onScope,
+    menu: (e, branch) => showMenu(e, branchMenu(branch)),
+    dropOnBranch: (payload, name) => actions.dropOnBranch(payload, name),
+    checkout: (name) => actions.checkout(name)
+  }
   const groupAction = (list: BranchInfo[]) => ({
     label: '☑',
     title: t('sidebar.toggleGroup'),
@@ -82,8 +93,8 @@ function BranchesPanel({ scope, onScope }: Props) {
       items={list}
       nameOf={(b) => (remote ? b.name.slice(remote.length + 1) : b.name)}
       keyOf={(b) => b.fullRef}
-      render={(b, label, style) => (
-        <BranchItem key={b.fullRef} branch={b} label={label} style={style} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} checked={checkedSet.has(b.name)} onToggle={toggle} onScope={onScope} />
+      render={(b, label, indent) => (
+        <BranchItem key={b.fullRef} branch={b} label={label} indent={indent} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} checked={checkedSet.has(b.name)} handlers={handlers} />
       )}
     />
   )
@@ -137,8 +148,19 @@ function BranchesPanel({ scope, onScope }: Props) {
 }
 
 function TagsPanel() {
-  const { data } = useApp()
+  const { data, selectCommit, showMenu } = useApp()
   const actions = useActions()
+  const handlers = useRef({} as TagHandlers)
+  handlers.current = {
+    selectCommit,
+    menu: (e, name) =>
+      showMenu(e, [
+        { label: t('sidebar.menu.checkoutDetached'), onClick: () => actions.checkout(name) },
+        { label: t('sidebar.menu.newBranchFromTag'), onClick: () => actions.createBranch(name) },
+        'separator',
+        { label: t('sidebar.menu.deleteTag'), onClick: () => actions.deleteTag(name) }
+      ])
+  }
   return (
     <aside className="sidebar">
       <Section id="tags" title={t('sidebar.tags')} count={data.tags.length} action={{ label: '＋', title: t('actions.newTag.title'), run: () => actions.createTag() }} extra={<FileViewOptions title={t('sidebar.viewMode')} />}>
@@ -146,7 +168,7 @@ function TagsPanel() {
           items={data.tags}
           nameOf={(tag) => tag.name}
           keyOf={(tag) => tag.name}
-          render={(tag, label, style) => <TagItem key={tag.name} name={tag.name} label={label} style={style} sha={tag.sha} />}
+          render={(tag, label, indent) => <TagItem key={tag.name} name={tag.name} label={label} indent={indent} sha={tag.sha} handlers={handlers} />}
         />
       </Section>
     </aside>
@@ -154,12 +176,14 @@ function TagsPanel() {
 }
 
 function StashesPanel() {
-  const { data } = useApp()
+  const { data, run, confirm } = useApp()
+  const handlers = useRef({} as StashHandlers)
+  handlers.current = { run, confirm }
   return (
     <aside className="sidebar">
       <Section id="stashes" title={t('sidebar.stashes')} count={data.stashes.length}>
         {data.stashes.map((s) => (
-          <StashItem key={s.ref} stash={s} />
+          <StashItem key={s.ref} stash={s} handlers={handlers} />
         ))}
       </Section>
     </aside>
@@ -214,8 +238,8 @@ interface NameRowsProps<T> {
   /** Nome que vai para a árvore (o "/" separa as pastas) e para a linha no modo lista. */
   nameOf(item: T): string
   keyOf(item: T): string
-  /** Desenha uma linha; `label` é o nome a mostrar e `style` o recuo (só no modo árvore). */
-  render(item: T, label: string, style: CSSProperties | undefined): ReactNode
+  /** Desenha uma linha; `label` é o nome a mostrar e `indent` o recuo em px (só no modo árvore). Número, não objeto: um objeto novo a cada desenho anularia a memorização dos itens. */
+  render(item: T, label: string, indent: number | undefined): ReactNode
 }
 
 /**
@@ -249,7 +273,7 @@ function NameRows<T>({ items, nameOf, keyOf, render }: NameRowsProps<T>) {
     <>
       {rows.map((row) =>
         row.kind === 'file' ? (
-          <Fragment key={keyOf(row.node.item)}>{render(row.node.item, row.node.name, { paddingInlineStart: 6 + TREE_INDENT * row.depth + 16 })}</Fragment>
+          <Fragment key={keyOf(row.node.item)}>{render(row.node.item, row.node.name, 6 + TREE_INDENT * row.depth + 16)}</Fragment>
         ) : (
           <li
             key={`dir:${row.node.path}`}
@@ -269,19 +293,27 @@ function NameRows<T>({ items, nameOf, keyOf, render }: NameRowsProps<T>) {
   )
 }
 
+/** Ações das linhas de branch. A ref é reatribuída a cada desenho do painel e lida só dentro dos eventos. */
+interface BranchHandlers {
+  toggle(name: string): void
+  onScope: Props['onScope']
+  menu(e: React.MouseEvent, branch: BranchInfo): void
+  dropOnBranch(payload: DragPayload, name: string): void
+  checkout(name: string): void
+}
+
 interface BranchItemProps {
   branch: BranchInfo
   /** Nome mostrado (sem o remoto; no modo árvore, só o último pedaço). */
   label: string
-  /** Recuo na árvore (ausente no modo lista). */
-  style?: CSSProperties
+  /** Recuo na árvore, em px (ausente no modo lista). */
+  indent?: number
   /** Cor da trilha da branch no grafo (ausente quando o commit não está no histórico carregado). */
   color: number | undefined
   active: boolean
   /** Marcada na caixa de seleção: o histórico lista só as branches marcadas. */
   checked: boolean
-  onToggle(name: string): void
-  onScope: Props['onScope']
+  handlers: React.RefObject<BranchHandlers>
 }
 
 /** Texto da dica da branch (usado só ao passar o mouse). */
@@ -289,17 +321,13 @@ function branchTooltip(branch: BranchInfo): string {
   return `${branch.name}${branch.current ? ` (${t('toolbar.currentBranch')})` : ''}\n${branch.subject}\n${relativeDate(branch.date)}\n\n${t('sidebar.branchTooltip')}`
 }
 
-function BranchItem({ branch, label, style: indent, color, active, checked, onToggle, onScope }: BranchItemProps) {
-  const { showMenu } = useApp()
-  const actions = useActions()
-  const branchMenu = useBranchMenu(onScope)
+/** Memorizada: a lista de branches redesenha só as linhas cujas propriedades mudaram (não as 1.100). */
+const BranchItem = memo(function BranchItem({ branch, label, indent, color, active, checked, handlers }: BranchItemProps) {
   const isRemote = !!branch.remote
   const drop = useDrop(
     (p) => !isRemote && !(p.type === 'branch' && p.name === branch.name) && p.type !== 'files',
-    (p) => void actions.dropOnBranch(p, branch.name)
+    (p) => handlers.current.dropOnBranch(p, branch.name)
   )
-
-  const menu = (e: React.MouseEvent) => showMenu(e, branchMenu(branch))
 
   return (
     <li
@@ -310,15 +338,15 @@ function BranchItem({ branch, label, style: indent, color, active, checked, onTo
       draggable
       onDragStart={(e) => startDrag(e, { type: 'branch', name: branch.name, remote: isRemote }, `⎇ ${branch.name}`)}
       onDragEnd={endDrag}
-      onClick={() => onScope({ kind: 'ref', ref: branch.name })}
-      onDoubleClick={() => !branch.current && actions.checkout(branch.name)}
-      onContextMenu={menu}
+      onClick={() => handlers.current.onScope({ kind: 'ref', ref: branch.name })}
+      onDoubleClick={() => !branch.current && handlers.current.checkout(branch.name)}
+      onContextMenu={(e) => handlers.current.menu(e, branch)}
       // A dica é montada ao passar o mouse, não a cada desenho (data formatada por linha custava caro).
       // `drop.props` não define onMouseEnter (ver useDrop.ts), então não há conflito com o espalhamento abaixo.
       onMouseEnter={(e) => {
         e.currentTarget.title = branchTooltip(branch)
       }}
-      style={{ ...(color === undefined ? {} : { '--branch-color': laneColor(color) }), ...indent } as CSSProperties}
+      style={{ ...(color === undefined ? {} : { '--branch-color': laneColor(color) }), ...(indent === undefined ? {} : { paddingInlineStart: indent }) } as CSSProperties}
       {...drop.props}
     >
       <input
@@ -330,7 +358,7 @@ function BranchItem({ branch, label, style: indent, color, active, checked, onTo
         draggable={false}
         onClick={(e) => e.stopPropagation()}
         onDoubleClick={(e) => e.stopPropagation()}
-        onChange={() => onToggle(branch.name)}
+        onChange={() => handlers.current.toggle(branch.name)}
       />
       <span className="branch-icon">{branch.current ? '✓' : '⎇'}</span>
       <span className="branch-name">{label}</span>
@@ -343,35 +371,40 @@ function BranchItem({ branch, label, style: indent, color, active, checked, onTo
       {drop.over && <span className="drop-hint">{t('sidebar.dropHere')}</span>}
     </li>
   )
+})
+
+/** Ações das linhas de tag (ver BranchHandlers). */
+interface TagHandlers {
+  selectCommit(sha: string): void
+  menu(e: React.MouseEvent, name: string): void
 }
 
-function TagItem({ name, label, style: indent, sha }: { name: string; label: string; style?: CSSProperties; sha: string }) {
-  const { selectCommit, showMenu } = useApp()
-  const actions = useActions()
+/** Memorizada, como BranchItem: só recebe primitivos e a ref. */
+const TagItem = memo(function TagItem({ name, label, indent, sha, handlers }: { name: string; label: string; indent?: number; sha: string; handlers: React.RefObject<TagHandlers> }) {
   return (
     <li
       className="branch-item"
-      style={indent}
+      style={indent === undefined ? undefined : { paddingInlineStart: indent }}
       // Na tela de branches o clique não troca para o histórico.
-      onClick={() => readScreen() !== 'branches' && selectCommit(sha)}
-      onContextMenu={(e) =>
-        showMenu(e, [
-          { label: t('sidebar.menu.checkoutDetached'), onClick: () => actions.checkout(name) },
-          { label: t('sidebar.menu.newBranchFromTag'), onClick: () => actions.createBranch(name) },
-          'separator',
-          { label: t('sidebar.menu.deleteTag'), onClick: () => actions.deleteTag(name) }
-        ])
-      }
+      onClick={() => readScreen() !== 'branches' && handlers.current.selectCommit(sha)}
+      onContextMenu={(e) => handlers.current.menu(e, name)}
     >
       <span className="branch-icon">⌂</span>
       <span className="branch-name">{label}</span>
     </li>
   )
+})
+
+/** Ações das linhas de stash (ver BranchHandlers). */
+interface StashHandlers {
+  run: ReturnType<typeof useApp>['run']
+  confirm: ReturnType<typeof useApp>['confirm']
 }
 
-function StashItem({ stash }: { stash: StashInfo }) {
-  const { run, confirm } = useApp()
+/** Memorizada, como BranchItem. */
+const StashItem = memo(function StashItem({ stash, handlers }: { stash: StashInfo; handlers: React.RefObject<StashHandlers> }) {
   const drop = async () => {
+    const { run, confirm } = handlers.current
     const ok = await confirm({
       title: t('sidebar.stash.dropTitle'),
       message: t('sidebar.stash.dropMessage', { message: stash.message }),
@@ -390,10 +423,10 @@ function StashItem({ stash }: { stash: StashInfo }) {
     >
       <span className="branch-name">{stash.message}</span>
       <span className="stash-actions">
-        <button onClick={() => run(t('busy.applyingStash'), () => git.stashApply(stash.index, true))} title={t('sidebar.stash.pop')}>
+        <button onClick={() => handlers.current.run(t('busy.applyingStash'), () => git.stashApply(stash.index, true))} title={t('sidebar.stash.pop')}>
           ⤓
         </button>
-        <button onClick={() => run(t('busy.applyingStash'), () => git.stashApply(stash.index))} title={t('sidebar.stash.apply')}>
+        <button onClick={() => handlers.current.run(t('busy.applyingStash'), () => git.stashApply(stash.index))} title={t('sidebar.stash.apply')}>
           ⧉
         </button>
         <button onClick={drop} title={t('common.discard')}>
@@ -402,4 +435,4 @@ function StashItem({ stash }: { stash: StashInfo }) {
       </span>
     </li>
   )
-}
+})

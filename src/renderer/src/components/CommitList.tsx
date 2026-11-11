@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import type { ChangedFile, CommitInfo } from '../../../shared/types'
+import type { BranchInfo, ChangedFile, CommitInfo } from '../../../shared/types'
 import { LOG_MAX, showsWorkingChanges, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
@@ -7,7 +7,7 @@ import type { MenuItem } from './ContextMenu'
 import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
 import { useApp } from '../context'
 import { copyText } from '../copy'
-import { endDrag, startDrag } from '../dnd'
+import { endDrag, startDrag, type DragPayload } from '../dnd'
 import { errorMessage, fullDate, relativeDate, shortSha, statusLabel } from '../format'
 import { startReorder, useOrder } from '../reorder'
 import { useLayout } from '../layout'
@@ -95,6 +95,8 @@ export function CommitList({
   const { data, repo, workspace, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
+  // Menu da branch (botão direito na etiqueta): as etiquetas não chamam useBranchMenu, quem o chama é este componente.
+  const branchItemsOf = useBranchMenu(onScope)
   const [query, setQuery] = useState('')
   /** A pesquisa filtra a lista com um pequeno atraso, para a digitação não travar em históricos grandes. */
   const deferredQuery = useDeferredValue(query)
@@ -256,7 +258,33 @@ export function CommitList({
     return [...list.filter((b) => !b.remote), ...list.filter((b) => b.remote)]
   }
 
-  handlers.current = { click, toggle, menu: (e, commit) => menu(e, commit), dragShas }
+  /**
+   * Busca de branch por nome, num Map: cada etiqueta consulta a sua a cada desenho, e um `find` sobre 1.100
+   * branches repetia a varredura em todas. O primeiro de cada nome vence, como o `find` fazia.
+   */
+  const branchByName = useMemo(() => {
+    const map = new Map<string, BranchInfo>()
+    for (const b of data.branches) if (!map.has(b.name)) map.set(b.name, b)
+    return map
+  }, [data.branches])
+  /** Nomes de branches remotas: as etiquetas precisam disso para a classe e o arrasto; muda só com `data.branches`. */
+  const remoteNames = useMemo(() => new Set([...branchByName.values()].filter((b) => b.remote).map((b) => b.name)), [branchByName])
+
+  handlers.current = {
+    click,
+    toggle,
+    menu: (e, commit) => menu(e, commit),
+    dragShas,
+    branchMenu: (e, name) => {
+      const branch = branchByName.get(name)
+      if (branch) showMenu(e, branchItemsOf(branch))
+    },
+    dropOnBranch: (payload, name) => void actions.dropOnBranch(payload, name),
+    checkoutBranch: (name) => {
+      const branch = branchByName.get(name)
+      if (branch && !branch.current) void actions.checkout(name)
+    }
+  }
 
   const menu = (e: React.MouseEvent, commit: CommitInfo) => {
     const shas = dragShas(commit)
@@ -457,7 +485,7 @@ export function CommitList({
                 query={searching ? deferredQuery : ''}
                 handlers={handlers}
                 dateKey={dateKey}
-                onScope={onScope}
+                remoteNames={remoteNames}
               />
               {open && (
                 <CommitFiles
@@ -484,6 +512,11 @@ interface RowHandlers {
   toggle(sha: string, open?: boolean): void
   menu(e: React.MouseEvent, commit: CommitInfo): void
   dragShas(commit: CommitInfo): string[]
+  /** Menu de botão direito de uma etiqueta de branch; nada se a branch não está na lista. */
+  branchMenu(e: React.MouseEvent, name: string): void
+  dropOnBranch(payload: DragPayload, name: string): void
+  /** Checkout pelo duplo clique na etiqueta; não faz nada na branch atual. */
+  checkoutBranch(name: string): void
 }
 
 interface RowProps {
@@ -500,14 +533,14 @@ interface RowProps {
   handlers: React.RefObject<RowHandlers>
   /** Muda com o formato de datas e o idioma: a linha é memorizada e precisa saber que deve se redesenhar. */
   dateKey: string
-  onScope(scope: HistoryScope): void
+  remoteNames: ReadonlySet<string>
 }
 
 /**
  * Uma linha do histórico. Memorizada: clicar numa linha só redesenha a que perdeu e a que ganhou a
  * seleção, não as centenas de outras.
  */
-const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, template, columns, graphWidth, searching, query, handlers, onScope }: RowProps) {
+const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, template, columns, graphWidth, searching, query, handlers, remoteNames }: RowProps) {
   // `dateKey` só existe para invalidar a memorização; a data é escrita pelas funções de formato.
   return (
     <div
@@ -553,7 +586,7 @@ const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, te
           case 'subject':
             return (
               <div key={column} className="commit-main">
-                <RefBadges refs={commit.refs} color={row.color} onScope={onScope} />
+                <RefBadges refs={commit.refs} color={row.color} remoteNames={remoteNames} handlers={handlers} />
                 <span className="commit-subject">
                   <Highlight text={commit.subject} query={query} />
                 </span>
@@ -887,15 +920,14 @@ function CommitFiles({
   )
 }
 
-function RefBadges({ refs, color, onScope }: { refs: string[]; color: number; onScope(scope: HistoryScope): void }) {
-  if (!refs.length) return null
+function RefBadges({ refs, color, remoteNames, handlers }: { refs: string[]; color: number; remoteNames: ReadonlySet<string>; handlers: React.RefObject<RowHandlers> }) {
   return (
     <>
       {refs.map((ref) => {
         if (ref === 'HEAD') return <span key={ref} className="ref ref-head">HEAD</span>
-        if (ref.startsWith('HEAD -> ')) return <BranchBadge key={ref} name={ref.slice(8)} color={color} onScope={onScope} current />
+        if (ref.startsWith('HEAD -> ')) return <BranchBadge key={ref} name={ref.slice(8)} color={color} remoteNames={remoteNames} handlers={handlers} current />
         if (ref.startsWith('tag: ')) return <span key={ref} className="ref ref-tag">⌂ {ref.slice(5)}</span>
-        return <BranchBadge key={ref} name={ref} color={color} onScope={onScope} />
+        return <BranchBadge key={ref} name={ref} color={color} remoteNames={remoteNames} handlers={handlers} />
       })}
     </>
   )
@@ -904,16 +936,13 @@ function RefBadges({ refs, color, onScope }: { refs: string[]; color: number; on
 /**
  * Etiqueta de branch no histórico, na cor da trilha dela: pode ser arrastada, recebe itens soltos e
  * tem o menu da branch no botão direito (o checkout leva para a branch, não para um HEAD destacado).
+ * Memorizada: só recebe primitivos, um Set estável e a ref de handlers.
  */
-function BranchBadge({ name, color, onScope, current = false }: { name: string; color: number; onScope(scope: HistoryScope): void; current?: boolean }) {
-  const { data, showMenu } = useApp()
-  const actions = useActions()
-  const branchMenu = useBranchMenu(onScope)
-  const branch = data.branches.find((b) => b.name === name)
-  const remote = !!branch?.remote
+const BranchBadge = memo(function BranchBadge({ name, color, remoteNames, handlers, current = false }: { name: string; color: number; remoteNames: ReadonlySet<string>; handlers: React.RefObject<RowHandlers>; current?: boolean }) {
+  const remote = remoteNames.has(name)
   const drop = useDrop(
     (p) => !remote && p.type !== 'files' && !(p.type === 'branch' && p.name === name),
-    (p) => void actions.dropOnBranch(p, name)
+    (p) => handlers.current.dropOnBranch(p, name)
   )
   return (
     <span
@@ -925,10 +954,10 @@ function BranchBadge({ name, color, onScope, current = false }: { name: string; 
         startDrag(e, { type: 'branch', name, remote }, `⎇ ${name}`)
       }}
       onDragEnd={endDrag}
-      onContextMenu={branch ? (e) => showMenu(e, branchMenu(branch)) : undefined}
+      onContextMenu={(e) => handlers.current.branchMenu(e, name)}
       onDoubleClick={(e) => {
         e.stopPropagation()
-        if (branch && !branch.current) void actions.checkout(name)
+        handlers.current.checkoutBranch(name)
       }}
       title={`${current ? t('toolbar.currentBranch') : remote ? t('history.badge.remote') : t('history.badge.local')}\n${t('sidebar.branchTooltip')}`}
       {...drop.props}
@@ -937,4 +966,4 @@ function BranchBadge({ name, color, onScope, current = false }: { name: string; 
       {name}
     </span>
   )
-}
+})
