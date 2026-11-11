@@ -48,7 +48,34 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
 
-## 2. Estado atual (fim da janela 9)
+## 2. Estado atual (fim da janela 10)
+
+- **Janela 10: item 5.5 feito (Fase 5 concluída).** Três commits:
+  - `21fa222`: `src/shared/analyticsWire.ts`, formato colunar do resultado de `analytics` (pessoas numa tabela,
+    tags esparsas, arquivos numa lista de trios). Medido nos 20 mil commits: JSON 7,7 → 3,7 MB; `structuredClone`
+    78 → 25 ms; stringify+parse 60 → 22 ms; ida e volta idêntica nos dados reais.
+  - `de88d12`: `analyticsKey` em `repository.ts` (1 processo, `show-ref --head`, só heads/remotes/tags, mais
+    escopo, limite e `ANALYTICS_CACHE_VERSION`); `analytics(options, { hasHead })` sem repetir o `rev-parse`;
+    conversão cede o event loop a cada 1000 registros (maior pausa 77–101 → 25–47 ms; resultado igual).
+  - `15074fb`: `src/backend/analyticsCache.ts` (memória com 4 entradas, disco em `<dados>/analytics-cache`, até
+    16 arquivos, gravação por temporário e `rename`, cálculo compartilhado, só guarda se a chave não mudou no
+    meio); `backend.ts` responde `analytics` por ele; `git.ts` decodifica. `core.mjs`: sem cache 2.787 ms git ×3;
+    falta 2.797 ms ×4; acerto em memória 6 ms ×1; acerto em disco (reinício) 23 ms ×1. typecheck limpo, 801 testes.
+  - **O achado B7 estava errado no diagnóstico:** medido, 98% dos ~2,9 s são o próprio `git log --numstat` (fora do
+    processo principal); o parse síncrono era ~65 ms. Por isso **não** foi feito processo auxiliar (ganharia ~65 ms
+    de pausa, que os lotes já reduziram), nem envio em partes com progresso. Registrar isso no "Resultado da Fase 5".
+  - Conferido no navegador (harness, sem CPU lenta): dashboards abrem com 20.000 commits, 8 widgets, sem erro novo;
+    1ª abertura 3,3 s, reabrir 0,3 s sem processo git. **Não conferido:** reinício do app de verdade (só pelo
+    `core.mjs`, backend novo na mesma pasta) e o webview do VS Code.
+  - Comportamento antigo notado, não mudado: o botão de atualizar dos dashboards não chega ao backend (o cache da
+    interface responde), então "Atualizado agora" mostra o `generatedAt` antigo. Com o cache por chave, o dado é o
+    mesmo; o botão pode ser simplificado ou removido depois.
+  - Ideia para depois (não feita): atualização incremental (ler só os commits novos com `<novas> --not <antigas>`
+    quando nenhuma ref antiga sumiu), para que um commit novo não custe os 2,9 s inteiros.
+- **A seguir:** escrita dos resultados das Fases 4 e 5 em `docs/PERFORMANCE.md` (com a pendência 4 e a correção do
+  B7 acima; a linha do `core.mjs` de analytics agora tem as três linhas de cache), depois as pendências 2 e 3.
+
+### Janela 9
 
 - **Janela 9: pendência (1) da janela 8 e item 5.2 feitos.**
   - `dc753c7`: `scripts/readme-media/harness.mjs` registra o carregador de catálogos da extensão (JSON de
@@ -71,8 +98,7 @@ Estas instruções vieram do usuário e valem para todas as janelas:
 - **Pendências que continuam da janela 8:** (2) `DiffWindow.tsx` ainda chama `setLocale`; (3) `ChangesView`
   redesenha 5× ao abrir e o `RepoView` 1× por seleção; (4) documentos (`docs/PERFORMANCE.md` seção 7 e
   "Resultado da Fase 4"/"Fase 5") sem os números das janelas 8 e 9.
-- **A seguir:** 5.5 (dashboards num processo auxiliar, achado B7), depois a escrita dos resultados das Fases 4
-  e 5 em `docs/PERFORMANCE.md` (com a pendência 4), depois as pendências 2 e 3.
+- **A seguir (na época):** 5.5, depois a escrita dos resultados das Fases 4 e 5, depois as pendências 2 e 3.
 
 ### Janela 8
 
@@ -323,7 +349,7 @@ cancelamento com a interface (núcleo pronto).
 - **Fase 4 — Listas e redesenhos:** contexto `useApp()` dividido (C2); itens de lista sem contexto (C2/C4);
   branches/tags com agrupamento linear (C4); `buildTree` com `Map` (C5); ícones por símbolo reutilizado (C6);
   comparação de diffs por identificador, não por `JSON.stringify` (C7: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`).
-- **Fase 5 — Carga (a próxima; 5.1, 5.3 e 5.4 feitos na janela 8, 5.2 na janela 9; falta 5.5):** idiomas sob demanda (D2: 48% do JavaScript são traduções); `React.lazy` nas telas que não
+- **Fase 5 — Carga (concluída: 5.1, 5.3 e 5.4 na janela 8, 5.2 na janela 9, 5.5 na janela 10; falta escrever o resultado no documento):** idiomas sob demanda (D2: 48% do JavaScript são traduções); `React.lazy` nas telas que não
   aparecem na abertura (D3); janela criada antes de ler configurações (D4); extensão: painel primeiro, descoberta por
   trás (D5); dashboards num processo auxiliar (B7).
 
