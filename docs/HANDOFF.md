@@ -13,11 +13,13 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**A seguir:** `E1` (aguardando o "pode seguir" do dono para abrir a sessão central)
+**Última etapa fechada:** E1 (parcial), commit `69618ba`: #58 feito; #82 feito exceto o rótulo "Editor do GitTools"; #76 não feito (dúvidas na seção 5). typecheck e 821 testes verdes; telas não conferidas no Chromium.
+
+**A seguir:** `E2` (o "pode seguir" do dono já foi dado)
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
-| E1 | #58 #76 #82 | Menus de contexto: rótulos "Open in editor VSCode"/"Editor do GitTools", Copy path, remover itens | a fazer | |
+| E1 | #58 #76 #82 | Menus de contexto: rótulos, Copy path, remover itens | parcial (#76 e rótulo "Editor do GitTools" pendentes) | 69618ba |
 | E2 | #75 #57 #73 #77 | Commit/push e Changes/History: remover "Include all files", push volta a normal, seleção inicial | a fazer | |
 | E3 | #83 #86 | Diff: botões vão para submenu "Options"; colunas do History redimensionáveis | a fazer | |
 | E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | a fazer | |
@@ -34,15 +36,6 @@ Não se aplica (nenhuma etapa persegue meta de desempenho). E5, E8 e E10 medem a
 contagem de processos git antes e depois.
 
 ## 4. Plano
-
-### Etapa E1 — menus de contexto coerentes (#58 #76 #82)
-- **Orquestra**: sonnet
-- **Arquivos prováveis**: `components/CommitList.tsx:853-866`, `CommitDetails.tsx:162-173`, `ChangesView.tsx:242-243`,
-  `Toolbar.tsx:100,168,190-192`, `FilesView.tsx`, `CompareView.tsx`, `src/shared/i18n/messages/*`
-- **Ler antes**: issues #58 #76 #82. Atenção: o "Force push (with lease)" não está no menu de contexto do History
-  (`CommitList.tsx:301-346`), só na Toolbar (`:100`, `:168`); confirmar com o dono onde o item aparece antes de remover.
-- **Aceite**: `npm run typecheck && npm test` verdes; menus vistos na tela (`run-gittools`)
-- **Testes**: unidade (lógica de itens do menu) e tela
 
 ### Etapa E2 — commit, push e seleção inicial (#75 #57 #73 #77)
 - **Orquestra**: topo
@@ -139,6 +132,9 @@ contagem de processos git antes e depois.
 - 2026-11-11: o mapa do código mostra que #84 (busca no Studio) e #59/#82 (menu em "Different files") pedem recurso
   novo, não ajuste.
 - 2026-11-11: o branch de trabalho vem da plataforma (`ccr-f146ea2b-tsxm2b`), fora do padrão `feature/*` do guia.
+
+- 2026-11-11 E1, dúvidas para o dono: (a) #76 pede tirar "Force push (with lease)" do menu de clique direito do History, mas ali não existe; o item está na Toolbar (`toolbar.pushForce`, `Toolbar.tsx:100`) e no menu da branch na Sidebar (`sidebar.menu.pushForce`, `branchMenu.ts:48`). Não removido; remover um, os dois ou nenhum? (b) #82 pede "Editor do GitTools" no lugar de "Open in new window", mas esse item abre o diff em janela própria (`openDiffWindow`), não o editor (`FileEditor`, aberto pela tela Files). Rótulo não trocado; confirmar o que se quer.
+- 2026-11-11 E1: `code-review` e conferência em tela (`run-gittools`) não rodaram; fazer junto com a E3, que mexe nos mesmos menus. Traduções ar/hi/zh de `common.openInVscode` pedem revisão de nativo.
 
 ## 6. Encerramento
 
