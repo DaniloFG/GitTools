@@ -60,14 +60,31 @@ describe('fila de processos git', () => {
   it('comando de rede (ls-remote) não espera vaga: começa na hora, mesmo com todas as vagas ocupadas', async () => {
     const t = await createRepo()
     await t.commit('primeiro', { 'a.txt': 'a\n' })
+    // Sem relógio: no Windows carregado, abrir um processo git leva centenas de ms, então o tempo não prova nada.
+    // Por isso comparamos a ordem de início e de fim dos processos.
+    const eventos: Array<{ fase: 'inicio' | 'fim'; id: string }> = []
+    const stop = onGitCommand((entry) => {
+      const id = entry.args.includes('ls-remote')
+        ? 'ls-remote'
+        : entry.args.find((a) => a.startsWith('teste.id='))?.slice('teste.id='.length)
+      if (id === undefined) return
+      eventos.push({ fase: entry.exitCode === undefined ? 'inicio' : 'fim', id })
+    })
+    stops.push(stop)
     const bloqueio = Array.from({ length: MAX_GIT_PROCESSES }, (_, i) => runGit(t.dir, espera(`bloqueio-${i}`, 600)))
-    const started = Date.now()
-    const result = await runGit(t.dir, ['ls-remote', '.'])
-    // Na fila esperaria os 600 ms dos bloqueios.
-    expect(Date.now() - started).toBeLessThan(400)
+    const pending = runGit(t.dir, ['ls-remote', '.'])
+    // Se o ls-remote estivesse na fila, ela teria um pedido esperando agora.
+    expect(gitQueueStatsForTest().queued, 'o ls-remote entrou na fila e esperou vaga').toBe(0)
+    const result = await pending
     expect(result.stdout).toContain('refs/heads/main')
-    expect(gitQueueStatsForTest().queued).toBe(0)
     await Promise.all(bloqueio)
+    const inicioLsRemote = eventos.findIndex((e) => e.fase === 'inicio' && e.id === 'ls-remote')
+    const primeiroFimBloqueio = eventos.findIndex((e) => e.fase === 'fim' && e.id.startsWith('bloqueio-'))
+    expect(inicioLsRemote, `o ls-remote não aparece no log de início (eventos: ${JSON.stringify(eventos)})`).toBeGreaterThanOrEqual(0)
+    expect(
+      inicioLsRemote < primeiroFimBloqueio,
+      `o ls-remote começou depois do primeiro fim de um bloqueio: ele esperou vaga (eventos: ${JSON.stringify(eventos)})`
+    ).toBe(true)
   })
 
   it('sinal já abortado rejeita na hora, sem abrir processo', async () => {
