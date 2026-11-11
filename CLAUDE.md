@@ -37,6 +37,7 @@ npm run build              # aplicativo Electron (out/)
 npm run build:extension    # extensão e interface do webview (extension/dist/)
 node scripts/perf/core.mjs moderate     # leituras do git: tempo, processos e tamanho
 node scripts/perf/ui.mjs 4 moderate     # interface com a CPU 4× mais lenta (precisa do build:extension)
+npm run perf:bundle        # tamanho do pacote contra os tetos (precisa do build e do build:extension; roda no CI)
 ```
 
 ## Os sete princípios
@@ -135,8 +136,10 @@ correção planejada; código existente que foge à regra não é modelo para c�
 3. **Quantos processos git?** Conte com `--trace` e compare com os orçamentos.
 4. **Meça.** Rode `scripts/perf/core.mjs` (git e funções puras) ou `scripts/perf/ui.mjs 4` (interface) antes e
    depois, e escreva os dois números na descrição do PR. Em mudança de desempenho, o número é a prova.
-5. **Tamanho do pacote.** Depois de `npm run build:extension`, confira `extension/dist/webview/assets/*.js`.
-   Aumento precisa de justificativa.
+5. **Tamanho do pacote.** Depois de `npm run build` e `npm run build:extension`, rode `npm run perf:bundle`: o CI
+   reprova se o JavaScript da primeira carga (com o maior catálogo de idioma) passar de 700.000 bytes, ou o CSS, o
+   processo principal ou a extensão passarem dos tetos do roteiro. Aumento precisa de justificativa; subir um teto,
+   só com o motivo no commit.
 6. `npm run typecheck` e `npm test` verdes.
 
 Se uma regra impedir o que foi pedido, não a contorne em silêncio: explique o custo, proponha a alternativa e
