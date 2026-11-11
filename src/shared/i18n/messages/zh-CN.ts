@@ -137,7 +137,9 @@ export const zhCN: Messages = {
     menu: '菜单',
     menuHelp: '设置与面板',
     appearance: '外观',
-    toolbarMenu: '工具栏'
+    toolbarMenu: '工具栏',
+    dynamicPanels: '动态面板',
+    screensMenu: '界面'
   },
   welcome: {
     tagline: '轻松使用 Git：拖放和点击即可合并、变基和拣选分支、提交、文件，甚至单独的行。',

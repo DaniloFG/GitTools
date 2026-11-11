@@ -16,6 +16,7 @@ import {
   toggleToolbarItem,
   type ToolbarItemId
 } from '../toolbarItems'
+import { TOP_SCREEN_IDS, TOP_SCREEN_LABELS, parseHiddenScreens, toggleScreen, type TopScreenId } from '../screenVisibility'
 import { normalizeRoot, repoColor } from '../workspace'
 import { ScreenTabs, usePanelsItems, type ScreenProps } from './Screens'
 import { SponsorButton } from './Sponsor'
@@ -40,7 +41,9 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
   const [screen] = useScreen()
   const [hidden, setHidden] = useLayout<ToolbarItemId[]>('pref.toolbar.hidden', parseHiddenToolbarItems)
   const shown = (id: ToolbarItemId) => isToolbarItemShown(hidden, id)
-  const panelItems = usePanelsItems({ state, onChange, screen, meta, available })
+  // Telas do topo escondidas (Aparência → Telas): a aba some da barra, mas a tela aberta nunca some.
+  const [hiddenScreens, setHiddenScreens] = useLayout<TopScreenId[]>('pref.screens.hidden', parseHiddenScreens)
+  const panels = usePanelsItems({ state, onChange, screen, meta, available })
   const frameRef = useRef<HTMLDivElement>(null)
 
   // A altura real da barra (uma ou duas linhas) vai para --toolbar-h, para o indicador de operação descer junto.
@@ -116,19 +119,38 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
       { label: t('toolbar.stash'), onClick: () => stash() }
     ])
 
-  /** ⚙ Menu: configurações; a aparência (painéis e layouts); e quais itens aparecem nesta barra. */
+  /**
+   * ⚙ Menu: configurações e a aparência. Em Aparência ficam a barra (quais itens aparecem), os painéis da tela
+   * aberta, as telas (quais abas aparecem) e o resto dos painéis, layouts e restaurar o padrão.
+   */
   const barMenu = (e: React.MouseEvent) =>
     showMenu(e, [
       { label: t('toolbar.settings'), onClick: () => openSettings() },
       'separator',
-      { label: t('toolbar.appearance'), submenu: panelItems },
       {
-        label: t('toolbar.toolbarMenu'),
-        submenu: TOOLBAR_ITEM_IDS.map((id) => ({
-          label: t(TOOLBAR_ITEM_LABELS[id]),
-          checked: shown(id),
-          onClick: () => setHidden((prev) => toggleToolbarItem(prev, id))
-        }))
+        label: t('toolbar.appearance'),
+        submenu: [
+          {
+            label: t('toolbar.toolbarMenu'),
+            submenu: TOOLBAR_ITEM_IDS.map((id) => ({
+              label: t(TOOLBAR_ITEM_LABELS[id]),
+              checked: shown(id),
+              onClick: () => setHidden((prev) => toggleToolbarItem(prev, id))
+            }))
+          },
+          'separator',
+          ...(panels.current.length ? [{ label: t('toolbar.dynamicPanels'), submenu: panels.current }] : []),
+          {
+            label: t('toolbar.screensMenu'),
+            submenu: TOP_SCREEN_IDS.map((id) => ({
+              label: t(TOP_SCREEN_LABELS[id]),
+              // Marcado = a preferência (mostrar). Esconder a tela aberta é permitido; ela só continua à vista até trocar.
+              checked: !hiddenScreens.includes(id),
+              onClick: () => setHiddenScreens((prev) => toggleScreen(prev, id))
+            }))
+          },
+          ...panels.rest
+        ]
       }
     ])
 
@@ -198,7 +220,7 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
           </button>
         </div>
         {shown('screens') && (
-          <ScreenTabs state={state} meta={meta} screen={screen} onScreen={onScreen} available={available} changeCount={changeCount} dashboards={dashboards} onDashboards={onDashboards} />
+          <ScreenTabs state={state} meta={meta} screen={screen} onScreen={onScreen} available={available} changeCount={changeCount} dashboards={dashboards} onDashboards={onDashboards} hiddenScreens={hiddenScreens} />
         )}
       </header>
     </div>

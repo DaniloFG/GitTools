@@ -138,7 +138,9 @@ export const es: Messages = {
     menu: 'Menú',
     menuHelp: 'Configuración y paneles',
     appearance: 'Apariencia',
-    toolbarMenu: 'Barra de herramientas'
+    toolbarMenu: 'Barra de herramientas',
+    dynamicPanels: 'Paneles dinámicos',
+    screensMenu: 'Pantallas'
   },
   welcome: {
     tagline: 'Git sin complicaciones: arrastra y haz clic para hacer merge, rebase y cherry-pick de ramas, commits, archivos e incluso líneas.',

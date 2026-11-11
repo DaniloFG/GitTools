@@ -146,7 +146,9 @@ export const ar: Messages = {
     menu: 'القائمة',
     menuHelp: 'الإعدادات واللوحات',
     appearance: 'المظهر',
-    toolbarMenu: 'شريط الأدوات'
+    toolbarMenu: 'شريط الأدوات',
+    dynamicPanels: 'اللوحات الديناميكية',
+    screensMenu: 'الشاشات'
   },
   welcome: {
     tagline: 'Git ببساطة: اسحب وانقر لدمج الفروع والإيداعات والملفات وحتى الأسطر المنفردة، وإعادة تأسيسها وانتقائها.',

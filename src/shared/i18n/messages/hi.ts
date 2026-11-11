@@ -141,7 +141,9 @@ export const hi: Messages = {
     menu: 'मेनू',
     menuHelp: 'सेटिंग्स और पैनल',
     appearance: 'दिखावट',
-    toolbarMenu: 'टूलबार'
+    toolbarMenu: 'टूलबार',
+    dynamicPanels: 'डायनामिक पैनल',
+    screensMenu: 'स्क्रीन'
   },
   welcome: {
     tagline: 'आसान Git: खींचें और क्लिक करें — branches, commits, फ़ाइलों और यहाँ तक कि अलग-अलग लाइनों का merge, rebase और cherry-pick करें।',

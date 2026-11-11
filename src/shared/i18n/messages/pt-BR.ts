@@ -139,7 +139,9 @@ export const ptBR = {
     menu: 'Menu',
     menuHelp: 'Configurações e painéis',
     appearance: 'Aparência',
-    toolbarMenu: 'Barra de ferramentas'
+    toolbarMenu: 'Barra de ferramentas',
+    dynamicPanels: 'Painéis dinâmicos',
+    screensMenu: 'Telas'
   },
   welcome: {
     tagline: 'Git sem complicação: arraste e clique para fazer merge, rebase e cherry-pick de branches, commits, arquivos e até linhas.',

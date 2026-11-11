@@ -138,7 +138,9 @@ export const en: Messages = {
     menu: 'Menu',
     menuHelp: 'Settings & panels',
     appearance: 'Appearance',
-    toolbarMenu: 'Toolbar'
+    toolbarMenu: 'Toolbar',
+    dynamicPanels: 'Dynamic panels',
+    screensMenu: 'Screens'
   },
   welcome: {
     tagline: 'Git made simple: drag and click to merge, rebase and cherry-pick branches, commits, files and even single lines.',
