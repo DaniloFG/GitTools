@@ -29,7 +29,9 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    sozinha de uma janela para a seguinte, para trabalhar sempre com contexto limpo. A sessão não consegue limpar a
    própria conversa (`/clear` é só do usuário); em vez disso, abre uma sessão nova e para a atual. A troca acontece
    num ponto de corte limpo: uma fase inteira ou uma micro fase (um item da fase, como "3.2") fechada; nunca no meio
-   de um item. Passos, nesta ordem:
+   de um item. **Uma janela, um item.** Paralelismo (vários subagentes ao mesmo tempo) só dentro do item da janela,
+   nunca para adiantar o item seguinte. Fechou o item, troca de janela, mesmo que o usuário peça para ir rápido
+   (pedido do usuário repassado pela janela 8, que tinha emendado 4.1, 5.1, 5.3 e 5.4). Passos, nesta ordem:
    1. Tudo commitado e enviado (`git status` limpo, branch igual à do remoto), com `npm run typecheck` e `npm test`
       verdes no último commit de código.
    2. Seções 2 e 5 deste arquivo atualizadas (estado, o que foi medido, o próximo item) e enviadas.
@@ -46,7 +48,33 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
 
-## 2. Estado atual (fim da janela 8)
+## 2. Estado atual (fim da janela 9)
+
+- **Janela 9: pendência (1) da janela 8 e item 5.2 feitos.**
+  - `dc753c7`: `scripts/readme-media/harness.mjs` registra o carregador de catálogos da extensão (JSON de
+    `extension/dist/locales`, gerado pelo `build:extension`) e chama `changeLocale` antes de abrir a interface;
+    as mensagens do backend saem traduzidas (conferido em pt-BR e en). O harness agora acha o Chromium sozinho
+    (`CHROMIUM` com prioridade, depois `/opt/pw-browsers/chromium`, depois o `chromium-<N>` mais novo).
+  - `54b04fa` (5.2): `src/renderer/src/lazyScreens.ts` com `React.lazy` para Dashboards, CompareView, FileEditor,
+    GitTerminal, CherryPickStudio, ConflictEditor, RebaseEditor, CloneDialog, DialogHost, SettingsCenter,
+    ShortcutsHelp e DiffWindowApp; um `Suspense` por tela; `diffWindowRequest` foi para `diffWindowRequest.ts`;
+    pré-carga dos dashboards ao passar o mouse no botão. **Meta de 700 KB atingida:** `index.js` 802.241 →
+    559.353 bytes (Electron 801.675 → 558.787), CSS inicial 98 → 86 KB. `ui.mjs 4 moderate`, carga a frio:
+    657/634 ms antes, 708/590/601 depois (mediana ~645 → 601, perto do ruído). Processos git iguais (carga 6,
+    foco 2, 10 setas 4, Changes 5, stage 9). typecheck limpo, 764 testes, `build` e `build:extension` ok.
+  - Conferido no navegador (roteiros descartáveis no scratchpad): dashboards, comparação, configurações e a
+    janela de diff abrem, com o pedaço pedido sob demanda e sem erro novo. **Não conferido:** terminal git e
+    editor de arquivo abertos de fato, e o webview real do VS Code (o CSS dos dashboards vem num pedaço próprio;
+    a CSP inclui o `cspSource`, deve passar).
+  - Ficaram no pacote inicial de propósito: `KeyboardShortcuts` (ouvinte sempre montado), `ContextMenu` (6 KB),
+    `Toasts`, `OperationBanner`, `ChangesView`, `Dock`.
+- **Pendências que continuam da janela 8:** (2) `DiffWindow.tsx` ainda chama `setLocale`; (3) `ChangesView`
+  redesenha 5× ao abrir e o `RepoView` 1× por seleção; (4) documentos (`docs/PERFORMANCE.md` seção 7 e
+  "Resultado da Fase 4"/"Fase 5") sem os números das janelas 8 e 9.
+- **A seguir:** 5.5 (dashboards num processo auxiliar, achado B7), depois a escrita dos resultados das Fases 4
+  e 5 em `docs/PERFORMANCE.md` (com a pendência 4), depois as pendências 2 e 3.
+
+### Janela 8
 
 - **Janela 8: item 4.1 feito (Fase 4 concluída) e, em paralelo, 5.1, 5.3 e 5.4.**
   - 4.1 em três commits: `4ffe742` (contexto em quatro fatias: `useRepoData`, `useBusy`, `useAppActions`,
@@ -76,7 +104,7 @@ Estas instruções vieram do usuário e valem para todas as janelas:
 - **Ambiente:** cópias isoladas do `Agent` (`isolation: "worktree"`) nascem do `main` antigo (`814e0d1`), não
   da branch: o diff delas tem de ser extraído e aplicado com `git apply --3way` (fizemos assim no 5.1 e 5.3).
   Prefira `git worktree add --detach <pasta> HEAD` à mão. `.claude/` está em `.git/info/exclude`.
-- **A seguir:** pendência (1), depois 5.2 (`React.lazy`), depois 5.5 e a escrita dos resultados das Fases 4 e 5.
+- **A seguir (na época):** pendência (1), depois 5.2, depois 5.5 e a escrita dos resultados das Fases 4 e 5.
 
 ### Janela 7
 
@@ -189,9 +217,8 @@ Cuidados aprendidos:
 
 - Rode **uma medição por vez**; cada rodada de `ui.mjs` leva cerca de 5 minutos e a variação entre rodadas é de
   uns ±10% (a rolagem do histórico varia mais, de 24 a 44 ms por quadro). Para afirmar ganho, repita ou use mediana.
-- O `ui.mjs` usa o Chromium do ambiente: `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` e o módulo `playwright`
-  em `/opt/node22/lib/node_modules/playwright` (o `harness.mjs` já aponta para eles; variáveis `CHROMIUM` e
-  `PLAYWRIGHT_MODULE` se mudar).
+- O `ui.mjs` acha o Chromium do ambiente sozinho (desde `dc753c7`; `CHROMIUM` força outro) e usa o módulo
+  `playwright` em `/opt/node22/lib/node_modules/playwright` (`PLAYWRIGHT_MODULE` se mudar).
 - Meça sempre numa **cópia separada** quando outro agente estiver editando os mesmos arquivos:
   `git worktree add --detach <pasta> HEAD`, link simbólico de `node_modules`, `npm run build:extension` na cópia, e
   `git worktree remove --force <pasta>` ao terminar. Dentro do worktree, `ui.mjs` serve o `extension/dist/webview` dele.
@@ -296,7 +323,7 @@ cancelamento com a interface (núcleo pronto).
 - **Fase 4 — Listas e redesenhos:** contexto `useApp()` dividido (C2); itens de lista sem contexto (C2/C4);
   branches/tags com agrupamento linear (C4); `buildTree` com `Map` (C5); ícones por símbolo reutilizado (C6);
   comparação de diffs por identificador, não por `JSON.stringify` (C7: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`).
-- **Fase 5 — Carga (a próxima; 5.1, 5.3 e 5.4 feitos na janela 8; faltam 5.2 e 5.5):** idiomas sob demanda (D2: 48% do JavaScript são traduções); `React.lazy` nas telas que não
+- **Fase 5 — Carga (a próxima; 5.1, 5.3 e 5.4 feitos na janela 8, 5.2 na janela 9; falta 5.5):** idiomas sob demanda (D2: 48% do JavaScript são traduções); `React.lazy` nas telas que não
   aparecem na abertura (D3); janela criada antes de ler configurações (D4); extensão: painel primeiro, descoberta por
   trás (D5); dashboards num processo auxiliar (B7).
 
@@ -328,10 +355,11 @@ Lista de conferência do commit final. Só se faz quando o usuário disser que o
 Cole isto como primeira mensagem da sessão nova:
 
 > Leia `docs/HANDOFF.md`, `CLAUDE.md` e as seções 6 a 10 de `docs/PERFORMANCE.md`. Siga as regras de trabalho da seção 1
-> do HANDOFF (a janela principal não escreve código: delega a subagentes Haiku 5.5, o mais recente, e só especifica,
-> revisa, mede e commita). Continue pela Fase 4, na ordem da seção 5 do HANDOFF. Antes de começar, confira `git status` e
-> `git log --oneline -8`, recrie o repositório de teste com `node scripts/perf/stress-repo.mjs` e rode
-> `node scripts/perf/core.mjs moderate` para ter a base. Se os tokens estiverem acabando, faça só o que der para fechar
-> bem e atualize a seção 2 e 5 do HANDOFF. Este arquivo nunca vai para develop/homolog/main; nada de PR da branch de trabalho até o fim.
-> (Num container novo, rode `npm ci` antes das medições.)
-> Ao fechar cada item ou fase, siga a regra 7 da seção 1 do HANDOFF: abra a sessão seguinte por conta própria e pare.
+> do HANDOFF (a sessão principal, em Opus, não lê nem escreve código: delega a subagentes Haiku 5.5, o mais recente, e só
+> especifica, revisa, mede e commita). Continue pelo próximo item da seção 2 do HANDOFF ("A seguir"); uma janela, um item.
+> Antes de começar, confira `git status -sb` (o checkout pode vir em HEAD destacado ou com a branch local atrasada) e
+> `git log --oneline -8`, rode `npm ci` (o container vem sem `node_modules`), recrie o repositório de teste com
+> `node scripts/perf/stress-repo.mjs` e rode `node scripts/perf/core.mjs moderate` para ter a base. Se os tokens estiverem
+> acabando, faça só o que der para fechar bem e atualize a seção 2 e 5 do HANDOFF. Este arquivo nunca vai para
+> develop/homolog/main; nada de PR da branch de trabalho até o fim. Ao fechar o item, siga a regra 7 da seção 1 do
+> HANDOFF: abra a sessão seguinte por conta própria e pare.
