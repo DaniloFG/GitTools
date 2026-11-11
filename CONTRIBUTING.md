@@ -8,7 +8,7 @@ feature/* ──PR──▶ develop ──PR──▶ homolog ──PR──▶ 
 
 | Branch | Para que serve | Recebe PR de | Aceita push direto? |
 |---|---|---|---|
-| `feature/*`, `fix/*`, `docs/*`, `chore/*`, `refactor/*`, `claude/*` | Trabalho do dia a dia | — | Sim, são as branches de trabalho |
+| `feature/`, `fix/`, `docs/`, `chore/`, `refactor/`, nascidas de `develop` | Trabalho do dia a dia | — | Sim, são as branches de trabalho |
 | `develop` | Integração das mudanças | branches de trabalho | Não, só por PR |
 | `homolog` | Validação antes de produzir | `develop` | Não, só por PR |
 | `main` | Produção: sempre igual ao que foi validado na homolog | `homolog` | Não, só por PR |

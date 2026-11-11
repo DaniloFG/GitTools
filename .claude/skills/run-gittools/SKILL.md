@@ -69,7 +69,7 @@ O que o arranjo oferece:
 - `launch({ repo, more, language, theme, ... })` em `harness.mjs`: abre a interface num repositório seu (crie um
   temporário com o caso que a mudança precisa: conflito, muitos arquivos, HEAD destacado).
 - `createStressRepo()` e `applyScenario()` em `scripts/perf/stress-repo.mjs`: o repositório grande (20 mil commits,
-  1.142 refs, 6 mil arquivos), para conferir tela com volume.
+  mais de mil refs, 6 mil arquivos), para conferir tela com volume.
 - `backend.invoke(canal, args)`: fala com o `Backend` por fora da página (`'app:gitLog'` lista os processos git).
 - `errors`: erros da página e do console desde a carga.
 

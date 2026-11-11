@@ -5,8 +5,8 @@ paths:
 
 # Interface (`src/renderer`)
 
-O código atual ainda quebra algumas destas regras; as exceções conhecidas estão em `docs/PERFORMANCE.md`, com a
-correção planejada. Código existente que foge à regra não é modelo para código novo.
+O código atual ainda quebra algumas destas regras; quem tocar nesse código registra a exceção num comentário no ponto
+do código, com a correção planejada. Código existente que foge à regra não é modelo para código novo.
 
 - **Nenhum `.map` sem limite sobre dados do repositório.** Use a montagem por lotes que já existe
   (`FileEntries`) ou uma janela (`virtual.ts`); linhas com altura fixa quando possível. Meta: nenhuma tela com

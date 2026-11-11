@@ -14,7 +14,7 @@ paths:
 # Git e processo principal
 
 Vale para `src/core`, `src/backend`, `src/main`, `src/preload` e `extension`. O código atual ainda quebra algumas
-destas regras; as exceções conhecidas estão em `docs/PERFORMANCE.md`, com a correção planejada. Código existente que
+destas regras; quem tocar nesse código registra a exceção num comentário no ponto do código, com a correção planejada. Código existente que
 foge à regra não é modelo para código novo.
 
 - **Orçamento de processos.** Antes de acrescentar uma chamada ao git, diga quantos processos a ação passa a
