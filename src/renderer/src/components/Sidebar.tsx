@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { BranchInfo, StashInfo } from '../../../shared/types'
 import { ALL_SCOPE, checkedRefs, toggleGroup, toggleRef, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
@@ -14,6 +14,7 @@ import { useLayout } from '../layout'
 import { useFileViewMode } from './FileList'
 import { FileViewOptions } from './ViewOptions'
 import { buildTree, flattenTree } from '../fileTree'
+import { groupBranches } from '../sidebarGroups'
 import { moveItem, parseOrder, startReorder } from '../reorder'
 import { t } from '../i18n'
 import { PaneSlot } from '../slots'
@@ -53,7 +54,8 @@ function useBranchColors(scope: HistoryScope): (b: BranchInfo) => number | undef
   const { data, repo } = useApp()
   const full = useRef<{ root: string; colors: Map<string, number> }>({ root: repo.root, colors: new Map() })
   if (full.current.root !== repo.root) full.current = { root: repo.root, colors: new Map() }
-  const current = commitColors(data.log, data.status.headSha)
+  // Mapa de ~500 commits: refeito só quando o histórico ou o HEAD mudam, não a cada desenho.
+  const current = useMemo(() => commitColors(data.log, data.status.headSha), [data.log, data.status.headSha])
   if (scope.kind === 'all') for (const b of data.branches) if (current.has(b.sha)) full.current.colors.set(b.name, current.get(b.sha)!)
   return (b) => full.current.colors.get(b.name) ?? (scope.kind === 'all' ? current.get(b.sha) : undefined)
 }
@@ -62,17 +64,17 @@ function BranchesPanel({ scope, onScope }: Props) {
   const { data } = useApp()
   const colorOf = useBranchColors(scope)
   const checked = checkedRefs(scope)
+  // `includes` por linha era quadrático com muitas branches marcadas: um conjunto dá a consulta em tempo constante.
+  const checkedSet = useMemo(() => new Set(checked), [scope])
   const toggle = (name: string) => onScope(toggleRef(scope, name), { reveal: false })
   const groupAction = (list: BranchInfo[]) => ({
     label: '☑',
     title: t('sidebar.toggleGroup'),
     run: () => onScope(toggleGroup(scope, list.map((b) => b.name)), { reveal: false })
   })
-  const local = data.branches.filter((b) => !b.remote)
-  const remotes = new Map<string, BranchInfo[]>()
-  for (const b of data.branches.filter((b) => b.remote)) {
-    remotes.set(b.remote!, [...(remotes.get(b.remote!) ?? []), b])
-  }
+  // Agrupado uma vez por lista de branches. As listas mantêm a referência enquanto `data.branches` não muda,
+  // e assim as linhas (NameRows) não refazem a árvore a cada desenho.
+  const { local, remotes } = useMemo(() => groupBranches(data.branches), [data.branches])
 
   /** Uma linha por branch; no modo árvore, as com "/" no nome (feature/x) ficam em pastas. */
   const branchRows = (list: BranchInfo[], remote?: string) => (
@@ -81,7 +83,7 @@ function BranchesPanel({ scope, onScope }: Props) {
       nameOf={(b) => (remote ? b.name.slice(remote.length + 1) : b.name)}
       keyOf={(b) => b.fullRef}
       render={(b, label, style) => (
-        <BranchItem key={b.fullRef} branch={b} label={label} style={style} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} checked={checked.includes(b.name)} onToggle={toggle} onScope={onScope} />
+        <BranchItem key={b.fullRef} branch={b} label={label} style={style} color={colorOf(b)} active={scope.kind === 'ref' && scope.ref === b.name} checked={checkedSet.has(b.name)} onToggle={toggle} onScope={onScope} />
       )}
     />
   )
@@ -95,7 +97,7 @@ function BranchesPanel({ scope, onScope }: Props) {
         </Section>
       )
     },
-    ...[...remotes.entries()].map(([remote, list]) => ({
+    ...remotes.map(([remote, list]) => ({
       id: `remote.${remote}`,
       node: (
         <Section id={`remote.${remote}`} title={t('sidebar.remote', { remote })} count={list.length} collapsed onReorder={move} action={groupAction(list)}>
@@ -105,6 +107,8 @@ function BranchesPanel({ scope, onScope }: Props) {
     }))
   ]
   const ids = sections.map((s) => s.id)
+  // Busca por id num Map: procurar com `find` a cada item da ordem repetia a varredura das seções.
+  const nodeOf = new Map(sections.map((s) => [s.id, s.node] as const))
   const [order, setOrder] = useLayout('order.sidebar', (value) => parseOrder(value, ids))
   function move(id: string, target: string) {
     setOrder((prev) => moveItem(prev, id, target))
@@ -126,7 +130,7 @@ function BranchesPanel({ scope, onScope }: Props) {
         </button>
       </div>
       {order.map((id) => (
-        <Fragment key={id}>{sections.find((s) => s.id === id)?.node}</Fragment>
+        <Fragment key={id}>{nodeOf.get(id)}</Fragment>
       ))}
     </aside>
   )
@@ -221,6 +225,11 @@ interface NameRowsProps<T> {
 function NameRows<T>({ items, nameOf, keyOf, render }: NameRowsProps<T>) {
   const [mode] = useFileViewMode()
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
+  // Hooks antes do `if` (regra dos hooks). `nameOf` não entra nas dependências: é função pura e, para uma mesma
+  // lista, dá sempre o mesmo nome (o prefixo do remoto vem da própria lista). Por isso as listas passadas
+  // precisam ser estáveis: vêm de `useMemo` (BranchesPanel) ou de `data.tags`.
+  const tree = useMemo(() => (mode === 'list' ? null : buildTree(items, nameOf)), [items, mode])
+  const rows = useMemo(() => (tree ? flattenTree(tree, collapsed) : []), [tree, collapsed])
   if (mode === 'list') {
     return (
       <>
@@ -230,7 +239,6 @@ function NameRows<T>({ items, nameOf, keyOf, render }: NameRowsProps<T>) {
       </>
     )
   }
-  const rows = flattenTree(buildTree(items, nameOf), collapsed)
   const toggle = (path: string) =>
     setCollapsed((prev) => {
       const next = new Set(prev)
@@ -276,6 +284,11 @@ interface BranchItemProps {
   onScope: Props['onScope']
 }
 
+/** Texto da dica da branch (usado só ao passar o mouse). */
+function branchTooltip(branch: BranchInfo): string {
+  return `${branch.name}${branch.current ? ` (${t('toolbar.currentBranch')})` : ''}\n${branch.subject}\n${relativeDate(branch.date)}\n\n${t('sidebar.branchTooltip')}`
+}
+
 function BranchItem({ branch, label, style: indent, color, active, checked, onToggle, onScope }: BranchItemProps) {
   const { showMenu } = useApp()
   const actions = useActions()
@@ -300,7 +313,11 @@ function BranchItem({ branch, label, style: indent, color, active, checked, onTo
       onClick={() => onScope({ kind: 'ref', ref: branch.name })}
       onDoubleClick={() => !branch.current && actions.checkout(branch.name)}
       onContextMenu={menu}
-      title={`${branch.name}${branch.current ? ` (${t('toolbar.currentBranch')})` : ''}\n${branch.subject}\n${relativeDate(branch.date)}\n\n${t('sidebar.branchTooltip')}`}
+      // A dica é montada ao passar o mouse, não a cada desenho (data formatada por linha custava caro).
+      // `drop.props` não define onMouseEnter (ver useDrop.ts), então não há conflito com o espalhamento abaixo.
+      onMouseEnter={(e) => {
+        e.currentTarget.title = branchTooltip(branch)
+      }}
       style={{ ...(color === undefined ? {} : { '--branch-color': laneColor(color) }), ...indent } as CSSProperties}
       {...drop.props}
     >
@@ -364,7 +381,13 @@ function StashItem({ stash }: { stash: StashInfo }) {
     if (ok) await run(t('busy.droppingStash'), () => git.stashDrop(stash.index))
   }
   return (
-    <li className="stash-item" title={`${stash.ref} · ${relativeDate(stash.date)}`}>
+    // Dica montada ao passar o mouse, como nas branches.
+    <li
+      className="stash-item"
+      onMouseEnter={(e) => {
+        e.currentTarget.title = `${stash.ref} · ${relativeDate(stash.date)}`
+      }}
+    >
       <span className="branch-name">{stash.message}</span>
       <span className="stash-actions">
         <button onClick={() => run(t('busy.applyingStash'), () => git.stashApply(stash.index, true))} title={t('sidebar.stash.pop')}>

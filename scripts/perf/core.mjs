@@ -27,6 +27,7 @@ writeFileSync(
     `export { buildTree } from ${src('src/renderer/src/fileTree')}`,
     `export { sameDiff } from ${src('src/renderer/src/diffIdentity')}`,
     `export { mergeData } from ${src('src/renderer/src/stable')}`,
+    `export { groupBranches } from ${src('src/renderer/src/sidebarGroups')}`,
     `export { computeGraph } from ${src('src/renderer/src/graph')}`,
     `export { formatShortDateTime, formatRelative, setDateFormat, setLocale, t } from ${src('src/shared/i18n')}`
   ].join('\n')
@@ -115,6 +116,20 @@ const branches = Array.from({ length: 1100 }, (_, i) => ({ name: `feature/x-${i}
 const before = { status, branches }
 const after = JSON.parse(JSON.stringify(before))
 pure('mergeData: status de 2300 arquivos + 1100 branches', () => m.mergeData(before, after), 50)
+// Agrupamento do painel lateral: 300 locais e 800 remotas em 2 remotos. A versão antiga (copia a lista do remoto a cada item) fica aqui para comparar.
+const remoteBranches = Array.from({ length: 1100 }, (_, i) => {
+  if (i < 300) return { ...branches[i], name: `feature/x-${i}`, remote: null }
+  const remote = i % 2 ? 'origin' : 'upstream'
+  return { ...branches[i], name: `${remote}/feature/x-${i}`, fullRef: `refs/remotes/${remote}/feature/x-${i}`, remote }
+})
+const oldGroup = (list) => {
+  const local = list.filter((b) => !b.remote)
+  const groups = new Map()
+  for (const b of list.filter((b) => b.remote)) groups.set(b.remote, [...(groups.get(b.remote) ?? []), b])
+  return { local, remotes: [...groups.entries()] }
+}
+pure('agrupar 1100 branches (como estava)', () => oldGroup(remoteBranches), 200)
+pure('agrupar 1100 branches: groupBranches', () => m.groupBranches(remoteBranches), 200)
 const commits = Array.from({ length: 5000 }, (_, i) => ({ sha: `c${i}`, parents: i % 9 === 0 ? [`c${i + 1}`, `c${i + 13}`] : [`c${i + 1}`] }))
 pure('computeGraph: 5000 commits', () => m.computeGraph(commits, 'c0'))
 // Diff de 1 arquivo com 5.000 linhas alteradas, montado igual ao que a leitura devolve (objetos distintos e iguais).
