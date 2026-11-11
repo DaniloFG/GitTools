@@ -8,3 +8,7 @@ release/
 *.tsbuildinfo
 extension/LICENSE
 extension/THIRD_PARTY_NOTICES.md
+# Configuração pessoal do Claude Code: não é do projeto.
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
