@@ -405,44 +405,38 @@ export function ChangesView() {
         <p className="section-empty">{t('changes.selectFile')}</p>
       ) : (
         <div className="diff-panel">
-          <div className="selection-bar">
-            <button
-              onClick={() => openDiffWindow({ source: { kind: active.area }, path: active.path, title: `${active.path} · ${t(active.area === 'staged' ? 'changes.staged' : 'changes.unstaged')}` })}
-              title={t('diffExtra.openWindowHelp')}
-            >
-              ⧉
-            </button>
-            {bothSides && (
-              <div className="segmented" role="group" dir="ltr">
-                {(['unstaged', 'staged'] as const).map((area) => (
-                  <button key={area} className={active.area === area ? 'active' : ''} aria-pressed={active.area === area} onClick={() => setActive({ area, path: active.path })}>
-                    {t(area === 'staged' ? 'changes.sections.staged' : 'changes.sections.unstaged')}
-                  </button>
-                ))}
-              </div>
-            )}
-            {active.area === 'unstaged' ? (
-              <>
-                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={() => lineAction('stage')}>
-                  {t('changes.stageLines', { count: selection.size })}
-                </button>
-                <button className="danger subtle" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={() => lineAction('discard')}>
-                  {t('changes.discardLines')}
-                </button>
-                <button onClick={() => runChanges(t('busy.stage'), () => git.stageFiles([active.path]))}>{t('changes.stageFile')}</button>
-                <button onClick={() => openInEditor(active.path)}>{t('common.openInEditor')}</button>
-                <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
-              </>
-            ) : (
-              <>
-                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={() => lineAction('unstage')}>
-                  {t('changes.unstageLines', { count: selection.size })}
-                </button>
-                <button onClick={() => runChanges(t('busy.unstage'), () => git.unstageFiles([active.path]))}>{t('changes.unstageFile')}</button>
-              </>
-            )}
-          </div>
-          <DiffView file={diff} selection={selection} onSelectionChange={setSelection} fileNav={fileNav} />
+          <DiffView
+            file={diff}
+            selection={selection}
+            onSelectionChange={setSelection}
+            fileNav={fileNav}
+            panelActions={[
+              ...(bothSides
+                ? (['unstaged', 'staged'] as const).map((area) => ({
+                    label: t(area === 'staged' ? 'changes.sections.staged' : 'changes.sections.unstaged'),
+                    checked: active.area === area,
+                    onClick: () => setActive({ area, path: active.path })
+                  }))
+                : []),
+              {
+                label: `⧉ ${t('diffExtra.openWindow')}`,
+                hint: t('diffExtra.openWindowHelp'),
+                onClick: () => openDiffWindow({ source: { kind: active.area }, path: active.path, title: `${active.path} · ${t(active.area === 'staged' ? 'changes.staged' : 'changes.unstaged')}` })
+              },
+              ...(active.area === 'unstaged'
+                ? [
+                    { label: t('changes.stageLines', { count: selection.size }), disabled: !selection.size, hint: selection.size ? undefined : t('feedback.blocked.noSelection'), onClick: () => lineAction('stage') },
+                    { label: t('changes.discardLines'), danger: true, disabled: !selection.size, hint: selection.size ? undefined : t('feedback.blocked.noSelection'), onClick: () => lineAction('discard') },
+                    { label: t('changes.stageFile'), onClick: () => runChanges(t('busy.stage'), () => git.stageFiles([active.path])) },
+                    { label: t('common.openInEditor'), onClick: () => openInEditor(active.path) },
+                    { label: t('common.blameHistory'), onClick: () => openFileView(active.path) }
+                  ]
+                : [
+                    { label: t('changes.unstageLines', { count: selection.size }), disabled: !selection.size, hint: selection.size ? undefined : t('feedback.blocked.noSelection'), onClick: () => lineAction('unstage') },
+                    { label: t('changes.unstageFile'), onClick: () => runChanges(t('busy.unstage'), () => git.unstageFiles([active.path])) }
+                  ])
+            ]}
+          />
         </div>
       )
   }

@@ -1690,6 +1690,7 @@ export const ar: Messages = {
     loading: 'جارٍ قراءة إعدادات git…'
   },
   diffExtra: {
+    options: 'خيارات',
     fullFile: 'الملف كاملًا',
     fullFileHelp: 'عرض الملف كاملًا وليس الأجزاء المعدّلة فقط',
     changesOnlyHelp: 'العودة إلى عرض الأجزاء المعدّلة فقط',

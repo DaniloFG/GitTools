@@ -1646,6 +1646,7 @@ export const zhCN: Messages = {
     loading: '正在读取 git 配置…'
   },
   diffExtra: {
+    options: '选项',
     fullFile: '整个文件',
     fullFileHelp: '显示整个文件，而不只是修改的部分',
     changesOnlyHelp: '恢复为只显示修改的部分',

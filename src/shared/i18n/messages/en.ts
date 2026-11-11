@@ -1682,6 +1682,7 @@ export const en: Messages = {
     loading: 'Reading the git configuration…'
   },
   diffExtra: {
+    options: 'Options',
     fullFile: 'Whole file',
     fullFileHelp: 'Show the whole file, not only the changed parts',
     changesOnlyHelp: 'Go back to showing only the changed parts',

@@ -4056,6 +4056,11 @@ body.docking .pane-grip {
   display: flex;
   align-items: center;
 }
+/* A alça fica na borda, metade fora da célula: o cabeçalho herda `overflow: hidden` de `.commit-author` etc. e cortava
+   a alça (sobrava 1px para clicar, #86). O rótulo já corta o próprio texto. */
+.commit-columns .commit-column-head {
+  overflow: visible;
+}
 .commit-column-label {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4066,21 +4071,21 @@ body.docking .pane-grip {
   position: absolute;
   top: -2px;
   bottom: -2px;
-  width: 9px;
+  width: 12px;
   cursor: col-resize;
   touch-action: none;
 }
 .resize-start > .column-resize {
-  inset-inline-start: -8px;
+  inset-inline-start: -10px;
 }
 .resize-end > .column-resize {
-  inset-inline-end: -8px;
+  inset-inline-end: -10px;
 }
 .column-resize::after {
   content: '';
   position: absolute;
   inset-block: 3px;
-  inset-inline-start: 4px;
+  inset-inline-start: 5px;
   width: 1px;
   background: var(--border);
 }

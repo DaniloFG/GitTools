@@ -450,23 +450,33 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
       <PaneSlot id="files.diff">
         {active ? (
           <div className="diff-panel file-history-diff">
-            <div className="selection-bar">
-              <button
-                onClick={() => openDiffWindow({ source: { kind: 'commit', sha: active.sha }, path: active.path, title: `${active.path} · ${shortSha(active.sha)}` })}
-                title={t('diffExtra.openWindowHelp')}
-              >
-                ⧉ {t('diffExtra.openWindow')}
-              </button>
-              <button onClick={() => selectCommit(active.sha)}>{t('files.viewCommit')}</button>
-              <button onClick={() => onBlameAt(active.sha)}>{t('files.blameThisVersion')}</button>
-              <button onClick={() => restore(active)}>{t('files.restoreThisVersion')}</button>
-              {head && (
-                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
-                  {t('common.applyLinesInto', { count: selection.size, target: head })}
-                </button>
-              )}
-            </div>
-            {diff ? <DiffView file={diff} selection={head ? selection : undefined} onSelectionChange={setSelection} /> : <LoaderPane label={t('loader.diff')} />}
+            {diff ? (
+              <DiffView
+                file={diff}
+                selection={head ? selection : undefined}
+                onSelectionChange={setSelection}
+                panelActions={[
+                  {
+                    label: `⧉ ${t('diffExtra.openWindow')}`,
+                    hint: t('diffExtra.openWindowHelp'),
+                    onClick: () => openDiffWindow({ source: { kind: 'commit', sha: active.sha }, path: active.path, title: `${active.path} · ${shortSha(active.sha)}` })
+                  },
+                  { label: t('files.viewCommit'), onClick: () => selectCommit(active.sha) },
+                  { label: t('files.blameThisVersion'), onClick: () => onBlameAt(active.sha) },
+                  { label: t('files.restoreThisVersion'), onClick: () => restore(active) },
+                  ...(head
+                    ? [
+                        {
+                          label: t('common.applyLinesInto', { count: selection.size, target: head }),
+                          disabled: !selection.size,
+                          hint: selection.size ? undefined : t('feedback.blocked.noSelection'),
+                          onClick: applyLines
+                        }
+                      ]
+                    : [])
+                ]}
+              />
+            ) : <LoaderPane label={t('loader.diff')} />}
           </div>
         ) : (
           <p className="empty">{t('files.noCommits')}</p>

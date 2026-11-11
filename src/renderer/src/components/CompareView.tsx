@@ -256,32 +256,31 @@ export function CompareView({ request, onRequest }: Props) {
         <LoaderPane label={t('loader.diff')} />
       ) : (
         <div className="diff-panel">
-          <div className="selection-bar">
-            <span className="muted">
-              {shortSha(base!)} → {comparison.to}
-            </span>
-            <button
-              onClick={() => source && openDiffWindow({ source, path: active.path, title: `${active.path} · ${shortSha(base!)} → ${comparison.to}` })}
-              title={t('diffExtra.openWindowHelp')}
-            >
-              ⧉ {t('diffExtra.openWindow')}
-            </button>
-            {head && (
-              <>
-                <button className="primary" disabled={!selection.size} title={selection.size ? undefined : t('feedback.blocked.noSelection')} onClick={applyLines}>
-                  {t('common.applyLinesInto', { count: selection.size, target: head })}
-                </button>
-                <button onClick={() => copyVersion(active)} title={t('compare.copyVersionHelp', { target: head, ref: comparison.to })}>
-                  {t('compare.copyVersion', { ref: comparison.to })}
-                </button>
-              </>
-            )}
-            <button onClick={() => openFileView(active.path)}>{t('common.blameHistory')}</button>
-          </div>
           <DiffView
             file={diff}
             selection={head ? selection : undefined}
             onSelectionChange={setSelection}
+            panelActions={[
+              // As refs comparadas ficavam na barra removida; no menu continuam à vista.
+              { label: `${shortSha(base!)} → ${comparison.to}`, disabled: true },
+              {
+                label: `⧉ ${t('diffExtra.openWindow')}`,
+                hint: t('diffExtra.openWindowHelp'),
+                onClick: () => source && openDiffWindow({ source, path: active.path, title: `${active.path} · ${shortSha(base!)} → ${comparison.to}` })
+              },
+              ...(head
+                ? [
+                    {
+                      label: t('common.applyLinesInto', { count: selection.size, target: head }),
+                      disabled: !selection.size,
+                      hint: selection.size ? undefined : t('feedback.blocked.noSelection'),
+                      onClick: applyLines
+                    },
+                    { label: t('compare.copyVersion', { ref: comparison.to }), hint: t('compare.copyVersionHelp', { target: head, ref: comparison.to }), onClick: () => copyVersion(active) }
+                  ]
+                : []),
+              { label: t('common.blameHistory'), onClick: () => openFileView(active.path) }
+            ]}
             fileNav={{
               index: Math.max(0, comparison.files.findIndex((f) => f.path === active?.path)),
               count: comparison.files.length,

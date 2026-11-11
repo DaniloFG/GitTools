@@ -1683,6 +1683,7 @@ export const ptBR = {
     loading: 'Lendo a configuração do git…'
   },
   diffExtra: {
+    options: 'Opções',
     fullFile: 'Arquivo inteiro',
     fullFileHelp: 'Mostrar o arquivo inteiro, não só os trechos alterados',
     changesOnlyHelp: 'Voltar a mostrar só os trechos alterados',

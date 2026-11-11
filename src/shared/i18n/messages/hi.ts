@@ -1684,6 +1684,7 @@ export const hi: Messages = {
     loading: 'Git कॉन्फ़िगरेशन पढ़ा जा रहा है…'
   },
   diffExtra: {
+    options: 'विकल्प',
     fullFile: 'पूरी फ़ाइल',
     fullFileHelp: 'सिर्फ़ बदले हुए हिस्से नहीं, पूरी फ़ाइल दिखाएँ',
     changesOnlyHelp: 'फिर से सिर्फ़ बदले हुए हिस्से दिखाएँ',
