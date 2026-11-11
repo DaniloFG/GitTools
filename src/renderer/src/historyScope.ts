@@ -46,6 +46,32 @@ export function scopeLogOptions(scope: HistoryScope): LogOptions {
   return scope.kind === 'all' ? { all: true } : scope.kind === 'head' ? {} : scope.kind === 'ref' ? { ref: scope.ref } : { refs: scope.refs }
 }
 
+/** Tamanho de cada página do histórico (a primeira leitura também usa este número). */
+export const LOG_PAGE = 500
+/** Teto do histórico na tela: além disso ele para e avisa que foi cortado (ver `history.limitReached`). */
+export const LOG_MAX = 10_000
+
+/** Limite do histórico que a sessão já pediu, e de que escopo: o que já foi carregado não é relido ao trocar de escopo. */
+export interface LogLimit {
+  scopeKey: string
+  limit: number
+}
+
+/** Limite a pedir para este escopo: o que a sessão já carregou, se for o mesmo escopo; senão a primeira página. */
+export function logLimitFor(logLimit: LogLimit | null, scopeKey: string): number {
+  return logLimit && logLimit.scopeKey === scopeKey ? logLimit.limit : LOG_PAGE
+}
+
+/** Há mais commits para ler? Só se a última leitura veio cheia (ou seja, pode haver mais) e o teto não foi atingido. */
+export function canLoadMoreLog(loaded: number, limit: number): boolean {
+  return loaded >= limit && limit < LOG_MAX
+}
+
+/** Parâmetros da página seguinte: começa onde a lista carregada termina, sem passar do teto. */
+export function nextLogPage(loaded: number): { skip: number; limit: number } {
+  return { skip: loaded, limit: Math.max(0, Math.min(LOG_PAGE, LOG_MAX - loaded)) }
+}
+
 /** A linha das alterações ainda não commitadas é do HEAD: só aparece se o HEAD está no que é listado. */
 export function showsWorkingChanges(scope: HistoryScope, head: string | null): boolean {
   return scope.kind === 'ref' ? scope.ref === head : scope.kind === 'refs' ? head !== null && scope.refs.includes(head) : true

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEve
 import type { MessageKey } from '../../../shared/i18n'
 import type { TerminalCommandResult } from '../../../shared/terminal'
 import { parseCommandLine } from '../../../shared/terminal'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { git } from '../git'
 import { getCurrentLocale, t } from '../i18n'
 import { GIT_COMMANDS, LOCAL_COMMANDS, findCommand, pickText, type GitCommandSpec } from '../terminal/gitCommands'
@@ -95,7 +95,8 @@ function HelpBlock({ spec, locale }: { spec: GitCommandSpec; locale: string }) {
 
 /** Terminal integrado ao log: roda comandos git no repositório aberto, com sugestões e histórico. */
 export function GitTerminal() {
-  const { repo, data, refresh } = useApp()
+  const { repo, data } = useRepoData()
+  const { refresh } = useAppActions()
   const locale = getCurrentLocale()
   const key = historyKey(repo.root)
   const [entries, setEntries] = useState<Entry[]>([])

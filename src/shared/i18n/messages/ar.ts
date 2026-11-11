@@ -209,12 +209,14 @@ export const ar: Messages = {
       graph: 'المخطط'
     },
     count: { one: 'إيداع واحد', two: 'إيداعان', few: '{count} إيداعات', many: '{count} إيداعًا', other: '{count} إيداع' },
+    loadingMore: 'جارٍ تحميل المزيد من الإيداعات…',
+    limitReached: { other: 'عرض أحدث {count} إيداع' },
     selected: { one: 'تم تحديد واحد', two: 'تم تحديد اثنين', other: 'المحدد: {count}' },
     hint: 'Ctrl/Shift+نقر لتحديد عدة عناصر · ▸ أو النقر المزدوج يعرض الملفات · اسحب إلى فرع',
     empty: 'لا توجد إيداعات بعد.',
     log: {
       chip: 'git log',
-      help: 'هذا السجل هو «git log» بشكل مرئي: كل صف إيداع والرسم يوضح الفروع. يعادل git log --graph --all --decorate بحد أقصى 500 إيداع.',
+      help: 'هذا السجل هو «git log» بشكل مرئي: كل صف إيداع والرسم يوضح الفروع. يعادل git log --graph --all --decorate 500 إيداع في كل مرة، مع تحميل المزيد عند التمرير (حتى 10,000).',
       tab: 'السجل — git log بشكل مرئي'
     },
     wip: {
@@ -299,7 +301,11 @@ export const ar: Messages = {
     inline: 'أعلى وأسفل',
     inlineHelp: 'الأسطر المحذوفة والمضافة واحدًا تحت الآخر',
     split: 'جنبًا إلى جنب',
-    splitHelp: 'النسخة القديمة على اليسار والجديدة على اليمين'
+    splitHelp: 'النسخة القديمة على اليسار والجديدة على اليمين',
+    truncated: {
+      message: 'هذا الفرق كبير وقُطع عند {size}: نهاية الملف لا تظهر.',
+      showAll: 'عرض على أي حال'
+    }
   },
   changes: {
     discardTitle: 'تجاهل التغييرات',
@@ -1013,7 +1019,8 @@ export const ar: Messages = {
     historyRewritten: 'تمت إعادة كتابة السجل.',
     binaryNoLines: 'الملف الثنائي "{path}" لا يسمح بتحديد الأسطر.',
     gitNotFound: 'تعذّر تشغيل git: {error}',
-    gitFailed: 'فشل git {command} (الرمز {code})'
+    gitFailed: 'فشل git {command} (الرمز {code})',
+    gitCanceled: 'تم إلغاء أمر git.'
   },
   main: {
     editorNotFound: 'لم يُعثر على المحرر "{editor}". اختر غيره من الإعدادات ← المحرر والفروق.',

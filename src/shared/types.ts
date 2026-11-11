@@ -46,17 +46,31 @@ export interface FileDiff {
   hunks: DiffHunk[]
   additions: number
   deletions: number
+  /**
+   * O diff foi cortado em DIFF_MAX_BYTES: faltam linhas no fim (e num diff de vários arquivos, os arquivos
+   * depois do corte não aparecem). Por isso as contagens de linhas são parciais.
+   */
+  truncated?: boolean
 }
 
 /** Identificador de uma linha dentro de um FileDiff: "<índice do hunk>:<índice da linha>". */
 export type LineKey = string
 
 /** De onde vem um diff exibido na interface. */
+/**
+ * Teto de bytes de um diff. O de um arquivo com 5.000 linhas alteradas (repositório de teste) tem 2,8 MB e
+ * cabe; o teto existe para casos patológicos (commits enormes, arquivos de centenas de MB), que passariam
+ * pelo processo principal e pelo IPC inteiros.
+ */
+export const DIFF_MAX_BYTES = 4 * 1024 * 1024
+
 /** Opções comuns a qualquer diff. */
 interface DiffSourceOptions {
   path?: string
   /** Mostra o arquivo inteiro (todo o contexto), não só as linhas em volta das alterações. */
   fullFile?: boolean
+  /** "Mostrar mesmo assim": diff sem o teto DIFF_MAX_BYTES. */
+  uncapped?: boolean
 }
 
 export type DiffSource =

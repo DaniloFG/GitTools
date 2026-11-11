@@ -48,6 +48,11 @@ export interface LogOptions {
   refs?: string[]
   all?: boolean
   limit?: number
+  /**
+   * Pula os N primeiros commits da lista (paginação do histórico). Com a mesma lista de refs, `skip: N, limit: M`
+   * é a continuação exata de `limit: N`: `--topo-order` garante a mesma ordem nas duas leituras.
+   */
+  skip?: number
 }
 
 /** Operações disponíveis sobre o repositório aberto (implementadas por GitRepository). */

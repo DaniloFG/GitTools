@@ -13,7 +13,7 @@
 
 import type { CompareRequest, RepoData } from './context'
 import type { FileFocus, WipFocus } from './components/CommitDetails'
-import type { HistoryScope } from './historyScope'
+import type { HistoryScope, LogLimit } from './historyScope'
 import type { LogCache } from './stable'
 
 /** O que a tela precisa que esteja carregado, além do básico (status, branches, tags e operação). */
@@ -22,6 +22,11 @@ export interface Wants {
   log: boolean
   /** Stashes (painel Stashes ou dashboards). */
   stashes: boolean
+  /**
+   * Contagens de linhas (+/−) do status. Custam a leitura dos arquivos novos, então só as telas que as mostram pedem
+   * (ver `wants.stats` em App.tsx); a leitura sem elas é a do caminho de atualização, com um processo só.
+   */
+  stats: boolean
 }
 
 /** O que a última leitura trouxe. */
@@ -45,7 +50,7 @@ export interface StateInput {
 
 /** O dado guardado cobre o que a tela quer agora? (Um painel novo na tela pode pedir o histórico ou os stashes.) */
 export function covers(loaded: Loaded, scope: string, wants: Wants): boolean {
-  return loaded.scopeKey === scope && (loaded.log || !wants.log) && (loaded.stashes || !wants.stashes)
+  return loaded.scopeKey === scope && (loaded.log || !wants.log) && (loaded.stashes || !wants.stashes) && (loaded.stats || !wants.stats)
 }
 
 /** Estado da sessão neste instante (derivado: não existe "stale" gravado, ele nasce de a geração ter mudado). */
@@ -94,7 +99,16 @@ export interface RepoSession {
   inflight: Promise<void> | null
   /** Pedido de nova leitura que chegou durante a atual. */
   again: boolean
+  /** Geração do cache quando a leitura em andamento começou; `null` quando não há leitura. */
+  loadingGeneration: number | null
   logCache: LogCache | null
+  /** Quantos commits do histórico (deste escopo) já foram pedidos; a página seguinte começa daí. */
+  logLimit: LogLimit | null
+  /**
+   * Página do histórico em leitura. Enquanto ela existe, nenhuma leitura completa começa: senão uma delas poderia
+   * gravar uma lista com o limite antigo por cima da página nova.
+   */
+  pagingLog: Promise<void> | null
   ui: SessionUi
   /** Quando a sessão foi usada pela última vez (para descartar as mais antigas). */
   touchedAt: number
@@ -112,11 +126,49 @@ function blankUi(): SessionUi {
 export function getSession(root: string): RepoSession {
   let session = sessions.get(root)
   if (!session) {
-    session = { root, data: null, loaded: null, inflight: null, again: false, logCache: null, ui: blankUi(), touchedAt: Date.now() }
+    session = {
+      root,
+      data: null,
+      loaded: null,
+      inflight: null,
+      again: false,
+      loadingGeneration: null,
+      logCache: null,
+      logLimit: null,
+      pagingLog: null,
+      ui: blankUi(),
+      touchedAt: Date.now()
+    }
     sessions.set(root, session)
   }
   session.touchedAt = Date.now()
   return session
+}
+
+/** O que é preciso saber para decidir se um aviso do observador é eco da alteração feita pela própria interface. */
+export interface EchoInput {
+  /** Houve alteração própria recente (ver `ReadCache.hasRecentChange`). */
+  ownChange: boolean
+  /** Geração atual do repositório. */
+  generation: number
+  /** Geração da última leitura concluída, ou `null`. */
+  lastLoaded: number | null
+  /** Geração em que a leitura em andamento começou, ou `null`. */
+  loadingGeneration: number | null
+  /** Já há outra rodada de leitura na fila. */
+  again: boolean
+}
+
+/**
+ * O aviso é eco de uma alteração da própria interface, e os dados já foram lidos depois dela? Então não há o que
+ * ler de novo. Sem alteração própria recente, nunca é eco: o aviso é de algo de fora (um commit no terminal).
+ */
+export function isOwnEcho(input: EchoInput): boolean {
+  const { ownChange, generation, lastLoaded, loadingGeneration, again } = input
+  if (!ownChange) return false
+  // Leitura em andamento: vale se começou depois da alteração, ou se outra rodada já vai começar depois dela.
+  if (loadingGeneration !== null) return again || loadingGeneration === generation
+  return lastLoaded === generation
 }
 
 export function peekSession(root: string): RepoSession | undefined {
@@ -138,6 +190,7 @@ export function trimSessions(keep: string, max = MAX_WARM_SESSIONS): string[] {
     s.data = null
     s.loaded = null
     s.logCache = null
+    s.logLimit = null
   }
   return dropped.map((s) => s.root)
 }

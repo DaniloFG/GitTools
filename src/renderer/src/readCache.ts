@@ -126,6 +126,8 @@ export class ReadCache {
   private epoch = 0
   /** Alterações em andamento por repositório: enquanto houver, leituras voláteis não são guardadas. */
   private readonly mutating = new Map<string, number>()
+  /** Instante em que a última alteração feita pela interface terminou (por repositório). */
+  private readonly changedAt = new Map<string, number>()
   private bytes = 0
   private readonly maxEntries: number
   private readonly maxBytes: number
@@ -225,7 +227,31 @@ export class ReadCache {
       if (left > 0) this.mutating.set(root, left)
       else this.mutating.delete(root)
       this.invalidate(root)
+      this.changedAt.set(root, Date.now())
     }
+  }
+
+  /** Carimba o fim de uma alteração feita fora do proxy (ex.: cherry-pick entre repositórios). */
+  stampChange(root: string, at = Date.now()): void {
+    this.changedAt.set(root, at)
+  }
+
+  /**
+   * Houve alteração feita pela interface neste repositório que ainda pode estar chegando ao observador? Verdadeiro
+   * se há alteração em andamento, ou se a última terminou há no máximo `windowMs` (em relação a `now`).
+   */
+  hasRecentChange(root: string, windowMs: number, now = Date.now()): boolean {
+    if ((this.mutating.get(root) ?? 0) > 0) return true
+    const at = this.changedAt.get(root)
+    return at !== undefined && now - at <= windowMs
+  }
+
+  /**
+   * Consome o carimbo da última alteração: depois disso `hasRecentChange` é falso, salvo se uma alteração ainda
+   * estiver em andamento (ela continua valendo até terminar). Usado quando um aviso foi aceito como eco.
+   */
+  consumeChange(root: string): void {
+    this.changedAt.delete(root)
   }
 
   /** Algo mudou em `root` (por fora ou por uma operação fora desta interface): as leituras voláteis dele deixam de valer. */
@@ -245,6 +271,7 @@ export class ReadCache {
     for (const [key, entry] of [...this.entries]) if (entry.root === root) this.remove(key)
     this.local.delete(root)
     this.mutating.delete(root)
+    this.changedAt.delete(root)
   }
 
   /** Mantém o cache dentro dos limites, tirando as entradas menos usadas (as mais antigas na fila). */

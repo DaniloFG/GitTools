@@ -1,6 +1,5 @@
-import { randomUUID } from 'node:crypto'
-import { existsSync } from 'node:fs'
-import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { createHash, randomUUID } from 'node:crypto'
+import { access, lstat, mkdir, open, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import type { LogOptions, RepoApi } from '../shared/api'
 import type {
@@ -40,7 +39,8 @@ import type {
   StashInfo,
   TagInfo
 } from '../shared/types'
-import { buildPartialPatch, parseDiff, quotePath } from './diff'
+import { buildPartialPatch, parseDiff, quotePath, trimTruncated } from './diff'
+import { DIFF_MAX_BYTES } from '../shared/types'
 import { t } from '../shared/i18n'
 import { chunkArgs } from './chunk'
 import { GitError, runGit, type RunOptions, type RunResult } from './exec'
@@ -67,6 +67,24 @@ const GS = '\x1d'
 /** Máximo de commits que os dashboards leem por vez (os mais recentes) e de arquivos da árvore atual. */
 const ANALYTICS_LIMIT = 20_000
 const ANALYTICS_TREE_LIMIT = 100_000
+/**
+ * Versão do formato do resultado de `analytics` que entra na chave de cache. Mude-a quando o formato
+ * (campos, ordem, regras de contagem) mudar, para que caches gravados em disco por versões antigas não
+ * sejam servidos como se ainda valessem.
+ */
+export const ANALYTICS_CACHE_VERSION = 1
+/** Prefixos de refs que `analytics` lê (`--branches --remotes --tags`); as demais não mudam o resultado. */
+const ANALYTICS_REF_PREFIXES = ['refs/heads/', 'refs/remotes/', 'refs/tags/']
+/** Quantos registros do log são convertidos antes de ceder a vez ao event loop (a conversão é síncrona). */
+const ANALYTICS_YIELD_EVERY = 1000
+
+const analyticsScope = (options: AnalyticsOptions): 'all' | 'head' => (options.scope === 'head' ? 'head' : 'all')
+/** Mesmo limite para `analytics` e `analyticsKey`: sem isso, a chave e o resultado poderiam falar de tamanhos diferentes. */
+const analyticsLimit = (options: AnalyticsOptions): number => Math.max(1, Math.min(Math.floor(options.limit ?? ANALYTICS_LIMIT), 200_000))
+/** SHA-1 do texto unido: a lista de refs pode ter ~70 KB, e a chave precisa ser curta para o nome do arquivo de cache. */
+const analyticsHash = (parts: string[]): string => createHash('sha1').update(['v' + ANALYTICS_CACHE_VERSION, ...parts].join('\n')).digest('hex')
+/** Cede a vez ao event loop: o processo principal atende janelas e IPC entre um lote de registros e outro. */
+const yieldToLoop = () => new Promise<void>((resolve) => setImmediate(resolve))
 const RS = '\x1e'
 const ANALYTICS_FORMAT = '%x1e%H%x1f%P%x1f%aN%x1f%aE%x1f%cN%x1f%cE%x1f%at%x1f%ct%x1f%s%x1f%D%x1f%b%x1d'
 const COMMIT_FORMAT = ['%H', '%P', '%an', '%ae', '%at', '%s', '%D'].join('%x1f') + '%x1e'
@@ -103,6 +121,15 @@ function parseCommitFields(fields: string[]): CommitInfo {
     subject: subject ?? '',
     refs: refs ? refs.split(', ').filter(Boolean) : []
   }
+}
+
+/** Saída do `git log` com COMMIT_FORMAT (registros separados por RS) em commits. */
+function parseLogOutput(stdout: string): CommitInfo[] {
+  return stdout
+    .split(RS)
+    .map((r) => r.replace(/^\n/, ''))
+    .filter(Boolean)
+    .map((r) => parseCommitFields(r.split(FS)))
 }
 
 function parseNameStatus(output: string): ChangedFile[] {
@@ -144,6 +171,90 @@ export function parseNumstat(output: string): Map<string, LineStats> {
 /** Junta as contagens de linhas a cada arquivo da lista (pelo caminho atual). */
 function withStats<T extends { path: string }>(files: T[], stats: Map<string, LineStats>): T[] {
   return files.map((f) => ({ ...f, ...stats.get(f.path) }))
+}
+
+/**
+ * Teto de arquivos novos contados. Só os primeiros desta quantidade (na ordem do git) ganham contagem; os demais
+ * ficam sem contagem, como os binários. Sem teto, um repositório com milhares de arquivos novos leria todos a cada
+ * atualização da tela.
+ */
+export const UNTRACKED_STATS_LIMIT = 1000
+/** Arquivo novo maior que isto não é lido para contar linhas (fica sem contagem). */
+const UNTRACKED_STATS_MAX_BYTES = 1024 * 1024
+/**
+ * Leituras de arquivos novos ao mesmo tempo. Sem limite, cada leitura segura um descritor de arquivo: com 2.000
+ * arquivos novos, 2.000 descritores abertos de uma vez.
+ */
+const UNTRACKED_READS_AT_ONCE = 8
+
+/**
+ * Roda `fn` em cada item, com no máximo `limit` em andamento. Fila de poucas tarefas, sem dependência: um
+ * `Promise.all` sobre a lista inteira abriria tudo de uma vez.
+ */
+async function mapLimit<T>(items: readonly T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0
+  const worker = async (): Promise<void> => {
+    while (next < items.length) await fn(items[next++])
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker))
+}
+
+/** Linhas de um arquivo novo: todas são adições. Binário (byte nulo no começo) não tem contagem. */
+function countNewLines(buffer: Buffer): LineStats {
+  if (buffer.subarray(0, 8000).includes(0)) return { binary: true }
+  const text = buffer.toString('utf8')
+  const lines = text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0)
+  return { additions: lines, deletions: 0 }
+}
+
+/**
+ * Formato de `git show` que traz o commit inteiro numa chamada: os campos de COMMIT_FORMAT, depois committer e
+ * corpo. Os mesmos campos que `commitDetails` lia antes com `git show -s`, agora seguidos do RS que fecha o cabeçalho.
+ */
+const COMMIT_DETAILS_FORMAT = ['%H', '%P', '%an', '%ae', '%at', '%s', '%D', '%cn', '%b'].join('%x1f') + '%x1e'
+
+/**
+ * Lê a saída de `git show --format=COMMIT_DETAILS_FORMAT -z --raw --numstat -M -m --first-parent <sha>`.
+ *
+ * Com `-z` a saída tem, nesta ordem: o cabeçalho (campos, depois RS) terminado em NUL; um '\n' de separação
+ * (só se houver arquivos); as entradas `--raw` (`:modoA modoB shaA shaB STATUS` NUL caminho NUL, e em
+ * renomeação/cópia `STATUS` NUL antigo NUL novo NUL); e as do `--numstat` (`adições TAB remoções TAB` NUL caminho NUL,
+ * e em renomeação o caminho vem vazio e são dois caminhos depois: antigo NUL novo NUL).
+ *
+ * O cabeçalho não tem NUL (git não aceita NUL numa mensagem), então o primeiro NUL o separa do resto. No resto,
+ * as entradas `--raw` começam sempre com ':' e as do `--numstat` nunca: o parser avança pelo número de caminhos
+ * que cada entrada ocupa e só testa o início das entradas. Assim um caminho que começa com ':' ou com dígito
+ * nunca é confundido com uma entrada.
+ */
+export function parseCommitShow(output: string): CommitDetails {
+  const nul = output.indexOf('\0')
+  const header = (nul < 0 ? output : output.slice(0, nul)).replace(/\x1e$/, '')
+  const fields = header.split(FS)
+  const info = parseCommitFields(fields)
+  const rest = nul < 0 ? '' : output.slice(nul + 1).replace(/^\n/, '')
+  const parts = rest.split('\0')
+  if (parts[parts.length - 1] === '') parts.pop()
+  const files: ChangedFile[] = []
+  let i = 0
+  while (i < parts.length && parts[i].startsWith(':')) {
+    // Metadado: ":modoA modoB shaA shaB STATUS". O STATUS é o último campo; R/C trazem dois caminhos.
+    const meta = parts[i].split(' ')
+    const status = meta[meta.length - 1][0]
+    if (status === 'R' || status === 'C') {
+      files.push({ status, oldPath: parts[i + 1], path: parts[i + 2] })
+      i += 3
+    } else {
+      files.push({ status, path: parts[i + 1] })
+      i += 2
+    }
+  }
+  const stats = parseNumstat(parts.slice(i).join('\0'))
+  return {
+    ...info,
+    committer: fields[7],
+    body: (fields[8] ?? '').trim(),
+    files: withStats(files, stats)
+  }
 }
 
 /** Soma contagens (ex.: o mesmo arquivo em vários commits). */
@@ -301,15 +412,64 @@ const CONFLICT_BATCH = 100
 /** Mensagem legível de um erro qualquer (para o resultado de operações em lote). */
 const reasonOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
+/** Existe arquivo ou pasta neste caminho (equivale a existsSync, mas assíncrono). */
+async function exists(path: string | undefined): Promise<boolean> {
+  if (!path) return false
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+
+/** Lê só os primeiros `bytes` bytes do arquivo (o descritor é fechado mesmo se a leitura falhar). */
+async function readFileHead(full: string, bytes: number): Promise<Buffer> {
+  const handle = await open(full, 'r')
+  try {
+    const buffer = Buffer.alloc(bytes)
+    const { bytesRead } = await handle.read(buffer, 0, bytes, 0)
+    return buffer.subarray(0, bytesRead)
+  } finally {
+    await handle.close()
+  }
+}
+
 export class GitRepository implements RepoApi {
   private emptyTreeSha: string | null = null
+  /** Pasta .git, resolvida uma vez (no `open` já vem junto, com o mesmo processo que acha a raiz). */
+  private gitDirPath: Promise<string> | null = null
+  /** Caminhos de MERGE_HEAD, rebase-merge etc.: não mudam enquanto o repositório está aberto. */
+  private operationPaths: Promise<string[]> | null = null
+  /** O HEAD já foi visto existindo: os próximos logs dispensam o rev-parse de verificação. */
+  private headBorn = false
 
   constructor(readonly root: string) {}
 
   static async open(path: string): Promise<GitRepository> {
-    const { stdout } = await runGit(path, ['rev-parse', '--show-toplevel'])
+    // Um processo só: a raiz e a pasta .git (duas linhas, nessa ordem). Cada processo custa caro no Windows.
+    const { stdout } = await runGit(path, ['rev-parse', '--show-toplevel', '--absolute-git-dir'])
+    const [top, gitDir] = stdout.split('\n')
     // No Windows o git informa "C:/pasta"; guardar no formato do sistema evita comparações de texto erradas.
-    return new GitRepository(resolve(stdout.trim()))
+    const repo = new GitRepository(resolve(top.trim()))
+    if (gitDir?.trim()) repo.gitDirPath = Promise.resolve(resolve(gitDir.trim()))
+    return repo
+  }
+
+  /** Pasta .git deste repositório. Só vai ao git na primeira vez (ou se a instância foi criada direto). */
+  gitDir(): Promise<string> {
+    if (!this.gitDirPath) {
+      this.gitDirPath = this.git(['rev-parse', '--absolute-git-dir']).then(
+        ({ stdout }) => resolve(this.root, stdout.trim()),
+        (error) => {
+          // Falha não fica guardada: a próxima chamada tenta de novo.
+          this.gitDirPath = null
+          throw error
+        }
+      )
+    }
+    return this.gitDirPath
   }
 
   static async init(path: string): Promise<GitRepository> {
@@ -379,7 +539,14 @@ export class GitRepository implements RepoApi {
     return { root: this.root, name: basename(this.root) }
   }
 
-  /** Situação da área de trabalho. Com `withStats`, inclui quantas linhas cada arquivo ganhou e perdeu. */
+  /** Contagens dos arquivos novos, por caminho (ver `untrackedStats`). Guarda só os arquivos da última leitura com contagem. */
+  private untrackedCache = new Map<string, { size: number; mtimeMs: number; stats: LineStats }>()
+
+  /**
+   * Situação da área de trabalho. Com `includeStats`, inclui quantas linhas cada arquivo ganhou e perdeu: são mais
+   * dois processos (numstat) e a leitura dos arquivos novos. Sem ele, é um único processo e nenhum arquivo é lido.
+   * O caminho de atualização da tela pede sem contagens; só as telas que as mostram pedem com (ver `wants.stats`).
+   */
   async status(includeStats = false): Promise<RepoStatus> {
     const { stdout } = await this.git(['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])
     const status = parseStatus(stdout)
@@ -389,23 +556,41 @@ export class GitRepository implements RepoApi {
       this.git(['diff', '--cached', '--numstat', '-z', '-M', '--no-color', '--no-ext-diff', '--']).then((r) => parseNumstat(r.stdout))
     ])
     status.staged = withStats(status.staged, staged)
-    status.unstaged = await Promise.all(
-      status.unstaged.map(async (f) => (f.untracked ? { ...f, ...(await this.untrackedStats(f.path)) } : { ...f, ...unstaged.get(f.path) }))
-    )
+    const counted = await this.untrackedStatsFor(status.unstaged.filter((f) => f.untracked).map((f) => f.path))
+    status.unstaged = status.unstaged.map((f) => (f.untracked ? { ...f, ...counted.get(f.path) } : { ...f, ...unstaged.get(f.path) }))
     return status
   }
 
-  /** Arquivo novo: todas as linhas são adições (arquivos muito grandes ou binários não são contados). */
+  /**
+   * Contagens dos arquivos novos, em fila de poucas leituras por vez. Os que passam do teto ficam sem contagem; e o
+   * cache sai dos arquivos que deixaram de ser novos ou ficaram de fora desta leitura.
+   */
+  private async untrackedStatsFor(paths: string[]): Promise<Map<string, LineStats>> {
+    const counted = paths.slice(0, UNTRACKED_STATS_LIMIT)
+    const result = new Map<string, LineStats>()
+    await mapLimit(counted, UNTRACKED_READS_AT_ONCE, async (path) => {
+      result.set(path, await this.untrackedStats(path))
+    })
+    const keep = new Set(counted)
+    for (const path of this.untrackedCache.keys()) if (!keep.has(path)) this.untrackedCache.delete(path)
+    return result
+  }
+
+  /**
+   * Arquivo novo: um `lstat` (barato) e, só se o tamanho ou a data mudou desde a última contagem, a leitura do
+   * conteúdo. Arquivo acima de 1 MB, que não é arquivo comum ou que sumiu fica sem contagem.
+   * Limite conhecido: uma edição que mantém o tamanho e a data exatos não é vista até a data mudar de novo.
+   */
   private async untrackedStats(path: string): Promise<LineStats> {
     try {
       const full = join(this.root, path)
       const stat = await lstat(full)
-      if (!stat.isFile() || stat.size > 5 * 1024 * 1024) return {}
-      const buffer = await readFile(full)
-      if (buffer.subarray(0, 8000).includes(0)) return { binary: true }
-      const text = buffer.toString('utf8')
-      const lines = text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0)
-      return { additions: lines, deletions: 0 }
+      if (!stat.isFile() || stat.size > UNTRACKED_STATS_MAX_BYTES) return {}
+      const cached = this.untrackedCache.get(path)
+      if (cached && cached.size === stat.size && cached.mtimeMs === stat.mtimeMs) return cached.stats
+      const stats = countNewLines(await readFile(full))
+      this.untrackedCache.set(path, { size: stat.size, mtimeMs: stat.mtimeMs, stats })
+      return stats
     } catch {
       return {}
     }
@@ -463,11 +648,36 @@ export class GitRepository implements RepoApi {
   }
 
   async log(options: LogOptions = {}): Promise<CommitInfo[]> {
+    const refs = [...new Set(options.refs ?? [])]
+    const ref = options.ref ?? 'HEAD'
+    // Com o HEAD já visto, pula o rev-parse só nas consultas que dependem dele. Nas outras (uma branch
+    // explícita sem `all`), a verificação muda o resultado, então ela sempre roda.
+    // Se o HEAD virou órfão, o `git log` falha e cai no caminho completo, que devolve [] como antes.
+    if (this.headBorn && (options.all || refs.length > 0 || ref === 'HEAD')) {
+      const args = this.logArgs(options, refs, true)
+      let stdout: string | null = null
+      try {
+        stdout = (await this.git(args)).stdout
+      } catch {
+        this.headBorn = false
+      }
+      if (stdout !== null) return parseLogOutput(stdout)
+    }
     // Só precisamos saber se já existe commit: um rev-parse custa bem menos que um status completo.
     const hasHead = (await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })).exitCode === 0
-    const refs = [...new Set(options.refs ?? [])]
+    if (hasHead) this.headBorn = true
     if (!hasHead && !options.all && refs.length === 0) return []
+    const { stdout } = await this.git(this.logArgs(options, refs, hasHead))
+    return parseLogOutput(stdout)
+  }
+
+  /** Argumentos do `git log` de `log()`: HEAD só entra quando existe (`hasHead`). */
+  private logArgs(options: LogOptions, refs: string[], hasHead: boolean): string[] {
     const args = ['log', `--format=${COMMIT_FORMAT}`, '--topo-order', `-n${options.limit ?? 500}`]
+    // Página seguinte do histórico. Valida antes de ir ao git: um número inválido não pode virar um argumento.
+    const skip = Math.floor(options.skip ?? 0)
+    if (!(skip >= 0)) throw new Error(`Deslocamento do histórico inválido: ${options.skip}`)
+    if (skip > 0) args.push(`--skip=${skip}`)
     if (options.all) {
       args.push('--branches', '--remotes', '--tags')
       if (hasHead) args.push('HEAD')
@@ -480,32 +690,30 @@ export class GitRepository implements RepoApi {
       args.push(ref)
     }
     args.push('--')
-    const { stdout } = await this.git(args)
-    return stdout
-      .split(RS)
-      .map((r) => r.replace(/^\n/, ''))
-      .filter(Boolean)
-      .map((r) => parseCommitFields(r.split(FS)))
+    return args
   }
 
+  /**
+   * Cabeçalho e arquivos do commit em um processo só. `-m --first-parent` faz o merge mostrar a diferença contra o
+   * primeiro pai (o mesmo que `parents[0]`); o commit raiz sai contra a árvore vazia, como o `git show` faz por padrão.
+   */
   async commitDetails(sha: string): Promise<CommitDetails> {
     assertRef(sha, 'commit')
     const { stdout } = await this.git([
       'show',
-      '-s',
-      `--format=%H%x1f%P%x1f%an%x1f%ae%x1f%at%x1f%s%x1f%D%x1f%cn%x1f%b`,
+      `--format=${COMMIT_DETAILS_FORMAT}`,
+      '-z',
+      '--raw',
+      '--numstat',
+      '-M',
+      '--no-color',
+      '--no-ext-diff',
+      '-m',
+      '--first-parent',
       sha,
       '--'
     ])
-    const fields = stdout.split(FS)
-    const info = parseCommitFields(fields)
-    const files = await this.changedFiles(info.sha, info.parents)
-    return { ...info, committer: fields[7], body: (fields[8] ?? '').trim(), files }
-  }
-
-  private async changedFiles(sha: string, parents: string[]): Promise<ChangedFile[]> {
-    const base = parents[0] ?? (await this.emptyTree())
-    return this.filesBetween(base, sha)
+    return parseCommitShow(stdout)
   }
 
   /** Arquivos diferentes entre duas versões, com as linhas adicionadas/removidas de cada um. */
@@ -538,31 +746,41 @@ export class GitRepository implements RepoApi {
     return this.emptyTreeSha
   }
 
-  private async parentOf(sha: string): Promise<string> {
-    const { stdout } = await this.git(['rev-list', '--parents', '-n1', sha, '--'])
-    const [, parent] = stdout.trim().split(' ')
-    return parent ?? (await this.emptyTree())
-  }
-
   async diff(source: DiffSource): Promise<FileDiff[]> {
     const pathArgs = source.path ? ['--', source.path] : ['--']
     const args = diffArgs(source.fullFile)
+    // Teto de saída do git: sem ele, um commit de milhares de arquivos passa inteiro pelo IPC.
+    // "Mostrar mesmo assim" (uncapped) tira o teto; a chave de cache muda junto, pois o pedido é outro.
+    // stopAtLimit: ao passar do teto o git é parado, em vez de gerar o diff inteiro só para descartar o excedente.
+    const limit = source.uncapped ? {} : { maxOutputBytes: DIFF_MAX_BYTES, stopAtLimit: true }
+    const capped = async (command: string[]): Promise<FileDiff[]> => {
+      const result = await this.git(command, limit)
+      const files = parseDiff(result.stdout)
+      return result.truncated ? trimTruncated(files) : files
+    }
     switch (source.kind) {
       case 'unstaged': {
-        if (source.path && (await this.isUntracked(source.path))) return [await this.untrackedDiff(source.path)]
-        return parseDiff((await this.git([...args, ...pathArgs])).stdout)
+        if (source.path && (await this.isUntracked(source.path))) return [await this.untrackedDiff(source.path, source.uncapped)]
+        return capped([...args, ...pathArgs])
       }
       case 'staged':
-        return parseDiff((await this.git([...args, '--cached', '-M', ...pathArgs])).stdout)
+        return capped([...args, '--cached', '-M', ...pathArgs])
       case 'commit': {
         assertRef(source.sha, 'commit')
-        const parent = await this.parentOf(source.sha)
-        return parseDiff((await this.git([...args, '-M', parent, source.sha, ...pathArgs])).stdout)
+        // `sha^` é o primeiro pai (o mesmo que parents[0]), sem o `rev-list` que antes achava o pai: um processo a menos.
+        try {
+          return await capped([...args, '-M', `${source.sha}^`, source.sha, ...pathArgs])
+        } catch (error) {
+          // Commit raiz não tem `^`: o git recusa a revisão e a base passa a ser a árvore vazia. Outros erros
+          // (sha inexistente, por exemplo) seguem como estavam: a segunda tentativa falharia do mesmo jeito.
+          if (!(error instanceof GitError) || !/bad revision|unknown revision|ambiguous argument/.test(error.stderr)) throw error
+          return capped([...args, '-M', await this.emptyTree(), source.sha, ...pathArgs])
+        }
       }
       case 'range':
         assertRef(source.from)
         assertRef(source.to)
-        return parseDiff((await this.git([...args, '-M', source.from, source.to, ...pathArgs])).stdout)
+        return capped([...args, '-M', source.from, source.to, ...pathArgs])
     }
   }
 
@@ -571,8 +789,11 @@ export class GitRepository implements RepoApi {
     return stdout.split('\0').includes(path)
   }
 
-  /** Diff sintético para um arquivo não rastreado (tudo é adição). */
-  private async untrackedDiff(path: string): Promise<FileDiff> {
+  /**
+   * Diff sintético para um arquivo não rastreado (tudo é adição). Com teto, um arquivo maior que DIFF_MAX_BYTES
+   * é lido só até o teto: não se carrega centenas de MB do disco para mostrar um trecho.
+   */
+  private async untrackedDiff(path: string, uncapped = false): Promise<FileDiff> {
     const full = join(this.root, path)
     const stat = await lstat(full)
     const mode = stat.isSymbolicLink() ? '120000' : stat.mode & 0o111 ? '100755' : '100644'
@@ -597,10 +818,18 @@ export class GitRepository implements RepoApi {
       file.binary = true
       return file
     }
-    const buffer = await readFile(full)
+    const capped = !uncapped && stat.size > DIFF_MAX_BYTES
+    let buffer = capped ? await readFileHead(full, DIFF_MAX_BYTES) : await readFile(full)
     if (buffer.subarray(0, 8000).includes(0)) {
       file.binary = true
       return file
+    }
+    if (capped) {
+      // Corta no último \n: a quebra de byte 0x0a nunca aparece dentro de um caractere UTF-8, e uma linha
+      // pela metade não vira linha do diff. Sem \n nenhum, o trecho fica vazio.
+      const cut = buffer.lastIndexOf(0x0a)
+      buffer = buffer.subarray(0, cut + 1)
+      file.truncated = true
     }
     const text = buffer.toString('utf8')
     if (text.length === 0) return file
@@ -620,32 +849,52 @@ export class GitRepository implements RepoApi {
     return file
   }
 
+  /**
+   * Caminhos (MERGE_HEAD, rebase-merge…) que `operationState` confere. O git é consultado uma vez por
+   * repositório aberto: esses caminhos não mudam. Se a consulta falha, a próxima chamada tenta de novo.
+   */
+  private resolveOperationPaths(): Promise<string[]> {
+    if (!this.operationPaths) {
+      const names = ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply', 'sequencer/todo']
+      this.operationPaths = this.git(['rev-parse', ...names.flatMap((n) => ['--git-path', n])]).then(
+        ({ stdout }) => stdout.split('\n').filter(Boolean).map((p) => resolve(this.root, p)),
+        (error) => {
+          this.operationPaths = null
+          throw error
+        }
+      )
+    }
+    return this.operationPaths
+  }
+
   async operationState(): Promise<OperationState> {
-    const names = ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply', 'sequencer/todo']
-    const { stdout } = await this.git(['rev-parse', ...names.flatMap((n) => ['--git-path', n])])
-    const paths = stdout.split('\n').filter(Boolean).map((p) => resolve(this.root, p))
+    const paths = await this.resolveOperationPaths()
     const [merge, cherry, revert, rebaseMerge, rebaseApply, sequencer] = paths
     const readHead = async (p: string) => (await readFile(p, 'utf8')).trim()
     const readNumber = async (p: string) => Number((await readFile(p, 'utf8').catch(() => '0')).trim())
+    // Só o sistema de arquivos, em paralelo: são seis verificações de existência, sem processo git.
+    const [hasMerge, hasCherry, hasRevert, hasRebaseMerge, hasRebaseApply, hasSequencer] = await Promise.all(
+      [merge, cherry, revert, rebaseMerge, rebaseApply, sequencer].map(exists)
+    )
 
-    if (existsSync(rebaseMerge)) {
+    if (hasRebaseMerge) {
       return {
         kind: 'rebase',
         step: await readNumber(join(rebaseMerge, 'msgnum')),
         total: await readNumber(join(rebaseMerge, 'end'))
       }
     }
-    if (existsSync(rebaseApply)) {
+    if (hasRebaseApply) {
       return {
         kind: 'rebase',
         step: await readNumber(join(rebaseApply, 'next')),
         total: await readNumber(join(rebaseApply, 'last'))
       }
     }
-    if (existsSync(cherry)) return { kind: 'cherry-pick', head: await readHead(cherry) }
-    if (existsSync(revert)) return { kind: 'revert', head: await readHead(revert) }
-    if (existsSync(merge)) return { kind: 'merge', head: await readHead(merge) }
-    if (existsSync(sequencer)) {
+    if (hasCherry) return { kind: 'cherry-pick', head: await readHead(cherry) }
+    if (hasRevert) return { kind: 'revert', head: await readHead(revert) }
+    if (hasMerge) return { kind: 'merge', head: await readHead(merge) }
+    if (hasSequencer) {
       const todo = await readFile(sequencer, 'utf8')
       return { kind: /^\s*revert\b/.test(todo) ? 'revert' : 'cherry-pick' }
     }
@@ -676,7 +925,10 @@ export class GitRepository implements RepoApi {
   }
 
   private async findFile(source: DiffSource, path: string): Promise<FileDiff> {
-    const files = await this.diff({ ...source, path })
+    // Sem teto de propósito: a ação de linhas é uma alteração pedida pelo usuário e precisa do diff inteiro.
+    // As chaves `hunk:linha` dos blocos que ficaram são as mesmas com e sem teto, mas as linhas dos blocos
+    // depois do corte só existem na leitura sem teto (são as que aparecem após "mostrar mesmo assim").
+    const files = await this.diff({ ...source, path, uncapped: true })
     const file = files.find((f) => f.path === path || f.oldPath === path)
     if (!file) throw new Error(t('core.noChangesIn', { path }))
     return file
@@ -1415,11 +1667,49 @@ export class GitRepository implements RepoApi {
 
   // ------------------------------------------------------------ dashboards
 
-  async analytics(options: AnalyticsOptions = {}): Promise<Analytics> {
-    const scope = options.scope === 'head' ? 'head' : 'all'
-    const limit = Math.max(1, Math.min(Math.floor(options.limit ?? ANALYTICS_LIMIT), 200_000))
+  /**
+   * Chave que muda sempre que o resultado de `analytics(options)` mudaria. Custa um único processo git
+   * (`show-ref --head` no escopo 'all'), para que o cache acerte sem ler o log inteiro. Quem chama usa
+   * `hasHead` em `analytics(options, { hasHead })` e não repete o `rev-parse`.
+   */
+  async analyticsKey(options: AnalyticsOptions = {}): Promise<{ key: string; hasHead: boolean }> {
+    const scope = analyticsScope(options)
+    const limit = analyticsLimit(options)
+    if (scope === 'head') {
+      const { stdout, exitCode } = await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })
+      const sha = exitCode === 0 ? stdout.trim() : ''
+      return { key: analyticsHash(['head', String(limit), sha]), hasHead: sha !== '' }
+    }
+    // `show-ref --head` lista HEAD (com o sha) quando ele resolve, e todas as refs numa só leitura. Sai 1,
+    // sem nada na saída, quando não há ref alguma; isso não é erro.
+    const { stdout } = await this.git(['show-ref', '--head'], { okExitCodes: [0, 1] })
+    let headSha = ''
+    const refs: string[] = []
+    for (const line of stdout.split('\n')) {
+      const at = line.indexOf(' ')
+      if (at === -1) continue
+      const name = line.slice(at + 1)
+      if (name === 'HEAD') headSha = line.slice(0, at)
+      // Refs fora de heads/remotes/tags (stash, notes, outras) não mudam o que o log lê: ignoradas para
+      // que criar um stash ou uma nota não invalide o cache.
+      else if (ANALYTICS_REF_PREFIXES.some((p) => name.startsWith(p))) refs.push(line)
+    }
+    // A ordem em que o git lista as refs não é garantida; ordenar evita uma chave diferente à toa.
+    refs.sort()
+    return { key: analyticsHash(['all', String(limit), headSha, ...refs]), hasHead: headSha !== '' }
+  }
+
+  /**
+   * `known` é o resultado de `analyticsKey` já feito pelo chamador: com ele, o `rev-parse` do HEAD não se
+   * repete. Sem ele, o método consulta o HEAD sozinho, como antes.
+   */
+  async analytics(options: AnalyticsOptions = {}, known?: { hasHead: boolean }): Promise<Analytics> {
+    const scope = analyticsScope(options)
+    const limit = analyticsLimit(options)
     const generatedAt = Date.now()
-    const hasHead = (await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })).exitCode === 0
+    const hasHead = known
+      ? known.hasHead
+      : (await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })).exitCode === 0
     const args = ['log', '--no-renames', '--numstat', `--format=${ANALYTICS_FORMAT}`, '--date-order', `-n${limit + 1}`]
     if (scope === 'all') {
       args.push('--branches', '--remotes', '--tags')
@@ -1427,13 +1717,18 @@ export class GitRepository implements RepoApi {
     } else if (hasHead) args.push('HEAD')
     else return { scope, commits: [], paths: [], truncated: false, tree: [], generatedAt }
     args.push('--')
-    const { stdout } = await this.git(args)
+    // Dashboards leem milhares de commits e não têm pressa: prioridade baixa deixa a fila para a interface.
+    const { stdout } = await this.git(args, { priority: 'low' })
     const records = stdout.split(RS).filter((r) => r.trim())
     const truncated = records.length > limit
     const pathIndex = new Map<string, number>()
     const paths: string[] = []
     const commits: AnalyticsCommit[] = []
+    // A conversão é síncrona e, com 20 mil commits, leva dezenas de milissegundos: sem pausas, a janela e o IPC
+    // ficam travados todo esse tempo. A ordem e os campos não mudam; só há uma pausa a cada lote.
+    let converted = 0
     for (const record of records.slice(0, limit)) {
+      if (++converted % ANALYTICS_YIELD_EVERY === 0) await yieldToLoop()
       const end = record.indexOf(GS)
       const head = (end === -1 ? record : record.slice(0, end)).replace(/^\n/, '').split(FS)
       const numstat = end === -1 ? '' : record.slice(end + 1)

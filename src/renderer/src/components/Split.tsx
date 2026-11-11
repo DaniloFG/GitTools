@@ -1,5 +1,5 @@
 import { createContext, useContext, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { AppContext } from '../context'
+import { AppActionsContext } from '../context'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
 import {
@@ -93,7 +93,8 @@ export function Split({
   className = '',
   children
 }: Props) {
-  const app = useContext(AppContext)
+  // Só as ações (o menu do divisor): o divisor não redesenha com dados nem com a operação em andamento.
+  const actions = useContext(AppActionsContext)
   const depth = useContext(DepthContext)
   /** Painel sendo arrastado e lado onde ele seria solto. */
   const [docking, setDocking] = useState<{ pane: CollapsedPane; side: DockSide | null } | null>(null)
@@ -226,8 +227,8 @@ export function Split({
   const rotate = () => setState((prev) => rotateSplit(prev, defaultDirection))
 
   const onContextMenu = (e: React.MouseEvent) => {
-    if (!app) return
-    app.showMenu(e, [
+    if (!actions) return
+    actions.showMenu(e, [
       ...(arrangeable
         ? [
             { label: `${row ? '⇄' : '⇅'} ${t('layout.swapPanels')}`, onClick: swap },

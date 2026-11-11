@@ -201,12 +201,14 @@ export const en: Messages = {
       graph: 'Graph'
     },
     count: { one: '{count} commit', other: '{count} commits' },
+    loadingMore: 'Loading more commits…',
+    limitReached: { other: 'Showing the {count} most recent commits' },
     selected: { one: '{count} selected', other: '{count} selected' },
     hint: 'Ctrl/Shift+click to select several · ▸ or double-click shows the files · drag onto a branch',
     empty: 'No commits yet.',
     log: {
       chip: 'git log',
-      help: 'This history is "git log" in visual form: every row is a commit and the graph shows the branches. It is the same as git log --graph --all --decorate, up to 500 commits.',
+      help: 'This history is "git log" in visual form: every row is a commit and the graph shows the branches. It is the same as git log --graph --all --decorate, 500 commits at a time, loading more as you scroll (up to 10,000).',
       tab: 'History — git log in visual form'
     },
     wip: {
@@ -291,7 +293,11 @@ export const en: Messages = {
     inline: 'Top and bottom',
     inlineHelp: 'Removed and added lines one below the other',
     split: 'Side by side',
-    splitHelp: 'Old version on the left, new version on the right'
+    splitHelp: 'Old version on the left, new version on the right',
+    truncated: {
+      message: 'This diff is large and was cut at {size}: the end of the file is not shown.',
+      showAll: 'Show anyway'
+    }
   },
   changes: {
     discardTitle: 'Discard changes',
@@ -1004,7 +1010,8 @@ export const en: Messages = {
     historyRewritten: 'History rewritten.',
     binaryNoLines: 'The binary file "{path}" does not allow selecting lines.',
     gitNotFound: 'Could not run git: {error}',
-    gitFailed: 'git {command} failed (code {code})'
+    gitFailed: 'git {command} failed (code {code})',
+    gitCanceled: 'Git command canceled.'
   },
   main: {
     editorNotFound: 'The editor "{editor}" was not found. Choose another in Settings → Editor and diff.',

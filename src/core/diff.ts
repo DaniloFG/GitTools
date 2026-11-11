@@ -182,6 +182,39 @@ export function parseDiff(text: string): FileDiff[] {
   return files
 }
 
+/**
+ * Ajusta a saída de um `git diff` cortada no teto (DIFF_MAX_BYTES). O corte pode ter parado no meio do último
+ * bloco: um bloco incompleto geraria um patch errado no stage por linha, então o último bloco sai inteiro e
+ * as contagens do arquivo são refeitas a partir dos blocos que ficaram.
+ *
+ * Só o último arquivo é ajustado: num diff de vários arquivos, os arquivos depois do corte não aparecem.
+ * Se o corte caiu no cabeçalho de um arquivo sem nenhum bloco, esse arquivo sai (o cabeçalho pode estar
+ * incompleto) e o anterior, que ficou inteiro, é marcado como cortado.
+ */
+export function trimTruncated(files: FileDiff[]): FileDiff[] {
+  if (files.length === 0) return files
+  const kept = files.slice()
+  const last = kept[kept.length - 1]
+  if (last.hunks.length === 0) {
+    kept.pop()
+    if (kept.length === 0) return kept
+    const previous = kept[kept.length - 1]
+    kept[kept.length - 1] = { ...previous, truncated: true }
+    return kept
+  }
+  const hunks = last.hunks.slice(0, -1)
+  let additions = 0
+  let deletions = 0
+  for (const hunk of hunks) {
+    for (const line of hunk.lines) {
+      if (line.kind === 'add') additions++
+      else if (line.kind === 'del') deletions++
+    }
+  }
+  kept[kept.length - 1] = { ...last, hunks, additions, deletions, truncated: true }
+  return kept
+}
+
 function formatRange(start: number, count: number): string {
   return count === 1 ? `${start}` : `${start},${count}`
 }

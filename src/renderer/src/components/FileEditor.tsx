@@ -1,6 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { BlameResult, FileContent } from '../../../shared/types'
-import { useApp } from '../context'
+import { useAppActions, useAppSettings, useRepoData } from '../context'
 import { getDraft, setDraft, useDraftsVersion } from '../editorDrafts'
 import { fromFile, lineOrigins, toFile, type EditorText } from '../editorText'
 import { errorMessage, fullDate, relativeDate, shortSha } from '../format'
@@ -27,7 +27,9 @@ function toDisk(file: FileContent): Disk {
  * linha do cursor diz quem a escreveu, quando e o que o commit fez.
  */
 export function FileEditor({ path }: { path: string }) {
-  const { repo, data, toast, confirm, refresh, openInEditor, selectCommit, settings } = useApp()
+  const { repo, data } = useRepoData()
+  const { toast, confirm, refresh, openInEditor, selectCommit } = useAppActions()
+  const { settings } = useAppSettings()
   const [disk, setDisk] = useState<Disk | null>(null)
   const [error, setError] = useState<string | null>(null)
   /** O arquivo mudou no disco enquanto havia alterações não salvas aqui. */

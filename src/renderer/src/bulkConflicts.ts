@@ -1,5 +1,5 @@
 import type { BulkResolutionResult, ConflictResolution } from '../../shared/types'
-import { useApp } from './context'
+import { useAppActions, useRepoData } from './context'
 import { git } from './git'
 import { t, type MessageKey } from './i18n'
 
@@ -50,7 +50,8 @@ export const bulkHelp = (resolution: ConflictResolution): MessageKey => ACTIONS[
  * Devolve undefined se o usuário desistir ou não houver conflitos.
  */
 export function useResolveAll() {
-  const { data, run, confirm, toast } = useApp()
+  const { data } = useRepoData()
+  const { run, confirm, toast } = useAppActions()
 
   return async (resolution: ConflictResolution): Promise<BulkResolutionResult | undefined> => {
     const paths = data.status.conflicted.map((f) => f.path)

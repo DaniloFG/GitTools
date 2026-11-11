@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { PushForce } from '../../../shared/types'
 import { useActions } from '../actions'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { commitBlock, type CommitBlock } from '../feedback'
@@ -30,7 +30,8 @@ const draftOf = (root: string) => drafts.get(root) ?? { message: '', amend: fals
  * e enviar em seguida (normal, force com lease ou force). O botão diz o que vai acontecer.
  */
 export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onCommitted?(): void }) {
-  const { data, run, repo, toast } = useApp()
+  const { data, repo } = useRepoData()
+  const { run, toast } = useAppActions()
   const { confirmForce } = useActions()
   const [message, setMessageState] = useState(() => draftOf(repo.root).message)
   const [amend, setAmendState] = useState(() => draftOf(repo.root).amend)

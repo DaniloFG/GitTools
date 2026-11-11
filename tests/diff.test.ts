@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPartialPatch, changeKeys, parseDiff, quotePath, unquotePath } from '../src/core/diff'
+import { buildPartialPatch, changeKeys, parseDiff, quotePath, trimTruncated, unquotePath } from '../src/core/diff'
 import { splitRows } from '../src/shared/diffKeys'
 
 const SAMPLE = `diff --git a/src/app.ts b/src/app.ts
@@ -131,5 +131,61 @@ describe('splitRows (diff lado a lado)', () => {
       { left: 0, right: 1 },
       { left: 2, right: null }
     ])
+  })
+})
+
+describe('trimTruncated (diff cortado no teto)', () => {
+  const TWO_FILES = `diff --git a/a.txt b/a.txt
+--- a/a.txt
++++ b/a.txt
+@@ -1,1 +1,1 @@
+-x
++y
+diff --git a/b.txt b/b.txt
+--- a/b.txt
++++ b/b.txt
+@@ -1,2 +1,3 @@
+ keep
+-old1
++new1
+@@ -10,1 +11,2 @@
+-old2
++new2
++new3
+`
+
+  it('tira só o último bloco do último arquivo e refaz as contagens dele', () => {
+    const [first, last] = trimTruncated(parseDiff(TWO_FILES))
+    expect(first.path).toBe('a.txt')
+    expect(first.truncated).toBeUndefined()
+    expect(first.hunks).toHaveLength(1)
+    expect(last.path).toBe('b.txt')
+    expect(last.truncated).toBe(true)
+    expect(last.hunks).toHaveLength(1)
+    expect(last.hunks[0].lines.map((l) => l.content)).toEqual(['keep', 'old1', 'new1'])
+    expect(last.additions).toBe(1)
+    expect(last.deletions).toBe(1)
+  })
+
+  it('arquivo com um bloco só fica sem blocos e marcado como cortado', () => {
+    const [file] = trimTruncated(parseDiff(TWO_FILES.split('diff --git a/b.txt')[0]))
+    expect(file.path).toBe('a.txt')
+    expect(file.truncated).toBe(true)
+    expect(file.hunks).toHaveLength(0)
+    expect(file.additions).toBe(0)
+    expect(file.deletions).toBe(0)
+  })
+
+  it('arquivo cortado no cabeçalho (sem blocos) sai e o anterior fica marcado', () => {
+    const files = trimTruncated(parseDiff(TWO_FILES + 'diff --git a/c.txt b/c.t'))
+    expect(files.map((f) => f.path)).toEqual(['a.txt', 'b.txt'])
+    expect(files[0].truncated).toBeUndefined()
+    // O arquivo anterior veio inteiro: não perde bloco nenhum, só fica marcado como cortado no fim.
+    expect(files[1].truncated).toBe(true)
+    expect(files[1].hunks).toHaveLength(2)
+  })
+
+  it('lista vazia devolve lista vazia', () => {
+    expect(trimTruncated([])).toEqual([])
   })
 })

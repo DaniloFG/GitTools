@@ -376,6 +376,8 @@ describe('detecção de vários repositórios no workspace', () => {
     const { run } = await start()
     await run('gittools.open')
     const panel = fake.panels[0]
+    // A descoberta corre por trás do painel; a lista de abertos responde quando ela acaba (os observadores já existem).
+    await openList(panel)
     fake.folderListeners.forEach((l) => l({ added: [{ uri: Uri.file(nova.dir) }], removed: [] }))
     await until(
       async () =>
@@ -397,6 +399,8 @@ describe('detecção de vários repositórios no workspace', () => {
     const { run } = await start()
     await run('gittools.open')
     const panel = fake.panels[0]
+    // A descoberta corre por trás do painel; a lista de abertos responde quando ela acaba (os observadores já existem).
+    await openList(panel)
     const watcher = fake.watchers.find((w) => w.pattern === '**/.git')!
     expect(watcher).toBeDefined()
 
@@ -430,6 +434,8 @@ describe('detecção de vários repositórios no workspace', () => {
     const { run } = await start()
     await run('gittools.open')
     const panel = fake.panels[0]
+    // A descoberta corre por trás do painel; a lista de abertos responde quando ela acaba (os observadores já existem).
+    await openList(panel)
     const watcher = fake.watchers[0]
     const settings = (await ask(panel, 'app:getSettings')).result as Record<string, unknown>
     await ask(panel, 'app:saveSettings', { ...settings, multiRepoDetection: false })

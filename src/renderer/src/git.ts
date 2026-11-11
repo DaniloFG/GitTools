@@ -1,4 +1,6 @@
 import type { RepoApi } from '../../shared/api'
+import { decodeAnalytics, isAnalyticsWire } from '../../shared/analyticsWire'
+import { decodeDiffs, isWireDiffs } from '../../shared/diffWire'
 import { t } from './i18n'
 import { Limiter, ReadCache } from './readCache'
 import { CallGate } from './workspace'
@@ -31,10 +33,24 @@ export function getActiveRoot(): string | null {
 
 type Invoke = (root: string, method: string, ...args: unknown[]) => Promise<unknown>
 
-/** Faz a chamada de verdade, contando-a no portão do repositório. */
+/**
+ * Resposta do backend para uma leitura. O diff (diffWire.ts) e o resultado de `analytics` (analyticsWire.ts) chegam
+ * em formato colunar e voltam ao formato de sempre aqui, antes de qualquer cache ou componente: a interface continua
+ * recebendo o mesmo objeto. Não se confia no nome do método: o próprio formato (`wire`) diz o que é.
+ */
+function fromBackend(method: string, value: unknown): unknown {
+  if (method === 'diff' && isWireDiffs(value)) return decodeDiffs(value)
+  if (isAnalyticsWire(value)) return decodeAnalytics(value)
+  return value
+}
+
+/**
+ * Faz a chamada de verdade, contando-a no portão do repositório. Todo caminho de leitura (`callOn`,
+ * `callInBackground`, `gitFor`, `gitInBackground`) passa por aqui, então a decodificação fica num lugar só.
+ */
 function send(root: string, method: string, args: unknown[]): Promise<unknown> {
   const invoke = window.gittools.invokeOn as unknown as Invoke
-  return gitCalls.enter(root).then((leave) => invoke(root, method, ...args).finally(leave))
+  return gitCalls.enter(root).then((leave) => invoke(root, method, ...args).finally(leave).then((value) => fromBackend(method, value)))
 }
 
 /** Chama um método de um repositório aberto pelo cache. */
@@ -76,7 +92,17 @@ export function gitInBackground(root: string): RepoApi {
   return proxyFor(() => root, callInBackground)
 }
 
+/**
+ * Por quanto tempo, depois de uma alteração feita pela própria interface, um aviso do observador da pasta `.git`
+ * ainda é tratado como eco dela. O observador avisa ~250 ms depois da última escrita; 1 s dá folga para rajadas.
+ */
+export const OWN_CHANGE_WINDOW_MS = 1000
+
 /** Algo mudou em `root` sem passar pelo proxy (comando digitado no terminal, cherry-pick entre repositórios…). */
 export function markChanged(...roots: string[]): void {
-  for (const root of roots) readCache.invalidate(root)
+  const now = Date.now()
+  for (const root of roots) {
+    readCache.invalidate(root)
+    readCache.stampChange(root, now)
+  }
 }

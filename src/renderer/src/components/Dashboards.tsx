@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Analytics, GitCommandEntry } from '../../../shared/types'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { errorMessage, fullDate } from '../format'
 import { git } from '../git'
 import { t, formatRelative } from '../i18n'
@@ -49,7 +49,7 @@ function useCommands(): GitCommandEntry[] {
 
 /** Lê o histórico para os dashboards; recarrega quando o repositório muda de verdade (outro commit, branch ou tag). */
 function useAnalytics(scope: 'all' | 'head') {
-  const { repo, data } = useApp()
+  const { repo, data } = useRepoData()
   const [state, setState] = useState<{ analytics: Analytics | null; loading: boolean; error: string | null }>({ analytics: null, loading: true, error: null })
   const signature = `${data.status.headSha}|${data.branches.map((b) => b.sha).join(',')}|${data.tags.length}`
   const [tick, setTick] = useState(0)
@@ -66,7 +66,8 @@ function useAnalytics(scope: 'all' | 'head') {
 }
 
 export function Dashboards() {
-  const { repo, data, prompt, confirm, toast, showMenu } = useApp()
+  const { repo, data } = useRepoData()
+  const { prompt, confirm, toast, showMenu } = useAppActions()
   const [prefs, setPrefs] = useLayout<DashPrefs>('pref.dashboards', parsePrefs)
   const commands = useCommands()
   const { analytics, loading, error, reload } = useAnalytics(prefs.scope)
