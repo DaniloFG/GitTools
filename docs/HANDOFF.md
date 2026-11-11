@@ -13,14 +13,14 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E1 (parcial), commit `69618ba`: #58 feito; #82 feito exceto o rótulo "Editor do GitTools"; #76 não feito (dúvidas na seção 5). typecheck e 821 testes verdes; telas não conferidas no Chromium.
+**Última etapa fechada:** E2, commit `5957e84`: #75 (checkbox removido), #57 (modo de push volta a normal), #77 (clique na linha WIP atualiza o painel) feitos; #73 já existia. typecheck e 828 testes verdes; telas não conferidas no Chromium, sem teste de componente para #57-reset e #77.
 
-**A seguir:** `E2` (o "pode seguir" do dono já foi dado)
+**A seguir:** `E3` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
 | E1 | #58 #76 #82 | Menus de contexto: rótulos, Copy path, remover itens | parcial (#76 e rótulo "Editor do GitTools" pendentes) | 69618ba |
-| E2 | #75 #57 #73 #77 | Commit/push e Changes/History: remover "Include all files", push volta a normal, seleção inicial | a fazer | |
+| E2 | #75 #57 #73 #77 | Commit/push e Changes/History: remover "Include all files", push volta a normal, seleção inicial | feito (#73 já existia) | 5957e84 |
 | E3 | #83 #86 | Diff: botões vão para submenu "Options"; colunas do History redimensionáveis | a fazer | |
 | E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | a fazer | |
 | E5 | #62 | Tela inicial History; estado de tela/layout independente por aba | a fazer | |
@@ -36,17 +36,6 @@ Não se aplica (nenhuma etapa persegue meta de desempenho). E5, E8 e E10 medem a
 contagem de processos git antes e depois.
 
 ## 4. Plano
-
-### Etapa E2 — commit, push e seleção inicial (#75 #57 #73 #77)
-- **Orquestra**: topo
-- **Arquivos prováveis**: `CommitBox.tsx:47-58,129`, `feedback.ts:78-81`, `ChangesView.tsx:80`, `CommitDetails.tsx:469`,
-  `CommitList.tsx:644`
-- **Ler antes**: `CommitBox.tsx:40-60`. O modo `force` fica salvo em `pref.commitPushMode` (só `normal` é trocado):
-  é a causa de #57. Remover `commitStageAll` sem deixar chave órfã em `settings`/`layout`.
-- **Aceite**: teste que reprova sem a mudança (modo volta a `normal` após push); `npm test` verde
-- **Testes**: unidade e tela
-- **Segurança**: não
-- **Depende de**: —
 
 ### Etapa E3 — painel de diff e colunas (#83 #86)
 - **Orquestra**: topo
@@ -134,6 +123,7 @@ contagem de processos git antes e depois.
 - 2026-11-11: o branch de trabalho vem da plataforma (`ccr-f146ea2b-tsxm2b`), fora do padrão `feature/*` do guia.
 
 - 2026-11-11 E1, dúvidas para o dono: (a) #76 pede tirar "Force push (with lease)" do menu de clique direito do History, mas ali não existe; o item está na Toolbar (`toolbar.pushForce`, `Toolbar.tsx:100`) e no menu da branch na Sidebar (`sidebar.menu.pushForce`, `branchMenu.ts:48`). Não removido; remover um, os dois ou nenhum? (b) #82 pede "Editor do GitTools" no lugar de "Open in new window", mas esse item abre o diff em janela própria (`openDiffWindow`), não o editor (`FileEditor`, aberto pela tela Files). Rótulo não trocado; confirmar o que se quer.
+- 2026-11-11 E2: clicar na linha WIP não troca o arquivo já ativo em `WipPanes` (só preenche o vazio); mudar isso exige editar `CommitDetails.tsx`. `code-review` e tela não rodaram; junto da E3.
 - 2026-11-11 E1: `code-review` e conferência em tela (`run-gittools`) não rodaram; fazer junto com a E3, que mexe nos mesmos menus. Traduções ar/hi/zh de `common.openInVscode` pedem revisão de nativo.
 
 ## 6. Encerramento
