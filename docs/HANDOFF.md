@@ -51,7 +51,7 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    `create_session` é recusado (janela 11). Uma sessão que o usuário abre à mão volta a zero; nesse caso, o usuário
    cola a mensagem da seção 6.
 
-## 2. Estado atual (fim da janela 11)
+## 2. Estado atual (janela 11)
 
 - **Janela 11: resultados das Fases 4 e 5 escritos em `docs/PERFORMANCE.md`** (`5fce090`, só documento): seções 11 e
   12 novas (o que foi feito, números, metas, o que ficou de fora), correção do diagnóstico no achado B7, seção 6
@@ -68,8 +68,19 @@ Estas instruções vieram do usuário e valem para todas as janelas:
     318 → 232 ms sem mudança de código), então parte da queda dos tempos da interface (rolagem 45–73 → 29 ms, abrir o
     diff 0,93–0,99 → 0,44–0,57 s) é da máquina. Para atribuir, medir versões alternadas.
   - Meta de rolagem (16 ms) segue não atingida; marcar linha (≤ 50 ms) agora dentro da meta.
-- **A seguir:** pendência (2), `DiffWindow.tsx` sem `setLocale` (o idioma vem como na janela principal); depois a
-  pendência (3), redesenhos do `ChangesView` ao abrir e do `RepoView` por seleção.
+- **Janela 11, continuação (o usuário pediu para seguir nesta sessão, que não pode abrir outra pelo limite de
+  profundidade, e para fazer também os dois opcionais e o encerramento):**
+  - `2e3979e` (pendência 2): `DiffWindow` começa com `bootSettings` e usa `useLocaleCatalog`, como a janela principal;
+    relê as configurações ao ganhar o foco, mantendo a referência se nada mudou. Troca de idioma com a janela de diff
+    aberta só aparece quando ela ganha o foco (ao vivo exigiria um canal novo nas três pontes; não feito). Não
+    conferido no Electron nem no webview.
+  - `521a560` (pendência 3): `ChangesView` desenha 2× ao abrir em vez de 5 (arquivo inicial já do status, seleção
+    zerada no mesmo lote do diff, efeito das marcações sem `set` à toa). Abrir Changes 407 → 233 componentes, 84 → 65
+    ms de script; `ui.mjs` 269/286 → 233 ms; processos iguais. `RepoView` segue com 1 desenho por seleção (aceito).
+  - Roteiros descartáveis no scratchpad desta sessão: `measure-renders.mjs` (conta componentes por um gancho do
+    DevTools; precisa da interface sem minificar: `npx vite build -c vite.webview.config.ts --minify false`).
+- **A seguir:** barra lateral em lista em janela (em andamento); depois a checagem do tamanho do pacote no CI (Fase 0);
+  depois o encerramento da seção 5 (autorizado pelo usuário nesta janela: "Quero com as 5 opcionais").
 
 ### Janela 10
 
