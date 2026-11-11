@@ -13,9 +13,9 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E7 (reaberta pela central e refeita), #59 (menu de "Different files" no Compare: "Aplicar arquivo inteiro em {branch}", lê o diff completo, marca as linhas alteradas e segue o fluxo de `applyLines`; não aparece para status D, sem branch atual ou destino igual à branch/`HEAD`) e #84 (busca no Cherry-pick Studio por hash, mensagem, autor, e-mail e data; lote de 200, teto de 500 montados; "Todos"/"Nenhum" só valem para o resultado da busca). typecheck e 902 testes verdes. Integração em git de verdade (`tests/applyWholeFile.test.ts`, 7 casos: modificado, novo, renomeado, conflito `--3way`, binário, commit, caminho hostil). Tela conferida no Chromium: Studio no repositório de 20 mil commits (14.850 na lista): 200 linhas = 2.686 nós, teto de 500 = 4.486 nós (com 600 eram 5.086, por isso o teto caiu), busca por autor 2.973/14.850, "Nenhum" com busca deixa 11.877 marcados; menu do Compare mostra o item e abre a pergunta stage/commit; sem erros no console.
+**Última etapa fechada:** E8, #85 (clique duplo). `src/renderer/src/singleFlight.ts` (puro, 12 testes) bloqueia `run` do App: chamada extra durante outra é ignorada em silêncio; `queue: true` (só stage/unstage do ChangesView) espera em ordem. `busy` cai só depois do `refresh`. `disabled` com `busy !== null` em Aplicar do Studio, Commit (botão, Ctrl+Enter, pergunta de force push), Fetch/Pull/Push, ConflictEditor, abortar/continuar/pular, Aplicar rebase; Enter do Compare e do Remotes respeita o estado. typecheck, 914 testes e perf:bundle verdes (685.097 de 700.000). Tela (Chromium): clique duplo em Stage move 1 vez, clique duplo em Commit gera 1 `git commit`, 156 nós, sem erros. `code-review` medium feito (achados 1,2,3,4,5 corrigidos).
 
-**A seguir:** `E8`
+**A seguir:** `E9`
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
@@ -26,7 +26,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E5 | #62 | Tela inicial History; estado de tela/layout independente por aba | feito | 0de61d7 |
 | E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | feito | b296a96 |
 | E7 | #59 #84 | Compare: "apply" do arquivo inteiro; busca no Cherry-pick Studio | feito | ver git log |
-| E8 | #85 | Botões assíncronos: bloqueio contra clique duplo + loading onde falta | a fazer | |
+| E8 | #85 | Botões assíncronos: bloqueio contra clique duplo + loading onde falta | feito | ver git log |
 | E9 | #72 #60 | READMEs: seções e chamadas no topo; tirar menções ao repo do GitHub | a fazer | |
 | E10 | #61 | Auditoria de conflitos com cenários de dezenas a milhares de arquivos | a fazer | |
 
@@ -36,16 +36,6 @@ Não se aplica (nenhuma etapa persegue meta de desempenho). E5, E8 e E10 medem a
 contagem de processos git antes e depois.
 
 ## 4. Plano
-
-### Etapa E8 — botões assíncronos (#85)
-- **Orquestra**: topo
-- **Arquivos prováveis**: varredura em `components/` (padrão `run(t('busy...'))` de `CherryPickStudio.tsx:236-252`)
-- **Ler antes**: issue #85. Primeiro um `gt-leitor` lista as ações assíncronas sem trava; depois um helper único
-  (lógica pura + teste) em vez de `disabled` solto em cada tela.
-- **Aceite**: teste do helper (segunda chamada durante a primeira é ignorada); lista antes/depois no commit
-- **Testes**: unidade e tela
-- **Segurança**: não
-- **Depende de**: E7
 
 ### Etapa E9 — READMEs (#72 #60)
 - **Orquestra**: sonnet
@@ -81,6 +71,7 @@ contagem de processos git antes e depois.
 - 2026-11-11 E6: com a detecção desligada (agora o padrão) `discoverWorkspace` usa `setRepository` (`extension.ts:160`), que ativa a 1ª pasta e pode sobrescrever a escolha do usuário se ela vier antes do fim da descoberta (corrida; o teste do seletor de pasta espera `openList`). Não corrigido. Busca: Identidade, Atalhos e Sobre seguem fora; sem normalizar acentos; `EditorSection` monta (e chama `detectEditors`) ao buscar; `:has()` esconde seção sem resultado (visto no Chromium, não no VS Code). `code-review` formal não rodado (diff revisto à mão).
 
 - 2026-11-11 E7: "Aplicar arquivo inteiro" lê o diff completo no renderer e o core o refaz (`findFile`): leitura dupla, e as chaves de milhares de linhas cruzam o IPC; melhor seria `buildPartialPatch(file, 'all')` num método próprio. Lista do Studio: linhas inline sem `memo` (exceção comentada no código, teto 600); busca não normaliza acentos; Aplicar arquivo renomeado (R) cria só o caminho novo e não remove o antigo: o diff com pathspec no caminho novo vira adição (limitação, decisão de produto; teste de caracterização). `applyLines` não passa por `resolveInside`: caminho `..`/absoluto só é barrado pelo git ("outside repository"). Todos pré-marcados na abertura (como antes): "Aplicar N commits" mostra o total, inclusive fora da busca.
+- 2026-11-11 E8, aceitos e não feitos: (a) ação ignorada pelo bloqueio (ex.: Commit/Descartar logo após stage) some sem toast e `run` devolve `undefined` como em falha; avisar pede texto novo nos 6 catálogos. (b) `fn` que nunca termina (fetch pendurado) trava todo `run` do repositório até reabrir; sem timeout. (c) sem `disabled` ainda: botões por arquivo do OperationBanner, resolução em lote, copiar versão e aplicar linhas do Compare, menus de CommitList/Sidebar/CommitDetails, Welcome, KeyboardShortcuts (só o `run` os protege). (d) Sem tela: force push com Ctrl+Enter repetido, overlay agora dura até o fim do `refresh`. (e) Toolbar e outros redesenham ao mudar `busy` (useBusy). (f) Spinner extra pedido na issue não foi acrescentado: o indicador do `run` já cobre.
 
 ## 6. Encerramento
 
