@@ -41,6 +41,8 @@ export const ar: Messages = {
     discard: 'تجاهل',
     open: 'فتح',
     openInEditor: 'فتح في المحرر',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: 'فتح في محرر VSCode',
     all: 'الكل',
     none: 'لا شيء',
     file: 'الملف',
@@ -112,7 +114,6 @@ export const ar: Messages = {
     untracked: 'جديد'
   },
   toolbar: {
-    openInEditorHelp: 'فتح المشروع في المحرر المختار في الإعدادات',
     tagHelp: 'إنشاء وسم على الإيداع الحالي',
     tag: 'وسم',
     openRepository: 'فتح مستودع…',

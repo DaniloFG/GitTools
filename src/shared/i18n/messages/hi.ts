@@ -39,6 +39,8 @@ export const hi: Messages = {
     discard: 'हटाएँ',
     open: 'खोलें',
     openInEditor: 'एडिटर में खोलें',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: 'VSCode एडिटर में खोलें',
     all: 'सभी',
     none: 'कोई नहीं',
     file: 'फ़ाइल',
@@ -107,7 +109,6 @@ export const hi: Messages = {
     untracked: 'नई'
   },
   toolbar: {
-    openInEditorHelp: 'सेटिंग्स में चुने गए एडिटर में प्रोजेक्ट खोलें',
     tagHelp: 'वर्तमान कमिट पर टैग बनाएँ',
     tag: 'टैग',
     openRepository: 'Repository खोलें…',

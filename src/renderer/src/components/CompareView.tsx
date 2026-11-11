@@ -5,6 +5,8 @@ import { currentBranch, useAppActions, useRepoData, type CompareRequest } from '
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
+import { copyText } from '../copy'
+import { fileMenuItems } from '../fileMenu'
 import { DiffView, useFullFile } from './DiffView'
 import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
@@ -27,7 +29,7 @@ interface Props {
  */
 export function CompareView({ request, onRequest }: Props) {
   const { data } = useRepoData()
-  const { run, toast, selectCommit, openFileView, showMenu, openDiffWindow } = useAppActions()
+  const { run, toast, selectCommit, openFileView, showMenu, openDiffWindow, openInEditor } = useAppActions()
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''
@@ -107,6 +109,22 @@ export function CompareView({ request, onRequest }: Props) {
       'separator',
       actions.copyMessageMenu([sha])
     ])
+
+  /**
+   * Menu de contexto de um arquivo da lista (#82). Arquivo apagado na comparação (status D) não existe na árvore de
+   * trabalho, então o menu não oferece "Abrir no editor VSCode".
+   */
+  const fileMenu = (e: React.MouseEvent, f: ChangedFile) =>
+    showMenu(
+      e,
+      fileMenuItems({
+        path: f.path,
+        canOpen: f.status !== 'D',
+        openInEditor,
+        copy: copyText,
+        labels: { openInEditor: t('common.openInVscode'), copyPath: t('history.files.copyPath') }
+      })
+    )
 
   const swap = () => {
     setFrom(to)
@@ -213,6 +231,7 @@ export function CompareView({ request, onRequest }: Props) {
                     setActive(f)
                     revealView('compare.diff')
                   }}
+                  onContextMenu={(e) => fileMenu(e, f)}
                 >
                   <span className={`status status-${f.status}`} title={statusLabel(f.status)}>
                     {f.status}

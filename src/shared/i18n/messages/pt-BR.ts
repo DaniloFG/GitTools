@@ -37,6 +37,8 @@ export const ptBR = {
     discard: 'Descartar',
     open: 'Abrir',
     openInEditor: 'Abrir no editor',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: 'Abrir no editor VSCode',
     all: 'todos',
     none: 'nenhum',
     file: 'Arquivo',
@@ -105,7 +107,6 @@ export const ptBR = {
     untracked: 'novo'
   },
   toolbar: {
-    openInEditorHelp: 'Abrir o projeto no editor escolhido nas configurações',
     tagHelp: 'Criar uma tag no commit atual',
     tag: 'Tag',
     openRepository: 'Abrir repositório…',

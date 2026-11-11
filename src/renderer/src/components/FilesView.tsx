@@ -8,6 +8,7 @@ import { git } from '../git'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
 import { copyText } from '../copy'
+import { fileMenuItems } from '../fileMenu'
 import { DiffView, useFullFile } from './DiffView'
 import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
@@ -92,12 +93,26 @@ function FileHeader({ path, title }: { path: string; title: string }) {
 
 function FilesList({ path, onPath }: { path: string | null; onPath(path: string): void }) {
   const { data, repo } = useRepoData()
-  const { toast } = useAppActions()
+  const { toast, showMenu, openInEditor } = useAppActions()
   const [files, setFiles] = useState<string[]>([])
   const [filter, setFilter] = useSessionState('files.filter', '')
   // Arquivos com alterações ainda não salvas no editor.
   useDraftsVersion()
   const unsaved = new Set(draftPaths(repo.root))
+
+  // Menu de contexto de um arquivo da lista (#82): abrir no VSCode e copiar o caminho, como no Histórico.
+  // Fica aqui, e não no <li>, para a linha não ler contexto; os textos são lidos só ao abrir o menu.
+  const fileMenu = (e: React.MouseEvent, f: string) =>
+    showMenu(
+      e,
+      fileMenuItems({
+        path: f,
+        canOpen: true,
+        openInEditor,
+        copy: copyText,
+        labels: { openInEditor: t('common.openInVscode'), copyPath: t('history.files.copyPath') }
+      })
+    )
 
   useEffect(() => {
     git.listFiles().then(setFiles, (e) => toast('error', errorMessage(e)))
@@ -136,6 +151,7 @@ function FilesList({ path, onPath }: { path: string | null; onPath(path: string)
                 revealView('files.editor')
               }}
               title={f}
+              onContextMenu={(e) => fileMenu(e, f)}
             >
               {label}
               {unsaved.has(f) && (

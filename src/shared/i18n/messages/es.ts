@@ -36,6 +36,8 @@ export const es: Messages = {
     discard: 'Descartar',
     open: 'Abrir',
     openInEditor: 'Abrir en el editor',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: 'Abrir en el editor VSCode',
     all: 'todos',
     none: 'ninguno',
     file: 'Archivo',
@@ -104,7 +106,6 @@ export const es: Messages = {
     untracked: 'nuevo'
   },
   toolbar: {
-    openInEditorHelp: 'Abrir el proyecto en el editor elegido en la configuración',
     tagHelp: 'Crear una etiqueta en el commit actual',
     tag: 'Etiqueta',
     openRepository: 'Abrir repositorio…',

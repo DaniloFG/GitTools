@@ -39,6 +39,8 @@ export const zhCN: Messages = {
     discard: '丢弃',
     open: '打开',
     openInEditor: '在编辑器中打开',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: '在 VSCode 编辑器中打开',
     all: '全选',
     none: '全不选',
     file: '文件',
@@ -103,7 +105,6 @@ export const zhCN: Messages = {
     untracked: '新文件'
   },
   toolbar: {
-    openInEditorHelp: '在设置中选择的编辑器中打开项目',
     tagHelp: '在当前提交上创建标签',
     tag: '标签',
     openRepository: '打开仓库…',

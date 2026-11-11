@@ -168,7 +168,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       { label: `⧉ ${t('diffExtra.openWindow')}`, onClick: () => openWindow(file) },
       ...(head ? [{ label: t('history.files.take', { target: head }), onClick: () => actions.filesOntoBranch(sha, pathsOf([file]), head) }] : []),
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
-      { label: t('common.openInEditor'), onClick: () => openInEditor(file.path) },
+      { label: t('common.openInVscode'), onClick: () => openInEditor(file.path) },
       'separator',
       { label: t('history.files.copyPath'), onClick: () => copyText(file.path) }
     ])

@@ -32,7 +32,7 @@ interface ToolbarProps extends Omit<ScreenProps, 'state' | 'onChange' | 'screen'
  */
 export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, changeCount, dashboards, onDashboards }: ToolbarProps) {
   const { repo, data, workspace } = useRepoData()
-  const { toast, showMenu, openStudio, openSettings, openInEditor } = useAppActions()
+  const { toast, showMenu, openStudio, openSettings } = useAppActions()
   const { head, createBranch, createTag, stash, push, pushDialog, fetchRemote, pullRemote } = useActions()
   const { status } = data
   // Arranjo e tela são lidos aqui (e não recebidos da tela do repositório), para o arrasto de painéis não a redesenhar.
@@ -185,12 +185,6 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
             ▾
           </button>
         </span>
-      )}
-      {shown('editor') && (
-        <button className="tb-btn" onClick={() => openInEditor()} title={t('toolbar.openInEditorHelp')} aria-label={t('common.openInEditor')}>
-          <span aria-hidden>✎</span>
-          <span className="tb-label">{t('common.openInEditor')}</span>
-        </button>
       )}
       {shown('studio') && (
         <button className="primary tb-btn" onClick={() => openStudio({ target: head ?? undefined })} aria-label={t('studio.name')}>

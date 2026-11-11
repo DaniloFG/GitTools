@@ -239,7 +239,7 @@ export function ChangesView() {
             'separator' as const
           ]
         : []),
-      { label: t('common.openInEditor'), onClick: () => openInEditor(path) },
+      { label: t('common.openInVscode'), onClick: () => openInEditor(path) },
       { label: t('history.files.copyPath'), onClick: () => copyText(path) }
     ])
 
