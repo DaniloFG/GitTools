@@ -47,6 +47,9 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    que ele pediu, como as contagens de linhas em todas as listas); verificação vermelha que não se resolve; ou se o
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
+   **Limite de profundidade:** uma sessão aberta por outra herda a profundidade da cadeia, e na profundidade 8 o
+   `create_session` é recusado (janela 11). Uma sessão que o usuário abre à mão volta a zero; nesse caso, o usuário
+   cola a mensagem da seção 6.
 
 ## 2. Estado atual (fim da janela 11)
 
@@ -407,7 +410,7 @@ Lista de conferência do commit final. Só se faz quando o usuário disser que o
 
 Cole isto como primeira mensagem da sessão nova:
 
-> Leia `docs/HANDOFF.md`, `CLAUDE.md` e as seções 6 a 10 de `docs/PERFORMANCE.md`. Siga as regras de trabalho da seção 1
+> Leia `docs/HANDOFF.md`, `CLAUDE.md` e as seções 6 a 12 de `docs/PERFORMANCE.md`. Siga as regras de trabalho da seção 1
 > do HANDOFF (a sessão principal, em Opus, não lê nem escreve código: delega a subagentes Haiku 5.5, o mais recente, e só
 > especifica, revisa, mede e commita). Continue pelo próximo item da seção 2 do HANDOFF ("A seguir"); uma janela, um item.
 > Antes de começar, confira `git status -sb` (o checkout pode vir em HEAD destacado ou com a branch local atrasada) e
