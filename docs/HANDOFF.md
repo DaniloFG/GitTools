@@ -13,13 +13,13 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E10, #61 (auditoria de conflitos). `tests/conflicts-scale.test.ts` (21 testes, git de verdade, 1500 arquivos; 300 no Windows) cobre merge, cherry-pick, rebase, revert, stash pop e `apply --3way` com tipos mistos e ours/theirs/resolved/continue/skip/abort. Bug corrigido: `conflictDetails` lia `join(root, path)` e devolvia arquivo de fora do repositório com `../`; agora `resolveInside` e teto de 2 MB. Medido: `resolveConflicts` de 1500 arquivos = 32 processos git (teste do cenário 8). `typecheck` e `npm test` verdes (936). `security-review` pela skill falhou (sem `origin/HEAD`): diff pequeno revisto à mão. `code-review` high rodou; achados na seção 5.
+**Última etapa fechada:** E11, #76 e #82 (pendências da E1, respondidas pelo dono). #76: o "Force push (with lease)" saiu do menu da etiqueta de branch no History (`useBranchMenu(onScope, { forcePush: false })`); barra lateral e Toolbar mantêm. #82: `editorLabel.ts` (puro) escolhe o rótulo dos itens de arquivo por `settings.editor`: vazio = "Editor do GitTools" (abre a tela Files com o `FileEditor`, sem o aviso "escolha um editor"), `vscode`/`vscode-insiders`/dentro do VS Code = "Open in editor VSCode", outro = "Open in editor"; vale em History (CommitList e CommitDetails), Changes, Files e Compare. Conferido na tela (Chromium): menu da etiqueta e do arquivo no History, com editor vazio e `vscode`. `typecheck` e `npm test` verdes (951). `code-review` medium: achados na seção 5.
 
 **A seguir:** `ENCERRAMENTO` (só com a palavra do dono)
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
-| E1 | #58 #76 #82 | Menus de contexto: rótulos, Copy path, remover itens | parcial (#76 e rótulo "Editor do GitTools" pendentes) | 69618ba |
+| E1 | #58 #76 #82 | Menus de contexto: rótulos, Copy path, remover itens | feito (pendências na E11) | 69618ba |
 | E2 | #75 #57 #73 #77 | Commit/push e Changes/History: remover "Include all files", push volta a normal, seleção inicial | feito (#73 já existia) | 5957e84 |
 | E3 | #83 #86 | Diff: botões vão para submenu "Options"; colunas do History redimensionáveis | feito | 6179d6d |
 | E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | feito | bdf185b |
@@ -29,6 +29,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E8 | #85 | Botões assíncronos: bloqueio contra clique duplo + loading onde falta | feito | ver git log |
 | E9 | #72 #60 | READMEs: seções e chamadas no topo; tirar menções ao repo do GitHub | feito | ver git log |
 | E10 | #61 | Auditoria de conflitos com cenários de dezenas a milhares de arquivos | feito | ver git log |
+| E11 | #76 #82 | Fecha as pendências da E1: sem Force push na etiqueta do History; rótulo conforme o editor | feito | 64bddaa |
 
 ## 3. Base de medição
 
@@ -45,10 +46,10 @@ contagem de processos git antes e depois.
   novo, não ajuste.
 - 2026-11-11: o branch de trabalho vem da plataforma (`ccr-f146ea2b-tsxm2b`), fora do padrão `feature/*` do guia.
 
-- 2026-11-11 E1, dúvidas para o dono: (a) #76 pede tirar "Force push (with lease)" do menu de clique direito do History, mas ali não existe; o item está na Toolbar (`toolbar.pushForce`, `Toolbar.tsx:100`) e no menu da branch na Sidebar (`sidebar.menu.pushForce`, `branchMenu.ts:48`). Não removido; remover um, os dois ou nenhum? (b) #82 pede "Editor do GitTools" no lugar de "Open in new window", mas esse item abre o diff em janela própria (`openDiffWindow`), não o editor (`FileEditor`, aberto pela tela Files). Rótulo não trocado; confirmar o que se quer.
-- 2026-11-11 E3, achados do `code-review` ainda abertos (não corrigidos, decisão do dono ou etapa própria): (a) Compare: "Abrir no editor" aparece para todo status exceto D, mas abre a cópia da árvore de trabalho, não a versão do ref comparado (`CompareView.tsx:113`); (b) clique na linha WIP chama `onOpenFile('')` e limpa a seleção de commit/força a tela History mesmo ao só expandir (`CommitList.tsx:680`); (c) `common.openInVscode` fixa "VSCode" embora o editor seja configurável; (d) Toolbar perdeu o botão que abre o projeto inteiro no editor (E1); (e) `CommitBox`: `setMode(undefined)` roda após o push mesmo se ele falhar, perdendo a escolha "force" no retry; (f) FilesView: ações do histórico do arquivo só existem depois que o diff carrega. Recusados: sobreposição de alças (colunas adjacentes nunca têm alças de lados opostos) e estado congelado do submenu (a seleção não muda com o menu aberto).
+- 2026-11-11 E3, achados do `code-review` ainda abertos (não corrigidos, decisão do dono ou etapa própria): (a) Compare: "Abrir no editor" aparece para todo status exceto D, mas abre a cópia da árvore de trabalho, não a versão do ref comparado (`CompareView.tsx:113`); (b) clique na linha WIP chama `onOpenFile('')` e limpa a seleção de commit/força a tela History mesmo ao só expandir (`CommitList.tsx:680`); (d) Toolbar perdeu o botão que abre o projeto inteiro no editor (E1); (e) `CommitBox`: `setMode(undefined)` roda após o push mesmo se ele falhar, perdendo a escolha "force" no retry; (f) FilesView: ações do histórico do arquivo só existem depois que o diff carrega. Recusados: sobreposição de alças (colunas adjacentes nunca têm alças de lados opostos) e estado congelado do submenu (a seleção não muda com o menu aberto).
 - 2026-11-11 E2: clicar na linha WIP não troca o arquivo já ativo em `WipPanes` (só preenche o vazio); mudar isso exige editar `CommitDetails.tsx`. `code-review` rodou na E3.
-- 2026-11-11 E1: `code-review` feito na E3; conferência em tela só do menu do diff e da History (menus de arquivo de Changes/Files/Compare não conferidos). Traduções ar/hi/zh de `common.openInVscode` pedem revisão de nativo.
+- 2026-11-11 E1/E11: menus de arquivo de Changes/Files/Compare não conferidos em tela (mesma lógica pura, testada). Traduções ar/hi/zh de `common.openInVscode` e `openInGitToolsEditor` pedem revisão de nativo.
+- 2026-11-11 E11, achados do `code-review` aceitos: (a) com editor vazio, "Editor do GitTools" faz o mesmo que "Blame/history" nos menus do History e abre a cópia da árvore de trabalho, não a versão do commit; (b) em Changes, arquivo apagado (D) também mostra o item (antes falhava igual); (c) sem editor externo o aviso `editor.chooseFirst` não aparece mais nos menus (só nos botões de cabeçalho); (d) `useAppSettings` em CommitFiles/SingleCommit/ChangesView/CompareView redesenha com mudança de configuração (rara); (e) boilerplate `editorKind`+`openEditorItem` repetido em cinco telas: um hook `useOpenInEditor` resolveria; (f) rótulo "Editor do GitTools" sem verbo, como o dono pediu.
 
 - 2026-11-11 E4: Dashboards escondido e aberto continua na barra até trocar de tela (de propósito). `SCREENS`/`SCREEN_NAMES` em `Screens.tsx` duplicam `TOP_SCREEN_LABELS`. Sem separador entre Painéis dinâmicos e Telas. Pendente: ver o menu na tela e `code-review` sobre E4.
 
