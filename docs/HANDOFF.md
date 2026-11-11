@@ -45,7 +45,27 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
 
-## 2. Estado atual (fim da janela 6)
+## 2. Estado atual (fim da janela 7)
+
+- **Janela 7: item 4.5 feito** (`6d8df08`): `FileIcon` desenha `<svg class="file-icon"><use href="#fi-…"/></svg>`;
+  cada tipo de ícone entra uma vez num sprite compartilhado (`ensureIconSymbol` e `symbolMarkup` em `fileIcons.ts`,
+  ids internos prefixados por ícone). `FileIcon` e `FileLabel` são `memo` sem contexto; o tema é lido uma vez por
+  lista (`FileEntries`), não por linha (antes: um `MutationObserver` por ícone); o ajuste "ícones de arquivo" virou
+  `data-file-icons` na raiz (`appearance.ts`) e o CSS esconde. Medido com roteiro descartável (`measure-45.mjs`,
+  cenário `heavy`, CPU 4×, 3 rodadas alternadas, mediana): abrir Changes 490 → 437 ms (script 239 → 168 ms;
+  ampla variação, 385–613 ms no novo); nós no DOM 4.602 → 4.148; observadores criados 302 → 3; mudar para árvore
+  401 → 324 ms. **Piorou:** trocar o tema 94 → 118 ms (2 quadros, nas 3 rodadas; evento raro, aceito; se voltar a
+  isso, ver se é a troca das variantes claras ou a reclonagem dos `<use>`). Pacote +1,3 KB. 745 testes, typecheck
+  limpo. Base da janela 7: ATUALIZAÇÃO 5 processos, SELECIONAR 1 COMMIT 2 (sem mudança).
+- **Não verificado à mão:** ícones com gradiente (jenkins, kotlin, maven) e o ajuste de desligar ícones (só testes e
+  a contagem de `<use>`/`<symbol>` no navegador). Com ícones desligados, os símbolos ainda são inseridos (ocultos).
+- **Ambiente:** Chromium em `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome` (exporte `CHROMIUM`; o
+  `harness.mjs` ainda aponta para `chromium-1194`). O Chromium não abre com `TMPDIR` dentro do scratchpad (caminho
+  de socket longo demais). O checkout desta janela veio em HEAD destacado com a branch local atrasada: confira
+  `git status -sb` antes de commitar.
+- **A seguir: 4.1** (contexto dividido, o maior item da Fase 4).
+
+### Janela 6
 
 - **Janela 6: item 4.2 feito** (`20cc7ca`): `BranchItem`, `TagItem`, `StashItem` (`Sidebar.tsx`) e `BranchBadge`
   (`CommitList.tsx`) são `memo` e não leem contexto; cada painel (e o `CommitList`) monta uma ref de handlers, como o
@@ -227,11 +247,11 @@ em até 2× o `status()` simples. Ordem sugerida:
 
 ### Fase 4 — Listas e redesenhos (a próxima)
 
-Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **4.6 feito na janela 3, 4.4 na janela 4, 4.3 na janela 5, 4.2 na janela 6; o próximo é o 4.5.**
+Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **4.6 feito na janela 3, 4.4 na janela 4, 4.3 na janela 5, 4.2 na janela 6, 4.5 na janela 7; o próximo é o 4.1.**
 Ordem sugerida: ~~4.6~~ (comparação de diffs por
 identificador, não por `JSON.stringify`: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`, com o `applyLines` que
 chama `setSelection` depois de `await` sem guarda), ~~4.4~~ (`buildTree` com `Map`), ~~4.3~~ (branches e tags lineares),
-~~4.2~~ (itens de lista sem contexto), 4.5 (ícones por símbolo reutilizado) e 4.1 (contexto dividido, o maior). Meta da fase: rolar o histórico
+~~4.2~~ (itens de lista sem contexto), ~~4.5~~ (ícones por símbolo reutilizado) e 4.1 (contexto dividido, o maior). Meta da fase: rolar o histórico
 em até 16 ms por quadro (hoje 45–73 ms; o piso de pintura medido na janela 2 é de ~41 ms, então a meta exige menos
 nós por linha, não só menos React).
 
