@@ -5,12 +5,11 @@ A prioridade deste projeto é **desempenho**: a ferramenta precisa ser rápida e
 repositórios grandes. Toda alteração é avaliada primeiro por isso, sem abrir mão de **segurança** (o aplicativo abre
 repositórios que o usuário não escreveu) nem de **teste** (comportamento novo chega com a prova de que funciona).
 
-Este arquivo entra em toda sessão e em todo subagente, por isso traz só o que vale sempre. O resto entra no contexto
-quando é preciso: as regras de cada área estão em `.claude/rules/` e entram sozinhas quando um arquivo da área é
-aberto (vai especificar ou revisar sem abrir arquivo dela, só por `git diff`? leia a regra antes); procedimentos são
-skills em `.claude/skills/`; subagentes estão em `.claude/agents/`. Números medidos e orçamentos estão em
-[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) (orçamentos na seção 7; leia por seção, nunca inteiro). Se a branch
-tiver `docs/HANDOFF.md`, leia-o primeiro: é a memória de um trabalho em andamento.
+Este arquivo entra em toda sessão e em todo subagente: traz só o que vale sempre. O resto entra quando é preciso: as
+regras de cada área estão em `.claude/rules/` e entram sozinhas ao abrir um arquivo da área (sem abrir, leia a regra
+antes de especificar ou revisar); procedimentos são skills em `.claude/skills/`; subagentes, em `.claude/agents/`.
+Números e orçamentos estão em [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) (orçamentos na seção 7; leia por seção,
+nunca inteiro). Se a branch tiver `docs/HANDOFF.md`, leia-o primeiro: é a memória de um trabalho em andamento.
 
 ## Mapa do código
 
@@ -46,8 +45,7 @@ npm run perf:bundle        # tamanho do pacote contra os tetos (precisa do build
 
 1. **O custo acompanha o que está na tela, nunca o tamanho do repositório.** Lista, tabela ou árvore que mostra
    dados do repositório (commits, arquivos, linhas, branches, tags) é desenhada por janela ou por lotes e tem teto.
-2. **Cada processo git é caro.** No Windows, abrir um processo custa dezenas de milissegundos. Conte os
-   processos de cada ação e gaste o mínimo.
+2. **Cada processo git é caro**: no Windows custa dezenas de milissegundos; conte-os e gaste o mínimo.
 3. **Uma mudança, uma leitura.** O mesmo fato não é lido duas vezes; nada é relido se não mudou.
 4. **Rolar, arrastar e digitar não passam pelo React nem pelo disco a cada evento.**
 5. **Quem redesenha é só quem mudou.** Estado perto de quem usa; propriedades estáveis; linhas memorizadas.
@@ -67,8 +65,7 @@ recurso (skill, agente, modelo) cada parte pede.
 | Grande | Vários itens, uma fase, um plano, ou não cabe numa sessão | Skill `planejar`: etapas, `docs/HANDOFF.md`, sessão `central` e uma sessão por `etapa` |
 
 - Na dúvida entre dois tamanhos, o maior. Média que cresce vira Grande: feche o incremento e rode `planejar`.
-- **Pedido novo no meio não entra no que está em curso.** Feche ou registre o atual e faça a triagem do novo; se a
-  sessão já está carregada de outro assunto, sugira ao dono uma sessão nova.
+- **Pedido novo no meio não entra no que está em curso.** Feche ou registre o atual e faça a triagem do novo.
 - **Toda sessão termina de um de dois jeitos**: entregue e verificado, ou com o estado escrito no `docs/HANDOFF.md`
   para outra continuar. Trabalho pela metade só na conversa não existe.
 
@@ -101,14 +98,13 @@ O dono pede, por este arquivo, que o código seja lido e escrito por subagentes 
 | Papel | Modelo | Faz | Não faz |
 | --- | --- | --- | --- |
 | Orquestrador: a sessão que fala com o dono e a sessão de etapa | O da sessão que o dono abriu (o "topo") | Entende, especifica, delega, revisa cada diff, verifica, mede, commita; escreve só o pedido ao subagente, a mensagem de commit e o estado no HANDOFF | Não escreve código, teste nem documentação; não localiza nem lê arquivo de trabalho |
-| Sessão central | `sonnet` (aberta à mão: o modelo que o dono escolher) | Abre, confere no remoto e arquiva as sessões de etapa | Não lê nem escreve código; não faz etapa |
+| Sessão central | `sonnet`, o mais recente (aberta à mão: o modelo que o dono escolher) | Abre, confere no remoto e arquiva as sessões de etapa | Não lê nem escreve código; não faz etapa |
 | `gt-leitor` | `haiku`, sempre o mais recente | Localiza, mapeia, resume; devolve `arquivo:linha` | Não altera nada |
 | `gt-escritor` | `haiku`, sempre o mais recente; `sonnet` em escalada | Escreve código, testes e documentação, só nos arquivos recebidos | Não decide desenho; não roda git que altera estado |
+| `gt-juiz` | `opus`, sempre o mais recente | Dá o veredito (aprovado / reprovado com motivo) quando a central precisa de julgamento: verificação que diverge, aviso que não bate, decisão de desenho, diff de etapa arriscada | Não escreve código nem altera arquivo; não decide pela central |
 
-- **Toda chamada a `Agent` nomeia `gt-leitor` ou `gt-escritor`, ou passa `model`.** Agente genérico sem modelo herda
-  o modelo caro, e o `Explore` também roda em modelo caro: para ler, use o `gt-leitor`.
-- **A janela principal não lê nem escreve arquivo de trabalho.** Ela lê o diff que revisa e a saída das
-  verificações; localizar, ler e escrever (código, teste, documento) é do `gt-leitor` e do `gt-escritor`.
+- **Toda chamada a `Agent` nomeia `gt-leitor`, `gt-escritor` ou `gt-juiz`, ou passa `model`.** Agente genérico sem
+  modelo herda o modelo caro, e o `Explore` também roda em modelo caro: para ler, use o `gt-leitor`.
 - **Suba o modelo, não a insistência.** Dois erros do `gt-escritor` na mesma tarefa, ou tarefa densa (concorrência,
   cancelamento, algoritmo novo): chame-o com `model: "sonnet"`. Ainda não saiu: refaça a especificação.
 - **Correção de revisão volta ao mesmo subagente** (`SendMessage` com o id dele): ele ainda tem o contexto, e outro
@@ -150,14 +146,12 @@ tarefa. Se você não consegue escrever os itens 2 a 5, ainda não entendeu a ta
   longa (testes, builds, medições) vai para arquivo fora do repositório, e você lê só o fim (`tail`, `grep`).
 - **Uma sessão, um assunto.** A sessão não limpa a própria conversa (`/clear` é do dono): quando ficar longa ou o
   contexto for resumido, feche o que está coerente, escreva o estado no repositório (commit, HANDOFF) e pare.
-- **Cada chamada da janela principal relê a conversa inteira**, e retomar conversa longa depois de uma pausa custa
-  caro (medido: uma chamada gastou 20% da janela de 5 horas). Junte comandos numa chamada, delegue, e leve o que
-  continua depois para uma sessão nova. Teto de uso (padrão: 50% da janela): skill `etapa`, "Teto de uso".
+- **Cada chamada da janela principal relê a conversa inteira**; retomar conversa longa após uma pausa custa caro
+  (medido: uma chamada gastou 20% da janela de 5 horas). Junte comandos, delegue e leve o que continua a uma sessão nova.
 
 ## Antes de dar a alteração por pronta
 
-1. **Onde isto roda?** Se roda a cada quadro, tecla, linha de lista, atualização da tela ou chamada de IPC,
-   releia a regra da área.
+1. **Onde isto roda?** Se roda a cada quadro, tecla, linha, atualização de tela ou chamada de IPC, releia a regra da área.
 2. **Quanto cresce?** Pense no repositório de teste: 20 mil commits, 1.100 refs, 6 mil arquivos, 2 mil não
    rastreados, um diff de 5 mil linhas. Nada pode crescer com o quadrado disso, nem montar tudo isso no DOM.
 3. **Quantos processos git, e quanto mede?** Conte com `--trace`, meça antes e depois (`medir`) e compare com os
@@ -179,17 +173,19 @@ registre a exceção num comentário no ponto do código.
 - Lógica pura fica em módulo `.ts` sem React e ganha teste em `tests/`. Um módulo novo de `src/renderer/src`
   usado por teste entra na lista `include` do `tsconfig.node.json`.
 - Arquivos gerados não são editados à mão (`fileIcons.generated.ts` vem de `npm run build:icons`).
-- **Git e branches**: trabalho → `develop` → `homolog` → `main`, sempre por PR, e PR só quando o dono pedir. Nada
-  de force push, reescrita de histórico ou `--no-verify` em branch compartilhada. A versão da extensão é automática:
-  não suba o patch à mão (`CONTRIBUTING.md` e `.claude/rules/publicacao.md`).
+- **Git e branches**: cada alteração nasce de `develop` numa branch própria (`feature/`, `fix/`, `docs/`, `chore/`,
+  `refactor/`) e segue por PR `develop` → `homolog` → `main`; PR só quando o dono pedir. Concluída, remova o worktree
+  usado (`git worktree remove` e `git worktree prune`): nada acumula em `.claude/worktrees/`. Nada de force push,
+  reescrita de histórico ou `--no-verify` em branch compartilhada. A versão da extensão é automática: não suba o patch
+  à mão (`CONTRIBUTING.md` e `.claude/rules/publicacao.md`).
+- Nome de branch, mensagem de commit e PR não citam Claude, IA, modelo nem ferramenta de autoria, nem levam `Co-Authored-By`, `Claude-Session` ou "Generated with".
 - **Este guia é código.** Mudou um comando, uma pasta, um orçamento ou um jeito de trabalhar: corrija o `CLAUDE.md`
   e o `.claude/` no mesmo trabalho. Regra de uma área só vai para `.claude/rules/`; procedimento, para uma skill;
   este arquivo fica abaixo de 200 linhas. Depois de mexer, o dono pode conferir com `/doctor prompt-audit`.
 
 ## Trabalho com o Claude em etapas
 
-Trabalho que não cabe numa conversa curta é feito em **etapas**, cada uma numa sessão nova, de contexto limpo: o que
-uma etapa precisa saber está escrito no repositório. Os procedimentos são as skills `planejar`, `central` e `etapa`.
+Trabalho que não cabe numa conversa vira **etapas**, cada uma numa sessão nova. Skills: `planejar`, `central`, `etapa`.
 
 - **Cadeia**: o dono pede; a sessão de entrada planeja e, com o "pode seguir" dele, abre a sessão central; a central
   abre uma sessão por etapa e confere cada uma no remoto; a etapa delega o código aos subagentes. Nenhuma etapa abre

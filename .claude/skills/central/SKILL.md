@@ -49,10 +49,6 @@ portanto, no modelo que quer para as etapas; o contexto da central é pequeno, e
 
 ## Abrir uma etapa
 
-Antes de abrir, leia o uso da janela de 5 horas (skill `etapa`, seção "Teto de uso"). No teto ou acima dele: não
-abra. Diga ao dono onde o trabalho parou e a que horas a janela renova (`resetsAt`), e pare; só agende a retomada
-com `send_later` se o dono tiver pedido.
-
 `create_session` com:
 
 - `source_url`, `source_revision` e `outcome_branch` como os seus;
@@ -87,7 +83,7 @@ abaixo é executado.
    em `origin/<branch>` marca a etapa como fechada e aponta a mesma "próxima"; typecheck e testes vieram verdes.
 3. **Bateu**: `archive_session` da etapa que terminou e abra a seguinte.
 4. **Não bateu** (commit ausente, HANDOFF desatualizado, verificação vermelha): não abra nada. Diga ao dono o que
-   diverge e pare.
+   diverge e pare; se for caso de julgamento, chame antes o juiz (seção "Quando chamar o juiz").
 
 `PARADA <etapa> | <motivo>`: cancele a conferência, não abra nada, repasse o motivo ao dono e pare.
 
@@ -101,13 +97,32 @@ A etapa não avisou em 120 minutos. `get_session` da etapa:
 
 Um `<child-session-event>` de falha da etapa é tratado do mesmo jeito.
 
+## Quando chamar o juiz
+
+Nestes casos a central não julga sozinha:
+
+- a verificação de uma etapa diverge do que o aviso disse (typecheck ou testes não batem);
+- o aviso `ETAPA FECHADA` não bate com o remoto e você precisa decidir se a divergência importa;
+- uma decisão de desenho que a etapa levantou;
+- o diff de uma etapa arriscada (`src/core`, IPC, patches, segurança), antes de arquivá-la.
+
+Chame `Agent` com `subagent_type: "gt-juiz"` e `model: "opus"`, passando a branch, o intervalo de commits (do `<sha>`
+do aviso até `origin/<branch>`) e o que precisa ser julgado. Ele devolve `APROVADO` ou `REPROVADO: <motivo>`; quem
+decide é você:
+
+- **Aprovado**: siga como no aviso (arquive a etapa e abra a seguinte).
+- **Reprovado**: não abra a seguinte. Devolva o motivo à etapa com `send_message`, se a sessão ainda estiver aberta;
+  senão abra uma etapa de correção com o motivo no prompt. Avise o dono.
+
+O juiz nunca escreve código.
+
 ## Quando parar e avisar o dono
 
 - **O plano acabou**: "A seguir" diz `ENCERRAMENTO`. O encerramento pede a palavra do dono; com ela, abra a etapa
   `ENCERRAMENTO` como qualquer outra.
 - Uma etapa parou por decisão que só o dono toma, por verificação vermelha que não se resolve ou por falta de limite
   de uso.
-- O aviso não bate com o remoto.
+- O aviso não bate com o remoto, e o juiz não o liberou (ou não era caso dele).
 - `create_session` falhou ou não está disponível: deixe pronta a mensagem de início da etapa para o dono colar.
 - O dono pediu para parar.
 

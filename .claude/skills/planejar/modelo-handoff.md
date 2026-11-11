@@ -62,6 +62,7 @@ Só com a palavra do dono de que o trabalho acabou.
 - [ ] Todas as etapas fechadas; pendências viraram etapa, issue ou foram aceitas pelo dono
 - [ ] Documentação que o trabalho tornou falsa foi corrigida (`docs/PERFORMANCE.md`, README, `CLAUDE.md`, `.claude/`)
 - [ ] `git rm docs/HANDOFF.md`
+- [ ] Worktree usado removido, depois do último push (`git worktree remove <caminho>` e `git worktree prune`)
 - [ ] `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension` e `npm run perf:bundle` verdes
 - [ ] Resumo para o PR: o que mudou, antes e depois medidos, o que não foi conferido
 - [ ] PR para a `develop` só quando o dono pedir

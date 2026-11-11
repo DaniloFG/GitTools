@@ -13,7 +13,7 @@ repositório. O que não estiver no `docs/HANDOFF.md` não existe para a sessão
 
 ## 1. Antes de planejar
 
-- Confirme a branch: é a de trabalho (`claude/*`, `feature/*`, `fix/*`…), nunca `develop`, `homolog` ou `main`.
+- Confirme a branch: é a de trabalho (`feature/*`, `fix/*`, `docs/*`, `chore/*`, `refactor/*`, nascida de `develop`), nunca `develop`, `homolog` ou `main`.
 - Se já existe `docs/HANDOFF.md`, você está **retomando**: leia-o, atualize o estado (passo 5) e não refaça o plano.
 - Diga o pedido de volta ao dono em duas linhas e resolva agora o que só ele decide (escopo, o que fica de fora,
   metas). Pergunta que você consegue responder lendo o código não é pergunta para o dono.
