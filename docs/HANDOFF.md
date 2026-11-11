@@ -13,16 +13,16 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E3, commit `6179d6d`: #83 (botões do diff no submenu "Opções" do ⋯, via `DiffView.panelActions`) e #86 (causa: `overflow: hidden` herdado cortava a alça; corrigido no CSS). typecheck e 831 testes verdes; tela conferida no Chromium só na History e no painel de commit. `code-review` medium rodado sobre E1–E3 (achados na seção 5).
+**Última etapa fechada:** E4, commit `bdf185b`: #74 #78 #56 (Aparência = Barra de ferramentas, Painéis dinâmicos, Telas; `screenVisibility.ts`, preferência `pref.screens.hidden`; a tela aberta nunca some). typecheck e 844 testes verdes; tela não conferida no Chromium e `code-review` não rodado (diff lido à mão).
 
-**A seguir:** `E4` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
+**A seguir:** `E5` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
 | E1 | #58 #76 #82 | Menus de contexto: rótulos, Copy path, remover itens | parcial (#76 e rótulo "Editor do GitTools" pendentes) | 69618ba |
 | E2 | #75 #57 #73 #77 | Commit/push e Changes/History: remover "Include all files", push volta a normal, seleção inicial | feito (#73 já existia) | 5957e84 |
 | E3 | #83 #86 | Diff: botões vão para submenu "Options"; colunas do History redimensionáveis | feito | 6179d6d |
-| E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | a fazer | |
+| E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | feito | bdf185b |
 | E5 | #62 | Tela inicial History; estado de tela/layout independente por aba | a fazer | |
 | E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | a fazer | |
 | E7 | #59 #84 | Compare: "apply" do arquivo inteiro; busca no Cherry-pick Studio | a fazer | |
@@ -36,17 +36,6 @@ Não se aplica (nenhuma etapa persegue meta de desempenho). E5, E8 e E10 medem a
 contagem de processos git antes e depois.
 
 ## 4. Plano
-
-### Etapa E4 — menu Appearance (#74 #78 #56)
-- **Orquestra**: topo
-- **Arquivos prováveis**: `Screens.tsx:87-147`, `dock.ts:63-73`, `toolbarItems.ts`, `Toolbar.tsx:41,130`,
-  `src/shared/settings.ts`, catálogos i18n (seis idiomas)
-- **Ler antes**: issues #56 #74 #78. Settings e Sponsor nunca ocultáveis. Dashboards não é `ScreenId`
-  (`dock.ts:63`): visibilidade precisa tratá-lo à parte.
-- **Aceite**: telas ocultas somem da barra e não quebram o atalho/tela inicial; `npm test` verde
-- **Testes**: unidade e tela
-- **Segurança**: não
-- **Depende de**: —
 
 ### Etapa E5 — tela inicial e independência por aba (#62)
 - **Orquestra**: topo (desenho)
@@ -116,6 +105,8 @@ contagem de processos git antes e depois.
 - 2026-11-11 E3, achados do `code-review` ainda abertos (não corrigidos, decisão do dono ou etapa própria): (a) Compare: "Abrir no editor" aparece para todo status exceto D, mas abre a cópia da árvore de trabalho, não a versão do ref comparado (`CompareView.tsx:113`); (b) clique na linha WIP chama `onOpenFile('')` e limpa a seleção de commit/força a tela History mesmo ao só expandir (`CommitList.tsx:680`); (c) `common.openInVscode` fixa "VSCode" embora o editor seja configurável; (d) Toolbar perdeu o botão que abre o projeto inteiro no editor (E1); (e) `CommitBox`: `setMode(undefined)` roda após o push mesmo se ele falhar, perdendo a escolha "force" no retry; (f) FilesView: ações do histórico do arquivo só existem depois que o diff carrega. Recusados: sobreposição de alças (colunas adjacentes nunca têm alças de lados opostos) e estado congelado do submenu (a seleção não muda com o menu aberto).
 - 2026-11-11 E2: clicar na linha WIP não troca o arquivo já ativo em `WipPanes` (só preenche o vazio); mudar isso exige editar `CommitDetails.tsx`. `code-review` rodou na E3.
 - 2026-11-11 E1: `code-review` feito na E3; conferência em tela só do menu do diff e da History (menus de arquivo de Changes/Files/Compare não conferidos). Traduções ar/hi/zh de `common.openInVscode` pedem revisão de nativo.
+
+- 2026-11-11 E4: Dashboards escondido e aberto continua na barra até trocar de tela (de propósito). `SCREENS`/`SCREEN_NAMES` em `Screens.tsx` duplicam `TOP_SCREEN_LABELS`. Sem separador entre Painéis dinâmicos e Telas. Pendente: ver o menu na tela e `code-review` sobre E4.
 
 ## 6. Encerramento
 
