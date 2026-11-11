@@ -4600,12 +4600,12 @@ tr.nav-flash > td {
   width: 16px;
   height: 16px;
 }
-.file-icon svg {
-  width: 16px;
-  height: 16px;
-}
 .tree-dir .file-icon {
   margin-inline-start: -2px;
+}
+/* Desligado nas configurações: o atributo fica na raiz (appearance.ts). */
+:root[data-file-icons='off'] .file-icon {
+  display: none;
 }
 
 /* ------------------------------------------------ extensão do VS Code: tema e fontes do próprio VS Code */

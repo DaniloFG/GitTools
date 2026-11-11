@@ -64,6 +64,9 @@ export function applySettings(settings: Settings, locale: LocaleId, title = 'Git
   // As letras de status (M, A, D…) somem pelo CSS, em todas as listas de uma vez.
   if (settings.statusLetters) delete root.dataset.statusLetters
   else root.dataset.statusLetters = 'off'
+  // Os ícones de arquivo somem pelo CSS (um atributo na raiz), sem redesenhar cada linha da lista.
+  if (settings.fileIcons) delete root.dataset.fileIcons
+  else root.dataset.fileIcons = 'off'
   root.style.setProperty('--divider-size', `${settings.dividerWidth}px`)
   root.style.setProperty('--pane-button-scale', String(settings.paneButtonScale))
   // Posição e tamanho das notificações (o CSS usa estes valores).
