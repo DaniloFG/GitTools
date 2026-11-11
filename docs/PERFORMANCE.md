@@ -15,32 +15,35 @@ também em computadores fracos. As regras do dia a dia que saem daqui estão no 
 - [10. Resultado da Fase 3](#10-resultado-da-fase-3)
 - [11. Resultado da Fase 4](#11-resultado-da-fase-4)
 - [12. Resultado da Fase 5](#12-resultado-da-fase-5)
+- [13. Depois das fases](#13-depois-das-fases)
 
 ## 1. Resumo
 
-O GitTools abre rápido e já tem uma boa base de cache. O que o deixa lento em máquina fraca não é a carga
-inicial: é o que acontece **durante o uso**. Em ordem de impacto:
+O GitTools abria rápido, mas ficava lento **durante o uso** em máquina fraca: telas que desenhavam tudo de uma vez,
+processos git demais por ação, o estado do repositório lido do jeito caro em toda atualização e um pacote que
+carregava o que não usava (a linha de base está na seção 3). O trabalho foi feito em cinco fases, cada item medido
+antes e depois (seções 8 a 13). Com a CPU 4× mais lenta e o repositório de teste (seção 2):
 
-1. **Telas que desenham tudo de uma vez.** O diff, o blame e as listas de branches e tags montam uma linha no
-   DOM para cada item, sem janela. Um diff de 5.000 linhas alteradas vira 161.726 nós e trava a tela por
-   **20 segundos** com a CPU 4× mais lenta (4,4 s numa máquina rápida). Depois de aberto, cada clique numa
-   linha custa ~1,9 s e cada quadro de rolagem, 800 ms.
-2. **Arrastar uma divisória redesenha o aplicativo inteiro a cada movimento** e grava no `localStorage` a cada
-   movimento: 258 ms por passo no uso normal (cerca de 4 quadros por segundo).
-3. **Processos git demais por ação.** Marcar um arquivo para o stage roda 1 comando útil e mais **16 leituras**;
-   ganhar o foco da janela roda 7; cada commit selecionado roda 5, sem cancelar os anteriores (segurar a seta
-   por 10 commits abre 50 processos). No Linux desta medição um processo git custa ~3 ms; no Windows criar um
-   processo é bem mais caro, e é lá que isso mais pesa.
-4. **O estado do repositório é lido do jeito caro, sempre.** Toda atualização pede as linhas adicionadas e
-   removidas de cada arquivo, o que lê do disco todos os arquivos não rastreados: com 2.000 deles, o status
-   passa de 15 ms para 331 ms.
-5. **O histórico não é uma lista virtual.** As linhas se acumulam ao rolar (120 → 500) e cada lote novo é uma
-   tarefa longa: 39 ms por quadro com a CPU 4× mais lenta, com pausas de até 376 ms.
-6. **O pacote carrega o que não usa.** O aplicativo Electron é publicado **sem minificação** (2,08 MB de
-   JavaScript; minificado seriam 1,25 MB) e 48% do código da interface são traduções dos idiomas que não
-   estão em uso. Nada é carregado sob demanda.
+| Interação | Antes (seção 3) | Agora (seção 7) |
+| --- | --- | --- |
+| Abrir um diff de 5.000 linhas alteradas | 20,0 s; 161.726 nós no DOM | 0,44–0,57 s; 1.261 nós |
+| Marcar 1 linha nesse diff | 1,8–3,3 s | 20–34 ms |
+| Arrastar uma divisória | 258 ms por passo; com esse diff aberto, 7,1 s | 56–66 ms; com o diff, 90–101 ms |
+| Rolar o histórico | 39 ms por quadro, maior pausa 376 ms, linhas acumulando | 29 ms por quadro, maior pausa 52 ms, 45 linhas montadas |
+| Barra lateral com 1.142 refs | 2.900 nós | 333 nós |
+| Processos git: carga / foco / selecionar commit / 10 setas / stage | 14–16 / 7 / 5 / 50 / 17 | 6 / 2 / 2 / 4 / 9 |
+| `status` com 2.000 não rastreados | 331–421 ms em toda atualização | 12 ms na atualização; as contagens (88 ms) só nas telas que as mostram |
+| Abrir os dashboards de novo | 3,9–4,9 s e 3 processos, sempre | 6–23 ms e 1 processo, enquanto nenhuma ref muda |
+| JavaScript da primeira carga (Electron) | 2.076 KB, sem minificar, com os seis idiomas | 561 KB + o catálogo do idioma ativo (até 683 KB), conferido no CI |
 
-Os itens 1 a 3 são os que o usuário sente como "travou". O plano (seção 6) começa por eles.
+Os tempos de "agora" foram medidos numa máquina que rodou o `core.mjs` cerca de 25% mais rápido que a da linha de
+base; processos git, nós no DOM e tamanhos não dependem da máquina.
+
+Ficaram acima da meta (seção 7, com o motivo e o próximo passo nas seções 9 a 12): rolar o histórico e arrastar a
+divisória em 16 ms (o piso é pintura e composição, não JavaScript), abrir o diff de 5.000 linhas em 300 ms (o que
+sobra é transporte e primeiro desenho), o stage de 1 arquivo em 6 processos (hoje 9) e o `status` com contagens em
+até 2× o simples. As regras que mantêm o que foi ganho estão no [`CLAUDE.md`](../CLAUDE.md), e o tamanho do pacote
+é conferido no CI (`npm run perf:bundle`).
 
 ## 2. Como foi medido
 
@@ -68,6 +71,22 @@ Limites do que foi medido, para ler os números com a cautela certa:
 - A interface foi medida com o pacote do webview (minificado). O aplicativo Electron usa o mesmo código, porém
   sem minificação na época desta medição (achado D1, corrigido na Fase 1; ver seção 8); a inicialização do Electron em si não foi medida.
 - Blame e Dashboards foram medidos só na camada de dados; os problemas de desenho deles vêm da leitura do código.
+
+Cuidados aprendidos ao medir:
+
+- **Uma medição por vez.** Cada rodada do `ui.mjs` leva uns 5 minutos e varia cerca de ±10% entre rodadas (a rolagem
+  do histórico, mais). Para afirmar ganho, repita, use mediana ou alterne as versões na mesma máquina.
+- **Numa cópia separada** quando outro agente estiver editando os mesmos arquivos: `git worktree add --detach <pasta>
+  HEAD`, link simbólico de `node_modules`, `npm run build:extension` na cópia e `git worktree remove --force <pasta>`
+  no fim. Dentro da cópia, o `ui.mjs` serve o `extension/dist/webview` dela.
+- **Perfil de JavaScript e contagem de redesenhos** precisam da interface sem minificar, para ler os nomes:
+  `npx vite build -c vite.webview.config.ts --minify false` (depois, `npm run build:extension` de novo). Os redesenhos
+  das seções 11 e 13 foram contados com um `__REACT_DEVTOOLS_GLOBAL_HOOK__` mínimo instalado antes da carga, que
+  percorre as fibras de cada commit do React e conta as que renderizaram (sem descer nas subárvores puladas).
+- O `ui.mjs` acha o Chromium do ambiente sozinho (`CHROMIUM` força outro) e o módulo `playwright` global
+  (`PLAYWRIGHT_MODULE` se mudar). O Chromium não abre com `TMPDIR` num caminho longo (socket).
+- Um contêiner novo vem sem `node_modules` (`npm ci`) e sem o repositório de teste (`node scripts/perf/stress-repo.mjs`,
+  cerca de 20 s).
 
 ## 3. Linha de base
 
@@ -276,11 +295,13 @@ cada mudança de `status`, mesmo de outro arquivo. Correção: comparar por iden
 
 ### D. Carga e tamanho
 
-**D1. O aplicativo Electron é publicado sem minificação.**
-O `electron-vite` 4 usa `minify: false` por padrão nos três alvos e `electron.vite.config.ts` não muda isso:
-2.076 KB de JavaScript em 40 mil linhas, contra 1.249 KB do mesmo código no webview. O CSS vai com comentários
-(132 KB contra 97 KB). O ganho medido no tempo de análise do código é pequeno (26 ms → 22 ms); o ganho real é
-em leitura de disco e memória. Uma linha de configuração.
+**D1. O aplicativo Electron era publicado sem minificação (corrigido na Fase 1).**
+O `electron-vite` 4 usa `minify: false` por padrão nos três alvos, e o `electron.vite.config.ts` não mudava isso:
+2.076 KB de JavaScript em 40 mil linhas, contra 1.249 KB do mesmo código no webview, e o CSS com comentários
+(132 KB contra 97 KB). O ganho medido no tempo de análise do código era pequeno (26 ms → 22 ms); o ganho real é em
+leitura de disco e memória. Hoje `build.minify` está ligado nos três alvos (1.251 KB depois da Fase 1) e, com os
+idiomas e as telas sob demanda da Fase 5, a primeira carga do Electron tem 561 KB de JavaScript mais o catálogo do
+idioma ativo.
 
 **D2. Seis idiomas dentro de todos os pacotes.**
 `shared/i18n/messages/index.ts` importa os seis catálogos de forma estática: são 48% do JavaScript da interface
@@ -318,7 +339,7 @@ antes e depois.
 ### Fase 0 — Medir sempre (feito nesta entrega)
 
 - Roteiros em `scripts/perf/` e orçamentos na seção 7.
-- A fazer (P): conferir o tamanho do pacote no CI e falhar se passar do orçamento.
+- Feito depois das fases: `npm run perf:bundle` no CI reprova se o pacote passar dos tetos ([seção 13](#13-depois-das-fases)).
 
 ### Fase 1 — Ganhos rápidos (cerca de 3 dias, risco baixo)
 
@@ -412,7 +433,7 @@ Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/
 | Arrastar divisória (CPU 4×) | 56–66 ms por passo (34–41 linhas montadas); com o diff de 5.000 linhas, 90–101 ms | ≤ 16 ms |
 | Abrir diff de 5.000 linhas alteradas (CPU 4×) | 0,44–0,57 s (fim da Fase 3: 0,93–0,99) | ≤ 300 ms |
 | Marcar 1 linha nesse diff (CPU 4×) | 20–34 ms | ≤ 50 ms |
-| Nós no DOM, em qualquer tela | ≤ 1.645 (histórico 1.311, diff de 5.000 linhas 1.261, lado a lado 1.645; blame de 20 mil 661) | ≤ 5.000 |
+| Nós no DOM, em qualquer tela | ≤ 1.645 (histórico 1.311, diff de 5.000 linhas 1.261, lado a lado 1.645; blame de 20 mil 661; barra lateral com 1.142 refs 333–409) | ≤ 5.000 |
 | `status` no cenário `heavy` | com contagens 88 ms (simples 12 ms; fim da Fase 3: 129 e 15); sem contagens, que é o caso da atualização fora das telas que as mostram, igual ao simples | ≤ 2× o `status()` simples |
 | JavaScript da primeira carga | 562 KB no webview, 561 KB no Electron, mais o catálogo do idioma ativo (62–119 KB) | ≤ 700 KB |
 | Dashboards: abrir de novo sem mudança de ref | 6–23 ms, 1 processo (memória ou disco); 1ª vez ~2,8 s, 4 processos | não piorar |
@@ -561,7 +582,7 @@ Fase concluída: 3.1 a 3.5 (o 3.5 veio na Fase 1) e o formato compacto do diff. 
   harness). Com a espera curta entre seleção e leitura (Fase 1) e a seleção em 2 processos, 10 setas já abrem 4
   processos; o ganho restante é pequeno. O núcleo está pronto (`signal` em `runGit`).
 - **Stage de 1 arquivo em 6 processos** (hoje 9): o resto está no `refresh()` do fim de `run` e no ouvinte da aba,
-  que ainda leem duas vezes em alguns caminhos (ver HANDOFF).
+  que ainda leem duas vezes em alguns caminhos.
 - **Abrir o diff de 5.000 linhas em 300 ms** (hoje 0,93–0,99 s): o que sobra é o texto das linhas (~1,6 MB), a
   conversão e o primeiro desenho. Próximos passos possíveis: mandar só as primeiras centenas de linhas e o resto
   sob demanda (o diff já é desenhado por janela), ou comprimir o texto.
@@ -613,9 +634,9 @@ medidos com o `Tracing` do CDP antes de mexer.
 
 ### Não feito
 
-- **Branches e tags continuam todas montadas** (sem lista em janela): com 1.100 refs, a barra lateral é a maior
+- **Branches e tags continuam todas montadas** (sem lista em janela; feito depois, [seção 13](#13-depois-das-fases)): com 1.100 refs, a barra lateral é a maior
   lista sem teto que sobrou. Os itens agora são baratos de redesenhar, mas o custo de montar acompanha o repositório.
-- **`ChangesView` redesenha 5 vezes ao abrir** e o `RepoView`, 1 vez por seleção (a seleção é estado dele; os filhos
+- **`ChangesView` redesenha 5 vezes ao abrir** (reduzido para 2 depois, [seção 13](#13-depois-das-fases)) e o `RepoView`, 1 vez por seleção (a seleção é estado dele; os filhos
   memorizados limitam o estrago).
 - Trocar o tema ficou ~24 ms mais lento com os símbolos compartilhados (dois quadros, nas 3 rodadas). Se voltar a
   isso: ver se o custo é a troca das variantes claras dos ícones ou a reclonagem dos `<use>`.
@@ -682,9 +703,36 @@ são o caminho sem cache, medido na mesma máquina que as linhas com cache.
 - **O botão de atualizar dos dashboards** não chega ao backend (o cache da interface responde), então "Atualizado
   agora" mostra o `generatedAt` antigo. Com o cache por chave, o dado é o mesmo; o botão pode ser simplificado ou
   removido.
-- **`DiffWindow.tsx` ainda chama `setLocale`**: seguro, mas baixa um catálogo a mais se o idioma salvo difere do
+- **`DiffWindow.tsx` ainda chama `setLocale`** (feito depois, [seção 13](#13-depois-das-fases)): seguro, mas baixa um catálogo a mais se o idioma salvo difere do
   navegador e não renova os textos se o idioma for trocado com a janela de diff aberta.
 - **Não conferidos:** o reinício do aplicativo de verdade com o cache em disco (só pelo `core.mjs`, com um backend
   novo na mesma pasta); o webview do VS Code com as telas sob demanda (o CSS dos dashboards vem num pedaço próprio;
   a CSP inclui o `cspSource`); o terminal git e o editor de arquivo abertos de fato; o tempo da extensão (5.4) no
   VS Code real.
+
+## 13. Depois das fases
+
+Quatro itens que tinham ficado de fora das fases, feitos no fim do trabalho. Medições com a CPU 4× e o cenário
+`moderate`; os redesenhos foram contados por um gancho do DevTools no harness (mediana de 3 rodadas).
+
+| Item | O que mudou | Resultado medido |
+| --- | --- | --- |
+| Idioma da janela de diff | Começa com as configurações lidas antes do primeiro desenho e usa `useLocaleCatalog`, como a janela principal, no lugar de `setLocale` durante o desenho; relê as configurações ao ganhar o foco | Sem catálogo a mais quando o idioma salvo difere do navegador. A troca de idioma com a janela de diff aberta aparece quando ela ganha o foco (ao vivo exigiria um aviso novo nas três pontes) |
+| Redesenhos da tela Changes | O arquivo inicial já vem do status; a seleção é zerada no mesmo lote do diff; o efeito das marcações só muda o estado quando há o que tirar | `ChangesView` 5 → 2 desenhos ao abrir; abrir Changes 407 → 233 componentes, 84 → 65 ms de script; `ui.mjs` 269–286 → 233 ms. O `RepoView` segue com 1 desenho por seleção (a seleção é estado dele; os filhos memorizados só redesenham o que mudou) |
+| Barra lateral em janela | Cada painel vira uma lista achatada (seções, pastas e itens) no `VirtualList`, com altura fixa nas branches e tags (`sidebarRows.ts`) | Nós na barra 2.900 → 333 (com as remotas expandidas 3.761 → 409); carga a frio até a barra assentar 716 → 548 ms; modo árvore 523 → 385 ms. **Piorou:** rolar a barra 17–18 → 19–20 ms por quadro |
+| Teto do pacote no CI | `scripts/perf/bundle-size.mjs` (`npm run perf:bundle`), no CI depois dos dois builds | Reprova acima de 700.000 bytes de JavaScript da primeira carga com o maior catálogo (hoje 683.731 no webview e 683.165 no Electron) e de 100.000 bytes no CSS (85.584), no processo principal (80.863) e na extensão (82.149) |
+
+Processos git iguais em todos (carga 6, foco 2, 10 setas 4, Changes 5, stage 9). Não conferidos: a janela de diff
+no Electron e no webview do VS Code; na barra lateral, o checkout por duplo clique, o merge por soltar e os botões do
+stash.
+
+Pendências menores conhecidas, sem item no plano:
+
+- `log()` ainda roda o `rev-parse` quando a consulta é por uma branch explícita sem `all`: a verificação muda o
+  resultado se o HEAD for órfão. Aceito de propósito.
+- O stage de 1 arquivo abre 9 processos (meta 6): o `refresh()` do fim de `run` e o do ouvinte da aba ainda leem duas
+  vezes em alguns caminhos.
+- Um 404 de recurso aparece no console em todas as sessões do `ui.mjs`; não investigado (provavelmente o favicon do
+  servidor de teste).
+- Na barra lateral, as linhas `li` ficam sem `ul` em volta e o painel é um `div` com `role="complementary"`: a
+  estrutura de lista ficou menos correta para leitores de tela.
