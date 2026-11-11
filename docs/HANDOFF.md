@@ -45,7 +45,23 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
 
-## 2. Estado atual (fim da janela 5)
+## 2. Estado atual (fim da janela 6)
+
+- **Janela 6: item 4.2 feito** (`20cc7ca`): `BranchItem`, `TagItem`, `StashItem` (`Sidebar.tsx`) e `BranchBadge`
+  (`CommitList.tsx`) são `memo` e não leem contexto; cada painel (e o `CommitList`) monta uma ref de handlers, como o
+  `CommitRow`. A etiqueta acha a branch por `Map` (no lugar de `data.branches.find`) e recebe um `Set` estável das
+  remotas; o recuo da árvore vai como número. Medido com um roteiro descartável (`measure-42.mjs` no scratchpad:
+  307 linhas de branch na tela, CPU 4×, 3 blocos de 10 setas no histórico): script 446 → 315 ms por bloco
+  (mediana; 503/446/391 → 384/315/272). Atualização sem mudança de dados: igual (~2 ms de script; o custo ali é
+  layout ~25 ms e estilo ~9 ms). Pacote +0,9 KB. 738 testes, typecheck limpo. Base da janela 6: ATUALIZAÇÃO 5
+  processos, SELECIONAR 1 COMMIT 2 (sem mudança).
+- **Não verificado no navegador à mão:** menus, arrastar e duplo clique dos itens (só typecheck, testes e a
+  medição, que exercita a montagem e a seleção).
+- **Ambiente:** o Chromium desta máquina mudou para `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`; o
+  `harness.mjs` ainda aponta para `chromium-1194`. Exporte `CHROMIUM` com o caminho novo antes do `ui.mjs`.
+- **A seguir: 4.5** (ícones por símbolo reutilizado).
+
+### Janela 5
 
 - **Janela 5: item 4.3 feito** (`e0fbf26`): `groupBranches` (`src/renderer/src/sidebarGroups.ts`, linear, teste de
   equivalência com a versão antiga) memorizado por `data.branches`; marcadas num `Set`; `commitColors`, `buildTree` e
@@ -211,12 +227,11 @@ em até 2× o `status()` simples. Ordem sugerida:
 
 ### Fase 4 — Listas e redesenhos (a próxima)
 
-Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **4.6 feito na janela 3, 4.4 na janela 4, 4.3 na janela 5; o próximo é o 4.2.**
+Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **4.6 feito na janela 3, 4.4 na janela 4, 4.3 na janela 5, 4.2 na janela 6; o próximo é o 4.5.**
 Ordem sugerida: ~~4.6~~ (comparação de diffs por
 identificador, não por `JSON.stringify`: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`, com o `applyLines` que
 chama `setSelection` depois de `await` sem guarda), ~~4.4~~ (`buildTree` com `Map`), ~~4.3~~ (branches e tags lineares),
-4.2 (itens de lista sem contexto: `BranchBadge` no histórico chama `useApp()` e `data.branches.find` por
-etiqueta), 4.5 (ícones por símbolo reutilizado) e 4.1 (contexto dividido, o maior). Meta da fase: rolar o histórico
+~~4.2~~ (itens de lista sem contexto), 4.5 (ícones por símbolo reutilizado) e 4.1 (contexto dividido, o maior). Meta da fase: rolar o histórico
 em até 16 ms por quadro (hoje 45–73 ms; o piso de pintura medido na janela 2 é de ~41 ms, então a meta exige menos
 nós por linha, não só menos React).
 
