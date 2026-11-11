@@ -13,7 +13,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E6, commit `COMMIT`: #70 (`multiRepoDetection` desligado por padrão; só `true` literal liga) e #71 (um campo de busca na Central de Configurações; com texto, todas as seções pesquisáveis aparecem com o nome, clicável). typecheck, 855 testes, `perf:bundle` (tudo dentro dos tetos) verdes; busca conferida no Chromium ("tema" -> Aparência, "editor" -> Editor e diff, clique no cabeçalho limpa a busca).
+**Última etapa fechada:** E6, commit `b296a96`: #70 (`multiRepoDetection` desligado por padrão; só `true` literal liga) e #71 (um campo de busca na Central de Configurações; com texto, todas as seções pesquisáveis aparecem com o nome, clicável). typecheck, 855 testes, `perf:bundle` (tudo dentro dos tetos) verdes; busca conferida no Chromium ("tema" -> Aparência, "editor" -> Editor e diff, clique no cabeçalho limpa a busca).
 
 **A seguir:** `E7` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
 
@@ -24,7 +24,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E3 | #83 #86 | Diff: botões vão para submenu "Options"; colunas do History redimensionáveis | feito | 6179d6d |
 | E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | feito | bdf185b |
 | E5 | #62 | Tela inicial History; estado de tela/layout independente por aba | feito | 0de61d7 |
-| E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | feito | COMMIT |
+| E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | feito | b296a96 |
 | E7 | #59 #84 | Compare: "apply" do arquivo inteiro; busca no Cherry-pick Studio | a fazer | |
 | E8 | #85 | Botões assíncronos: bloqueio contra clique duplo + loading onde falta | a fazer | |
 | E9 | #72 #60 | READMEs: seções e chamadas no topo; tirar menções ao repo do GitHub | a fazer | |
