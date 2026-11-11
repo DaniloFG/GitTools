@@ -43,7 +43,6 @@ contagem de processos git antes e depois.
   (`CommitList.tsx:301-346`), só na Toolbar (`:100`, `:168`); confirmar com o dono onde o item aparece antes de remover.
 - **Aceite**: `npm run typecheck && npm test` verdes; menus vistos na tela (`run-gittools`)
 - **Testes**: unidade (lógica de itens do menu) e tela
-- **Segurança**: não
 
 ### Etapa E2 — commit, push e seleção inicial (#75 #57 #73 #77)
 - **Orquestra**: topo
@@ -62,8 +61,7 @@ contagem de processos git antes e depois.
   `FilesView.tsx:448`, `DiffView.tsx:554-568`, `CommitList.tsx:108,134-138,416-420`
 - **Ler antes**: issues #83 e #86; `.claude/rules/interface.md`. Larguras já são salvas (`history.columnWidths`):
   #86 é achar/alargar a alça `.column-resize`, não criar persistência.
-- **Aceite**: print antes/depois; nós no DOM do History iguais; `npm test` verde
-- **Testes**: unidade (largura mínima/máxima) e tela
+- **Aceite**: print antes/depois; nós no DOM do History iguais; `npm test` verde (unidade + tela)
 - **Segurança**: não
 - **Depende de**: E1 (mesmos menus)
 
