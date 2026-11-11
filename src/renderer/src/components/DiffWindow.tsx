@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DiffWindowRequest } from '../../../shared/api'
-import { DEFAULT_SETTINGS, type Settings } from '../../../shared/settings'
+import type { Settings } from '../../../shared/settings'
 import type { FileDiff } from '../../../shared/types'
-import { applyDateFormat, applySettings, resolveLocale } from '../appearance'
+import { applyDateFormat, applySettings, bootSettings, resolveLocale, useLocaleCatalog } from '../appearance'
 import {
   AppActionsContext,
   AppContext,
@@ -18,7 +18,7 @@ import {
 import { addToast, type Toast } from '../feedback'
 import { errorMessage } from '../format'
 import { getActiveRoot, git, markChanged, setActiveRoot } from '../git'
-import { getLocale, setLocale, t } from '../i18n'
+import { t } from '../i18n'
 import { closeVsCodePanel } from '../vscodeBridge'
 import { DIFF_NAV_ACTIONS, emitDiffNav } from '../diffNav'
 import { comboFromEvent, resolveBindings } from '../shortcuts'
@@ -40,7 +40,9 @@ const closeWindow = () => {
  * lado da janela principal. Recarrega o diff quando volta a ter o foco.
  */
 export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
+  // Começa com as configurações lidas antes do primeiro desenho (`bootLocale` em main.tsx), como a janela principal:
+  // assim o idioma salvo é o do primeiro quadro e nenhum catálogo a mais é baixado.
+  const [settings, setSettings] = useState<Settings>(bootSettings)
   const [systemLocales, setSystemLocales] = useState<readonly string[]>(navigator.languages)
   const [diff, setDiff] = useState<FileDiff | null | { error: string }>(null)
   // Avisos desta janela (ela não compartilha as notificações da janela principal).
@@ -60,8 +62,9 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
 
   const settingsRef = useRef(settings)
   settingsRef.current = settings
-  const locale = resolveLocale(settings, systemLocales)
-  if (getLocale() !== locale) setLocale(locale)
+  // Mesmo mecanismo da janela principal: o idioma só vira o atual com o catálogo carregado; até lá fica o anterior
+  // e a janela redesenha quando ele chega. Sem `setLocale` solto no desenho, que não redesenharia ao carregar.
+  const locale = useLocaleCatalog(resolveLocale(settings, systemLocales))
   applyDateFormat(settings, systemLocales)
 
   useEffect(() => {
@@ -85,6 +88,15 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
     const onFocus = () => {
       const root = getActiveRoot()
       if (root) markChanged(root)
+      // As configurações também: a janela principal troca o idioma e não avisa esta janela, então ela relê ao voltar
+      // o foco. Com o idioma novo, `useLocaleCatalog` redesenha os textos desta janela.
+      // Mantém a referência quando nada mudou: um objeto novo redesenharia todos os consumidores do contexto de
+      // configurações. JSON.stringify basta aqui porque as configurações são um objeto pequeno (a regra contra
+      // JSON.stringify é para dados grandes do repositório).
+      window.gittools.getSettings().then(
+        (next) => setSettings((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next)),
+        () => undefined
+      )
       load()
     }
     window.addEventListener('focus', onFocus)
