@@ -10,7 +10,7 @@ import { copyText } from '../copy'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
-import { t } from '../i18n'
+import { getLocale, t } from '../i18n'
 import { DiffView, useFullFile } from './DiffView'
 import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
@@ -184,7 +184,8 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   }, [details, focus])
 
   useEffect(() => {
-    setSelection(new Set())
+    // Só troca a seleção se havia alguma: um Set novo e vazio redesenharia o commit inteiro por nada.
+    setSelection((prev) => (prev.size ? new Set() : prev))
     setDiff(null)
     if (!active) return
     // Diff atrasado de um arquivo ou commit anterior não sobrescreve o atual.
@@ -200,6 +201,76 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       cancelled = true
     }
   }, [sha, active, toast, fullFile, uncapped])
+
+  const pathsOf = (list: ChangedFile[]) => list.flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]))
+
+  /**
+   * Linhas da lista de arquivos, memorizadas: só mudam com o commit, o arquivo ativo, as marcadas e o idioma. Sem
+   * isso, cada passo do diff (limpar a seleção, chegar o diff) redesenhava até 300 linhas sem nada novo nelas.
+   * Os manipuladores são lidos por ref no evento: usam sempre as ações e os dados do desenho mais recente.
+   */
+  const files = details?.files
+  const rowHandlers = useRef({ showDiff, openWindow, fileMenu })
+  rowHandlers.current = { showDiff, openWindow, fileMenu }
+  const locale = getLocale()
+  const fileList = useMemo(() => {
+    if (!files) return null
+    const dragFiles = (file: ChangedFile) => (checked.has(file.path) ? files.filter((f) => checked.has(f.path)) : [file])
+    return (
+      <ul className="file-list">
+        <FileEntries
+          items={files}
+          pathOf={(f) => f.path}
+          oldPathOf={(f) => f.oldPath}
+          statusOf={(f) => f.status}
+          render={(file, { label, style }) => (
+            <li
+              key={file.path}
+              style={style}
+              data-path={file.path}
+              tabIndex={-1}
+              data-copy={file.path}
+              data-copy-what="path"
+              className={`file-item ${active?.path === file.path ? 'active' : ''}`}
+              onClick={() => rowHandlers.current.showDiff(file)}
+              onDoubleClick={() => rowHandlers.current.openWindow(file)}
+              onContextMenu={(e) => rowHandlers.current.fileMenu(e, file)}
+              draggable
+              onDragStart={(e) => {
+                const files = dragFiles(file)
+                startDrag(
+                  e,
+                  { type: 'commit-files', sha, paths: pathsOf(files) },
+                  files.length > 1 ? `📄 ${t('common.files', { count: files.length })}` : `📄 ${file.path}`
+                )
+              }}
+              onDragEnd={endDrag}
+              title={t('details.dragFile')}
+            >
+              <input
+                type="checkbox"
+                checked={checked.has(file.path)}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => {
+                  const next = new Set(checked)
+                  if (e.target.checked) next.add(file.path)
+                  else next.delete(file.path)
+                  setChecked(next)
+                }}
+              />
+              <span className={`status status-${file.status}`} title={statusLabel(file.status)}>
+                {file.status}
+              </span>
+              {label}
+              <LineStats stats={file} />
+            </li>
+          )}
+        />
+      </ul>
+    )
+    // locale: os textos de t() das linhas trocam com o idioma.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, active, checked, sha, locale])
 
   if (!details) {
     return (
@@ -224,9 +295,6 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       document.querySelector(`.file-list [data-path="${CSS.escape(file.path)}"]`)?.scrollIntoView({ block: 'nearest' })
     }
   }
-  const pathsOf = (files: ChangedFile[]) => files.flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]))
-  const dragFiles = (file: ChangedFile) =>
-    checked.has(file.path) ? details.files.filter((f) => checked.has(f.path)) : [file]
 
   const applyLines = async () => {
     if (!head || !diff) return
@@ -280,56 +348,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
         )}
         <FileViewOptions />
       </div>
-      <ul className="file-list">
-        <FileEntries
-          items={details.files}
-          pathOf={(f) => f.path}
-          oldPathOf={(f) => f.oldPath}
-          statusOf={(f) => f.status}
-          render={(file, { label, style }) => (
-            <li
-              key={file.path}
-              style={style}
-              data-path={file.path}
-              tabIndex={-1}
-              data-copy={file.path}
-              data-copy-what="path"
-              className={`file-item ${active?.path === file.path ? 'active' : ''}`}
-              onClick={() => showDiff(file)}
-              onDoubleClick={() => openWindow(file)}
-              onContextMenu={(e) => fileMenu(e, file)}
-              draggable
-              onDragStart={(e) => {
-                const files = dragFiles(file)
-                startDrag(
-                  e,
-                  { type: 'commit-files', sha, paths: pathsOf(files) },
-                  files.length > 1 ? `📄 ${t('common.files', { count: files.length })}` : `📄 ${file.path}`
-                )
-              }}
-              onDragEnd={endDrag}
-              title={t('details.dragFile')}
-            >
-              <input
-                type="checkbox"
-                checked={checked.has(file.path)}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  const next = new Set(checked)
-                  if (e.target.checked) next.add(file.path)
-                  else next.delete(file.path)
-                  setChecked(next)
-                }}
-              />
-              <span className={`status status-${file.status}`} title={statusLabel(file.status)}>
-                {file.status}
-              </span>
-              {label}
-              <LineStats stats={file} />
-            </li>
-          )}
-        />
-      </ul>
+      {fileList}
     </section>
   )
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import type { OpenRepositories, RepoInfo } from '../../shared/types'
 import type { RecentRepo } from '../../shared/api'
@@ -684,6 +684,35 @@ function AppProviders({
   )
 }
 
+/**
+ * Limite `memo` para os filhos diretos do RepoView. O RepoView guarda a seleção, o foco e a operação em andamento,
+ * e redesenha a cada clique na lista, seta ou operação; sem este limite a barra de ferramentas, o Dock, a barra
+ * lateral e todas as telas redesenhavam junto, mesmo sem nada novo para elas (o contexto estreito não evita isso,
+ * porque o redesenho vem do pai, por propriedade). Com `memo`, cada um só redesenha quando as próprias propriedades
+ * mudam ou quando a fatia de contexto que lê muda. As propriedades passadas a eles precisam ser estáveis
+ * (`useCallback`, `useMemo` ou setters do `useState`).
+ *
+ * `locale` entra nas propriedades de todos de propósito: quem chama `t()` sem ler contexto (ex.: as dicas de
+ * `CommitPanes`, os textos de `FilesPanes`) também se renova quando o idioma troca. O componente ignora o valor;
+ * ele só serve para a comparação do `memo` ver a troca.
+ */
+function paneMemo<P extends object>(component: (props: P) => ReactNode) {
+  return memo(component as (props: P & { locale: string }) => ReactNode)
+}
+
+const KeyboardShortcutsPane = paneMemo(KeyboardShortcuts)
+const ToolbarPane = paneMemo(Toolbar)
+const OperationBannerPane = paneMemo(OperationBanner)
+const DockPane = paneMemo(Dock)
+const DashboardsPane = paneMemo(Dashboards)
+const SidebarPanesPane = paneMemo(SidebarPanes)
+const CommitListPane = paneMemo(CommitList)
+const CommitPanesPane = paneMemo(CommitPanes)
+const ChangesViewPane = paneMemo(ChangesView)
+const FilesPanesPane = paneMemo(FilesPanes)
+const CompareViewPane = paneMemo(CompareView)
+const GitLogViewPane = paneMemo(GitLogView)
+
 interface RepoViewProps {
   repo: RepoInfo
   /** Há mais de um repositório aberto: os avisos citam o nome deste. */
@@ -1141,6 +1170,51 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
     [locale, conflicts, changeCount]
   )
 
+  // Manipuladores passados aos filhos memorizados (ver `paneMemo`): estáveis, para o `memo` deles valer. Ficam antes
+  // do retorno antecipado abaixo por causa da regra dos hooks.
+  const openRepoDialog = useCallback(() => void workspace.openRepo(), [workspace])
+  const openRepository = useCallback((path?: string, create?: boolean) => void workspace.openRepo(path, create), [workspace])
+  const openDashboards = useCallback(() => setDashboards(true), [])
+  const showChanges = useCallback(() => setView('changes'), [setView])
+  const changeScope = useCallback(
+    (s: HistoryScope, options?: { reveal?: boolean }) => {
+      setScope(s)
+      // Na tela de branches a lista só filtra o histórico: não troca de tela.
+      if (options?.reveal !== false && readScreen() !== 'branches') setView('history')
+    },
+    [setView]
+  )
+  const selectCommits = useCallback((shas: string[]) => {
+    setWipFocus(null)
+    setSelected(shas)
+  }, [])
+
+  /** Abre o diff de um arquivo no painel do diff do commit, trazendo os painéis do commit se estiverem escondidos. */
+  const openFileInDetails = useCallback(
+    (sha: string, path: string) => {
+      setWipFocus(null)
+      setSelected([sha])
+      setFileFocus((prev) => ({ sha, path, n: (prev?.n ?? 0) + 1 }))
+      setView('history')
+    },
+    [setView]
+  )
+
+  /** Abre o diff de um arquivo não commitado no painel do diff, trazendo os painéis do commit se estiverem escondidos. */
+  const openWipFileInDetails = useCallback(
+    (path: string) => {
+      setSelected([])
+      setWipFocus((prev) => ({ path, n: (prev?.n ?? 0) + 1 }))
+      setView('history')
+    },
+    [setView]
+  )
+
+  const openFileWindow = useCallback(
+    (sha: string, path: string) => openDiffWindow({ source: { kind: 'commit', sha }, path, title: `${path} · ${shortSha(sha)}` }),
+    [openDiffWindow]
+  )
+
   if (!repoDataValue || !context) {
     return (
       <div className="repo-loading">
@@ -1151,78 +1225,55 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
 
   const modalOpen = !!(studio || conflict || rebaseFrom || dialog || appModalOpen)
 
-  /** Abre o diff de um arquivo no painel do diff do commit, trazendo os painéis do commit se estiverem escondidos. */
-  const openFileInDetails = (sha: string, path: string) => {
-    setWipFocus(null)
-    setSelected([sha])
-    setFileFocus((prev) => ({ sha, path, n: (prev?.n ?? 0) + 1 }))
-    setView('history')
-  }
-
-  /** Abre o diff de um arquivo não commitado no painel do diff, trazendo os painéis do commit se estiverem escondidos. */
-  const openWipFileInDetails = (path: string) => {
-    setSelected([])
-    setWipFocus((prev) => ({ path, n: (prev?.n ?? 0) + 1 }))
-    setView('history')
-  }
-
   return (
     <AppProviders repoData={repoDataValue} busy={busyValue} actions={actions} settings={settingsValue} app={context}>
-      <KeyboardShortcuts disabled={modalOpen} onOpenRepository={() => void workspace.openRepo()} />
-      <Toolbar
-        onOpenRepository={(path, create) => void workspace.openRepo(path, create)}
+      <KeyboardShortcutsPane locale={locale} disabled={modalOpen} onOpenRepository={openRepoDialog} />
+      <ToolbarPane
+        locale={locale}
+        onOpenRepository={openRepository}
         onClone={workspace.openClone}
         onScreen={setView}
         meta={meta}
         available={available}
         changeCount={changeCount}
         dashboards={dashboardsOpen}
-        onDashboards={() => setDashboards(true)}
+        onDashboards={openDashboards}
       />
-      <OperationBanner onShowChanges={() => setView('changes')} />
+      <OperationBannerPane locale={locale} onShowChanges={showChanges} />
       <div className={dashboardsOpen ? 'dock-hidden' : 'dock-wrap'}>
-        <Dock meta={meta} available={available} />
+        <DockPane locale={locale} meta={meta} available={available} />
       </div>
-      {dashboardsOpen && <Dashboards />}
+      {dashboardsOpen && <DashboardsPane locale={locale} />}
       {/* Cada tela é desenhada aqui e levada, por portais, ao painel onde o usuário a deixou. */}
-      <SidebarPanes
-        scope={scope}
-        onScope={(s, options) => {
-          setScope(s)
-          // Na tela de branches a lista só filtra o histórico: não troca de tela.
-          if (options?.reveal !== false && readScreen() !== 'branches') setView('history')
-        }}
-      />
+      <SidebarPanesPane locale={locale} scope={scope} onScope={changeScope} />
       <PaneSlot id="history">
-        <CommitList
+        <CommitListPane
+          locale={locale}
           scope={scope}
           onScope={setScope}
           canLoadMore={data !== null && canLoadMoreLog(data.log.length, logLimitFor(session.logLimit, scopeKey(scope)))}
           onLoadMore={loadMoreLog}
           selected={selected}
-          onSelect={(shas) => {
-            setWipFocus(null)
-            setSelected(shas)
-          }}
+          onSelect={selectCommits}
           onOpenFile={openFileInDetails}
-          onOpenFileWindow={(sha, path) => openDiffWindow({ source: { kind: 'commit', sha }, path, title: `${path} · ${shortSha(sha)}` })}
+          onOpenFileWindow={openFileWindow}
           onOpenWipFile={openWipFileInDetails}
         />
       </PaneSlot>
       <WhenShown views={COMMIT_VIEWS}>
-        <CommitPanes selected={selected} focus={fileFocus} wip={wipFocus} />
+        <CommitPanesPane locale={locale} selected={selected} focus={fileFocus} wip={wipFocus} />
       </WhenShown>
       <WhenShown views={CHANGES_VIEWS}>
-        <ChangesView />
+        <ChangesViewPane locale={locale} />
       </WhenShown>
       <WhenShown views={FILES_VIEWS}>
-        <FilesPanes path={filePath} onPath={setFilePath} />
+        <FilesPanesPane locale={locale} path={filePath} onPath={setFilePath} />
       </WhenShown>
       <WhenShown views={COMPARE_VIEWS}>
-        <CompareView request={compare} onRequest={setCompare} />
+        <CompareViewPane locale={locale} request={compare} onRequest={setCompare} />
       </WhenShown>
       <PaneSlot id="gitlog">
-        <GitLogView />
+        <GitLogViewPane locale={locale} />
       </PaneSlot>
       {studio && <CherryPickStudio request={studio} onClose={() => setStudio(null)} />}
       {conflict && <ConflictEditor path={conflict} onClose={() => setConflict(null)} />}
