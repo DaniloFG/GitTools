@@ -1,11 +1,50 @@
 // Aplica na página as configurações visuais e de idioma (usado pela janela principal e pelas de diff).
 
-import type { Settings } from '../../shared/settings'
+import { useReducer } from 'react'
+import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
 import { insideVsCode, vsCodeTheme } from './vscodeBridge'
-import { matchLocale, setDateFormat, textDirection, type LocaleId } from './i18n'
+import { getLocale, loadFallbacks, loadLocale, matchLocale, setDateFormat, setLocale, textDirection, type LocaleId } from './i18n'
 
 export function resolveLocale(settings: Settings, systemLocales: readonly string[]): LocaleId {
   return settings.language === 'system' ? matchLocale(systemLocales) : settings.language
+}
+
+/** Configurações lidas antes do primeiro desenho (ver `bootLocale`); o App começa com elas, não com as padrão. */
+let boot: Settings = DEFAULT_SETTINGS
+
+export function bootSettings(): Settings {
+  return boot
+}
+
+/**
+ * Antes do primeiro desenho: lê as configurações e espera o catálogo do idioma delas, para a
+ * tela nunca mostrar chaves cruas nem trocar de idioma logo depois de aparecer. Em "sistema" usa os idiomas do
+ * navegador, como o primeiro desenho do App (pedir `appInfo` aqui atrasaria a tela pela versão do git).
+ */
+export async function bootLocale(): Promise<void> {
+  boot = await window.gittools.getSettings().catch(() => DEFAULT_SETTINGS)
+  const locale = resolveLocale(boot, navigator.languages)
+  // Só o do idioma ativo: a reserva vem depois do primeiro desenho (ver main.tsx), fora do caminho da tela.
+  await loadLocale(locale, false)
+  // Se o catálogo do idioma não carregou, espera ao menos o de reserva (inglês), para não desenhar chaves cruas.
+  if (!setLocale(locale)) await loadFallbacks()
+}
+
+/** Depois do primeiro desenho, com o navegador livre, baixa o catálogo de reserva (inglês). */
+export function loadFallbacksLater(): void {
+  const later = typeof requestIdleCallback === 'function' ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 1000)
+  later(() => void loadFallbacks())
+}
+
+/**
+ * Idioma em uso na tela. Se o pedido já foi carregado, troca na hora (durante o desenho, antes de os
+ * componentes escreverem textos); senão mantém o atual, carrega e redesenha quando chegar: "carregar e só então
+ * trocar", sem chaves cruas. Pedidos seguidos não se atropelam: o redesenho recalcula o idioma pedido agora.
+ */
+export function useLocaleCatalog(locale: LocaleId): LocaleId {
+  const [, loaded] = useReducer((n: number) => n + 1, 0)
+  if (getLocale() !== locale && !setLocale(locale)) void loadLocale(locale).then(loaded)
+  return getLocale()
 }
 
 /** Passa o formato de datas das configurações ao módulo de textos (chamado a cada desenho, antes de os componentes escreverem datas). */

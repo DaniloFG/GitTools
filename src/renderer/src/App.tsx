@@ -1,8 +1,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { DEFAULT_SETTINGS, type Settings } from '../../shared/settings'
+import type { Settings } from '../../shared/settings'
 import type { OpenRepositories, RepoInfo } from '../../shared/types'
 import type { RecentRepo } from '../../shared/api'
-import { applyDateFormat, applySettings, resolveLocale } from './appearance'
+import { applyDateFormat, applySettings, bootSettings, resolveLocale, useLocaleCatalog } from './appearance'
 import { insideVsCode } from './vscodeBridge'
 import {
   AppActionsContext,
@@ -53,7 +53,7 @@ import { installCopy } from './copy'
 import { errorMessage, shortSha } from './format'
 import { gitCalls, gitFor, gitInBackground, markChanged, OWN_CHANGE_WINDOW_MS, readCache, setActiveRoot } from './git'
 import { draftPaths } from './editorDrafts'
-import { getLocale, setLocale, t, type MessageKey } from './i18n'
+import { getLocale, t, type MessageKey } from './i18n'
 import { resetLayout as clearLayout, useLayout } from './layout'
 import { clearCurrentLayout } from './savedLayouts'
 import { historySignature, mergeData } from './stable'
@@ -152,7 +152,7 @@ function isEcho(root: string): boolean {
  * (seleção, diff, filtros, rascunhos, caches) passa de um repositório para o outro.
  */
 export function App() {
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
+  const [settings, setSettings] = useState<Settings>(bootSettings)
   /** Configurações em edição, aplicadas na hora para pré-visualização. */
   const [preview, setPreview] = useState<Settings | null>(null)
   const [settingsOpen, setSettingsOpen] = useState<string | null>(null)
@@ -181,9 +181,8 @@ export function App() {
   const forceWait = useRef<(() => void) | null>(null)
 
   const effective = preview ?? settings
-  const locale = resolveLocale(effective, systemLocales)
-  // O idioma precisa estar ativo antes de os componentes renderizarem seus textos.
-  if (getLocale() !== locale) setLocale(locale)
+  // O idioma precisa estar ativo antes de os componentes renderizarem seus textos (troca só com o catálogo carregado).
+  const locale = useLocaleCatalog(resolveLocale(effective, systemLocales))
   applyDateFormat(effective, systemLocales)
 
   useEffect(() => {

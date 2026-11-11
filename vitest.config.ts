@@ -10,6 +10,8 @@ export default defineConfig({
   resolve: { alias: { vscode: fileURLToPath(new URL('./tests/support/vscode.ts', import.meta.url)) } },
   test: {
     include: ['tests/**/*.test.ts'],
+    // Catálogos de idioma em memória (os aplicativos os carregam sob demanda; ver tests/support/catalogs.ts).
+    setupFiles: ['tests/support/catalogs.ts'],
     testTimeout: timeout,
     hookTimeout: timeout
   }

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+import { bootLocale, loadFallbacksLater } from './appearance'
 import { DiffWindowApp, diffWindowRequest } from './components/DiffWindow'
 import './styles.css'
 import { installAltTextSelection } from './textSelect'
@@ -15,6 +16,11 @@ installAltTextSelection()
 // No VS Code a URL é a do webview, então a extensão informa o pedido em __gittoolsBoot.
 const diffRequest = diffWindowRequest(window.__gittoolsBoot?.search ?? window.location.search)
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>{diffRequest ? <DiffWindowApp request={diffRequest} /> : <App />}</StrictMode>
-)
+// Os catálogos de idioma vêm sob demanda: o primeiro desenho espera o do idioma ativo (uma leitura das
+// configurações e um pedaço do pacote), para a tela não aparecer com chaves cruas nem trocar de idioma em seguida.
+void bootLocale().finally(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>{diffRequest ? <DiffWindowApp request={diffRequest} /> : <App />}</StrictMode>
+  )
+  loadFallbacksLater()
+})

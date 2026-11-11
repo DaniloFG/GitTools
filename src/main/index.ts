@@ -1,8 +1,9 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
 import { existsSync, statSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import type { DiffWindowRequest } from '../shared/api'
-import { matchLocale, setLocale, t } from '../shared/i18n'
+import { changeLocale, jsonCatalogLoader, matchLocale, setCatalogLoader, t } from '../shared/i18n'
 import type { Settings } from '../shared/settings'
 import { Backend, type BackendHost } from '../backend/backend'
 import { BRIDGE_CHANNELS } from '../shared/channels'
@@ -24,8 +25,12 @@ const systemLocales = () => [...app.getPreferredSystemLanguages(), app.getLocale
 /** Aplica no processo principal o que depende das configurações: tema nativo e idioma das mensagens. */
 function applySettings(settings: Settings) {
   nativeTheme.themeSource = settings.theme
-  setLocale(settings.language === 'system' ? matchLocale(systemLocales()) : settings.language)
+  // Carrega o catálogo (JSON ao lado do pacote, leitura assíncrona) e só então troca; até lá vale o anterior.
+  void changeLocale(settings.language === 'system' ? matchLocale(systemLocales()) : settings.language)
 }
+
+// Catálogos de idioma: um JSON por idioma em out/main/locales, gerado pelo build (ver electron.vite.config.ts).
+setCatalogLoader(jsonCatalogLoader((name) => readFile(join(__dirname, 'locales', name), 'utf8')))
 
 const host: BackendHost = {
   dataDir: () => app.getPath('userData'),

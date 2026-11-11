@@ -4,12 +4,13 @@
 
 import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, join, relative, sep } from 'node:path'
 import * as vscode from 'vscode'
 import { Backend, type BackendHost } from '../../src/backend/backend'
 import { isBridgeChannel, type HostToWebview, type WebviewToHost } from '../../src/shared/channels'
-import { matchLocale, setLocale } from '../../src/shared/i18n'
+import { changeLocale, jsonCatalogLoader, matchLocale, setCatalogLoader } from '../../src/shared/i18n'
 import type { DiffWindowRequest } from '../../src/shared/api'
 import type { Settings } from '../../src/shared/settings'
 import { GitRepository } from '../../src/core/repository'
@@ -48,8 +49,12 @@ function isInside(folder: string, path: string): boolean {
 
 /** Idioma das mensagens do motor git: o das configurações do GitTools ou, em "sistema", o do VS Code. */
 function applyLocale(settings: Settings) {
-  setLocale(settings.language === 'system' ? matchLocale([vscode.env.language]) : settings.language)
+  // Carrega o catálogo (JSON ao lado do pacote, leitura assíncrona) e só então troca; até lá vale o anterior.
+  void changeLocale(settings.language === 'system' ? matchLocale([vscode.env.language]) : settings.language)
 }
+
+// Catálogos de idioma: um JSON por idioma em dist/locales, gerado pelo build (ver scripts/build-extension.mjs).
+setCatalogLoader(jsonCatalogLoader((name) => readFile(join(__dirname, 'locales', name), 'utf8')))
 
 class Controller {
   readonly backend: Backend
