@@ -45,7 +45,19 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
 
-## 2. Estado atual (fim da janela 4)
+## 2. Estado atual (fim da janela 5)
+
+- **Janela 5: item 4.3 feito** (`e0fbf26`): `groupBranches` (`src/renderer/src/sidebarGroups.ts`, linear, teste de
+  equivalência com a versão antiga) memorizado por `data.branches`; marcadas num `Set`; `commitColors`, `buildTree` e
+  `flattenTree` do `NameRows` em `useMemo` (as listas passadas a `NameRows` precisam ser estáveis); dicas de branch e
+  stash montadas no `onMouseEnter`. `core.mjs`: agrupar 1.100 branches 0,349 → 0,025 ms. 738 testes, typecheck limpo.
+  Base da janela 5: ATUALIZAÇÃO 5 processos, SELECIONAR 1 COMMIT 2 (sem mudança).
+- **Não verificado no navegador:** a dica (`title`) definida no `mouseenter` (só typecheck e testes).
+- **Fica para depois:** as linhas de branches e tags continuam todas montadas (sem janela) e os itens ainda
+  leem contexto (4.2). `useBranchColors` percorre `data.branches` a cada desenho no escopo "todas" (linear).
+- **A seguir: 4.2** (itens de lista sem contexto).
+
+### Janela 4
 
 - **Janela 4: item 4.4 feito** (`530263e`): `buildTree` acha a subpasta por um `Map` do caminho completo (no lugar
   do `find` entre os filhos) e `flattenTree` empurra tudo num array só (sem `push(...)` por nível). Resultado
@@ -199,10 +211,10 @@ em até 2× o `status()` simples. Ordem sugerida:
 
 ### Fase 4 — Listas e redesenhos (a próxima)
 
-Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **4.6 feito na janela 3, 4.4 na janela 4; o próximo é o 4.3.**
+Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **4.6 feito na janela 3, 4.4 na janela 4, 4.3 na janela 5; o próximo é o 4.2.**
 Ordem sugerida: ~~4.6~~ (comparação de diffs por
 identificador, não por `JSON.stringify`: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`, com o `applyLines` que
-chama `setSelection` depois de `await` sem guarda), ~~4.4~~ (`buildTree` com `Map`), 4.3 (branches e tags lineares),
+chama `setSelection` depois de `await` sem guarda), ~~4.4~~ (`buildTree` com `Map`), ~~4.3~~ (branches e tags lineares),
 4.2 (itens de lista sem contexto: `BranchBadge` no histórico chama `useApp()` e `data.branches.find` por
 etiqueta), 4.5 (ícones por símbolo reutilizado) e 4.1 (contexto dividido, o maior). Meta da fase: rolar o histórico
 em até 16 ms por quadro (hoje 45–73 ms; o piso de pintura medido na janela 2 é de ~41 ms, então a meta exige menos
