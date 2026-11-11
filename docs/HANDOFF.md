@@ -8,10 +8,11 @@ Atualize a seção 2 (estado) e a seção 5 (próximos passos) ao fim de cada ja
 
 Estas instruções vieram do usuário e valem para todas as janelas:
 
-1. **A janela principal nunca escreve código.** Ela só delega a subagentes **Haiku 5.5**, o Haiku mais recente (nunca
-   o 4.5), para escrever e buscar no código. Na ferramenta `Agent`, isso é `model: "haiku"`; o ambiente resolve para o
-   Haiku mais recente. A janela principal especifica, revisa os diffs, roda verificações e medições, e faz os commits.
-   Documentos em Markdown (como este) não são código, mas também é preferível delegá-los quando forem longos.
+1. **Modelos: a sessão principal roda em Opus (o mais recente) e nunca escreve código.** Ela só orquestra: especifica,
+   dispara subagentes, revisa os diffs, roda verificações e medições, e faz os commits. Toda leitura/busca no código e
+   toda escrita de código ficam com subagentes **Haiku 5.5**, o Haiku mais recente (nunca o 4.5). Na ferramenta
+   `Agent`, isso é `model: "haiku"`; o ambiente resolve para o Haiku mais recente. Documentos em Markdown (como este)
+   não são código, mas também é preferível delegá-los quando forem longos.
 2. **Se os tokens da sessão estiverem acabando**, fazer só o que der para fechar bem (commitar e enviar o que está
    verificado) e deixar o resto para a próxima janela, registrando o estado na seção 2 e 5 deste arquivo.
 3. O objetivo do projeto: a ferramenta precisa ser **rápida em computadores fracos** e em repositórios grandes, com
@@ -35,7 +36,7 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    3. Conferir com `list_sessions` (ferramentas `mcp__claude-code-remote__*`) que não há outra sessão desta branch em
       andamento: nunca duas sessões ao mesmo tempo na branch.
    4. Criar a sessão nova com `create_session`: `source_url` deste repositório, `source_revision` e `outcome_branch`
-      iguais a `claude/gittools-gui-repo-yyo0ff`, mesmo modelo, título "GitTools desempenho: <próximo item>" e, como
+      iguais a `claude/gittools-gui-repo-yyo0ff`, modelo Opus (o da sessão principal, regra 1), título "GitTools desempenho: <próximo item>" e, como
       `prompt`, a mensagem da seção 6 com o próximo item no lugar de "Continue pela …".
    5. Dizer ao usuário, numa linha, o que foi fechado e o link ou id da sessão nova; então parar (não arquivar a
       sessão atual: o usuário pode querer lê-la).
