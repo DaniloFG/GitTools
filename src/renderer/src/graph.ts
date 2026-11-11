@@ -2,6 +2,8 @@
 // Cada trilha guarda a sua cor do início ao fim: uma linha
 // muda de coluna sem mudar de cor, e uma branch nova recebe a próxima cor da paleta.
 
+import { dateFormatterFor } from '../../shared/i18n'
+
 export interface GraphCommit {
   sha: string
   parents: string[]
@@ -146,14 +148,18 @@ export function dateSearchText(ms: number, locale?: string): string {
   return text
 }
 
+const SEARCH_LOCAL_DATE: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' }
+// O mesmo texto da coluna de data, para a pesquisa marcar exatamente o que aparece na tela.
+const SEARCH_SHOWN: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }
+
 function formatDateSearchText(ms: number, locale?: string): string {
   const d = new Date(ms)
   const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
   const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`
-  const local = d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
-  // O mesmo texto da coluna de data, para a pesquisa marcar exatamente o que aparece na tela.
-  const shown = d.toLocaleString(locale, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-  return [`${iso} ${time}`, `${local} ${time}`, shown, d.toLocaleDateString(locale)].join('\n')
+  // Formatadores guardados: esta função roda uma vez por commit a cada tecla da pesquisa.
+  const local = dateFormatterFor(locale, SEARCH_LOCAL_DATE).format(d)
+  const shown = dateFormatterFor(locale, SEARCH_SHOWN).format(d)
+  return [`${iso} ${time}`, `${local} ${time}`, shown, dateFormatterFor(locale).format(d)].join('\n')
 }
 
 /** Nome de branch/tag de uma referência do `git log --decorate` ("HEAD -> main", "tag: v1"). */

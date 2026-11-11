@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { useApp } from '../context'
+import { useAppActions } from '../context'
 import { t } from '../i18n'
 import { useFileViewMode } from './FileList'
 import type { MenuItem } from './ContextMenu'
@@ -23,7 +23,7 @@ export interface ViewOptionGroup {
  * num menu, para o cabeçalho ficar só com as ações. O menu abre logo abaixo do botão.
  */
 export function ViewOptionsButton({ groups, label }: { groups: ViewOptionGroup[]; label?: string }) {
-  const { showMenu } = useApp()
+  const { showMenu } = useAppActions()
   const ref = useRef<HTMLButtonElement>(null)
   const title = label ?? t('fileList.viewOptions')
 

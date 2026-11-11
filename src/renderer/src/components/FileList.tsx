@@ -1,7 +1,6 @@
-import { useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { isLightTheme, subscribeTheme } from '../appearance'
-import { AppContext } from '../context'
-import { folderIconSvg, iconNameFor, iconSvg } from '../fileIcons'
+import { ensureIconSymbol, folderIconName, iconNameFor } from '../fileIcons'
 import { buildTree, flattenTree, parseFileViewMode, splitPath, type FileViewMode } from '../fileTree'
 import { t } from '../i18n'
 import { useLayout } from '../layout'
@@ -14,28 +13,35 @@ export function useFileViewMode() {
 /** Tema claro? Reage à troca de tema (do GitTools, do sistema ou do VS Code). */
 const useLightTheme = () => useSyncExternalStore(subscribeTheme, isLightTheme)
 
-/** Ícone do tipo do arquivo (ou da pasta); some se o usuário desligou os ícones nas configurações. */
-export function FileIcon({ path, folder }: { path?: string; folder?: 'open' | 'closed' }) {
-  const app = useContext(AppContext)
-  const light = useLightTheme()
-  if (app && app.settings.fileIcons === false) return null
-  const svg = folder ? folderIconSvg(folder === 'open') : iconSvg(iconNameFor(path ?? '', light))
-  // O SVG vem do pacote Material Icon Theme embutido (nunca de dados do repositório).
-  return <span className="file-icon" aria-hidden dangerouslySetInnerHTML={{ __html: svg }} />
-}
+/**
+ * Ícone do tipo do arquivo (ou da pasta). Só recebe primitivos: não lê contexto, então um item da lista
+ * não redesenha quando o aplicativo muda outra coisa. O desligar pelas configurações é feito no CSS
+ * (`data-file-icons`, em appearance.ts).
+ */
+export const FileIcon = memo(function FileIcon({ path, folder, light }: { path?: string; folder?: 'open' | 'closed'; light: boolean }) {
+  const name = folder ? folderIconName(folder === 'open') : iconNameFor(path ?? '', light)
+  // Inserir o símbolo durante o desenho é aceitável: a inserção é idempotente (uma vez por tipo de ícone)
+  // e o navegador só resolve o <use> se o símbolo já estiver no documento. O conteúdo é a tabela embutida.
+  const id = ensureIconSymbol(name)
+  return (
+    <svg className="file-icon" aria-hidden="true" focusable="false">
+      <use href={`#${id}`} />
+    </svg>
+  )
+})
 
 /** Nome do arquivo em destaque e, ao lado, a pasta onde ele está; renomeações mostram de onde vieram. */
-export function FileLabel({ path, oldPath, showDir = true, status }: { path: string; oldPath?: string; showDir?: boolean; status?: string }) {
+export const FileLabel = memo(function FileLabel({ path, oldPath, showDir = true, status, light }: { path: string; oldPath?: string; showDir?: boolean; status?: string; light: boolean }) {
   const { name, dir } = splitPath(path)
   return (
     <span className="file-label" data-status={status} title={oldPath ? `${oldPath} → ${path}` : path}>
-      <FileIcon path={path} />
+      <FileIcon path={path} light={light} />
       <span className="file-name">{name}</span>
       {showDir && dir && <span className="file-dir">{dir}</span>}
       {oldPath && <span className="file-from">← {oldPath}</span>}
     </span>
   )
-}
+})
 
 export interface FileRowContext {
   /** O que mostrar como nome do arquivo (no modo árvore, sem a pasta). */
@@ -72,6 +78,8 @@ export function FileEntries<T>({
   render(item: T, context: FileRowContext): ReactNode
 }) {
   const [mode] = useFileViewMode()
+  // O tema é lido uma vez por lista (não por linha) e passado às linhas como primitivo.
+  const light = useLightTheme()
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
   const [shown, setShown] = useState(ROW_BATCH)
   const sentinel = useRef<HTMLLIElement>(null)
@@ -110,7 +118,7 @@ export function FileEntries<T>({
   if (mode === 'list') {
     return (
       <>
-        {items.slice(0, shown).map((item) => render(item, { mode, label: <FileLabel path={pathOf(item)} oldPath={oldPathOf?.(item)} status={statusOf?.(item)} /> }))}
+        {items.slice(0, shown).map((item) => render(item, { mode, label: <FileLabel path={pathOf(item)} oldPath={oldPathOf?.(item)} status={statusOf?.(item)} light={light} /> }))}
         {more}
       </>
     )
@@ -132,7 +140,7 @@ export function FileEntries<T>({
           return render(item, {
             mode,
             style: { paddingInlineStart: 6 + INDENT * row.depth + 16 },
-            label: <FileLabel path={row.node.path} oldPath={from} showDir={false} status={statusOf?.(item)} />
+            label: <FileLabel path={row.node.path} oldPath={from} showDir={false} status={statusOf?.(item)} light={light} />
           })
         }
         return (
@@ -148,7 +156,7 @@ export function FileEntries<T>({
             aria-expanded={!row.collapsed}
           >
             <span className="tree-caret">{row.collapsed ? '▸' : '▾'}</span>
-            <FileIcon folder={row.collapsed ? 'closed' : 'open'} />
+            <FileIcon folder={row.collapsed ? 'closed' : 'open'} light={light} />
             <span className="tree-dir-name">{row.node.name}</span>
             <span className="count">{row.node.fileCount}</span>
           </li>

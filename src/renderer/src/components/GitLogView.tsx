@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { GitCommandEntry } from '../../../shared/types'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { getCurrentLocale, t } from '../i18n'
 import { useLayout } from '../layout'
-import { GitTerminal } from './GitTerminal'
+import { GitTerminal } from '../lazyScreens'
 import { Loader } from './Loader'
 import { RepoChip } from './RepoChip'
 import { repoNameOf, sameRoot } from '../workspace'
@@ -43,7 +43,8 @@ export function commandLine(args: string[]): string {
 
 /** Log em tempo real dos comandos git executados pelo GitTools. */
 export function GitLogView() {
-  const { showMenu, toast, repo, workspace } = useApp()
+  const { repo, workspace } = useRepoData()
+  const { showMenu, toast } = useAppActions()
   const [entries, setEntries] = useState<GitCommandEntry[]>([])
   const [onlyChanges, setOnlyChanges] = useLayout<boolean>('gitlog.onlyChanges', (v) => v === true)
   /** Por padrão, só os comandos do repositório da aba; "todos" mostra os de todos os abertos (cada linha diz de qual). */
@@ -197,7 +198,9 @@ export function GitLogView() {
           )}
         </div>
       ) : (
-        <GitTerminal />
+        <Suspense fallback={<Loader size="sm" />}>
+          <GitTerminal />
+        </Suspense>
       )}
     </div>
   )

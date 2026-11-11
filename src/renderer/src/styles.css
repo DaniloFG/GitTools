@@ -317,10 +317,15 @@ code {
   font-size: 11px;
   color: var(--text-muted);
 }
-.sidebar-section ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* Barra lateral em janela (VirtualList): cada linha de altura medida fica num envoltório. O flow-root impede que
+   a margem da branch atual saia do envoltório, o que deslocaria as posições calculadas a partir da altura medida. */
+.sidebar > [data-virtual-key] {
+  display: flow-root;
+}
+/* Branches e tags com altura fixa (ROW_HEIGHT = 27 em Sidebar.tsx). A branch atual tem borda e fica com altura medida. */
+.sidebar .branch-item:not(.current) {
+  height: 27px;
+  box-sizing: border-box;
 }
 .section-header {
   width: 100%;
@@ -1109,25 +1114,33 @@ mark {
   font-family: var(--mono);
   font-size: 12px;
   line-height: 18px;
+  /* Layout fixo: o navegador não mede todas as células a cada mudança (trava em diffs grandes). As larguras vêm de <col>. */
+  table-layout: fixed;
 }
 .diff-table td {
   padding: 0 6px;
   vertical-align: top;
 }
 .diff-table .sel {
-  width: 22px;
   text-align: center;
 }
 .diff-table .ln {
-  width: 1%;
-  min-width: 36px;
   text-align: end;
   color: var(--text-muted);
   opacity: 0.7;
 }
 .diff-table .sign {
-  width: 14px;
   color: var(--text-muted);
+}
+/* Tabela unificada: larguras pelas colunas. Os números cabem no maior número do arquivo (--ln-digits, em DiffView). */
+.diff-table:not(.diff-split) col.sel {
+  width: 22px;
+}
+.diff-table:not(.diff-split) col.ln {
+  width: max(36px, calc(var(--ln-digits, 4) * 1ch + 12px));
+}
+.diff-table:not(.diff-split) col.sign {
+  width: 14px;
 }
 .diff-table .code {
   white-space: pre-wrap;
@@ -1171,18 +1184,11 @@ mark {
   box-shadow: inset -3px 0 0 var(--accent);
   background-image: linear-gradient(var(--selected-line), var(--selected-line));
 }
-.diff-split {
-  table-layout: fixed;
-}
 .diff-split col.sel {
   width: 22px;
 }
 .diff-split col.ln {
   width: 46px;
-}
-.diff-split .ln {
-  width: auto;
-  min-width: 0;
 }
 .diff-split td.code {
   overflow-wrap: anywhere;
@@ -1446,6 +1452,18 @@ button.ghost.danger-text:hover:not(:disabled) {
 .operation-banner.has-conflicts {
   background: color-mix(in srgb, var(--danger) 13%, var(--bg));
   border-bottom-color: var(--danger);
+}
+
+/* Aviso de diff cortado no teto: fica acima da tabela e não rola junto com ela. */
+.diff-truncated {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--warning) 15%, var(--bg));
+  border-bottom: 1px solid var(--warning);
 }
 .operation-title {
   display: flex;
@@ -3032,8 +3050,28 @@ kbd.duplicate {
   min-height: 0;
   overflow: auto;
 }
+/* Com o blame na tela, o painel não rola por fora: quem rola é .blame-body, dentro da altura que sobra. Sem essa
+   altura limitada, a lista em janela montaria o arquivo inteiro (a "tela" seria o arquivo todo). */
+.file-details-body:has(> .blame-wrap) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .blame-wrap {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.blame-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.blame-body .blame-table {
+  display: table;
+  margin: 0;
 }
 .blame-resize {
   inset-inline-start: calc(var(--blame-gutter) - 4px);
@@ -3056,6 +3094,14 @@ kbd.duplicate {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
+  /* Colunas pelos <col> de cada bloco (ver BlameView): os blocos ficam alinhados entre si. */
+  table-layout: fixed;
+}
+.blame-table col.blame-col-gutter {
+  width: var(--blame-gutter, 260px);
+}
+.blame-table col.ln {
+  width: max(36px, calc(var(--ln-digits, 4) * 1ch + 12px));
 }
 .blame-table td {
   vertical-align: top;
@@ -4122,10 +4168,11 @@ body.docking .pane-grip {
   flex-direction: column;
   height: 100%;
 }
+/* A janela do diff não rola: quem rola é o .diff-body (lista em janela), dentro da altura que sobra (ver abaixo). */
 .diff-window-app .diff-window {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 0 10px 10px;
 }
 /* Nos painéis, as barras de botões do diff (ações e setas) ficam fixas no topo e só o conteúdo do diff rola. */
@@ -4169,6 +4216,10 @@ body.docking .pane-grip {
 .diff-window-app .diff-file {
   margin-top: 10px;
   overflow: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .diff-window-app .diff-file-header {
   position: sticky;
@@ -4554,12 +4605,12 @@ tr.nav-flash > td {
   width: 16px;
   height: 16px;
 }
-.file-icon svg {
-  width: 16px;
-  height: 16px;
-}
 .tree-dir .file-icon {
   margin-inline-start: -2px;
+}
+/* Desligado nas configurações: o atributo fica na raiz (appearance.ts). */
+:root[data-file-icons='off'] .file-icon {
+  display: none;
 }
 
 /* ------------------------------------------------ extensão do VS Code: tema e fontes do próprio VS Code */
@@ -5275,6 +5326,44 @@ button.blame-bubble:hover {
   flex: 1 1 auto;
   min-height: 0;
 }
+/* Diff sem painel por perto (janela própria e modo de linhas do CherryPick): o corpo ocupa a altura que sobra
+   e rola sozinho. Sem essa altura limitada, a lista em janela montaria o diff inteiro (a "tela" seria o diff todo). */
+.diff-window-app .diff-file-header,
+.studio-lines > .diff-file > .diff-file-header {
+  flex: none;
+}
+.diff-window-app .diff-body-wrap,
+.studio-lines > .diff-file > .diff-body-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.diff-window-app .diff-body,
+.studio-lines > .diff-file > .diff-body-wrap > .diff-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+/* Modo de linhas do CherryPick: o painel do meio não rola inteiro; o diff ocupa o resto da coluna. */
+.studio-main:has(> .studio-lines) {
+  overflow: hidden;
+}
+.studio-lines {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.studio-lines > .diff-file {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Tabelas empilhadas (um bloco por tabela): sem margem nem espaço entre elas. As bordas já são colapsadas por bloco. */
+.diff-body .diff-table {
+  display: table;
+  margin: 0;
+}
 
 /* Linhas alteradas: faixa de 3px no início da linha e números e sinal com um tom mais forte. */
 .line-add > td:first-child,
@@ -5350,26 +5439,13 @@ button.blame-bubble:hover {
   background: color-mix(in srgb, var(--text) 12%, transparent);
   pointer-events: none;
 }
-.change-ruler-mark {
+/* As marcas são desenhadas num canvas só (cores das variáveis --ruler-*); o canvas não recebe o mouse. */
+.change-ruler canvas {
   position: absolute;
-  left: 2px;
-  right: 2px;
-  min-height: 2px;
-  border-radius: 2px;
-  background: var(--ruler-mod);
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-}
-.change-ruler-mark.add {
-  background: var(--ruler-add);
-}
-.change-ruler-mark.del {
-  background: var(--ruler-del);
-}
-.change-ruler-mark.conflict {
-  background: var(--ruler-conflict);
-}
-.change-ruler-mark.resolved {
-  background: var(--ruler-resolved);
 }
 
 /* ---------------- responsivo: painéis */
@@ -5400,6 +5476,17 @@ button.blame-bubble:hover {
 }
 .list-body {
   overflow-x: hidden;
+}
+
+/* Rodapé do histórico ("carregando mais" ou o aviso do teto): altura fixa, como uma linha; sem efeito por linha. */
+.history-more {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9em;
+  color: var(--text-muted);
 }
 
 /* Cabeçalho do painel de mensagem: o botão alinha à esquerda e encolhe com reticências. */

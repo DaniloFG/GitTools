@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useApp } from '../context'
+import { useAppActions } from '../context'
 import { startReorder } from '../reorder'
 import { tk } from './widgets/helpers'
 import { DataTable, toCsv } from './charts/DataTable'
@@ -50,7 +50,7 @@ interface Props {
 
 /** Cartão de um widget: título, formas de ver, opções, tabela, menu e o gráfico. */
 export function WidgetCard({ inst, ctx, list, onChange, span, narrow }: Props) {
-  const { showMenu, toast } = useApp()
+  const { showMenu, toast } = useAppActions()
   const def = WIDGET_BY_ID.get(inst.widget)!
   const [asTable, setAsTable] = useState(false)
   const options = useMemo(() => {

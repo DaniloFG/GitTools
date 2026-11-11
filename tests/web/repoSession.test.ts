@@ -4,24 +4,26 @@ import {
   covers,
   dropSession,
   getSession,
+  isOwnEcho,
   peekSession,
   planFor,
   sessionState,
   trimSessions,
+  type EchoInput,
   type Loaded,
   type StateInput
 } from '../../src/renderer/src/repoSession'
 
 afterEach(() => clearSessions())
 
-const loaded = (over: Partial<Loaded> = {}): Loaded => ({ generation: 5, scopeKey: 'all', log: true, stashes: false, ...over })
+const loaded = (over: Partial<Loaded> = {}): Loaded => ({ generation: 5, scopeKey: 'all', log: true, stashes: false, stats: false, ...over })
 const input = (over: Partial<StateInput> = {}): StateInput => ({
   hasData: true,
   loaded: loaded(),
   loading: false,
   generation: 5,
   scopeKey: 'all',
-  wants: { log: true, stashes: false },
+  wants: { log: true, stashes: false, stats: false },
   ...over
 })
 
@@ -53,18 +55,31 @@ describe('máquina de estados da sessão', () => {
 
   it('o dado que não trouxe o histórico fica stale quando a tela passa a mostrá-lo', () => {
     const noLog = loaded({ log: false })
-    expect(sessionState(input({ loaded: noLog, wants: { log: false, stashes: false } }))).toBe('fresh')
-    expect(sessionState(input({ loaded: noLog, wants: { log: true, stashes: false } }))).toBe('stale')
+    expect(sessionState(input({ loaded: noLog, wants: { log: false, stashes: false, stats: false } }))).toBe('fresh')
+    expect(sessionState(input({ loaded: noLog, wants: { log: true, stashes: false, stats: false } }))).toBe('stale')
   })
 
   it('o mesmo vale para os stashes e para o filtro de branches do histórico', () => {
-    expect(sessionState(input({ wants: { log: true, stashes: true } }))).toBe('stale')
-    expect(sessionState(input({ loaded: loaded({ stashes: true }), wants: { log: false, stashes: true } }))).toBe('fresh')
+    expect(sessionState(input({ wants: { log: true, stashes: true, stats: false } }))).toBe('stale')
+    expect(sessionState(input({ loaded: loaded({ stashes: true }), wants: { log: false, stashes: true, stats: false } }))).toBe('fresh')
     expect(sessionState(input({ scopeKey: 'head' }))).toBe('stale')
   })
 
   it('dado que trouxe mais do que a tela quer continua valendo', () => {
-    expect(covers(loaded({ log: true, stashes: true }), 'all', { log: false, stashes: false })).toBe(true)
+    expect(covers(loaded({ log: true, stashes: true, stats: true }), 'all', { log: false, stashes: false, stats: false })).toBe(true)
+  })
+
+  it('o status sem contagens fica stale quando uma tela passa a mostrá-las (e relê ao aparecer)', () => {
+    const noStats = loaded({ stats: false })
+    const wantsStats = { log: true, stashes: false, stats: true }
+    expect(sessionState(input({ loaded: noStats, wants: { log: true, stashes: false, stats: false } }))).toBe('fresh')
+    expect(sessionState(input({ loaded: noStats, wants: wantsStats }))).toBe('stale')
+    expect(planFor(sessionState(input({ loaded: noStats, wants: wantsStats })))).toBe('revalidate')
+  })
+
+  it('o status com contagens cobre telas que não as pedem: fechar o painel não relê', () => {
+    expect(sessionState(input({ loaded: loaded({ stats: true }), wants: { log: true, stashes: false, stats: false } }))).toBe('fresh')
+    expect(covers(loaded({ stats: true }), 'all', { log: true, stashes: false, stats: true })).toBe(true)
   })
 })
 
@@ -126,5 +141,39 @@ describe('sessões por repositório', () => {
   it('não faz nada abaixo do limite', () => {
     getSession('/a').data = {} as never
     expect(trimSessions('/a', 3)).toEqual([])
+  })
+})
+
+describe('aviso do observador é eco da própria alteração', () => {
+  const base: EchoInput = { ownChange: true, generation: 5, lastLoaded: 5, loadingGeneration: null, again: false }
+
+  it('sem alteração própria recente nunca é eco (ex.: commit no terminal)', () => {
+    expect(isOwnEcho({ ...base, ownChange: false })).toBe(false)
+    expect(isOwnEcho({ ...base, ownChange: false, loadingGeneration: 5 })).toBe(false)
+  })
+
+  it('leitura em andamento começada depois da alteração é eco', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: null, loadingGeneration: 5 })).toBe(true)
+  })
+
+  it('leitura em andamento de geração antiga, sem outra rodada na fila, não é eco', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: 4, loadingGeneration: 4, again: false })).toBe(false)
+  })
+
+  it('leitura em andamento de geração antiga, com outra rodada na fila, é eco', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: 4, loadingGeneration: 4, again: true })).toBe(true)
+  })
+
+  it('sem leitura em andamento: eco se a última leitura concluída é da geração atual', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: 5 })).toBe(true)
+    expect(isOwnEcho({ ...base, lastLoaded: 4 })).toBe(false)
+  })
+
+  it('sem nenhuma leitura concluída não é eco', () => {
+    expect(isOwnEcho({ ...base, lastLoaded: null })).toBe(false)
+  })
+
+  it('a sessão nova começa sem leitura em andamento', () => {
+    expect(getSession('/novo').loadingGeneration).toBeNull()
   })
 })

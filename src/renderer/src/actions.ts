@@ -1,6 +1,6 @@
 import type { BranchInfo, CommitInfo, DiffSource, LineKey, PushForce } from '../../shared/types'
 import type { MenuItem } from './components/ContextMenu'
-import { currentBranch, useApp } from './context'
+import { currentBranch, useAppActions, useRepoData } from './context'
 import type { DragPayload } from './dnd'
 import { git } from './git'
 import { copyText } from './copy'
@@ -10,8 +10,9 @@ import { useLayout } from './layout'
 
 /** Ações de alto nível reutilizadas por menus, botões e arrastar-e-soltar. */
 export function useActions() {
-  const app = useApp()
-  const { data, run, confirm, prompt, choose, openStudio, askPush, toast } = app
+  // Só dados e ações: não lê `busy` nem `settings`, então não redesenha com a operação em andamento.
+  const { data } = useRepoData()
+  const { run, confirm, prompt, choose, openStudio, askPush, toast } = useAppActions()
   const head = currentBranch(data)
   /** Última escolha de "fazer checkout da nova branch" (começa ligada, como era antes). */
   const [checkoutNew, setCheckoutNew] = useLayout<boolean>('pref.checkoutNewBranch', (v) => v !== false)

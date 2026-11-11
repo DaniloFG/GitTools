@@ -8,9 +8,11 @@
 
 import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { REPO_METHODS, type AppInfo, type DiffWindowRequest, type EditorInfo, type RecentRepo, type RepoMethod } from '../shared/api'
-import type { CherryPickOptions, CrossApply, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
+import type { AnalyticsOptions, CherryPickOptions, CrossApply, FileDiff, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
+import { encodeDiffs } from '../shared/diffWire'
+import { AnalyticsCache } from './analyticsCache'
 import type { BridgeChannel } from '../shared/channels'
 import { t } from '../shared/i18n'
 import { normalizeSettings, type Settings } from '../shared/settings'
@@ -19,6 +21,7 @@ import { onGitCommand, runGit } from '../core/exec'
 import { comparablePath, resolveInside } from '../core/paths'
 import { GitRepository } from '../core/repository'
 import { runTerminalCommand } from '../core/terminal'
+import { mapLimited } from './mapLimited'
 
 /** O que cada ambiente (Electron, VS Code) precisa fornecer. */
 export interface BackendHost {
@@ -69,10 +72,14 @@ interface WorkspaceFile {
 }
 
 const GIT_LOG_LIMIT = 500
+/** Repositórios da sessão anterior reabertos ao mesmo tempo (cada um abre processos git). */
+const REOPEN_CONCURRENCY = 4
 
 export class Backend {
   /** Repositórios abertos nesta sessão, pelo root de cada um. */
   readonly repos = new Map<string, GitRepository>()
+  /** Chave comparável de cada repositório aberto, calculada uma vez ao entrar (evita disco a cada chamada). */
+  private readonly comparableKeys = new Map<string, string>()
   /** Root do repositório ativo (o que a interface mostra), ou null. */
   activeRoot: string | null = null
   private readonly watchers = new Map<string, { watcher: FSWatcher; timer: NodeJS.Timeout | null }>()
@@ -110,6 +117,8 @@ export class Backend {
   // ------------------------------------------------------------- arquivos de dados
 
   private recentFile = () => join(this.host.dataDir(), 'recent-repositories.json')
+  /** Resultado de `analytics` (dashboards) por repositório: memória e disco, na pasta de dados (ver analyticsCache.ts). */
+  private readonly analyticsCache = new AnalyticsCache(() => join(this.host.dataDir(), 'analytics-cache'))
   private settingsFile = () => join(this.host.dataDir(), 'settings.json')
   private workspaceFile = () => join(this.host.dataDir(), 'workspace.json')
 
@@ -137,11 +146,22 @@ export class Backend {
     await writeFile(this.recentFile(), JSON.stringify(kept, null, 2))
   }
 
-  private async rememberRepo(root: string, name: string): Promise<void> {
-    const all = await this.loadRecent()
-    const favorite = all.find((r) => r.path === root)?.favorite
-    const list = all.filter((r) => r.path !== root)
-    list.unshift({ path: root, name, openedAt: Date.now(), ...(favorite ? { favorite } : {}) })
+  private rememberRepo(root: string, name: string): Promise<void> {
+    return this.rememberRepos([{ root, name }])
+  }
+
+  /**
+   * Põe estes repositórios no topo dos recentes, como se cada um fosse aberto em seguida (o último fica
+   * primeiro), com uma leitura e uma gravação para todos.
+   */
+  private async rememberRepos(repos: RepoInfo[]): Promise<void> {
+    if (repos.length === 0) return
+    let list = await this.loadRecent()
+    for (const { root, name } of repos) {
+      const favorite = list.find((r) => r.path === root)?.favorite
+      list = list.filter((r) => r.path !== root)
+      list.unshift({ path: root, name, openedAt: Date.now(), ...(favorite ? { favorite } : {}) })
+    }
     await this.saveRecent(list)
   }
 
@@ -192,13 +212,16 @@ export class Backend {
 
   private async reopenSaved(): Promise<void> {
     const saved = await this.loadWorkspace()
-    for (const path of saved.repos) {
-      try {
-        await this.adopt(await GitRepository.open(path))
-      } catch {
-        // A pasta sumiu ou deixou de ser um repositório: descarta sem avisar.
-      }
-    }
+    // Cada reabertura custa 2 processos git (`rev-parse --show-toplevel` e `--git-dir` do observador). Em
+    // série, uma sessão com N abas esperava 2N processos um atrás do outro; aqui vão poucos por vez.
+    // Só a abertura (leitura do git) corre em paralelo. A inclusão na sessão (`adopt`) é feita depois, em
+    // série e na ordem gravada, para as abas não mudarem de ordem conforme cada processo terminou. Ela não
+    // abre processo: a pasta .git já veio com a abertura. Dois caminhos do mesmo repositório viram uma aba só.
+    const opened = await mapLimited(saved.repos, REOPEN_CONCURRENCY, (path) =>
+      // A pasta sumiu ou deixou de ser um repositório: descarta sem avisar.
+      GitRepository.open(path).catch(() => null)
+    )
+    for (const repo of opened) if (repo) await this.adopt(repo)
     if (this.activeRoot === null && saved.active !== null) this.activeRoot = this.keyOf(saved.active)
     if (this.activeRoot === null) this.activeRoot = this.repos.keys().next().value ?? null
     if (this.activeRoot !== null) this.host.repositoryOpened?.(await this.repos.get(this.activeRoot)!.info())
@@ -210,15 +233,18 @@ export class Backend {
     const existing = this.keyOf(repo.root)
     if (existing !== null) return existing
     this.repos.set(repo.root, repo)
-    await this.watchRepository(repo.root)
+    this.comparableKeys.set(repo.root, comparablePath(repo.root))
+    await this.watchRepository(repo)
     return repo.root
   }
 
   /** Root de um repositório já aberto que corresponde a este caminho; null se não está aberto. */
   private keyOf(path: string): string | null {
     if (!path) return null
+    // A interface manda o root exatamente como o backend o informou: achado sem tocar no disco.
+    if (this.repos.has(path)) return path
     const wanted = comparablePath(path)
-    for (const root of this.repos.keys()) if (comparablePath(root) === wanted) return root
+    for (const [root, key] of this.comparableKeys) if (key === wanted) return root
     return null
   }
 
@@ -244,13 +270,15 @@ export class Backend {
   }
 
   /** Observa a pasta .git do repositório (HEAD, index, refs) para atualizar a interface quando algo muda por fora. */
-  private async watchRepository(root: string): Promise<void> {
+  private async watchRepository(repo: GitRepository): Promise<void> {
+    const root = repo.root
     this.unwatch(root)
     try {
-      const { stdout } = await runGit(root, ['rev-parse', '--git-dir'])
+      // Sem processo próprio: a pasta .git já veio com a abertura do repositório.
+      const gitDir = await repo.gitDir()
       // Fechado (ou já observado) enquanto o git respondia: não cria o observador.
       if (!this.repos.has(root) || this.watchers.has(root)) return
-      const watcher = watch(resolve(root, stdout.trim()), { recursive: false }, (_event, file) => this.onGitChange(root, file))
+      const watcher = watch(gitDir, { recursive: false }, (_event, file) => this.onGitChange(root, file))
       watcher.on('error', () => {
         if (this.watchers.get(root)?.watcher === watcher) this.unwatch(root)
       })
@@ -295,6 +323,23 @@ export class Backend {
     return info
   }
 
+  /**
+   * Vários `addRepository` sem ativar (os repositórios achados no workspace), com uma gravação dos recentes e
+   * uma do estado da janela no fim, em vez de duas por repositório. Com `activateIfNone` e nenhum ativo, o
+   * primeiro da lista vira o ativo (antes isso era um `switchRepository` à parte, com mais uma gravação).
+   * Devolve os repositórios incluídos (os já abertos também), na ordem recebida.
+   */
+  async addRepositories(list: GitRepository[], options: { activateIfNone: boolean }): Promise<RepoInfo[]> {
+    await this.restoreWorkspace()
+    const infos: RepoInfo[] = []
+    for (const next of list) infos.push(await this.repos.get(await this.adopt(next))!.info())
+    if (infos.length === 0) return infos
+    if (options.activateIfNone && this.activeRoot === null) await this.setActive(infos[0].root)
+    await this.rememberRepos(infos)
+    await this.saveWorkspace()
+    return infos
+  }
+
   /** Abre o repositório, ou só o ativa se já estiver aberto, e o guarda entre os recentes. */
   async setRepository(next: GitRepository): Promise<RepoInfo> {
     await this.restoreWorkspace()
@@ -331,6 +376,7 @@ export class Backend {
     const index = roots.indexOf(key)
     this.unwatch(key)
     this.repos.delete(key)
+    this.comparableKeys.delete(key)
     if (this.activeRoot === key) {
       const neighbor = index + 1 < roots.length ? roots[index + 1] : index > 0 ? roots[index - 1] : null
       this.activeRoot = null
@@ -512,8 +558,13 @@ export class Backend {
         if (!this.allowed.has(method)) throw new Error(t('main.unknownOperation', { method }))
         const repo = this.repoAt(args[2])
         if (!repo) throw new Error(t('main.noRepository'))
+        // Dashboards: o cache responde sem o `git log` quando a história não mudou (chave em analyticsKey).
+        // Argumentos do método: [opções]. O resultado já sai no formato colunar.
+        if (method === 'analytics') return this.analyticsCache.get(repo, ((args[1] as unknown[] | undefined)?.[0] ?? {}) as AnalyticsOptions)
         const fn = repo[method] as (...a: unknown[]) => Promise<unknown>
-        return fn.apply(repo, (args[1] as unknown[]) ?? [])
+        const result = await fn.apply(repo, (args[1] as unknown[]) ?? [])
+        // O diff vai no formato compacto (diffWire.ts): menos objetos para copiar pelo IPC. A interface decodifica em git.ts.
+        return method === 'diff' ? encodeDiffs(result as FileDiff[]) : result
       }
     }
   }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { git } from '../git'
 import { shortSha } from '../format'
 import { t, type MessageKey } from '../i18n'
@@ -16,7 +16,8 @@ const LABEL: Record<'merge' | 'cherry-pick' | 'revert' | 'rebase', MessageKey> =
 const FILTER_FROM = 8
 
 export function OperationBanner({ onShowChanges }: { onShowChanges(): void }) {
-  const { data, run, confirm, openConflict, openInEditor } = useApp()
+  const { data } = useRepoData()
+  const { run, confirm, openConflict, openInEditor } = useAppActions()
   const resolveAll = useResolveAll()
   const [filter, setFilter] = useState('')
   const { operation, status } = data

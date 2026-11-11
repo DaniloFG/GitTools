@@ -3,7 +3,8 @@
 //   npm run build:extension   (gera extension/dist/webview, que é a interface empacotada)
 import { build } from 'esbuild'
 import { createServer } from 'node:http'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { extname, join, resolve } from 'node:path'
@@ -11,6 +12,30 @@ import { pathToFileURL } from 'node:url'
 
 const root = resolve(new URL('../..', import.meta.url).pathname)
 const require = createRequire(import.meta.url)
+
+/**
+ * Executável do Chromium para o roteiro: CHROMIUM tem prioridade; depois o link /opt/pw-browsers/chromium (se
+ * existir) e, por último, o chrome-linux* do Chromium mais novo em /opt/pw-browsers/chromium-<versão>.
+ * É roteiro, não código da aplicação, por isso usa fs síncrono.
+ */
+function chromiumPath() {
+  if (process.env.CHROMIUM) return process.env.CHROMIUM
+  const browsers = '/opt/pw-browsers'
+  if (existsSync(join(browsers, 'chromium'))) return join(browsers, 'chromium')
+  const versions = existsSync(browsers)
+    ? readdirSync(browsers)
+        .filter((name) => /^chromium-\d+$/.test(name))
+        .sort((a, b) => Number(b.slice('chromium-'.length)) - Number(a.slice('chromium-'.length)))
+    : []
+  for (const version of versions) {
+    const dir = join(browsers, version)
+    for (const linux of readdirSync(dir).filter((name) => name.startsWith('chrome-linux'))) {
+      const exe = join(dir, linux, 'chrome')
+      if (existsSync(exe)) return exe
+    }
+  }
+  throw new Error('Chromium não encontrado (defina CHROMIUM)')
+}
 
 async function loadPlaywright() {
   for (const base of [process.env.PLAYWRIGHT_MODULE, '/opt/node22/lib/node_modules/playwright', 'playwright'].filter(Boolean)) {
@@ -21,10 +46,17 @@ async function loadPlaywright() {
   throw new Error('playwright não encontrado (defina PLAYWRIGHT_MODULE)')
 }
 
-/** Compila o Backend (TypeScript) para um arquivo CommonJS temporário e o carrega. */
+/**
+ * Compila o Backend (TypeScript) para um arquivo CommonJS temporário e o carrega. A entrada reexporta também o
+ * módulo de idiomas, no mesmo pacote, para o harness registrar o carregador na mesma instância que o Backend usa.
+ */
 async function loadBackend(work) {
   const out = join(work, 'backend.cjs')
-  await build({ entryPoints: [join(root, 'src/backend/backend.ts')], outfile: out, bundle: true, platform: 'node', format: 'cjs', target: 'node20', logLevel: 'error' })
+  const entry = [
+    `export * from ${JSON.stringify(join(root, 'src/backend/backend.ts'))}`,
+    `export { changeLocale, jsonCatalogLoader, matchLocale, setCatalogLoader } from ${JSON.stringify(join(root, 'src/shared/i18n/index.ts'))}`
+  ].join('\n')
+  await build({ stdin: { contents: entry, resolveDir: root, sourcefile: 'harness-entry.ts', loader: 'ts' }, outfile: out, bundle: true, platform: 'node', format: 'cjs', target: 'node20', logLevel: 'error' })
   return require(out)
 }
 
@@ -46,7 +78,8 @@ function serve(dir) {
 const BRIDGE = String.raw`
 (() => {
   const listeners = { cmd: new Set(), changed: new Set() }
-  const call = (channel, ...args) => window.__gt(channel, args)
+  // A resposta chega como texto JSON e é lida aqui: o Playwright devolve objetos grandes à página muito devagar.
+  const call = (channel, ...args) => window.__gt(channel, args).then((text) => JSON.parse(text).v)
   // Mesmo contrato do preload: "repo:changed" chega como o root (ou nada, quando a janela ganha o foco).
   window.__emit = (channel, payload) => {
     if (channel === 'git:command') listeners.cmd.forEach((l) => l(payload))
@@ -93,11 +126,16 @@ export async function launch(options) {
   writeFileSync(join(work, '.gitconfig'), '[user]\n\tname = Ana Costa\n\temail = ana@example.com\n')
   process.env.GIT_CONFIG_GLOBAL = join(work, '.gitconfig')
   process.env.GIT_CONFIG_NOSYSTEM = '1'
-  const { Backend } = await loadBackend(work)
+  const { Backend, changeLocale, jsonCatalogLoader, matchLocale, setCatalogLoader } = await loadBackend(work)
+  // Mesmo carregador da extensão (src/main faz o mesmo com o JSON do build): um JSON por idioma em
+  // extension/dist/locales, gerado por `npm run build:extension`, que este roteiro já exige para a interface.
+  setCatalogLoader(jsonCatalogLoader((name) => readFile(join(root, 'extension/dist/locales', name), 'utf8')))
   const data = join(work, 'data')
   mkdirSync(data, { recursive: true })
   const language = options.language ?? 'en'
   writeFileSync(join(data, 'settings.json'), JSON.stringify({ language, theme: options.theme ?? 'dark', ...(options.settings ?? {}) }))
+  // Como o processo principal ao iniciar: sem o catálogo carregado, as mensagens do backend saem como chave crua.
+  await changeLocale(language === 'system' ? matchLocale([language]) : language)
 
   const events = []
   const host = {
@@ -123,7 +161,7 @@ export async function launch(options) {
   if (more.length) await backend.invoke('app:switchRepository', [options.repo])
 
   const { server, port } = await serve(join(root, 'extension/dist/webview'))
-  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', args: ['--no-sandbox'] })
+  const browser = await chromium.launch({ executablePath: chromiumPath(), args: ['--no-sandbox'] })
   const viewport = options.viewport ?? { width: 1440, height: 900 }
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, locale: language, ...(options.video ? { recordVideo: { dir: options.video, size: viewport } } : {}) })
   const page = await context.newPage()
@@ -131,7 +169,10 @@ export async function launch(options) {
   const errors = []
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
   page.on('console', (m) => m.type() === 'error' && errors.push(`console: ${m.text()}`))
-  await page.exposeFunction('__gt', (channel, args) => backend.invoke(channel, args))
+  // Devolve texto em vez de objeto: com a CPU 4x mais lenta, um objeto de 3,5 MB levou 2,6-3,5 s para chegar à página;
+  // como texto com JSON.parse, 0,56-0,73 s. O envelope { v } mantém undefined (JSON.stringify sozinho o perderia).
+  // Erros do backend não são capturados: a rejeição chega à página como antes.
+  await page.exposeFunction('__gt', async (channel, args) => JSON.stringify({ v: await backend.invoke(channel, args) }))
   await page.addInitScript(BRIDGE)
   if (options.video) await page.addInitScript(CURSOR)
   if (options.layout) {

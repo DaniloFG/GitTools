@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { FileDiff, FileStatus, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { parseChangesMode, type ChangesMode, type SectionId } from '../changesMode'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { currentDrag, endDrag, startDrag } from '../dnd'
 import { stepIndex } from '../diffNav'
 import { errorMessage, statusLabel } from '../format'
+import { sameDiff } from '../diffIdentity'
 import { git } from '../git'
 import { copyText } from '../copy'
 import { t } from '../i18n'
@@ -16,6 +17,7 @@ import { SCREEN_VIEWS, viewAvailable, type ViewId } from '../dock'
 import { PaneSlot } from '../slots'
 import { CommitBox } from './CommitBox'
 import { DiffView, useFullFile } from './DiffView'
+import { useDiffUncapped } from '../diffLimit'
 import { FileEntries } from './FileList'
 import { useFileViewGroup, ViewOptionsButton, type ViewOptionGroup } from './ViewOptions'
 import { useSessionState } from '../useSessionState'
@@ -67,7 +69,9 @@ const fileHasHistory = (f: FileStatus) => !f.untracked && f.index !== 'A'
 const entryHasHistory = (e: Entry) => (e.staged ? e.staged.index !== 'A' : !e.unstaged!.untracked)
 
 export function ChangesView() {
-  const { data, run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow, showMenu } = useApp()
+  // Só o status é lido dos dados; as funções vêm da fatia de ações (estável), então a tela não redesenha a cada operação.
+  const { data } = useRepoData()
+  const { run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow, showMenu } = useAppActions()
   /** Operações desta tela (stage, descarte, aplicar linhas): o indicador cobre só os painéis dela. */
   const runChanges = <T,>(label: string, fn: () => Promise<T>) => run(label, fn, SCREEN_VIEWS.changes)
   const { status } = data
@@ -75,10 +79,13 @@ export function ChangesView() {
   const fileGroup = useFileViewGroup()
   const [mode, setMode] = useLayout<ChangesMode>('pref.changesMode', parseChangesMode)
   // O arquivo aberto no diff é lembrado ao navegar para outra tela ou outra aba de repositório e voltar.
-  const [active, setActive] = useSessionState<Active | null>('changes.active', null)
+  // Na primeira montagem o arquivo inicial já vem do status (quando não há valor guardado): o diff começa a ser lido
+  // junto com a tela, sem um desenho extra só para trocar `null` pelo primeiro arquivo (ver o efeito abaixo).
+  const [active, setActive] = useSessionState<Active | null>('changes.active', firstChange(status))
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()
+  const uncapped = useDiffUncapped(active?.path)
   /** Caixas marcadas agora e ainda não confirmadas pelo git (a tela responde na hora). */
   const [pending, setPending] = useState<Record<string, boolean>>({})
   /** Arquivos marcados (Ctrl+clique) na lista de não staged: a caixa de commit os inclui. */
@@ -87,9 +94,13 @@ export function ChangesView() {
   const entries = buildEntries(status)
 
   // Some da marcação os arquivos que saíram da lista de não staged (ex.: foram para o stage ou para o commit).
+  // Só chama o `set` quando há algo a tirar: um `set` com o mesmo valor, feito dentro de efeito, ainda redesenha a tela
+  // (o React não consegue descartá-lo antes de renderizar). Este efeito roda logo após o render que trouxe o status,
+  // então `pickedUnstaged` é o valor desse render.
   useEffect(() => {
     const present = new Set(status.unstaged.map((f) => f.path))
-    setPickedUnstaged((prev) => (prev.size === 0 || [...prev].every((p) => present.has(p)) ? prev : new Set([...prev].filter((p) => present.has(p)))))
+    if (pickedUnstaged.size === 0 || [...pickedUnstaged].every((p) => present.has(p))) return
+    setPickedUnstaged(new Set([...pickedUnstaged].filter((p) => present.has(p))))
   }, [status])
 
   // Se o arquivo ativo saiu da lista (ex.: foi todo para o stage), acompanha-o na outra lista.
@@ -108,27 +119,36 @@ export function ChangesView() {
     if (first) setActive(first)
   }, [status, active])
 
+  // Diff mostrado agora, por referência. Trocar de diff zera a seleção no mesmo lote do `setDiff`: um efeito que
+  // zerasse a seleção depois (`useEffect` em [diff]) forçava mais um desenho da tela a cada diff lido.
+  const shownDiff = useRef<FileDiff | null>(null)
+  const showDiff = (next: FileDiff | null) => {
+    const prev = shownDiff.current
+    // Mantém a mesma referência (e a seleção) se nada mudou desde a última leitura.
+    if (prev === next || (prev && next && sameDiff(prev, next))) return
+    shownDiff.current = next
+    setDiff(next)
+    setSelection(new Set())
+  }
+
   useEffect(() => {
     if (!active) {
-      setDiff(null)
+      showDiff(null)
       return
     }
     let cancelled = false
-    git.diff({ kind: active.area, path: active.path, fullFile }).then(
+    git.diff({ kind: active.area, path: active.path, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
-        const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
-        // Mantém a mesma referência (e a seleção) se nada mudou desde a última leitura.
-        setDiff((prev) => (prev && next && JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+        showDiff(files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null)
       },
       (e) => !cancelled && toast('error', errorMessage(e))
     )
     return () => {
       cancelled = true
     }
-  }, [active, status, toast, fullFile])
-
-  useEffect(() => setSelection(new Set()), [diff])
+    // `showDiff` só usa refs e setters estáveis; ficar fora das dependências evita refazer a leitura a cada render.
+  }, [active, status, toast, fullFile, uncapped])
 
   const discard = async (paths: string[]) => {
     const ok = await confirm({

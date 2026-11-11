@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest'
-import { ALL_SCOPE, checkedRefs, scopeKey, scopeLogOptions, scopeOfRefs, showsWorkingChanges, toggleGroup, toggleRef } from '../src/renderer/src/historyScope'
+import {
+  ALL_SCOPE,
+  LOG_MAX,
+  LOG_PAGE,
+  canLoadMoreLog,
+  checkedRefs,
+  logLimitFor,
+  nextLogPage,
+  scopeKey,
+  scopeLogOptions,
+  scopeOfRefs,
+  showsWorkingChanges,
+  toggleGroup,
+  toggleRef
+} from '../src/renderer/src/historyScope'
 import { createRepo } from './helpers'
 
 describe('escopo do histórico (branches marcadas)', () => {
@@ -67,5 +81,26 @@ describe('git log com várias branches', () => {
     const t = await createRepo()
     await t.commit('base', { 'a.txt': '1\n' })
     await expect(t.repo.log({ refs: ['--output=/tmp/x'] })).rejects.toThrow()
+  })
+})
+
+describe('paginação do histórico', () => {
+  it('a primeira leitura pede uma página; outro escopo volta a ela', () => {
+    expect(logLimitFor(null, 'all')).toBe(LOG_PAGE)
+    expect(logLimitFor({ scopeKey: 'all', limit: 1500 }, 'all')).toBe(1500)
+    expect(logLimitFor({ scopeKey: 'all', limit: 1500 }, 'head')).toBe(LOG_PAGE)
+  })
+
+  it('há mais só se a última leitura veio cheia e o teto não foi atingido', () => {
+    expect(canLoadMoreLog(500, 500)).toBe(true)
+    expect(canLoadMoreLog(430, 500)).toBe(false)
+    expect(canLoadMoreLog(0, 500)).toBe(false)
+    expect(canLoadMoreLog(LOG_MAX, LOG_MAX)).toBe(false)
+  })
+
+  it('a página seguinte começa onde a lista termina e não passa do teto', () => {
+    expect(nextLogPage(500)).toEqual({ skip: 500, limit: 500 })
+    expect(nextLogPage(9800)).toEqual({ skip: 9800, limit: 200 })
+    expect(nextLogPage(LOG_MAX)).toEqual({ skip: LOG_MAX, limit: 0 })
   })
 })

@@ -1,15 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { getSession } from '../repoSession'
+import { sameDiff } from '../diffIdentity'
+import { useSettled } from '../settle'
 import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { useActions } from '../actions'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { copyText } from '../copy'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
-import { t } from '../i18n'
+import { getLocale, t } from '../i18n'
 import { DiffView, useFullFile } from './DiffView'
+import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
 import { PaneSlot } from '../slots'
 import { stepIndex } from '../diffNav'
@@ -35,7 +38,16 @@ export interface WipFocus {
  * Descrição, arquivos e diff do commit escolhido. São três painéis independentes (`commit.message`,
  * `commit.files` e `commit.diff`): cada um pode ficar em qualquer lugar da janela, junto de qualquer outro.
  */
-export function CommitPanes({ selected, focus, wip }: { selected: string[]; focus?: FileFocus | null; wip?: WipFocus | null }) {
+export function CommitPanes({ selected: selectedNow, focus: focusNow, wip: wipNow }: { selected: string[]; focus?: FileFocus | null; wip?: WipFocus | null }) {
+  // Seleção, foco e alterações assentam juntos: a tela nunca mistura a seleção antiga com o foco novo.
+  // A assinatura evita trocar o objeto quando o conteúdo é igual (o pai recria os arrays a cada render).
+  const signature = [selectedNow.join('\n'), focusNow ? `${focusNow.sha}\n${focusNow.path}\n${focusNow.n}` : '-', wipNow ? `${wipNow.path}\n${wipNow.n}` : '-'].join('\u0000')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const current = useMemo(() => ({ selected: selectedNow, focus: focusNow, wip: wipNow }), [signature])
+  // Mudança isolada (sem nada há 400 ms) vale na hora; rajada (tecla repetindo) espera 120 ms depois da última,
+  // para só o commit parado ser lido. Dois tempos porque máquina lenta leva mais de 100 ms para desenhar.
+  const { selected, focus, wip } = useSettled(current, 400, 120)
+
   if (selected.length === 0 && wip) return <WipPanes focus={wip} />
   if (selected.length === 0) {
     return (
@@ -74,7 +86,7 @@ function NothingToShow() {
 }
 
 function MultiSelection({ shas }: { shas: string[] }) {
-  const { openStudio } = useApp()
+  const { openStudio } = useAppActions()
   const actions = useActions()
   return (
     <>
@@ -100,7 +112,8 @@ function MultiSelection({ shas }: { shas: string[] }) {
 }
 
 function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) {
-  const { toast, openFileView, openDiffWindow, openInEditor, showMenu, repo } = useApp()
+  const { repo } = useRepoData()
+  const { toast, openFileView, openDiffWindow, openInEditor, showMenu } = useAppActions()
   const actions = useActions()
   const head = actions.head
   /** Arquivo aberto neste commit, lembrado ao navegar para outra tela ou aba de repositório e voltar. */
@@ -110,17 +123,27 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [active, setActive] = useState<ChangedFile | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
+  // Diff atual para quem espera uma ação: a seleção só é limpa se ainda for o mesmo diff de quando a ação começou.
+  const diffRef = useRef(diff)
+  diffRef.current = diff
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
   const [fullFile] = useFullFile()
+  const uncapped = useDiffUncapped(active?.path)
 
   useEffect(() => {
+    // Resposta atrasada (commit já deixado para trás) não altera a tela.
+    let cancelled = false
     git.commitDetails(sha).then(
       (d) => {
+        if (cancelled) return
         setDetails(d)
         setActive(d.files.find((f) => f.path === remembered.get(rememberKey)) ?? d.files[0] ?? null)
       },
-      (e) => toast('error', errorMessage(e))
+      (e) => !cancelled && toast('error', errorMessage(e))
     )
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sha, toast])
 
@@ -161,14 +184,93 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   }, [details, focus])
 
   useEffect(() => {
-    setSelection(new Set())
+    // Só troca a seleção se havia alguma: um Set novo e vazio redesenharia o commit inteiro por nada.
+    setSelection((prev) => (prev.size ? new Set() : prev))
     setDiff(null)
     if (!active) return
-    git.diff({ kind: 'commit', sha, path: active.path, fullFile }).then(
-      (files) => setDiff(files.find((f) => f.path === active.path) ?? files[0] ?? null),
-      (e) => toast('error', errorMessage(e))
+    // Diff atrasado de um arquivo ou commit anterior não sobrescreve o atual.
+    let cancelled = false
+    git.diff({ kind: 'commit', sha, path: active.path, fullFile, uncapped }).then(
+      (files) => {
+        if (cancelled) return
+        setDiff(files.find((f) => f.path === active.path) ?? files[0] ?? null)
+      },
+      (e) => !cancelled && toast('error', errorMessage(e))
     )
-  }, [sha, active, toast, fullFile])
+    return () => {
+      cancelled = true
+    }
+  }, [sha, active, toast, fullFile, uncapped])
+
+  const pathsOf = (list: ChangedFile[]) => list.flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]))
+
+  /**
+   * Linhas da lista de arquivos, memorizadas: só mudam com o commit, o arquivo ativo, as marcadas e o idioma. Sem
+   * isso, cada passo do diff (limpar a seleção, chegar o diff) redesenhava até 300 linhas sem nada novo nelas.
+   * Os manipuladores são lidos por ref no evento: usam sempre as ações e os dados do desenho mais recente.
+   */
+  const files = details?.files
+  const rowHandlers = useRef({ showDiff, openWindow, fileMenu })
+  rowHandlers.current = { showDiff, openWindow, fileMenu }
+  const locale = getLocale()
+  const fileList = useMemo(() => {
+    if (!files) return null
+    const dragFiles = (file: ChangedFile) => (checked.has(file.path) ? files.filter((f) => checked.has(f.path)) : [file])
+    return (
+      <ul className="file-list">
+        <FileEntries
+          items={files}
+          pathOf={(f) => f.path}
+          oldPathOf={(f) => f.oldPath}
+          statusOf={(f) => f.status}
+          render={(file, { label, style }) => (
+            <li
+              key={file.path}
+              style={style}
+              data-path={file.path}
+              tabIndex={-1}
+              data-copy={file.path}
+              data-copy-what="path"
+              className={`file-item ${active?.path === file.path ? 'active' : ''}`}
+              onClick={() => rowHandlers.current.showDiff(file)}
+              onDoubleClick={() => rowHandlers.current.openWindow(file)}
+              onContextMenu={(e) => rowHandlers.current.fileMenu(e, file)}
+              draggable
+              onDragStart={(e) => {
+                const files = dragFiles(file)
+                startDrag(
+                  e,
+                  { type: 'commit-files', sha, paths: pathsOf(files) },
+                  files.length > 1 ? `📄 ${t('common.files', { count: files.length })}` : `📄 ${file.path}`
+                )
+              }}
+              onDragEnd={endDrag}
+              title={t('details.dragFile')}
+            >
+              <input
+                type="checkbox"
+                checked={checked.has(file.path)}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => {
+                  const next = new Set(checked)
+                  if (e.target.checked) next.add(file.path)
+                  else next.delete(file.path)
+                  setChecked(next)
+                }}
+              />
+              <span className={`status status-${file.status}`} title={statusLabel(file.status)}>
+                {file.status}
+              </span>
+              {label}
+              <LineStats stats={file} />
+            </li>
+          )}
+        />
+      </ul>
+    )
+    // locale: os textos de t() das linhas trocam com o idioma.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, active, checked, sha, locale])
 
   if (!details) {
     return (
@@ -193,9 +295,6 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       document.querySelector(`.file-list [data-path="${CSS.escape(file.path)}"]`)?.scrollIntoView({ block: 'nearest' })
     }
   }
-  const pathsOf = (files: ChangedFile[]) => files.flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]))
-  const dragFiles = (file: ChangedFile) =>
-    checked.has(file.path) ? details.files.filter((f) => checked.has(f.path)) : [file]
 
   const applyLines = async () => {
     if (!head || !diff) return
@@ -207,7 +306,8 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       t('details.linesContext', { path: diff.path, sha: shortSha(sha), subject: details.subject }),
       `${details.subject}\n\n${t('messages.linesFrom', { path: diff.path, sha: details.sha })}`
     )
-    if (done) setSelection(new Set())
+    // Se o usuário trocou de commit ou de arquivo enquanto a ação esperava, a seleção é de outra tela: não mexe nela.
+    if (done && diffRef.current === diff) setSelection(new Set())
   }
 
   const messagePane = (
@@ -248,56 +348,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
         )}
         <FileViewOptions />
       </div>
-      <ul className="file-list">
-        <FileEntries
-          items={details.files}
-          pathOf={(f) => f.path}
-          oldPathOf={(f) => f.oldPath}
-          statusOf={(f) => f.status}
-          render={(file, { label, style }) => (
-            <li
-              key={file.path}
-              style={style}
-              data-path={file.path}
-              tabIndex={-1}
-              data-copy={file.path}
-              data-copy-what="path"
-              className={`file-item ${active?.path === file.path ? 'active' : ''}`}
-              onClick={() => showDiff(file)}
-              onDoubleClick={() => openWindow(file)}
-              onContextMenu={(e) => fileMenu(e, file)}
-              draggable
-              onDragStart={(e) => {
-                const files = dragFiles(file)
-                startDrag(
-                  e,
-                  { type: 'commit-files', sha, paths: pathsOf(files) },
-                  files.length > 1 ? `📄 ${t('common.files', { count: files.length })}` : `📄 ${file.path}`
-                )
-              }}
-              onDragEnd={endDrag}
-              title={t('details.dragFile')}
-            >
-              <input
-                type="checkbox"
-                checked={checked.has(file.path)}
-                onClick={(e) => e.stopPropagation()}
-                onChange={(e) => {
-                  const next = new Set(checked)
-                  if (e.target.checked) next.add(file.path)
-                  else next.delete(file.path)
-                  setChecked(next)
-                }}
-              />
-              <span className={`status status-${file.status}`} title={statusLabel(file.status)}>
-                {file.status}
-              </span>
-              {label}
-              <LineStats stats={file} />
-            </li>
-          )}
-        />
-      </ul>
+      {fileList}
     </section>
   )
 
@@ -347,11 +398,13 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
  * histórico): a lista dos arquivos e, embaixo, o diff do escolhido — igual ao de um commit.
  */
 function WipPanes({ focus }: { focus: WipFocus }) {
-  const { data, toast, setView, openConflict, openDiffWindow } = useApp()
+  const { data } = useRepoData()
+  const { toast, setView, openConflict, openDiffWindow } = useAppActions()
   const { status } = data
   const [fullFile] = useFullFile()
   type Area = 'unstaged' | 'staged'
   const [active, setActive] = useState<{ area: Area; path: string } | null>(null)
+  const uncapped = useDiffUncapped(active?.path)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const entries: ChangeEntry[] = buildEntries(status)
   const areaOf = (e: ChangeEntry): Area => (e.unstaged ? 'unstaged' : 'staged')
@@ -389,18 +442,18 @@ function WipPanes({ focus }: { focus: WipFocus }) {
       return
     }
     let cancelled = false
-    git.diff({ kind: active.area, path: active.path, fullFile }).then(
+    git.diff({ kind: active.area, path: active.path, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
         const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
-        setDiff((prev) => (prev && next && JSON.stringify(prev) === JSON.stringify(next) ? prev : next))
+        setDiff((prev) => (prev && next && sameDiff(prev, next) ? prev : next))
       },
       (e) => !cancelled && toast('error', errorMessage(e))
     )
     return () => {
       cancelled = true
     }
-  }, [active, status, toast, fullFile])
+  }, [active, status, toast, fullFile, uncapped])
 
   const ordered = entries.map((e) => ({ area: areaOf(e), path: e.path }))
   const position = active ? ordered.findIndex((f) => f.path === active.path) : -1

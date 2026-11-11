@@ -202,12 +202,14 @@ export const ptBR = {
       graph: 'Grafo'
     },
     count: { one: '{count} commit', other: '{count} commits' },
+    loadingMore: 'Carregando mais commits…',
+    limitReached: { other: 'Mostrando os {count} commits mais recentes' },
     selected: { one: '{count} selecionado', other: '{count} selecionados' },
     hint: 'Ctrl/Shift+clique para selecionar vários · ▸ ou duplo clique mostra os arquivos · arraste para uma branch',
     empty: 'Nenhum commit ainda.',
     log: {
       chip: 'git log',
-      help: 'Este histórico é o "git log" em forma visual: cada linha é um commit e o grafo mostra as branches. Equivale a git log --graph --all --decorate, com até 500 commits.',
+      help: 'Este histórico é o "git log" em forma visual: cada linha é um commit e o grafo mostra as branches. Equivale a git log --graph --all --decorate, 500 commits por vez, carregando mais ao rolar (até 10.000).',
       tab: 'Histórico — o git log em forma visual'
     },
     wip: {
@@ -292,7 +294,11 @@ export const ptBR = {
     inline: 'Cima e baixo',
     inlineHelp: 'Linhas removidas e adicionadas uma embaixo da outra',
     split: 'Lado a lado',
-    splitHelp: 'Versão anterior à esquerda e nova à direita'
+    splitHelp: 'Versão anterior à esquerda e nova à direita',
+    truncated: {
+      message: 'Este diff é grande e foi cortado em {size}: o fim do arquivo não aparece.',
+      showAll: 'Mostrar mesmo assim'
+    }
   },
   changes: {
     discardTitle: 'Descartar alterações',
@@ -1005,7 +1011,8 @@ export const ptBR = {
     historyRewritten: 'Histórico reescrito.',
     binaryNoLines: 'O arquivo binário "{path}" não permite seleção de linhas.',
     gitNotFound: 'Não foi possível executar o git: {error}',
-    gitFailed: 'git {command} falhou (código {code})'
+    gitFailed: 'git {command} falhou (código {code})',
+    gitCanceled: 'Comando git cancelado.'
   },
   main: {
     editorNotFound: 'O editor "{editor}" não foi encontrado. Escolha outro em Configurações → Editor e diff.',

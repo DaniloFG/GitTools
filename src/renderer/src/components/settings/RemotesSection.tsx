@@ -1,6 +1,6 @@
 import { useContext, useEffect, useState } from 'react'
 import type { RemoteInfo } from '../../../../shared/types'
-import { AppContext } from '../../context'
+import { AppActionsContext } from '../../context'
 import { errorMessage } from '../../format'
 import { git } from '../../git'
 import { t } from '../../i18n'
@@ -11,7 +11,8 @@ import { Loader } from '../Loader'
  * repositório original de um fork ou um espelho —, trocar a URL, renomear e remover.
  */
 export function RemotesSection() {
-  const app = useContext(AppContext)
+  // Só as ações (atualizar, confirmar, perguntar): a lista de remotes é lida aqui, não vem dos dados do contexto.
+  const actions = useContext(AppActionsContext)
   const [remotes, setRemotes] = useState<RemoteInfo[] | null>(null)
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
@@ -33,11 +34,11 @@ export function RemotesSection() {
     )
 
   useEffect(() => {
-    if (app) void load()
+    if (actions) void load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (!app) return null
+  if (!actions) return null
 
   /** Executa uma alteração e atualiza a lista e a tela principal (as branches remotas podem mudar). */
   const change = async (action: () => Promise<unknown>, success: string) => {
@@ -47,7 +48,7 @@ export function RemotesSection() {
       await action()
       setMessage({ ok: true, text: success })
       await load()
-      await app.refresh()
+      await actions.refresh()
       return true
     } catch (e) {
       setMessage({ ok: false, text: errorMessage(e) })
@@ -66,7 +67,7 @@ export function RemotesSection() {
   }
 
   const remove = async (remote: RemoteInfo) => {
-    const ok = await app.confirm({
+    const ok = await actions.confirm({
       title: t('remotes.removeTitle'),
       message: t('remotes.removeMessage', { name: remote.name, url: remote.fetchUrl }),
       confirmLabel: t('remotes.remove'),
@@ -76,7 +77,7 @@ export function RemotesSection() {
   }
 
   const rename = async (remote: RemoteInfo) => {
-    const next = await app.prompt({ title: t('remotes.renameTitle'), label: t('remotes.name'), initial: remote.name, confirmLabel: t('remotes.rename') })
+    const next = await actions.prompt({ title: t('remotes.renameTitle'), label: t('remotes.name'), initial: remote.name, confirmLabel: t('remotes.rename') })
     if (next && next.trim() !== remote.name) await change(() => git.renameRemote(remote.name, next.trim()), t('remotes.renamed', { name: next.trim() }))
   }
 
