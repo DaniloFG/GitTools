@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangedFile, CommitInfo, Comparison, DiffSource, FileDiff, LineKey } from '../../../shared/types'
 import { useActions } from '../actions'
 import { currentBranch, useAppActions, useRepoData, type CompareRequest } from '../context'
@@ -6,7 +6,7 @@ import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
 import { copyText } from '../copy'
-import { fileMenuItems } from '../fileMenu'
+import { canApplyFile, fileMenuItems, wholeFileKeys } from '../fileMenu'
 import { DiffView, useFullFile } from './DiffView'
 import { useDiffUncapped } from '../diffLimit'
 import { revealView } from '../dockStore'
@@ -44,6 +44,11 @@ export function CompareView({ request, onRequest }: Props) {
   const [commit, setCommit] = useState<string | null>(null)
   const [diff, setDiff] = useState<FileDiff | null>(null)
   const [selection, setSelection] = useState<Set<LineKey>>(new Set())
+  /**
+   * Há uma "Aplicar arquivo inteiro" em curso (#59). Um segundo clique enquanto a pergunta stage/commit ou a
+   * operação estão abertas é ignorado: não fica um segundo cherry-pick disputando o índice.
+   */
+  const applying = useRef(false)
 
   const refs = [
     'HEAD',
@@ -111,8 +116,44 @@ export function CompareView({ request, onRequest }: Props) {
     ])
 
   /**
+   * Aplica no `head` tudo o que há no arquivo da comparação (#59), sem abrir o diff para marcar linhas. Busca o diff
+   * completo (`uncapped`) e marca todas as linhas alteradas; daí segue o mesmo caminho de "Aplicar linhas", que
+   * pergunta stage ou commit e chama `cherryPickLines`.
+   */
+  const applyFile = async (file: ChangedFile) => {
+    if (!head || !source || !comparison || applying.current) return
+    applying.current = true
+    try {
+      let files: FileDiff[]
+      try {
+        files = await git.diff({ ...source, path: file.path, uncapped: true })
+      } catch (e) {
+        toast('error', errorMessage(e))
+        return
+      }
+      const whole = wholeFileKeys(files, file.path)
+      if ('error' in whole) {
+        toast('error', t(whole.error === 'binary' ? 'core.binaryNoLines' : 'core.noChangesIn', { path: file.path }))
+        return
+      }
+      await actions.applyLines(
+        head,
+        source,
+        file.path,
+        whole.keys,
+        t('compare.linesContext', { path: file.path, from: comparison.from, to: comparison.to }),
+        t('messages.linesFromRef', { path: file.path, ref: comparison.to })
+      )
+    } finally {
+      applying.current = false
+    }
+  }
+
+  /**
    * Menu de contexto de um arquivo da lista (#82). Arquivo apagado na comparação (status D) não existe na árvore de
-   * trabalho, então o menu não oferece "Abrir no editor VSCode".
+   * trabalho, então o menu não oferece "Abrir no editor VSCode". Pelo mesmo motivo, "Aplicar arquivo inteiro" (#59)
+   * não é oferecido para D: não há o que trazer para a branch atual. E não se oferece quando a branch atual já é a
+   * própria `to`: aplicar a branch nela mesma não faz sentido.
    */
   const fileMenu = (e: React.MouseEvent, f: ChangedFile) =>
     showMenu(
@@ -122,7 +163,8 @@ export function CompareView({ request, onRequest }: Props) {
         canOpen: f.status !== 'D',
         openInEditor,
         copy: copyText,
-        labels: { openInEditor: t('common.openInVscode'), copyPath: t('history.files.copyPath') }
+        labels: { openInEditor: t('common.openInVscode'), copyPath: t('history.files.copyPath') },
+        apply: head && canApplyFile({ head, to: comparison?.to, status: f.status }) ? { label: t('compare.applyFile', { target: head }), onClick: () => applyFile(f) } : undefined
       })
     )
 

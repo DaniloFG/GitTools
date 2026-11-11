@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { BranchCommit, BranchInfo, ChangedFile, CrossApply, DiffSource, FileApplyMode, FileDiff, LineKey, OperationResult } from '../../../shared/types'
 import { currentBranch, useAppActions, useRepoData, type StudioRequest } from '../context'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t, type MessageKey } from '../i18n'
 import { gitFor, markChanged } from '../git'
+import { COMMIT_BATCH, MAX_SHOWN, batchSlice, checkAll, countChecked, filterCommits, growBatch, uncheckAll } from '../commitSearch'
 import { DiffView, useFullFile } from './DiffView'
 import { useDiffUncapped } from '../diffLimit'
 import { Modal } from './Modal'
@@ -28,6 +29,29 @@ const SELECTION = '\u0000selection'
 
 /** Quantos commits de uma branch de outro repositório são listados (os mais recentes). */
 const CROSS_LIMIT = 300
+
+/**
+ * Campo de busca da lista de origem. Guarda o que o usuário digita; só ele re-renderiza a cada tecla. O pai recebe o
+ * texto após uma espera curta (150 ms) e é o único que filtra. `value` é o texto já aplicado: se o campo for montado
+ * de novo, começa com ele, então o filtro e o campo nunca ficam dessincronizados.
+ */
+const SearchBox = memo(function SearchBox({ value, onSearch }: { value: string; onSearch(text: string): void }) {
+  const [typed, setTyped] = useState(value)
+  useEffect(() => {
+    const id = setTimeout(() => onSearch(typed), 150)
+    return () => clearTimeout(id)
+  }, [typed, onSearch])
+  return (
+    <input
+      type="search"
+      className="studio-search"
+      value={typed}
+      placeholder={t('studio.searchPlaceholder')}
+      aria-label={t('studio.searchPlaceholder')}
+      onChange={(e) => setTyped(e.target.value)}
+    />
+  )
+})
 
 export function CherryPickStudio({ request, onClose }: { request: StudioRequest; onClose(): void }) {
   const { data, repo, workspace } = useRepoData()
@@ -148,6 +172,20 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
 
   const chosen = useMemo(() => (commits ?? []).filter((c) => checked.has(c.sha)), [commits, checked])
   const pending = (commits ?? []).filter((c) => !c.alreadyApplied)
+
+  // Texto da busca já aplicado (o campo, `SearchBox`, o envia após uma espera curta). Só ele filtra a lista.
+  const [search, setSearch] = useState('')
+  // Filtra a lista inteira. A marcação (`checked`) não muda com a busca: marcar, buscar outro e marcar não perde nada.
+  const filtered = useMemo(() => (commits ? filterCommits(commits, search) : null), [commits, search])
+  const filtering = !!commits && filtered !== commits
+  // Marcados que a busca esconde: avisa no cabeçalho para ninguém achar que "Aplicar" leva só o que está na tela.
+  const checkedOutside = useMemo(() => (filtering && filtered ? countChecked(checked, commits ?? []) - countChecked(checked, filtered) : 0), [filtering, filtered, commits, checked])
+  // Lote montado: `batch.of` é o resultado a que a contagem se refere. Outra busca ou outra origem é outra lista e volta
+  // ao primeiro lote, sem efeito para zerar o estado.
+  const [batch, setBatch] = useState<{ of: readonly BranchCommit[] | null; count: number }>({ of: null, count: COMMIT_BATCH })
+  const shownCount = batch.of === filtered ? batch.count : COMMIT_BATCH
+  const shown: readonly BranchCommit[] = filtered ? batchSlice(filtered, shownCount) : []
+  const remaining = (filtered?.length ?? 0) - shown.length
 
   // Arquivos alterados pelos commits marcados.
   useEffect(() => {
@@ -387,14 +425,18 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
           <div className="studio-commits">
             <div className="group-header">
               <strong>{t('studio.commitsOf', { source: sourceLabel })}</strong>
-              {commits && <span className="count">{commits.length}</span>}
+              {commits && <span className="count">{filtering ? `${filtered?.length ?? 0}/${commits.length}` : commits.length}</span>}
+              {commits && commits.length > 0 && <SearchBox value={search} onSearch={setSearch} />}
+              {checkedOutside > 0 && <span className="muted small">{t('studio.checkedOutside', { count: checkedOutside })}</span>}
               <span className="toolbar-spacer" />
               {mode !== 'branch' && commits && commits.length > 0 && (
                 <>
-                  <button className="link" onClick={() => setChecked(new Set(pending.map((c) => c.sha)))}>
+                  {/* Com busca ativa, "Todos" e "Nenhum" valem só para o que a busca mostra: nunca marcam commits escondidos.
+                      Sem busca, valem para a lista inteira, como antes. */}
+                  <button className="link" onClick={() => setChecked(filtering && filtered ? checkAll(checked, filtered) : new Set(pending.map((c) => c.sha)))}>
                     {t('common.all')}
                   </button>
-                  <button className="link" onClick={() => setChecked(new Set())}>
+                  <button className="link" onClick={() => setChecked(filtering && filtered ? uncheckAll(checked, filtered) : new Set())}>
                     {t('common.none')}
                   </button>
                 </>
@@ -407,25 +449,40 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
               <p className="empty">{t('studio.sameBranch')}</p>
             ) : commits.length === 0 ? (
               <p className="empty">{t('studio.nothingToBring', { target, source: sourceLabel })}</p>
+            ) : filtered?.length === 0 ? (
+              <p className="empty">{t('studio.noMatches')}</p>
             ) : (
-              <ul className="studio-commit-list">
-                {commits.map((c) => (
-                  <li key={c.sha} className={c.alreadyApplied ? 'applied' : ''} title={c.alreadyApplied ? t('studio.alreadyAppliedHelp') : c.subject}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        disabled={mode === 'branch'}
-                        checked={mode === 'branch' ? !c.alreadyApplied : checked.has(c.sha)}
-                        onChange={(e) => toggle(c.sha, e.target.checked)}
-                      />
-                      <code>{shortSha(c.sha)}</code>
-                      <span className="commit-subject">{c.subject}</span>
-                      {c.alreadyApplied && <span className="tag">{t('studio.alreadyApplied')}</span>}
-                      <small className="muted">{relativeDate(c.date)}</small>
-                    </label>
-                  </li>
-                ))}
-              </ul>
+              <>
+                {/* Linhas inline, sem `memo`: a lista monta no máximo um lote (COMMIT_BATCH) por vez, então o custo é limitado.
+                    Correção planejada: extrair uma linha memorizada, como `CommitRow`. */}
+                <ul className="studio-commit-list">
+                  {shown.map((c) => (
+                    <li key={c.sha} className={c.alreadyApplied ? 'applied' : ''} title={c.alreadyApplied ? t('studio.alreadyAppliedHelp') : c.subject}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          disabled={mode === 'branch'}
+                          checked={mode === 'branch' ? !c.alreadyApplied : checked.has(c.sha)}
+                          onChange={(e) => toggle(c.sha, e.target.checked)}
+                        />
+                        <code>{shortSha(c.sha)}</code>
+                        <span className="commit-subject">{c.subject}</span>
+                        {c.alreadyApplied && <span className="tag">{t('studio.alreadyApplied')}</span>}
+                        <small className="muted">{relativeDate(c.date)}</small>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+                {remaining > 0 &&
+                  (shown.length < MAX_SHOWN ? (
+                    <button className="link studio-show-more" onClick={() => setBatch({ of: filtered, count: growBatch(shownCount) })}>
+                      {t('studio.showMore', { count: remaining })}
+                    </button>
+                  ) : (
+                    // No teto a lista para de crescer: o aviso pede para refinar a busca, em vez de montar mais linhas.
+                    <p className="muted small">{t('studio.refineSearch', { count: remaining })}</p>
+                  ))}
+              </>
             )}
           </div>
 

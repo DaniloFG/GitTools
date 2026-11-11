@@ -1880,6 +1880,15 @@ button.ghost.danger-text:hover:not(:disabled) {
 .studio-commit-list .commit-subject {
   flex: 1;
 }
+/* Campo de busca no cabeçalho da lista: largura fixa, para não disputar espaço com os links Todos/Nenhum. */
+.studio-search {
+  flex: 0 1 180px;
+  min-width: 0;
+}
+.studio-show-more {
+  align-self: flex-start;
+  margin-top: 4px;
+}
 .studio-main {
   display: flex;
   flex-direction: column;

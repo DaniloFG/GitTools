@@ -13,9 +13,9 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E6, commit `b296a96`: #70 (`multiRepoDetection` desligado por padrão; só `true` literal liga) e #71 (um campo de busca na Central de Configurações; com texto, todas as seções pesquisáveis aparecem com o nome, clicável). typecheck, 855 testes, `perf:bundle` (tudo dentro dos tetos) verdes; busca conferida no Chromium ("tema" -> Aparência, "editor" -> Editor e diff, clique no cabeçalho limpa a busca).
+**Última etapa fechada:** E7, #59 (menu de contexto de "Different files" no Compare ganha "Aplicar arquivo inteiro em {branch}": lê o diff completo, marca todas as linhas alteradas e segue o fluxo de `applyLines`; não aparece para status D, sem branch atual ou com destino igual à branch/`HEAD`) e #84 (busca no Cherry-pick Studio por hash, mensagem, autor, e-mail e data AAAA-MM-DD; lote de 200, teto de 600 montados; "Todos"/"Nenhum" só valem para o resultado da busca). typecheck e 895 testes verdes; `code-review` high rodado e corrigido; `security-review` à mão (sem canal nem método novo). Tela não conferida no Chromium.
 
-**A seguir:** `E7` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
+**A seguir:** `E8`
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
@@ -25,7 +25,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | feito | bdf185b |
 | E5 | #62 | Tela inicial History; estado de tela/layout independente por aba | feito | 0de61d7 |
 | E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | feito | b296a96 |
-| E7 | #59 #84 | Compare: "apply" do arquivo inteiro; busca no Cherry-pick Studio | a fazer | |
+| E7 | #59 #84 | Compare: "apply" do arquivo inteiro; busca no Cherry-pick Studio | feito | ver git log |
 | E8 | #85 | Botões assíncronos: bloqueio contra clique duplo + loading onde falta | a fazer | |
 | E9 | #72 #60 | READMEs: seções e chamadas no topo; tirar menções ao repo do GitHub | a fazer | |
 | E10 | #61 | Auditoria de conflitos com cenários de dezenas a milhares de arquivos | a fazer | |
@@ -36,16 +36,6 @@ Não se aplica (nenhuma etapa persegue meta de desempenho). E5, E8 e E10 medem a
 contagem de processos git antes e depois.
 
 ## 4. Plano
-
-### Etapa E7 — Compare e Cherry-pick Studio (#59 #84)
-- **Orquestra**: topo
-- **Arquivos prováveis**: `CompareView.tsx:252,325`, `CherryPickStudio.tsx:49,288,318-350`
-- **Ler antes**: issues #59 #84. "Different files" não tem menu de contexto hoje (E1 pode ter criado só o de abrir/copiar).
-  Busca no Studio filtra por mensagem, autor, data, hash; lista por janela (princípio 1).
-- **Aceite**: aplicar arquivo inteiro pelo menu; busca em repositório de 20 mil commits sem montar tudo no DOM
-- **Testes**: unidade, integração e tela
-- **Segurança**: sim (aplica patch: caminho preso ao repositório)
-- **Depende de**: E1, E3
 
 ### Etapa E8 — botões assíncronos (#85)
 - **Orquestra**: topo
@@ -89,6 +79,8 @@ contagem de processos git antes e depois.
 
 - 2026-11-11 E5: só a tela aberta ficou por aba; o arranjo `dock` e as `pref.*` seguem globais (decisão minha, não do dono: confirmar se o arranjo de painéis também deve ser por repositório). `dashboardsOpen` (local de RepoView) volta a falso ao trocar de aba. `pref.screen` antigo fica órfão no localStorage (inofensivo). E4 conferida na tela: menu Aparência > Telas ok.
 - 2026-11-11 E6: com a detecção desligada (agora o padrão) `discoverWorkspace` usa `setRepository` (`extension.ts:160`), que ativa a 1ª pasta e pode sobrescrever a escolha do usuário se ela vier antes do fim da descoberta (corrida; o teste do seletor de pasta espera `openList`). Não corrigido. Busca: Identidade, Atalhos e Sobre seguem fora; sem normalizar acentos; `EditorSection` monta (e chama `detectEditors`) ao buscar; `:has()` esconde seção sem resultado (visto no Chromium, não no VS Code). `code-review` formal não rodado (diff revisto à mão).
+
+- 2026-11-11 E7: "Aplicar arquivo inteiro" lê o diff completo no renderer e o core o refaz (`findFile`): leitura dupla, e as chaves de milhares de linhas cruzam o IPC; melhor seria `buildPartialPatch(file, 'all')` num método próprio. Lista do Studio: linhas inline sem `memo` (exceção comentada no código, teto 600); busca não normaliza acentos; tela (campo, "Mostrar mais", menu do Compare) não conferida no Chromium.
 
 ## 6. Encerramento
 
