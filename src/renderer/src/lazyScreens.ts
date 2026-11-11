@@ -2,7 +2,7 @@ import { lazy, type ComponentType } from 'react'
 import type { CompareRequest } from './context'
 
 // Telas, diálogos e editores que não aparecem na abertura. Cada um vira um pedaço do pacote, baixado na primeira
-// vez que é desenhado (regra "Componente de tela que não aparece na abertura é carregado sob demanda" do CLAUDE.md).
+// vez que é desenhado (regra "Componente de tela que não aparece na abertura é carregado sob demanda" de `.claude/rules/interface.md`).
 //
 // Este módulo não pode importar nenhuma dessas telas de forma estática: um import estático as manteria no pacote
 // inicial, por mais que o componente só seja usado num `lazy`. Por isso aqui só há `import()`.
