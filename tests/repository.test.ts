@@ -549,6 +549,8 @@ async function legacyCommitDiff(dir: string, sha: string, path?: string) {
 
 describe('commitDetails e diff de commit: iguais ao caminho anterior', () => {
   it('commitDetails cobre raiz, vários arquivos, renomeação, binário, vazio, merge e mensagem difícil', async () => {
+    // Windows não aceita ':' no nome do arquivo; o nome com '-' também não pode ser lido como opção do git.
+    const estranho = process.platform === 'win32' ? '-estranho.txt' : ':estranho.txt'
     const t = await createRepo()
     const shas: string[] = []
     shas.push(
@@ -556,7 +558,7 @@ describe('commitDetails e diff de commit: iguais ao caminho anterior', () => {
         'com espaço é.txt': 'a\nb\nc\n',
         'old.txt': lines('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'),
         'bin.dat': 'bin\0x',
-        ':estranho.txt': 'e\n',
+        [estranho]: 'e\n',
         '1 dígito.txt': 'd\n'
       })
     )
@@ -564,7 +566,7 @@ describe('commitDetails e diff de commit: iguais ao caminho anterior', () => {
       await t.commit('título: "x" \\ & ç\n\nlinha 2\n\n  recuo\nSigned-off-by: X <x@y>', {
         'com espaço é.txt': 'a\nB\nc\n',
         'novo.txt': 'n\n',
-        ':estranho.txt': 'e2\n'
+        [estranho]: 'e2\n'
       })
     )
     await t.git('mv', 'old.txt', 'renomeado ç.txt')
@@ -603,7 +605,7 @@ describe('commitDetails e diff de commit: iguais ao caminho anterior', () => {
       expect.arrayContaining([
         { status: 'M', path: 'com espaço é.txt', additions: 1, deletions: 1 },
         { status: 'A', path: 'novo.txt', additions: 1, deletions: 0 },
-        { status: 'M', path: ':estranho.txt', additions: 1, deletions: 1 }
+        { status: 'M', path: estranho, additions: 1, deletions: 1 }
       ])
     )
     expect(rename.files).toEqual([{ status: 'R', oldPath: 'old.txt', path: 'renomeado ç.txt', additions: 1, deletions: 1 }])

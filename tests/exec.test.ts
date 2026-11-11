@@ -96,6 +96,9 @@ describe('fila de processos git', () => {
     // O alias dura 2 s: rejeitar antes de 1,5 s prova que o git foi encerrado.
     expect(Date.now() - started).toBeLessThan(1500)
     expect(gitQueueStatsForTest().running).toBe(0)
+    // O processo filho do alias (não o git) continua vivo até os 2 s e, no Windows, segura a pasta temporária:
+    // esperar aqui evita que a limpeza em tests/helpers.ts falhe com EBUSY.
+    await new Promise((r) => setTimeout(r, Math.max(0, started + 2000 + 500 - Date.now())))
   })
 
   it('abortar enquanto espera na fila tira o pedido da fila, sem abrir processo', async () => {

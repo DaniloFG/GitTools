@@ -69,7 +69,9 @@ async function ask(panel: FakePanel, channel: string, ...args: unknown[]) {
 
 /** Pasta do workspace (não é repositório) com três repositórios dentro. */
 async function threeRepos() {
-  const folder = realpathSync(temp('gittools-ws-'))
+  // No Windows, realpathSync mantém o nome curto 8.3 (RUNNER~1); realpathSync.native devolve o caminho longo,
+  // como a descoberta da extensão.
+  const folder = realpathSync.native(temp('gittools-ws-'))
   const roots = ['alfa', 'beta', join('grupo', 'gama')].map((name) => join(folder, name))
   for (const root of roots) {
     mkdirSync(root, { recursive: true })
