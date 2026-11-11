@@ -8,6 +8,31 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 
 ![Dashboards: visão geral com indicadores, série temporal, contribuições, calendário de atividade e arquivos mais alterados](docs/screenshots/dashboards-visao-geral.png)
 
+## Por que o GitTools?
+
+> **Cansado de ter uma ferramenta para o grafo, outra para os conflitos e outra para escolher o que vai no commit?**
+> O GitTools junta o melhor que as melhores ferramentas de Git do mercado têm — e entrega tudo numa interface só,
+> leve, gratuita e que roda no seu computador.
+
+- 🌳 **O grafo bonito** de um cliente visual de verdade: trilhas coloridas, pesquisa, tags e colunas que você reorganiza.
+- ✅ **Escolher o commit com caixas de seleção**, ou arrastar entre *staged* e *não staged* — você decide qual visão prefere, na mesma tela.
+- ✂️ **Staging linha a linha**: leve ao commit só as linhas que importam, direto do diff.
+- 🔀 **Conflitos lado a lado** (atual × resultado × que entra), bloco a bloco, sem abrir o terminal.
+- 🍒 **Cherry-pick de outro nível**: da branch inteira, de commits, de **arquivos** ou de **linhas**, só arrastando.
+- 🧹 **Rebase interativo visual**, **blame**, histórico de arquivo e comparação de branches — tudo a um clique.
+- 🧩 **A tela do seu jeito**: painéis e abas que você move para onde quiser, como num editor moderno.
+- 🔒 **Sem conta, sem nuvem, sem telemetria.** Usa o Git que você já tem instalado. Código aberto (MIT).
+- 🧰 **Em dois lugares**: como aplicativo próprio e como extensão dentro do **VS Code**.
+
+*Uma ferramenta só. Todo o fluxo de Git. Sem alternar de janela.*
+
+- [Dashboards](#-dashboards--o-histórico-do-projeto-em-números)
+- [O que dá para fazer](#o-que-dá-para-fazer)
+- [Extensão do VS Code](#extensão-do-vs-code)
+- [Como rodar](#como-rodar)
+- [Atalhos de teclado](#atalhos-de-teclado)
+- [Apoie o projeto](#-apoie-o-projeto)
+
 ## 📊 Dashboards — o histórico do projeto em números
 
 A aba **Dashboards** (`Ctrl+5`), no topo, ocupa a janela inteira e transforma o `git log` em painéis de gestão,
@@ -44,24 +69,6 @@ Os números vêm direto do histórico local, lidos com um único `git log --nums
 e nada sai do seu computador.
 
 ![Histórico com grafo de branches](docs/screenshots/historico.png)
-
-## Por que o GitTools?
-
-> **Cansado de ter uma ferramenta para o grafo, outra para os conflitos e outra para escolher o que vai no commit?**
-> O GitTools junta o melhor que as melhores ferramentas de Git do mercado têm — e entrega tudo numa interface só,
-> leve, gratuita e que roda no seu computador.
-
-- 🌳 **O grafo bonito** de um cliente visual de verdade: trilhas coloridas, pesquisa, tags e colunas que você reorganiza.
-- ✅ **Escolher o commit com caixas de seleção**, ou arrastar entre *staged* e *não staged* — você decide qual visão prefere, na mesma tela.
-- ✂️ **Staging linha a linha**: leve ao commit só as linhas que importam, direto do diff.
-- 🔀 **Conflitos lado a lado** (atual × resultado × que entra), bloco a bloco, sem abrir o terminal.
-- 🍒 **Cherry-pick de outro nível**: da branch inteira, de commits, de **arquivos** ou de **linhas**, só arrastando.
-- 🧹 **Rebase interativo visual**, **blame**, histórico de arquivo e comparação de branches — tudo a um clique.
-- 🧩 **A tela do seu jeito**: painéis e abas que você move para onde quiser, como num editor moderno.
-- 🔒 **Sem conta, sem nuvem, sem telemetria.** Usa o Git que você já tem instalado. Código aberto (MIT).
-- 🧰 **Em dois lugares**: como aplicativo próprio e como extensão dentro do **VS Code**.
-
-*Uma ferramenta só. Todo o fluxo de Git. Sem alternar de janela.*
 
 ## O que dá para fazer
 
@@ -573,7 +580,7 @@ A ferramenta ficou top, não é?! Então me dá um apoio para melhorar e criar m
 Qualquer valor ajuda — uma vez só ou todo mês, pelo [GitHub Sponsors](https://github.com/sponsors/DaniloFG).
 O botão **♥** também fica no próprio GitTools: na barra de ferramentas, na tela inicial e em **Configurações → Sobre**
 (ele só abre a página no navegador; o app continua sem fazer nenhuma chamada de rede por conta própria).
-Não dá para apoiar agora? Uma ⭐ no repositório e indicar o GitTools para alguém também ajudam muito.
+Não dá para apoiar agora? Indicar o GitTools para alguém também ajuda muito.
 
 ## Licença
 

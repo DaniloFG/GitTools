@@ -41,6 +41,10 @@ export const ar: Messages = {
     discard: 'تجاهل',
     open: 'فتح',
     openInEditor: 'فتح في المحرر',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: 'فتح في محرر VSCode',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'محرر GitTools',
     all: 'الكل',
     none: 'لا شيء',
     file: 'الملف',
@@ -112,7 +116,6 @@ export const ar: Messages = {
     untracked: 'جديد'
   },
   toolbar: {
-    openInEditorHelp: 'فتح المشروع في المحرر المختار في الإعدادات',
     tagHelp: 'إنشاء وسم على الإيداع الحالي',
     tag: 'وسم',
     openRepository: 'فتح مستودع…',
@@ -145,7 +148,9 @@ export const ar: Messages = {
     menu: 'القائمة',
     menuHelp: 'الإعدادات واللوحات',
     appearance: 'المظهر',
-    toolbarMenu: 'شريط الأدوات'
+    toolbarMenu: 'شريط الأدوات',
+    dynamicPanels: 'اللوحات الديناميكية',
+    screensMenu: 'الشاشات'
   },
   welcome: {
     tagline: 'Git ببساطة: اسحب وانقر لدمج الفروع والإيداعات والملفات وحتى الأسطر المنفردة، وإعادة تأسيسها وانتقائها.',
@@ -346,8 +351,6 @@ export const ar: Messages = {
     amendButton: 'تعديل الإيداع',
     commit: 'إيداع',
     commitInto: 'إيداع في {branch}',
-    commitStageAll: 'تضمين كل الملفات (stage)',
-    commitStageAllHelp: 'يجهّز كل الملفات المعدّلة قبل الإيداع',
     commitPicked: { one: 'إيداع ملف واحد محدد', two: 'إيداع ملفين محددين', few: 'إيداع {count} ملفات محددة', many: 'إيداع {count} ملفًا محددًا', other: 'إيداع {count} ملف محدد' },
     commitPickedHint: 'الملفات المحددة في قائمة غير المجهزة تدخل في هذا الإيداع.',
     pushAfter: 'الدفع بعد ذلك',
@@ -530,6 +533,11 @@ export const ar: Messages = {
     nothingToBring: 'لا شيء لجلبه: {target} يحتوي بالفعل على كل ما في {source}.',
     alreadyApplied: 'مطبق مسبقًا',
     alreadyAppliedHelp: 'يوجد إيداع مكافئ في الهدف',
+    searchPlaceholder: 'ابحث بالتجزئة أو الرسالة أو المؤلف أو التاريخ (YYYY-MM-DD)',
+    noMatches: 'لا يوجد إيداع يطابق البحث.',
+    showMore: { one: 'عرض المزيد (إيداع واحد متبقٍ)', two: 'عرض المزيد (إيداعان متبقيان)', other: 'عرض المزيد ({count} متبقيًا)' },
+    refineSearch: 'ضيّق البحث لعرض الإيداعات المتبقية ({count}).',
+    checkedOutside: 'محدّد خارج البحث: {count}',
     applyCommits: { one: 'تطبيق إيداع واحد على {target}', two: 'تطبيق إيداعين على {target}', other: 'تطبيق الإيداعات ({count}) على {target}' },
     applyFiles: { one: 'تطبيق ملف واحد على {target}', two: 'تطبيق ملفين على {target}', other: 'تطبيق الملفات ({count}) على {target}' },
     willCheckout: 'سيتم الانتقال إلى "{target}" قبل التطبيق.',
@@ -680,6 +688,7 @@ export const ar: Messages = {
     linesContext: 'من {path} ({from} ← {to})',
     copyVersion: 'نسخ النسخة من {ref}',
     copyVersionHelp: 'يصبح الملف في {target} مطابقًا لنظيره في {ref}',
+    applyFile: 'تطبيق الملف كاملًا على {target}',
     noCommits: 'لا توجد إيداعات.',
     openInHistory: 'فتح في السجل'
   },
@@ -1691,6 +1700,7 @@ export const ar: Messages = {
     loading: 'جارٍ قراءة إعدادات git…'
   },
   diffExtra: {
+    options: 'خيارات',
     fullFile: 'الملف كاملًا',
     fullFileHelp: 'عرض الملف كاملًا وليس الأجزاء المعدّلة فقط',
     changesOnlyHelp: 'العودة إلى عرض الأجزاء المعدّلة فقط',

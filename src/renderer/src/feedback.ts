@@ -2,6 +2,8 @@
 // tempo de vida de cada tipo de aviso e o motivo de um commit não poder ser feito.
 // Ficam fora dos componentes para serem testadas (tests/feedback.test.ts).
 
+import type { PushForce } from '../../shared/types'
+
 /** Tipo de aviso: sucesso, erro, atenção (algo não foi possível) ou informação. */
 export type ToastKind = 'success' | 'error' | 'warning' | 'info'
 
@@ -75,9 +77,29 @@ export function dismissDelay(kind: ToastKind): number | null {
 export type CommitBlock = 'conflicts' | 'message' | 'nothing'
 
 /** `picked`: arquivos marcados na lista de não staged; entram no commit (são staged antes dele). */
-export function commitBlock(input: { message: string; staged: number; picked?: number; amend: boolean; stageAll: boolean; conflicted: number }): CommitBlock | null {
+export function commitBlock(input: { message: string; staged: number; picked?: number; amend: boolean; conflicted: number }): CommitBlock | null {
   if (input.conflicted > 0) return 'conflicts'
   if (!input.message.trim()) return 'message'
-  if (input.staged + (input.picked ?? 0) === 0 && !input.amend && !input.stageAll) return 'nothing'
+  // Arquivos não staged que não foram marcados não entram no commit: sem stage, sem marcação, não há o que commitar.
+  if (input.staged + (input.picked ?? 0) === 0 && !input.amend) return 'nothing'
   return null
+}
+
+/** Modo de envio depois do commit: normal, com lease ou force. */
+export type PushMode = 'normal' | PushForce
+
+/** Valor salvo no layout (ou qualquer coisa que não seja modo conhecido) vira um modo válido. */
+export const parsePushMode = (v: unknown): PushMode => (v === 'lease' || v === 'force' ? v : 'normal')
+
+/**
+ * Modo que realmente vai para o git. Corrigir um commit que já está no remoto reescreve o histórico dele: o push
+ * normal seria recusado, então o "normal" escolhido vira lease. Um modo mais forte escolhido à mão é mantido.
+ */
+export function effectivePushMode(input: { push: boolean; amend: boolean; hasUpstream: boolean; ahead: number; chosen: PushMode }): {
+  needsForce: boolean
+  mode: PushMode
+} {
+  const needsForce = input.push && input.amend && input.hasUpstream && input.ahead === 0
+  const mode: PushMode = needsForce && input.chosen === 'normal' ? 'lease' : input.chosen
+  return { needsForce, mode }
 }

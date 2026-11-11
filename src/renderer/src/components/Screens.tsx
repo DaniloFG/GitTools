@@ -6,6 +6,7 @@ import { applySavedLayout, deleteSavedLayout, findByName, saveCurrentLayout, use
 import type { ViewMeta } from './Dock'
 import type { MenuItem } from './ContextMenu'
 import { preloadDashboards } from '../lazyScreens'
+import { isScreenShown, type TopScreenId } from '../screenVisibility'
 
 export interface ScreenProps {
   state: DockState
@@ -47,8 +48,10 @@ const SCREEN_NAMES: Record<ScreenId, Parameters<typeof t>[0]> = {
  * Menus do topo. Cada um mostra só os próprios painéis; um menu com painéis de outras telas fixados nele mostra
  * a quantidade discretamente (com a lista na dica), para não se perder deles.
  */
-export function ScreenTabs({ state, meta, screen, available, onScreen, changeCount, dashboards, onDashboards }: Omit<ScreenProps, 'onChange'>) {
+export function ScreenTabs({ state, meta, screen, available, onScreen, changeCount, dashboards, onDashboards, hiddenScreens }: Omit<ScreenProps, 'onChange'> & { hiddenScreens: readonly TopScreenId[] }) {
   const ref = useRef<HTMLDivElement>(null)
+  /** A tela aberta agora: Dashboards quando está aberto, senão o menu ativo. Ela nunca some, mesmo escondida. */
+  const currentTop: TopScreenId = dashboards ? 'dashboards' : screen
   /** Atualiza a máscara das bordas: some do lado em que não há mais abas escondidas. */
   const fade = useRef<() => void>(() => {})
 
@@ -87,6 +90,8 @@ export function ScreenTabs({ state, meta, screen, available, onScreen, changeCou
   return (
     <div ref={ref} className="screen-tabs" role="group" aria-label={t('workbench.screens')} title={t('workbench.screensHelp')}>
       {SCREENS.map((item) => {
+        // Escondida pelo menu (Aparência → Telas): não desenha a aba.
+        if (!isScreenShown(hiddenScreens, item.id, currentTop)) return null
         const current = !dashboards && screen === item.id
         const pinned = pinnedIn(state, item.id).filter(available)
         return (
@@ -101,18 +106,21 @@ export function ScreenTabs({ state, meta, screen, available, onScreen, changeCou
           </button>
         )
       })}
-      <button className={`screen-tab dashboards-tab ${dashboards ? 'active' : ''}`} aria-pressed={dashboards} title={t('dash.tabHelp')} onClick={onDashboards} onMouseEnter={preloadDashboards} onFocus={preloadDashboards}>
-        <span aria-hidden>◔</span> {t('dash.title')}
-      </button>
+      {isScreenShown(hiddenScreens, 'dashboards', currentTop) && (
+        <button className={`screen-tab dashboards-tab ${dashboards ? 'active' : ''}`} aria-pressed={dashboards} title={t('dash.tabHelp')} onClick={onDashboards} onMouseEnter={preloadDashboards} onFocus={preloadDashboards}>
+          <span aria-hidden>◔</span> {t('dash.title')}
+        </button>
+      )}
     </div>
   )
 }
 
 /**
- * Itens do menu de painéis (mostrar ou esconder painéis da tela, painéis fixados de outras telas, layouts salvos e
- * restaurar o padrão). Fica no menu único ⚙/☰ da barra, em Aparência.
+ * Itens do menu de painéis, separados em dois grupos: `current` são os painéis da tela aberta (submenu próprio em
+ * Aparência, #78) e `rest` é o resto (painéis fixados de outras telas, layouts salvos e restaurar o padrão).
+ * Fica no menu único ⚙/☰ da barra, em Aparência.
  */
-export function usePanelsItems({ state, onChange, screen, meta, available }: Pick<ScreenProps, 'state' | 'onChange' | 'screen' | 'meta' | 'available'>): MenuItem[] {
+export function usePanelsItems({ state, onChange, screen, meta, available }: Pick<ScreenProps, 'state' | 'onChange' | 'screen' | 'meta' | 'available'>): { current: MenuItem[]; rest: MenuItem[] } {
   const { resetLayout, prompt, confirm, toast } = useAppActions()
   const [saved, setSaved] = useSavedLayouts()
   const currentName = useCurrentLayoutName()
@@ -136,7 +144,8 @@ export function usePanelsItems({ state, onChange, screen, meta, available }: Pic
     return { label: meta[view].label, checked: shown, onClick: () => onChange(toggleIn(state, view, screen)) }
   }
 
-  const items: MenuItem[] = SCREEN_VIEWS[screen].filter(available).map(panelItem)
+  const current: MenuItem[] = SCREEN_VIEWS[screen].filter(available).map(panelItem)
+  const items: MenuItem[] = []
   // Painéis de outras telas: fixados aqui, só nesta tela (o resto do tempo ficam nas telas deles).
   const others: MenuItem[] = []
   for (const other of SCREEN_IDS) {
@@ -160,5 +169,5 @@ export function usePanelsItems({ state, onChange, screen, meta, available }: Pic
     })
   }
   items.push({ label: t('workbench.resetLayout'), onClick: () => void resetLayout() })
-  return items
+  return { current, rest: items }
 }

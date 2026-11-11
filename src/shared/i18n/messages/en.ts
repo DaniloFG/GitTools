@@ -36,6 +36,10 @@ export const en: Messages = {
     discard: 'Discard',
     open: 'Open',
     openInEditor: 'Open in editor',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: 'Open in editor VSCode',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'GitTools Editor',
     all: 'all',
     none: 'none',
     file: 'File',
@@ -104,7 +108,6 @@ export const en: Messages = {
     untracked: 'new'
   },
   toolbar: {
-    openInEditorHelp: 'Open the project in the editor chosen in Settings',
     tagHelp: 'Create a tag at the current commit',
     tag: 'Tag',
     openRepository: 'Open repository…',
@@ -137,7 +140,9 @@ export const en: Messages = {
     menu: 'Menu',
     menuHelp: 'Settings & panels',
     appearance: 'Appearance',
-    toolbarMenu: 'Toolbar'
+    toolbarMenu: 'Toolbar',
+    dynamicPanels: 'Dynamic panels',
+    screensMenu: 'Screens'
   },
   welcome: {
     tagline: 'Git made simple: drag and click to merge, rebase and cherry-pick branches, commits, files and even single lines.',
@@ -337,8 +342,6 @@ export const en: Messages = {
     amendButton: 'Amend commit',
     commit: 'Commit',
     commitInto: 'Commit to {branch}',
-    commitStageAll: 'Include all files (stage)',
-    commitStageAllHelp: 'Stages every changed file before committing',
     commitPicked: { one: 'Commit {count} selected file', other: 'Commit {count} selected files' },
     commitPickedHint: 'The files selected in the Not staged list are included in this commit.',
     pushAfter: 'Push afterwards',
@@ -521,6 +524,11 @@ export const en: Messages = {
     nothingToBring: 'Nothing to bring: {target} already has everything from {source}.',
     alreadyApplied: 'already applied',
     alreadyAppliedHelp: 'An equivalent commit already exists in the target',
+    searchPlaceholder: 'Search by hash, message, author, or date (YYYY-MM-DD)',
+    noMatches: 'No commit matches the search.',
+    showMore: { one: 'Show more (1 remaining)', other: 'Show more ({count} remaining)' },
+    refineSearch: 'Refine the search to see the {count} remaining commits.',
+    checkedOutside: '{count} checked outside the search',
     applyCommits: { one: 'Apply {count} commit to {target}', other: 'Apply {count} commits to {target}' },
     applyFiles: { one: 'Apply {count} file to {target}', other: 'Apply {count} files to {target}' },
     willCheckout: '"{target}" will be checked out before applying.',
@@ -668,6 +676,7 @@ export const en: Messages = {
     linesContext: 'From {path} ({from} → {to})',
     copyVersion: 'Copy version from {ref}',
     copyVersionHelp: 'The file in {target} becomes identical to the one in {ref}',
+    applyFile: 'Apply whole file to {target}',
     noCommits: 'No commits.',
     openInHistory: 'Open in history'
   },
@@ -1683,6 +1692,7 @@ export const en: Messages = {
     loading: 'Reading the git configuration…'
   },
   diffExtra: {
+    options: 'Options',
     fullFile: 'Whole file',
     fullFileHelp: 'Show the whole file, not only the changed parts',
     changesOnlyHelp: 'Go back to showing only the changed parts',

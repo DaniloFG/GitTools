@@ -67,6 +67,15 @@ async function start(options: { root?: string; workspaceState?: Memento } = {}) 
   return { context, subscriptions, run: (id: string, ...args: unknown[]) => handlers.get(id)!(...args) }
 }
 
+/** Como `start`, com a detecção de vários repositórios ligada (o padrão agora é desligada). */
+function startComDeteccao(options: { workspaceState?: Memento } = {}) {
+  const root = mkdtempSync(join(tmpdir(), 'gittools-ext-on-'))
+  dirs.push(root)
+  mkdirSync(join(root, 'storage'), { recursive: true })
+  writeFileSync(join(root, 'storage', 'settings.json'), JSON.stringify({ multiRepoDetection: true }))
+  return start({ ...options, root })
+}
+
 describe('extensão do VS Code', () => {
   it('registra os comandos e a barra de status', async () => {
     const { subscriptions } = await start()
@@ -185,6 +194,9 @@ describe('extensão do VS Code', () => {
     fake.workspaceFolders = [{ uri: Uri.file(a.dir) }]
     const { run } = await start()
     await run('gittools.open')
+    // A descoberta (com a detecção desligada, abre a primeira pasta e a torna ativa) tem de acabar antes da escolha
+    // do usuário; senão ela sobrescreve o ativo escolhido. A lista de abertos responde quando ela acaba.
+    await openList(fake.panels[0])
     fake.openDialogResult = [Uri.file(b.dir)]
     await run('gittools.openRepository')
     expect(fake.panels[0].disposed).toBe(true)
@@ -329,7 +341,7 @@ describe('detecção de vários repositórios no workspace', () => {
     const segunda = await createRepo()
     await segunda.commit('dois', { 'b.txt': 'b\n' })
     fake.workspaceFolders = [{ uri: Uri.file(segunda.dir) }, { uri: Uri.file(primeira.dir) }]
-    const { run } = await start()
+    const { run } = await startComDeteccao()
     await run('gittools.open')
     const list = await openList(fake.panels[0])
     expect(list.repos.map((r) => r.root)).toEqual([segunda.repo.root, primeira.repo.root])
@@ -343,7 +355,7 @@ describe('detecção de vários repositórios no workspace', () => {
     mkdirSync(interno, { recursive: true })
     await runGit(interno, ['init', '-q'])
     fake.workspaceFolders = [{ uri: Uri.file(pasta.dir) }]
-    const { run } = await start()
+    const { run } = await startComDeteccao()
     await run('gittools.open')
     const list = await openList(fake.panels[0])
     expect(list.repos.map((r) => r.root)).toEqual([pasta.repo.root, await realRoot(interno)])
@@ -373,7 +385,7 @@ describe('detecção de vários repositórios no workspace', () => {
     const nova = await createRepo()
     await nova.commit('nova', { 'b.txt': 'b\n' })
     fake.workspaceFolders = [{ uri: Uri.file(atual.dir) }]
-    const { run } = await start()
+    const { run } = await startComDeteccao()
     await run('gittools.open')
     const panel = fake.panels[0]
     // A descoberta corre por trás do painel; a lista de abertos responde quando ela acaba (os observadores já existem).
@@ -396,7 +408,7 @@ describe('detecção de vários repositórios no workspace', () => {
     const atual = await createRepo()
     await atual.commit('atual', { 'a.txt': 'a\n' })
     fake.workspaceFolders = [{ uri: Uri.file(atual.dir) }]
-    const { run } = await start()
+    const { run } = await startComDeteccao()
     await run('gittools.open')
     const panel = fake.panels[0]
     // A descoberta corre por trás do painel; a lista de abertos responde quando ela acaba (os observadores já existem).
@@ -431,7 +443,7 @@ describe('detecção de vários repositórios no workspace', () => {
     const atual = await createRepo()
     await atual.commit('atual', { 'a.txt': 'a\n' })
     fake.workspaceFolders = [{ uri: Uri.file(atual.dir) }]
-    const { run } = await start()
+    const { run } = await startComDeteccao()
     await run('gittools.open')
     const panel = fake.panels[0]
     // A descoberta corre por trás do painel; a lista de abertos responde quando ela acaba (os observadores já existem).

@@ -36,6 +36,10 @@ export const es: Messages = {
     discard: 'Descartar',
     open: 'Abrir',
     openInEditor: 'Abrir en el editor',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: 'Abrir en el editor VSCode',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'Editor de GitTools',
     all: 'todos',
     none: 'ninguno',
     file: 'Archivo',
@@ -104,7 +108,6 @@ export const es: Messages = {
     untracked: 'nuevo'
   },
   toolbar: {
-    openInEditorHelp: 'Abrir el proyecto en el editor elegido en la configuración',
     tagHelp: 'Crear una etiqueta en el commit actual',
     tag: 'Etiqueta',
     openRepository: 'Abrir repositorio…',
@@ -137,7 +140,9 @@ export const es: Messages = {
     menu: 'Menú',
     menuHelp: 'Configuración y paneles',
     appearance: 'Apariencia',
-    toolbarMenu: 'Barra de herramientas'
+    toolbarMenu: 'Barra de herramientas',
+    dynamicPanels: 'Paneles dinámicos',
+    screensMenu: 'Pantallas'
   },
   welcome: {
     tagline: 'Git sin complicaciones: arrastra y haz clic para hacer merge, rebase y cherry-pick de ramas, commits, archivos e incluso líneas.',
@@ -337,8 +342,6 @@ export const es: Messages = {
     amendButton: 'Corregir commit',
     commit: 'Commit',
     commitInto: 'Commit en {branch}',
-    commitStageAll: 'Incluir todos los archivos (stage)',
-    commitStageAllHelp: 'Hace stage de todos los archivos modificados antes de confirmar',
     commitPicked: { one: 'Commit con {count} archivo seleccionado', other: 'Commit con {count} archivos seleccionados' },
     commitPickedHint: 'Los archivos seleccionados en la lista No staged se incluyen en este commit.',
     pushAfter: 'Enviar (push) después',
@@ -521,6 +524,11 @@ export const es: Messages = {
     nothingToBring: 'Nada que traer: {target} ya tiene todo lo de {source}.',
     alreadyApplied: 'ya aplicado',
     alreadyAppliedHelp: 'Ya existe un commit equivalente en el destino',
+    searchPlaceholder: 'Buscar por hash, mensaje, autor o fecha (AAAA-MM-DD)',
+    noMatches: 'Ningún commit coincide con la búsqueda.',
+    showMore: { one: 'Mostrar más (1 restante)', other: 'Mostrar más ({count} restantes)' },
+    refineSearch: 'Afina la búsqueda para ver los {count} commits restantes.',
+    checkedOutside: '{count} marcados fuera de la búsqueda',
     applyCommits: { one: 'Aplicar {count} commit en {target}', other: 'Aplicar {count} commits en {target}' },
     applyFiles: { one: 'Aplicar {count} archivo en {target}', other: 'Aplicar {count} archivos en {target}' },
     willCheckout: 'Se hará checkout de "{target}" antes de aplicar.',
@@ -668,6 +676,7 @@ export const es: Messages = {
     linesContext: 'De {path} ({from} → {to})',
     copyVersion: 'Copiar la versión de {ref}',
     copyVersionHelp: 'El archivo en {target} queda igual al de {ref}',
+    applyFile: 'Aplicar el archivo completo en {target}',
     noCommits: 'Ningún commit.',
     openInHistory: 'Abrir en el historial'
   },
@@ -1683,6 +1692,7 @@ export const es: Messages = {
     loading: 'Leyendo la configuración de git…'
   },
   diffExtra: {
+    options: 'Opciones',
     fullFile: 'Archivo completo',
     fullFileHelp: 'Mostrar el archivo completo, no solo las partes modificadas',
     changesOnlyHelp: 'Volver a mostrar solo las partes modificadas',

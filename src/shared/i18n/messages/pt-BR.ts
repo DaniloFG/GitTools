@@ -37,6 +37,10 @@ export const ptBR = {
     discard: 'Descartar',
     open: 'Abrir',
     openInEditor: 'Abrir no editor',
+    // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
+    openInVscode: 'Abrir no editor VSCode',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'Editor do GitTools',
     all: 'todos',
     none: 'nenhum',
     file: 'Arquivo',
@@ -105,7 +109,6 @@ export const ptBR = {
     untracked: 'novo'
   },
   toolbar: {
-    openInEditorHelp: 'Abrir o projeto no editor escolhido nas configurações',
     tagHelp: 'Criar uma tag no commit atual',
     tag: 'Tag',
     openRepository: 'Abrir repositório…',
@@ -138,7 +141,9 @@ export const ptBR = {
     menu: 'Menu',
     menuHelp: 'Configurações e painéis',
     appearance: 'Aparência',
-    toolbarMenu: 'Barra de ferramentas'
+    toolbarMenu: 'Barra de ferramentas',
+    dynamicPanels: 'Painéis dinâmicos',
+    screensMenu: 'Telas'
   },
   welcome: {
     tagline: 'Git sem complicação: arraste e clique para fazer merge, rebase e cherry-pick de branches, commits, arquivos e até linhas.',
@@ -338,8 +343,6 @@ export const ptBR = {
     amendButton: 'Corrigir commit',
     commit: 'Commit',
     commitInto: 'Commit em {branch}',
-    commitStageAll: 'Incluir todos os arquivos (stage)',
-    commitStageAllHelp: 'Faz o stage de todos os arquivos alterados antes de confirmar',
     commitPicked: { one: 'Commit com {count} arquivo selecionado', other: 'Commit com {count} arquivos selecionados' },
     commitPickedHint: 'Os arquivos marcados na lista de não staged entram neste commit.',
     pushAfter: 'Enviar (push) em seguida',
@@ -522,6 +525,11 @@ export const ptBR = {
     nothingToBring: 'Nada a trazer: {target} já tem tudo de {source}.',
     alreadyApplied: 'já aplicado',
     alreadyAppliedHelp: 'Já existe um commit equivalente no destino',
+    searchPlaceholder: 'Buscar por hash, mensagem, autor ou data (AAAA-MM-DD)',
+    noMatches: 'Nenhum commit corresponde à busca.',
+    showMore: { one: 'Mostrar mais (1 restante)', other: 'Mostrar mais ({count} restantes)' },
+    refineSearch: 'Refine a busca para ver os {count} commits restantes.',
+    checkedOutside: '{count} marcados fora da busca',
     applyCommits: { one: 'Aplicar {count} commit em {target}', other: 'Aplicar {count} commits em {target}' },
     applyFiles: { one: 'Aplicar {count} arquivo em {target}', other: 'Aplicar {count} arquivos em {target}' },
     willCheckout: 'Será feito checkout de "{target}" antes de aplicar.',
@@ -669,6 +677,7 @@ export const ptBR = {
     linesContext: 'De {path} ({from} → {to})',
     copyVersion: 'Copiar versão de {ref}',
     copyVersionHelp: 'O arquivo em {target} fica igual ao de {ref}',
+    applyFile: 'Aplicar arquivo inteiro em {target}',
     noCommits: 'Nenhum commit.',
     openInHistory: 'Abrir no histórico'
   },
@@ -1684,6 +1693,7 @@ export const ptBR = {
     loading: 'Lendo a configuração do git…'
   },
   diffExtra: {
+    options: 'Opções',
     fullFile: 'Arquivo inteiro',
     fullFileHelp: 'Mostrar o arquivo inteiro, não só os trechos alterados',
     changesOnlyHelp: 'Voltar a mostrar só os trechos alterados',

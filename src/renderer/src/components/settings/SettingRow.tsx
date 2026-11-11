@@ -1,7 +1,8 @@
 import { createContext, useContext, type ReactNode } from 'react'
+import { matchesSetting } from './settingsSearch'
 
 /**
- * Texto da pesquisa da seção atual (vazio = mostra tudo). Cada linha se esconde quando o título,
+ * Texto da pesquisa da Central (vazio = mostra tudo). Cada linha se esconde quando o título,
  * a categoria ou a descrição não contêm o texto digitado.
  */
 export const SettingsSearchContext = createContext('')
@@ -25,9 +26,7 @@ interface SettingRowProps {
 
 /** Linha de configuração: título e descrição em cima, controle alinhado à esquerda logo abaixo. */
 export function SettingRow({ title, description, category, modified, id, descriptionInline, children }: SettingRowProps) {
-  const query = useContext(SettingsSearchContext).trim().toLowerCase()
-  const haystack = `${category ?? ''} ${title} ${description ?? ''}`.toLowerCase()
-  const hidden = query !== '' && !haystack.includes(query)
+  const hidden = !matchesSetting(useContext(SettingsSearchContext), { category, title, description })
   const label = (
     <>
       {category && <span className="setting-category">{category}: </span>}
