@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangedFile, CommitInfo, Comparison, DiffSource, FileDiff, LineKey } from '../../../shared/types'
 import { useActions } from '../actions'
-import { currentBranch, useAppActions, useRepoData, type CompareRequest } from '../context'
+import { currentBranch, useAppActions, useAppSettings, useRepoData, type CompareRequest } from '../context'
+import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
+import { insideVsCode } from '../vscodeBridge'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
@@ -30,6 +32,8 @@ interface Props {
 export function CompareView({ request, onRequest }: Props) {
   const { data } = useRepoData()
   const { run, toast, selectCommit, openFileView, showMenu, openDiffWindow, openInEditor } = useAppActions()
+  const { settings } = useAppSettings()
+  const editor = editorKind(settings.editor, insideVsCode())
   const actions = useActions()
   const head = currentBranch(data)
   const defaultTo = data.branches.find((b) => !b.remote && b.name !== head)?.name ?? ''
@@ -151,7 +155,7 @@ export function CompareView({ request, onRequest }: Props) {
 
   /**
    * Menu de contexto de um arquivo da lista (#82). Arquivo apagado na comparação (status D) não existe na árvore de
-   * trabalho, então o menu não oferece "Abrir no editor VSCode". Pelo mesmo motivo, "Aplicar arquivo inteiro" (#59)
+   * trabalho, então o menu não oferece "Abrir no editor". Pelo mesmo motivo, "Aplicar arquivo inteiro" (#59)
    * não é oferecido para D: não há o que trazer para a branch atual. E não se oferece quando a branch atual já é a
    * própria `to`: aplicar a branch nela mesma não faz sentido.
    */
@@ -161,9 +165,9 @@ export function CompareView({ request, onRequest }: Props) {
       fileMenuItems({
         path: f.path,
         canOpen: f.status !== 'D',
-        openInEditor,
+        openInEditor: (p) => openEditorItem(editor, p, { openFileView, openInEditor })(),
         copy: copyText,
-        labels: { openInEditor: t('common.openInVscode'), copyPath: t('history.files.copyPath') },
+        labels: { openInEditor: t(editorLabelKey(editor)), copyPath: t('history.files.copyPath') },
         apply: head && canApplyFile({ head, to: comparison?.to, status: f.status }) ? { label: t('compare.applyFile', { target: head }), onClick: () => applyFile(f) } : undefined
       })
     )

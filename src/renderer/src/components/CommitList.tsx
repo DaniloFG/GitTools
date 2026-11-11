@@ -5,8 +5,10 @@ import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
 import type { MenuItem } from './ContextMenu'
 import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useAppSettings, useRepoData } from '../context'
 import { copyText } from '../copy'
+import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
+import { insideVsCode } from '../vscodeBridge'
 import { endDrag, startDrag, type DragPayload } from '../dnd'
 import { errorMessage, fullDate, relativeDate, shortSha, statusLabel } from '../format'
 import { startReorder, useOrder } from '../reorder'
@@ -98,7 +100,8 @@ export function CommitList({
   const actions = useActions()
   const anchor = useRef<number | null>(null)
   // Menu da branch (botão direito na etiqueta): as etiquetas não chamam useBranchMenu, quem o chama é este componente.
-  const branchItemsOf = useBranchMenu(onScope)
+  // Sem o Force push no menu da etiqueta (#76); ele continua no menu da barra lateral.
+  const branchItemsOf = useBranchMenu(onScope, { forcePush: false })
   const [query, setQuery] = useState('')
   /** A pesquisa filtra a lista com um pequeno atraso, para a digitação não travar em históricos grandes. */
   const deferredQuery = useDeferredValue(query)
@@ -856,6 +859,8 @@ function CommitFiles({
   onOpenFileWindow(path: string): void
 }) {
   const { showMenu, openFileView, openInEditor } = useAppActions()
+  const { settings } = useAppSettings()
+  const editor = editorKind(settings.editor, insideVsCode())
   const actions = useActions()
   const head = actions.head
   const pathsOf = (f: ChangedFile) => (f.oldPath ? [f.path, f.oldPath] : [f.path])
@@ -866,7 +871,7 @@ function CommitFiles({
       { label: t('history.files.openWindow'), onClick: () => onOpenFileWindow(file.path) },
       ...(head ? [{ label: t('history.files.take', { target: head }), onClick: () => actions.filesOntoBranch(sha, pathsOf(file), head) }] : []),
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
-      { label: t('common.openInVscode'), onClick: () => openInEditor(file.path) },
+      { label: t(editorLabelKey(editor)), onClick: openEditorItem(editor, file.path, { openFileView, openInEditor }) },
       'separator',
       { label: t('history.files.copyPath'), onClick: () => copyText(file.path) }
     ])

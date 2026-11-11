@@ -41,6 +41,8 @@ export const zhCN: Messages = {
     openInEditor: '在编辑器中打开',
     // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
     openInVscode: '在 VSCode 编辑器中打开',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'GitTools 编辑器',
     all: '全选',
     none: '全不选',
     file: '文件',

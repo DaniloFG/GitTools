@@ -41,6 +41,8 @@ export const hi: Messages = {
     openInEditor: 'एडिटर में खोलें',
     // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
     openInVscode: 'VSCode एडिटर में खोलें',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'GitTools संपादक',
     all: 'सभी',
     none: 'कोई नहीं',
     file: 'फ़ाइल',

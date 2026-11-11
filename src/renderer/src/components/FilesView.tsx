@@ -1,7 +1,9 @@
 import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import type { BlameResult, FileDiff, FileHistoryEntry, LineKey } from '../../../shared/types'
-import { currentBranch, useAppActions, useRepoData } from '../context'
+import { currentBranch, useAppActions, useAppSettings, useRepoData } from '../context'
 import { useActions } from '../actions'
+import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
+import { insideVsCode } from '../vscodeBridge'
 import { errorMessage, fullDate, relativeDate, shortSha } from '../format'
 import { t } from '../i18n'
 import { git } from '../git'
@@ -93,24 +95,27 @@ function FileHeader({ path, title }: { path: string; title: string }) {
 
 function FilesList({ path, onPath }: { path: string | null; onPath(path: string): void }) {
   const { data, repo } = useRepoData()
-  const { toast, showMenu, openInEditor } = useAppActions()
+  const { toast, showMenu, openInEditor, openFileView } = useAppActions()
+  const { settings } = useAppSettings()
+  const editor = editorKind(settings.editor, insideVsCode())
   const [files, setFiles] = useState<string[]>([])
   const [filter, setFilter] = useSessionState('files.filter', '')
   // Arquivos com alterações ainda não salvas no editor.
   useDraftsVersion()
   const unsaved = new Set(draftPaths(repo.root))
 
-  // Menu de contexto de um arquivo da lista (#82): abrir no VSCode e copiar o caminho, como no Histórico.
+  // Menu de contexto de um arquivo da lista (#82): abrir no editor em uso e copiar o caminho, como no Histórico.
   // Fica aqui, e não no <li>, para a linha não ler contexto; os textos são lidos só ao abrir o menu.
+  // No editor do GitTools o arquivo já está nesta tela: `openFileView` só o seleciona.
   const fileMenu = (e: React.MouseEvent, f: string) =>
     showMenu(
       e,
       fileMenuItems({
         path: f,
         canOpen: true,
-        openInEditor,
+        openInEditor: (p) => openEditorItem(editor, p, { openFileView, openInEditor })(),
         copy: copyText,
-        labels: { openInEditor: t('common.openInVscode'), copyPath: t('history.files.copyPath') }
+        labels: { openInEditor: t(editorLabelKey(editor)), copyPath: t('history.files.copyPath') }
       })
     )
 

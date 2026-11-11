@@ -2,8 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { FileDiff, FileStatus, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { parseChangesMode, type ChangesMode, type SectionId } from '../changesMode'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useAppSettings, useRepoData } from '../context'
 import { currentDrag, endDrag, startDrag } from '../dnd'
+import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
+import { insideVsCode } from '../vscodeBridge'
 import { stepIndex } from '../diffNav'
 import { errorMessage, statusLabel } from '../format'
 import { sameDiff } from '../diffIdentity'
@@ -72,6 +74,9 @@ export function ChangesView() {
   // Só o status é lido dos dados; as funções vêm da fatia de ações (estável), então a tela não redesenha a cada operação.
   const { data } = useRepoData()
   const { run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow, showMenu } = useAppActions()
+  const { settings } = useAppSettings()
+  /** Rótulo e ação do item "abrir no editor" dos menus de arquivo (#82). */
+  const editor = editorKind(settings.editor, insideVsCode())
   /** Operações desta tela (stage, descarte, aplicar linhas): o indicador cobre só os painéis dela. */
   const runChanges = <T,>(label: string, fn: () => Promise<T>, options?: { queue?: boolean }) => run(label, fn, SCREEN_VIEWS.changes, options)
   const { status } = data
@@ -239,7 +244,7 @@ export function ChangesView() {
             'separator' as const
           ]
         : []),
-      { label: t('common.openInVscode'), onClick: () => openInEditor(path) },
+      { label: t(editorLabelKey(editor)), onClick: openEditorItem(editor, path, { openFileView, openInEditor }) },
       { label: t('history.files.copyPath'), onClick: () => copyText(path) }
     ])
 

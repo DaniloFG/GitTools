@@ -39,6 +39,8 @@ export const ptBR = {
     openInEditor: 'Abrir no editor',
     // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
     openInVscode: 'Abrir no editor VSCode',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'Editor do GitTools',
     all: 'todos',
     none: 'nenhum',
     file: 'Arquivo',

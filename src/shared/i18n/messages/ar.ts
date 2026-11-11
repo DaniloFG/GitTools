@@ -43,6 +43,8 @@ export const ar: Messages = {
     openInEditor: 'فتح في المحرر',
     // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
     openInVscode: 'فتح في محرر VSCode',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'محرر GitTools',
     all: 'الكل',
     none: 'لا شيء',
     file: 'الملف',

@@ -38,6 +38,8 @@ export const en: Messages = {
     openInEditor: 'Open in editor',
     // Rótulo dos menus de contexto de arquivo (o botão de cabeçalho segue em openInEditor).
     openInVscode: 'Open in editor VSCode',
+    // Mesmo item quando não há editor externo configurado: o arquivo abre no editor embutido (tela Files).
+    openInGitToolsEditor: 'GitTools Editor',
     all: 'all',
     none: 'none',
     file: 'File',

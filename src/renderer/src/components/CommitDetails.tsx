@@ -5,8 +5,10 @@ import { useSettled } from '../settle'
 import type { ChangedFile, CommitDetails, FileDiff, LineKey } from '../../../shared/types'
 import { buildEntries, firstChange, sumStats, type ChangeEntry } from '../changeEntries'
 import { useActions } from '../actions'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useAppSettings, useRepoData } from '../context'
 import { copyText } from '../copy'
+import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
+import { insideVsCode } from '../vscodeBridge'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
 import { git } from '../git'
@@ -114,6 +116,8 @@ function MultiSelection({ shas }: { shas: string[] }) {
 function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) {
   const { repo } = useRepoData()
   const { toast, openFileView, openDiffWindow, openInEditor, showMenu } = useAppActions()
+  const { settings } = useAppSettings()
+  const editor = editorKind(settings.editor, insideVsCode())
   const actions = useActions()
   const head = actions.head
   /** Arquivo aberto neste commit, lembrado ao navegar para outra tela ou aba de repositório e voltar. */
@@ -168,7 +172,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       { label: `⧉ ${t('diffExtra.openWindow')}`, onClick: () => openWindow(file) },
       ...(head ? [{ label: t('history.files.take', { target: head }), onClick: () => actions.filesOntoBranch(sha, pathsOf([file]), head) }] : []),
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
-      { label: t('common.openInVscode'), onClick: () => openInEditor(file.path) },
+      { label: t(editorLabelKey(editor)), onClick: openEditorItem(editor, file.path, { openFileView, openInEditor }) },
       'separator',
       { label: t('history.files.copyPath'), onClick: () => copyText(file.path) }
     ])
