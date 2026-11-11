@@ -13,9 +13,9 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E4, commit `bdf185b`: #74 #78 #56 (Aparência = Barra de ferramentas, Painéis dinâmicos, Telas; `screenVisibility.ts`, preferência `pref.screens.hidden`; a tela aberta nunca some). typecheck e 844 testes verdes; tela não conferida no Chromium e `code-review` não rodado (diff lido à mão).
+**Última etapa fechada:** E5, commit `0de61d7`: #62 (tela aberta por aba em `dockStore.ts`, em memória, por raiz; aba nova abre em History; `dock` segue global). typecheck, 850 testes, `perf:bundle` (683.328 de 700.000) verdes; conferido no Chromium com duas abas e com a visibilidade de telas da E4; `code-review` medium feito.
 
-**A seguir:** `E5` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
+**A seguir:** `E6` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
@@ -23,7 +23,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E2 | #75 #57 #73 #77 | Commit/push e Changes/History: remover "Include all files", push volta a normal, seleção inicial | feito (#73 já existia) | 5957e84 |
 | E3 | #83 #86 | Diff: botões vão para submenu "Options"; colunas do History redimensionáveis | feito | 6179d6d |
 | E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | feito | bdf185b |
-| E5 | #62 | Tela inicial History; estado de tela/layout independente por aba | a fazer | |
+| E5 | #62 | Tela inicial History; estado de tela/layout independente por aba | feito | 0de61d7 |
 | E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | a fazer | |
 | E7 | #59 #84 | Compare: "apply" do arquivo inteiro; busca no Cherry-pick Studio | a fazer | |
 | E8 | #85 | Botões assíncronos: bloqueio contra clique duplo + loading onde falta | a fazer | |
@@ -36,16 +36,6 @@ Não se aplica (nenhuma etapa persegue meta de desempenho). E5, E8 e E10 medem a
 contagem de processos git antes e depois.
 
 ## 4. Plano
-
-### Etapa E5 — tela inicial e independência por aba (#62)
-- **Orquestra**: topo (desenho)
-- **Arquivos prováveis**: `layout.ts:9,62-74`, `dockStore.ts:7-9,41-42`, `tests/multiRepo.test.ts`
-- **Ler antes**: issue #62. Hipótese não confirmada: o vazamento vem de `layout.ts` e `dockStore.ts` guardarem tela e
-  arranjo sem identificador de repositório. Reproduzir com teste antes de mudar. Cherry-pick é a única exceção.
-- **Aceite**: teste com duas abas em que a escolha de uma não muda a outra; falha sem a correção
-- **Testes**: unidade e tela
-- **Segurança**: não
-- **Depende de**: E4
 
 ### Etapa E6 — configurações (#70 #71)
 - **Orquestra**: sonnet
@@ -107,6 +97,8 @@ contagem de processos git antes e depois.
 - 2026-11-11 E1: `code-review` feito na E3; conferência em tela só do menu do diff e da History (menus de arquivo de Changes/Files/Compare não conferidos). Traduções ar/hi/zh de `common.openInVscode` pedem revisão de nativo.
 
 - 2026-11-11 E4: Dashboards escondido e aberto continua na barra até trocar de tela (de propósito). `SCREENS`/`SCREEN_NAMES` em `Screens.tsx` duplicam `TOP_SCREEN_LABELS`. Sem separador entre Painéis dinâmicos e Telas. Pendente: ver o menu na tela e `code-review` sobre E4.
+
+- 2026-11-11 E5: só a tela aberta ficou por aba; o arranjo `dock` e as `pref.*` seguem globais (decisão minha, não do dono: confirmar se o arranjo de painéis também deve ser por repositório). `dashboardsOpen` (local de RepoView) volta a falso ao trocar de aba. `pref.screen` antigo fica órfão no localStorage (inofensivo). E4 conferida na tela: menu Aparência > Telas ok.
 
 ## 6. Encerramento
 
