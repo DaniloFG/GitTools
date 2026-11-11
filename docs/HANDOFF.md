@@ -48,7 +48,27 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
 
-## 2. Estado atual (fim da janela 10)
+## 2. Estado atual (fim da janela 11)
+
+- **Janela 11: resultados das Fases 4 e 5 escritos em `docs/PERFORMANCE.md`** (`5fce090`, só documento): seções 11 e
+  12 novas (o que foi feito, números, metas, o que ficou de fora), correção do diagnóstico no achado B7, seção 6
+  apontando para os resultados, índice até a 12. A coluna "Hoje" da seção 7 foi medida de novo nesta janela, com o
+  código de `ff66ef9`:
+  - `ui.mjs 4 moderate`, duas rodadas: carga a frio 454/562 ms, 6 processos, 1.038 nós; foco 2; 10 setas 4, sem
+    tarefa longa; rolar o histórico 29,2/28,8 ms por quadro (tarefas longas 2 e 0, maior 52 ms); arrasto 62–66 ms
+    (41 linhas) e 56 ms (34); abrir Changes 269/286 ms, 5 processos; stage 9; abrir o diff de 5.000 linhas
+    440/571 ms, 1.261 nós; rolar esse diff 29–32 ms; marcar linha 20–34 ms; arrasto com o diff 90/101 ms.
+  - `core.mjs`: `heavy` `status()` 12 ms, `status(true)` 88 ms; `moderate` igual ao da janela 10 (analytics falta
+    2.713 ms ×4, memória 7 ms ×1, disco 23 ms ×1).
+  - Pacote: webview `index.js` 562.019 bytes, CSS 85.523; Electron `index.js` 561.453; processo principal 80.863.
+  - **Ressalva registrada no documento:** esta máquina deu o `core.mjs` ~25% mais rápido que a linha de base (blame
+    318 → 232 ms sem mudança de código), então parte da queda dos tempos da interface (rolagem 45–73 → 29 ms, abrir o
+    diff 0,93–0,99 → 0,44–0,57 s) é da máquina. Para atribuir, medir versões alternadas.
+  - Meta de rolagem (16 ms) segue não atingida; marcar linha (≤ 50 ms) agora dentro da meta.
+- **A seguir:** pendência (2), `DiffWindow.tsx` sem `setLocale` (o idioma vem como na janela principal); depois a
+  pendência (3), redesenhos do `ChangesView` ao abrir e do `RepoView` por seleção.
+
+### Janela 10
 
 - **Janela 10: item 5.5 feito (Fase 5 concluída).** Três commits:
   - `21fa222`: `src/shared/analyticsWire.ts`, formato colunar do resultado de `analytics` (pessoas numa tabela,
@@ -72,8 +92,8 @@ Estas instruções vieram do usuário e valem para todas as janelas:
     mesmo; o botão pode ser simplificado ou removido depois.
   - Ideia para depois (não feita): atualização incremental (ler só os commits novos com `<novas> --not <antigas>`
     quando nenhuma ref antiga sumiu), para que um commit novo não custe os 2,9 s inteiros.
-- **A seguir:** escrita dos resultados das Fases 4 e 5 em `docs/PERFORMANCE.md` (com a pendência 4 e a correção do
-  B7 acima; a linha do `core.mjs` de analytics agora tem as três linhas de cache), depois as pendências 2 e 3.
+- **A seguir (na época):** escrita dos resultados das Fases 4 e 5 em `docs/PERFORMANCE.md` (feita na janela 11),
+  depois as pendências 2 e 3.
 
 ### Janela 9
 
@@ -333,7 +353,7 @@ em até 2× o `status()` simples. Ordem sugerida:
 
 ### Fase 4 — Listas e redesenhos (concluída na janela 8)
 
-Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **Concluída na janela 8** (4.6 na janela 3, 4.4 na 4, 4.3 na 5, 4.2 na 6, 4.5 na 7, 4.1 na 8). A meta de rolagem (16 ms por quadro) não foi medida de novo; ela depende de menos nós por linha.
+Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7); resultado na seção 11. **Concluída na janela 8** (4.6 na janela 3, 4.4 na 4, 4.3 na 5, 4.2 na 6, 4.5 na 7, 4.1 na 8). Rolagem medida de novo na janela 11: 28,8–29,2 ms por quadro, acima da meta de 16 ms; ela depende de menos nós e menos pintura por linha.
 Ordem sugerida: ~~4.6~~ (comparação de diffs por
 identificador, não por `JSON.stringify`: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`, com o `applyLines` que
 chama `setSelection` depois de `await` sem guarda), ~~4.4~~ (`buildTree` com `Map`), ~~4.3~~ (branches e tags lineares),
@@ -349,9 +369,16 @@ cancelamento com a interface (núcleo pronto).
 - **Fase 4 — Listas e redesenhos:** contexto `useApp()` dividido (C2); itens de lista sem contexto (C2/C4);
   branches/tags com agrupamento linear (C4); `buildTree` com `Map` (C5); ícones por símbolo reutilizado (C6);
   comparação de diffs por identificador, não por `JSON.stringify` (C7: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`).
-- **Fase 5 — Carga (concluída: 5.1, 5.3 e 5.4 na janela 8, 5.2 na janela 9, 5.5 na janela 10; falta escrever o resultado no documento):** idiomas sob demanda (D2: 48% do JavaScript são traduções); `React.lazy` nas telas que não
+- **Fase 5 — Carga (concluída: 5.1, 5.3 e 5.4 na janela 8, 5.2 na janela 9, 5.5 na janela 10; resultado na seção 12 de `docs/PERFORMANCE.md`, janela 11):** idiomas sob demanda (D2: 48% do JavaScript são traduções); `React.lazy` nas telas que não
   aparecem na abertura (D3); janela criada antes de ler configurações (D4); extensão: painel primeiro, descoberta por
   trás (D5); dashboards num processo auxiliar (B7).
+
+### Pendências abertas (ordem das próximas janelas)
+
+1. `DiffWindow.tsx` ainda chama `setLocale` (linha ~64): baixa um catálogo a mais se o idioma salvo difere do
+   navegador e não renova os textos na troca de idioma com a janela de diff aberta.
+2. `ChangesView` redesenha 5× ao abrir e o `RepoView` 1× por seleção (a seleção é estado dele).
+3. Barra lateral sem lista em janela (1.100 refs todas montadas); seção 11 de `docs/PERFORMANCE.md`, "Não feito".
 
 ### Pendências menores já identificadas
 
