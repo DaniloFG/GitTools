@@ -55,10 +55,25 @@ Feche o que está coerente e verificado, e registre o resto no HANDOFF, se:
 - o contexto desta sessão já foi resumido uma vez (sinal de que ela está longa demais);
 - a etapa cresceu além do previsto (apareceu outro objetivo): ele vira etapa nova na seção 4, não entra nesta;
 - uma decisão só o dono pode tomar, ou uma verificação vermelha não se resolve em duas tentativas;
-- o limite de uso está acabando.
+- o teto de uso foi atingido (seção "Teto de uso").
 
 Nunca pare com alteração solta: ou está commitada e verde, ou foi desfeita. Se um subagente ainda edita, commite só
 o que já está coerente e diga isso.
+
+## Teto de uso
+
+O dono pode dar um teto ("pare em 30% da janela de 5 horas"). Sem teto dado, o teto é 50%. A janela é da conta
+inteira: outras sessões e os subagentes gastam dela também.
+
+- **Ler o uso** (sessão de nuvem): `list_events` desta sessão com `kinds: ["rate_limit_event"]` e `limit: 100`. O
+  último evento traz `unifiedWindows.five_hour.utilization` (0.37 é 37%) e `resetsAt`. Guarde o `last_id` e passe-o
+  em `after_id` na leitura seguinte, para receber só o que é novo. Em sessão local, quem vê o uso é o dono
+  (`/usage`).
+- **Quando ler**: ao começar, antes de cada incremento e antes de fechar.
+- **Atingiu, ou o próximo incremento vai atingir**: não comece o incremento. Feche como em "Quando fechar antes do
+  fim" e avise `PARADA <etapa> | teto de uso`.
+- **Gaste pouco na janela principal**: cada chamada relê a conversa inteira. Junte comandos numa chamada, não narre
+  passo a passo e não retome sessão longa depois de uma pausa (a primeira chamada paga a conversa toda de novo).
 
 ## 4. Fechar
 

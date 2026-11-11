@@ -49,6 +49,10 @@ portanto, no modelo que quer para as etapas; o contexto da central é pequeno, e
 
 ## Abrir uma etapa
 
+Antes de abrir, leia o uso da janela de 5 horas (skill `etapa`, seção "Teto de uso"). No teto ou acima dele: não
+abra. Diga ao dono onde o trabalho parou e a que horas a janela renova (`resetsAt`), e pare; só agende a retomada
+com `send_later` se o dono tiver pedido.
+
 `create_session` com:
 
 - `source_url`, `source_revision` e `outcome_branch` como os seus;

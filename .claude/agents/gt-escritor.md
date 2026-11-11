@@ -1,6 +1,6 @@
 ---
 name: gt-escritor
-description: Escritor barato do GitTools. Use para escrever ou alterar código e os testes que o acompanham a partir de um pedido fechado (arquivos permitidos, comportamento esperado, casos de borda, comandos de verificação). Não decide arquitetura, não mexe fora da lista de arquivos e não roda git que altera estado.
+description: Escritor barato do GitTools. Use para escrever ou alterar código, os testes que o acompanham e documentação (inclusive CLAUDE.md e .claude/) a partir de um pedido fechado (arquivos permitidos, comportamento esperado, casos de borda, comandos de verificação). Não decide arquitetura, não mexe fora da lista de arquivos e não roda git que altera estado.
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: haiku
 effort: high
@@ -44,6 +44,8 @@ Você pode **ler** (`git status`, `git diff`, `git log`, `git show`). Você **n�
 2. Reprovou: corrija e rode de novo. **No máximo duas rodadas de correção.** Se ainda reprovar, pare, deixe o código
    no estado mais coerente e relate o erro exato; não tente caminhos novos por conta própria.
 3. Rode builds, `npm test` inteiro e roteiros de `scripts/perf` **só** se o pedido mandar.
+4. Tarefa só de documentação: não rode typecheck nem testes. Confira com `git diff --stat` e `wc -l` dos arquivos
+   tocados, e copie as duas saídas no relatório.
 
 ## Relatório (até 30 linhas)
 

@@ -31,7 +31,7 @@ enfraquecê-las, e código novo segue o mesmo desenho.
 | Git sem shell | `runGit` em `src/core/exec.ts` (`spawn('git', args)`) | Argumento nunca é interpretado; sem prompt de credencial nem editor (`GIT_TERMINAL_PROMPT=0`, `GIT_EDITOR=true`) |
 | Terminal validado | `validateGitCommand` em `src/shared/terminal.ts` e `src/core/terminal.ts` | Só comandos git; recusa opções que executam programa, `-c` com chave de programa e alias com `!` |
 | Caminho preso ao repositório | `resolveInside` em `src/core/paths.ts` | Caminho relativo vindo da interface não sai da raiz (`..`, absoluto) |
-| Canais fixos | `BRIDGE_CHANNELS` e `REPO_METHODS` (`src/shared/`), conferidos no `Backend` | A interface só chama o que está na lista; método fora dela é recusado |
+| Canais fixos | `BRIDGE_CHANNELS` (registrados em `src/main/index.ts`) e `REPO_METHODS` (conferidos no `Backend`) | A interface só chama o que está na lista; método fora dela é recusado |
 | Janela isolada | `webPreferences` em `src/main/index.ts` | `contextIsolation: true`, `nodeIntegration: false`; a ponte do preload expõe funções, nunca o `ipcRenderer` |
 | Navegação fechada | `setWindowOpenHandler` em `src/main/index.ts` | Só `http(s)` abre, e no navegador do sistema; nada novo abre dentro do aplicativo |
 | Política de conteúdo | `src/renderer/index.html` e `html()` em `extension/src/extension.ts` | Sem script de fora; no webview, script só com `nonce` e `default-src 'none'` |

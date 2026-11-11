@@ -87,14 +87,11 @@ aqui que não estiver na lista: siga o procedimento à mão e diga isso.
 | Gráficos e dashboards (`src/renderer/src/analytics`) | `dataviz` |
 | Permissões, hooks, variáveis de ambiente | `update-config`; menos pedidos de permissão: `fewer-permission-prompts` |
 | Repetir ou vigiar algo; acompanhar PR | `loop`; `subscribe_pr_activity` |
+| Abre muitos agentes ou gasta crédito: `batch` (um PR por unidade, fora do fluxo de branches), `code-review` nos níveis `max` e `ultra` | Só com a palavra do dono: sugira e espere |
 
-Não use por conta própria o que abre muitos agentes ou gasta crédito: `batch` (abre um PR por unidade, fora do fluxo
-de branches) e `code-review` nos níveis `max` e `ultra`. Sugira ao dono e espere a palavra dele.
-
-Comandos que só o dono digita; sugira em uma linha, na hora certa: `/clear` ao mudar de assunto;
-`/compact <o que manter>` e `/context` em sessão longa; `/plan` antes de mudança grande; `/effort` e `/model` para
-subir o raciocínio em desenho e depuração difícil, ou baixar em trabalho mecânico; `/btw` para pergunta lateral;
-`/rewind` para voltar atrás; `/usage` para ver o limite de uso.
+Comandos que só o dono digita; sugira em uma linha, na hora certa: `/clear` ao mudar de assunto; `/context` e
+`/compact <o que manter>` em sessão longa; `/plan` antes de mudança grande; `/effort` e `/model` para subir ou
+baixar o raciocínio; `/btw` para pergunta lateral; `/rewind` para voltar atrás; `/usage` para ver o limite de uso.
 
 ## Modelos e delegação
 
@@ -103,15 +100,15 @@ O dono pede, por este arquivo, que o código seja lido e escrito por subagentes 
 
 | Papel | Modelo | Faz | Não faz |
 | --- | --- | --- | --- |
-| Orquestrador: a sessão que fala com o dono e a sessão de etapa | O da sessão que o dono abriu (o "topo") | Entende, especifica, delega, revisa cada diff, verifica, mede, commita; escreve documentação e instruções (`.md`, `.claude/`) | Não escreve código; não faz busca ampla nem lê arquivo grande inteiro |
+| Orquestrador: a sessão que fala com o dono e a sessão de etapa | O da sessão que o dono abriu (o "topo") | Entende, especifica, delega, revisa cada diff, verifica, mede, commita; escreve só o pedido ao subagente, a mensagem de commit e o estado no HANDOFF | Não escreve código, teste nem documentação; não localiza nem lê arquivo de trabalho |
 | Sessão central | `sonnet` (aberta à mão: o modelo que o dono escolher) | Abre, confere no remoto e arquiva as sessões de etapa | Não lê nem escreve código; não faz etapa |
-| `gt-leitor` | `haiku` | Localiza, mapeia, resume; devolve `arquivo:linha` | Não altera nada |
-| `gt-escritor` | `haiku`; `sonnet` em escalada | Escreve código e os testes dele, só nos arquivos recebidos | Não decide desenho; não roda git que altera estado |
+| `gt-leitor` | `haiku`, sempre o mais recente | Localiza, mapeia, resume; devolve `arquivo:linha` | Não altera nada |
+| `gt-escritor` | `haiku`, sempre o mais recente; `sonnet` em escalada | Escreve código, testes e documentação, só nos arquivos recebidos | Não decide desenho; não roda git que altera estado |
 
 - **Toda chamada a `Agent` nomeia `gt-leitor` ou `gt-escritor`, ou passa `model`.** Agente genérico sem modelo herda
   o modelo caro, e o `Explore` também roda em modelo caro: para ler, use o `gt-leitor`.
-- **Leia você mesmo** o que é curto e já localizado: o diff a revisar, um trecho com `offset` e `limit`, um `Grep`.
-  **Delegue** o que passa de 3 arquivos ou de umas 300 linhas.
+- **A janela principal não lê nem escreve arquivo de trabalho.** Ela lê o diff que revisa e a saída das
+  verificações; localizar, ler e escrever (código, teste, documento) é do `gt-leitor` e do `gt-escritor`.
 - **Suba o modelo, não a insistência.** Dois erros do `gt-escritor` na mesma tarefa, ou tarefa densa (concorrência,
   cancelamento, algoritmo novo): chame-o com `model: "sonnet"`. Ainda não saiu: refaça a especificação.
 - **Correção de revisão volta ao mesmo subagente** (`SendMessage` com o id dele): ele ainda tem o contexto, e outro
@@ -153,6 +150,9 @@ tarefa. Se você não consegue escrever os itens 2 a 5, ainda não entendeu a ta
   longa (testes, builds, medições) vai para arquivo fora do repositório, e você lê só o fim (`tail`, `grep`).
 - **Uma sessão, um assunto.** A sessão não limpa a própria conversa (`/clear` é do dono): quando ficar longa ou o
   contexto for resumido, feche o que está coerente, escreva o estado no repositório (commit, HANDOFF) e pare.
+- **Cada chamada da janela principal relê a conversa inteira**, e retomar conversa longa depois de uma pausa custa
+  caro (medido: uma chamada gastou 20% da janela de 5 horas). Junte comandos numa chamada, delegue, e leve o que
+  continua depois para uma sessão nova. Teto de uso (padrão: 50% da janela): skill `etapa`, "Teto de uso".
 
 ## Antes de dar a alteração por pronta
 
@@ -179,8 +179,8 @@ registre a exceção num comentário no ponto do código.
 - Lógica pura fica em módulo `.ts` sem React e ganha teste em `tests/`. Um módulo novo de `src/renderer/src`
   usado por teste entra na lista `include` do `tsconfig.node.json`.
 - Arquivos gerados não são editados à mão (`fileIcons.generated.ts` vem de `npm run build:icons`).
-- **Git e branches**: trabalho → `develop` → `homolog` → `main`, sempre por PR, e PR só quando o dono pedir. Nada de
-  force push, reescrita de histórico ou `--no-verify` em branch compartilhada. A versão da extensão é automática:
+- **Git e branches**: trabalho → `develop` → `homolog` → `main`, sempre por PR, e PR só quando o dono pedir. Nada
+  de force push, reescrita de histórico ou `--no-verify` em branch compartilhada. A versão da extensão é automática:
   não suba o patch à mão (`CONTRIBUTING.md` e `.claude/rules/publicacao.md`).
 - **Este guia é código.** Mudou um comando, uma pasta, um orçamento ou um jeito de trabalhar: corrija o `CLAUDE.md`
   e o `.claude/` no mesmo trabalho. Regra de uma área só vai para `.claude/rules/`; procedimento, para uma skill;
