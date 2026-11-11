@@ -87,8 +87,20 @@ const host: BackendHost = {
 
 const backend = new Backend(host)
 
+/**
+ * Termina quando a abertura acabou: sessão anterior reaberta e o repositório da linha de comando (se houver)
+ * aberto e ativo. A janela é criada antes disso, então a interface pode pedir dados enquanto o git ainda
+ * responde; os pedidos esperam esta promessa em vez de ver a lista sem o repositório da linha de comando.
+ * Nunca falha: um erro da reabertura reaparece no próprio pedido, como antes (`restoreWorkspace`).
+ */
+let startupDone: Promise<void> = Promise.resolve()
+
 function registerIpc() {
-  for (const channel of BRIDGE_CHANNELS) ipcMain.handle(channel, (_e, ...args: unknown[]) => backend.invoke(channel, args))
+  for (const channel of BRIDGE_CHANNELS)
+    ipcMain.handle(channel, async (_e, ...args: unknown[]) => {
+      await startupDone
+      return backend.invoke(channel, args)
+    })
 }
 
 /** Carrega a interface numa janela; `query` escolhe o que ela mostra (ex.: só um diff). */
@@ -146,9 +158,41 @@ function createWindow() {
   loadRenderer(window)
 }
 
+// As configurações começam a ser lidas já, enquanto o Electron inicia. A janela depende delas só pela cor de
+// fundo (`nativeTheme.shouldUseDarkColors` segue `themeSource`, que vem do tema salvo; tamanho e posição não
+// são salvos), e é um arquivo só: medido, a resposta chega ~8 ms depois do `ready` e `applySettings` leva
+// ~1 ms. Vale esperar por isso para não piscar a cor errada; o que custa processos git fica para depois.
+const settingsRead = backend.loadSettings()
+
+/** Caminho da linha de comando (`gittools /caminho/do/repo`), se for uma pasta. */
+function pathFromArgs(): string | undefined {
+  return process.argv
+    .slice(1)
+    .filter((a) => !a.startsWith('-'))
+    .map((a) => resolve(a))
+    .reverse()
+    .find((a) => a !== app.getAppPath() && existsSync(a) && statSync(a).isDirectory())
+}
+
+/** Reabre a sessão anterior e abre o repositório da linha de comando, já com a janela carregando. */
+async function openAtStartup(arg: string | undefined): Promise<void> {
+  // Começa a reabrir a sessão agora, junto com o carregamento da interface (antes só começava no primeiro
+  // pedido dela). O resultado é o mesmo: `setRepository` espera a reabertura antes de pôr o da linha de
+  // comando no fim das abas e torná-lo ativo.
+  const restoring = backend.restoreWorkspace().catch(() => undefined)
+  if (arg) {
+    try {
+      await backend.setRepository(await GitRepository.open(arg))
+    } catch {
+      // Ignora argumentos que não são repositórios.
+    }
+  }
+  await restoring
+}
+
 app.whenReady().then(async () => {
   registerIpc()
-  applySettings(await backend.loadSettings())
+  applySettings(await settingsRead)
   // Menu mínimo: mantém copiar/colar (e ferramentas de desenvolvedor só em modo dev);
   // os demais atalhos são tratados pela interface e podem ser personalizados.
   Menu.setApplicationMenu(
@@ -158,22 +202,13 @@ app.whenReady().then(async () => {
       ...(app.isPackaged ? [] : [{ role: 'viewMenu' as const }])
     ])
   )
-  // Permite abrir direto um repositório: `gittools /caminho/do/repo`.
-  const arg = process.argv
-    .slice(1)
-    .filter((a) => !a.startsWith('-'))
-    .map((a) => resolve(a))
-    .reverse()
-    .find((a) => a !== app.getAppPath() && existsSync(a) && statSync(a).isDirectory())
-  if (arg) {
-    try {
-      await backend.setRepository(await GitRepository.open(arg))
-    } catch {
-      // Ignora argumentos que não são repositórios.
-    }
-  }
+  // A janela vem primeiro: abrir um processo git já custa tempo do processo principal (medido: com um
+  // caminho na linha de comando, a janela saía 35–60 ms depois do `ready` quando o git era chamado antes
+  // dela). A abertura dos repositórios corre junto com o carregamento da interface. `startupDone` é
+  // atribuído no mesmo passo síncrono, antes de qualquer pedido da interface poder chegar. O título com o
+  // nome do repositório vem de `repositoryOpened`, que já encontra a janela criada.
   createWindow()
-  if (backend.repo) window?.setTitle(`${(await backend.repo.info()).name} — GitTools`)
+  startupDone = openAtStartup(pathFromArgs())
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

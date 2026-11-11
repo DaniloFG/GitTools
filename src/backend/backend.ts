@@ -20,6 +20,7 @@ import { onGitCommand, runGit } from '../core/exec'
 import { comparablePath, resolveInside } from '../core/paths'
 import { GitRepository } from '../core/repository'
 import { runTerminalCommand } from '../core/terminal'
+import { mapLimited } from './mapLimited'
 
 /** O que cada ambiente (Electron, VS Code) precisa fornecer. */
 export interface BackendHost {
@@ -70,6 +71,8 @@ interface WorkspaceFile {
 }
 
 const GIT_LOG_LIMIT = 500
+/** Repositórios da sessão anterior reabertos ao mesmo tempo (cada um abre processos git). */
+const REOPEN_CONCURRENCY = 4
 
 export class Backend {
   /** Repositórios abertos nesta sessão, pelo root de cada um. */
@@ -206,13 +209,16 @@ export class Backend {
 
   private async reopenSaved(): Promise<void> {
     const saved = await this.loadWorkspace()
-    for (const path of saved.repos) {
-      try {
-        await this.adopt(await GitRepository.open(path))
-      } catch {
-        // A pasta sumiu ou deixou de ser um repositório: descarta sem avisar.
-      }
-    }
+    // Cada reabertura custa 2 processos git (`rev-parse --show-toplevel` e `--git-dir` do observador). Em
+    // série, uma sessão com N abas esperava 2N processos um atrás do outro; aqui vão poucos por vez.
+    // Só a abertura (leitura do git) corre em paralelo. A inclusão na sessão (`adopt`) é feita depois, em
+    // série e na ordem gravada, para as abas não mudarem de ordem conforme cada processo terminou. Ela não
+    // abre processo: a pasta .git já veio com a abertura. Dois caminhos do mesmo repositório viram uma aba só.
+    const opened = await mapLimited(saved.repos, REOPEN_CONCURRENCY, (path) =>
+      // A pasta sumiu ou deixou de ser um repositório: descarta sem avisar.
+      GitRepository.open(path).catch(() => null)
+    )
+    for (const repo of opened) if (repo) await this.adopt(repo)
     if (this.activeRoot === null && saved.active !== null) this.activeRoot = this.keyOf(saved.active)
     if (this.activeRoot === null) this.activeRoot = this.repos.keys().next().value ?? null
     if (this.activeRoot !== null) this.host.repositoryOpened?.(await this.repos.get(this.activeRoot)!.info())
