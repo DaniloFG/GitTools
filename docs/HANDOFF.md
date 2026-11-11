@@ -10,7 +10,6 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 - **Fora do escopo**: nada decidido ainda. #61 (varredura de conflitos) é auditoria e pode virar várias issues.
 - **Regras deste trabalho**: uma branch só (a de trabalho, por ordem da plataforma); um commit verificado por etapa;
   PR só quando o dono pedir. Frase nova passa por `t()` nos seis catálogos.
-- **Metas**: sem meta de desempenho; vale a catraca (processos git, nós no DOM, pacote não pioram).
 
 ## 2. Estado
 
@@ -45,7 +44,6 @@ contagem de processos git antes e depois.
 - **Aceite**: `npm run typecheck && npm test` verdes; menus vistos na tela (`run-gittools`)
 - **Testes**: unidade (lógica de itens do menu) e tela
 - **Segurança**: não
-- **Depende de**: —
 
 ### Etapa E2 — commit, push e seleção inicial (#75 #57 #73 #77)
 - **Orquestra**: topo
@@ -126,7 +124,6 @@ contagem de processos git antes e depois.
 - **Arquivos prováveis**: `README.md` (links nas linhas 7, 571, 573), `extension/README.md` (15, 16, 255, 257, 264-268)
 - **Ler antes**: issues #72 #60. Links de patrocínio e licença: confirmar com o dono se saem junto.
 - **Aceite**: `grep -n github.com` nos dois READMEs sem menção ao repo; índice de seções no topo; chamadas de impacto primeiro
-- **Testes**: não se aplica
 - **Segurança**: não
 - **Depende de**: —
 
@@ -144,7 +141,6 @@ contagem de processos git antes e depois.
 - 2026-11-11: o mapa do código mostra que #84 (busca no Studio) e #59/#82 (menu em "Different files") pedem recurso
   novo, não ajuste.
 - 2026-11-11: o branch de trabalho vem da plataforma (`ccr-f146ea2b-tsxm2b`), fora do padrão `feature/*` do guia.
-- Mensagem de commit e PR sem Co-Authored-By nem Claude-Session (regra do `CLAUDE.md`).
 
 ## 6. Encerramento
 
