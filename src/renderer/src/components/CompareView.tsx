@@ -204,14 +204,14 @@ export function CompareView({ request, onRequest }: Props) {
         </datalist>
         <label className="field inline">
           <span>{t('compare.from')}</span>
-          <input list="compare-refs" value={from} onChange={(e) => setFrom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doCompare()} placeholder={t('compare.refPlaceholder')} />
+          <input list="compare-refs" value={from} onChange={(e) => setFrom(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !loading && doCompare()} placeholder={t('compare.refPlaceholder')} />
         </label>
         <button className="icon-button" onClick={swap} title={t('compare.swap')}>
           ⇄
         </button>
         <label className="field inline">
           <span>{t('compare.to')}</span>
-          <input list="compare-refs" value={to} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && doCompare()} placeholder={t('compare.refPlaceholder')} />
+          <input list="compare-refs" value={to} onChange={(e) => setTo(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !loading && doCompare()} placeholder={t('compare.refPlaceholder')} />
         </label>
         <label className="checkbox" title={t('compare.sinceBaseHelp')}>
           <input type="checkbox" checked={sinceBase} onChange={(e) => setSinceBase(e.target.checked)} />

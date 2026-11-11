@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useActions } from '../actions'
-import { useAppActions, useRepoData } from '../context'
+import { useAppActions, useBusy, useRepoData } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { commitBlock, effectivePushMode, parsePushMode, type CommitBlock, type PushMode } from '../feedback'
@@ -28,6 +28,10 @@ const draftOf = (root: string) => drafts.get(root) ?? { message: '', amend: fals
 export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onCommitted?(): void }) {
   const { data, repo } = useRepoData()
   const { run, toast } = useAppActions()
+  // Operação em andamento: Commit e Ctrl+Enter não disparam outro commit enquanto a primeira não termina.
+  const { busy } = useBusy()
+  // Pergunta de force push aberta: `busy` ainda é null nela, então este guarda é o que impede uma segunda pergunta.
+  const confirming = useRef(false)
   const { confirmForce } = useActions()
   const [message, setMessageState] = useState(() => draftOf(repo.root).message)
   const [amend, setAmendState] = useState(() => draftOf(repo.root).amend)
@@ -49,8 +53,19 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
   const forced = push && mode !== 'normal'
 
   const commit = async () => {
+    // Com operação em andamento, ou com a pergunta de force push já aberta, a chamada extra (Ctrl+Enter repetido) não faz nada.
+    if (busy !== null || confirming.current) return
     if (block) return toast('warning', t(BLOCK_TEXT[block]))
-    if (push && mode === 'force' && !(await confirmForce('force', status.branch))) return
+    if (push && mode === 'force') {
+      confirming.current = true
+      let confirmed: boolean
+      try {
+        confirmed = await confirmForce('force', status.branch)
+      } finally {
+        confirming.current = false
+      }
+      if (!confirmed) return
+    }
     let committed = false
     const result = await run(push ? t('busy.commitPush') : amend ? t('busy.amending') : t('busy.commit'), async () => {
       // Os arquivos marcados na lista de não staged entram no commit: são staged antes dele.
@@ -97,7 +112,7 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
         placeholder={t('changes.commitPlaceholder')}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && commit()}
+        onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && busy === null && commit()}
         rows={3}
       />
       <div className="commit-options">
@@ -142,7 +157,7 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
       <div className="commit-actions">
         <button
           className={mode === 'force' && push ? 'danger' : 'primary'}
-          disabled={!canCommit}
+          disabled={!canCommit || busy !== null}
           title={block ? t(BLOCK_TEXT[block]) : undefined}
           onClick={commit}
         >

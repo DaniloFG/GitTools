@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { BranchCommit, BranchInfo, ChangedFile, CrossApply, DiffSource, FileApplyMode, FileDiff, LineKey, OperationResult } from '../../../shared/types'
-import { currentBranch, useAppActions, useRepoData, type StudioRequest } from '../context'
+import { currentBranch, useAppActions, useBusy, useRepoData, type StudioRequest } from '../context'
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t, type MessageKey } from '../i18n'
 import { gitFor, markChanged } from '../git'
@@ -56,6 +56,8 @@ const SearchBox = memo(function SearchBox({ value, onSearch }: { value: string; 
 export function CherryPickStudio({ request, onClose }: { request: StudioRequest; onClose(): void }) {
   const { data, repo, workspace } = useRepoData()
   const { run, toast } = useAppActions()
+  // Operação em andamento: o Aplicar não dispara outra enquanto a primeira não termina (clique duplo).
+  const { busy } = useBusy()
   const head = currentBranch(data)
   const fromSelection = !!request.commits?.length && !request.source
 
@@ -345,7 +347,7 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
             {mode !== 'branch' && mode !== 'commits' && !autoCommit && t('studio.leftStaged')}
           </span>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" disabled={!canApply} onClick={apply}>
+          <button className="primary" disabled={!canApply || busy !== null} onClick={apply}>
             {applyLabel}
           </button>
         </>
