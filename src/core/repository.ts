@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { access, lstat, mkdir, open, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import type { LogOptions, RepoApi } from '../shared/api'
@@ -67,6 +67,24 @@ const GS = '\x1d'
 /** Máximo de commits que os dashboards leem por vez (os mais recentes) e de arquivos da árvore atual. */
 const ANALYTICS_LIMIT = 20_000
 const ANALYTICS_TREE_LIMIT = 100_000
+/**
+ * Versão do formato do resultado de `analytics` que entra na chave de cache. Mude-a quando o formato
+ * (campos, ordem, regras de contagem) mudar, para que caches gravados em disco por versões antigas não
+ * sejam servidos como se ainda valessem.
+ */
+export const ANALYTICS_CACHE_VERSION = 1
+/** Prefixos de refs que `analytics` lê (`--branches --remotes --tags`); as demais não mudam o resultado. */
+const ANALYTICS_REF_PREFIXES = ['refs/heads/', 'refs/remotes/', 'refs/tags/']
+/** Quantos registros do log são convertidos antes de ceder a vez ao event loop (a conversão é síncrona). */
+const ANALYTICS_YIELD_EVERY = 1000
+
+const analyticsScope = (options: AnalyticsOptions): 'all' | 'head' => (options.scope === 'head' ? 'head' : 'all')
+/** Mesmo limite para `analytics` e `analyticsKey`: sem isso, a chave e o resultado poderiam falar de tamanhos diferentes. */
+const analyticsLimit = (options: AnalyticsOptions): number => Math.max(1, Math.min(Math.floor(options.limit ?? ANALYTICS_LIMIT), 200_000))
+/** SHA-1 do texto unido: a lista de refs pode ter ~70 KB, e a chave precisa ser curta para o nome do arquivo de cache. */
+const analyticsHash = (parts: string[]): string => createHash('sha1').update(['v' + ANALYTICS_CACHE_VERSION, ...parts].join('\n')).digest('hex')
+/** Cede a vez ao event loop: o processo principal atende janelas e IPC entre um lote de registros e outro. */
+const yieldToLoop = () => new Promise<void>((resolve) => setImmediate(resolve))
 const RS = '\x1e'
 const ANALYTICS_FORMAT = '%x1e%H%x1f%P%x1f%aN%x1f%aE%x1f%cN%x1f%cE%x1f%at%x1f%ct%x1f%s%x1f%D%x1f%b%x1d'
 const COMMIT_FORMAT = ['%H', '%P', '%an', '%ae', '%at', '%s', '%D'].join('%x1f') + '%x1e'
@@ -1649,11 +1667,49 @@ export class GitRepository implements RepoApi {
 
   // ------------------------------------------------------------ dashboards
 
-  async analytics(options: AnalyticsOptions = {}): Promise<Analytics> {
-    const scope = options.scope === 'head' ? 'head' : 'all'
-    const limit = Math.max(1, Math.min(Math.floor(options.limit ?? ANALYTICS_LIMIT), 200_000))
+  /**
+   * Chave que muda sempre que o resultado de `analytics(options)` mudaria. Custa um único processo git
+   * (`show-ref --head` no escopo 'all'), para que o cache acerte sem ler o log inteiro. Quem chama usa
+   * `hasHead` em `analytics(options, { hasHead })` e não repete o `rev-parse`.
+   */
+  async analyticsKey(options: AnalyticsOptions = {}): Promise<{ key: string; hasHead: boolean }> {
+    const scope = analyticsScope(options)
+    const limit = analyticsLimit(options)
+    if (scope === 'head') {
+      const { stdout, exitCode } = await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })
+      const sha = exitCode === 0 ? stdout.trim() : ''
+      return { key: analyticsHash(['head', String(limit), sha]), hasHead: sha !== '' }
+    }
+    // `show-ref --head` lista HEAD (com o sha) quando ele resolve, e todas as refs numa só leitura. Sai 1,
+    // sem nada na saída, quando não há ref alguma; isso não é erro.
+    const { stdout } = await this.git(['show-ref', '--head'], { okExitCodes: [0, 1] })
+    let headSha = ''
+    const refs: string[] = []
+    for (const line of stdout.split('\n')) {
+      const at = line.indexOf(' ')
+      if (at === -1) continue
+      const name = line.slice(at + 1)
+      if (name === 'HEAD') headSha = line.slice(0, at)
+      // Refs fora de heads/remotes/tags (stash, notes, outras) não mudam o que o log lê: ignoradas para
+      // que criar um stash ou uma nota não invalide o cache.
+      else if (ANALYTICS_REF_PREFIXES.some((p) => name.startsWith(p))) refs.push(line)
+    }
+    // A ordem em que o git lista as refs não é garantida; ordenar evita uma chave diferente à toa.
+    refs.sort()
+    return { key: analyticsHash(['all', String(limit), headSha, ...refs]), hasHead: headSha !== '' }
+  }
+
+  /**
+   * `known` é o resultado de `analyticsKey` já feito pelo chamador: com ele, o `rev-parse` do HEAD não se
+   * repete. Sem ele, o método consulta o HEAD sozinho, como antes.
+   */
+  async analytics(options: AnalyticsOptions = {}, known?: { hasHead: boolean }): Promise<Analytics> {
+    const scope = analyticsScope(options)
+    const limit = analyticsLimit(options)
     const generatedAt = Date.now()
-    const hasHead = (await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })).exitCode === 0
+    const hasHead = known
+      ? known.hasHead
+      : (await this.git(['rev-parse', '--verify', '--quiet', 'HEAD'], { okExitCodes: [0, 1] })).exitCode === 0
     const args = ['log', '--no-renames', '--numstat', `--format=${ANALYTICS_FORMAT}`, '--date-order', `-n${limit + 1}`]
     if (scope === 'all') {
       args.push('--branches', '--remotes', '--tags')
@@ -1668,7 +1724,11 @@ export class GitRepository implements RepoApi {
     const pathIndex = new Map<string, number>()
     const paths: string[] = []
     const commits: AnalyticsCommit[] = []
+    // A conversão é síncrona e, com 20 mil commits, leva dezenas de milissegundos: sem pausas, a janela e o IPC
+    // ficam travados todo esse tempo. A ordem e os campos não mudam; só há uma pausa a cada lote.
+    let converted = 0
     for (const record of records.slice(0, limit)) {
+      if (++converted % ANALYTICS_YIELD_EVERY === 0) await yieldToLoop()
       const end = record.indexOf(GS)
       const head = (end === -1 ? record : record.slice(0, end)).replace(/^\n/, '').split(FS)
       const numstat = end === -1 ? '' : record.slice(end + 1)
