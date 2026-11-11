@@ -13,15 +13,15 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**Última etapa fechada:** E2, commit `5957e84`: #75 (checkbox removido), #57 (modo de push volta a normal), #77 (clique na linha WIP atualiza o painel) feitos; #73 já existia. typecheck e 828 testes verdes; telas não conferidas no Chromium, sem teste de componente para #57-reset e #77.
+**Última etapa fechada:** E3, commit `6179d6d`: #83 (botões do diff no submenu "Opções" do ⋯, via `DiffView.panelActions`) e #86 (causa: `overflow: hidden` herdado cortava a alça; corrigido no CSS). typecheck e 831 testes verdes; tela conferida no Chromium só na History e no painel de commit. `code-review` medium rodado sobre E1–E3 (achados na seção 5).
 
-**A seguir:** `E3` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
+**A seguir:** `E4` (E1 segue parcial: #76 e rótulo pendentes, seção 5)
 
 | Etapa | Issues | Objetivo | Estado | Commit |
 | --- | --- | --- | --- | --- |
 | E1 | #58 #76 #82 | Menus de contexto: rótulos, Copy path, remover itens | parcial (#76 e rótulo "Editor do GitTools" pendentes) | 69618ba |
 | E2 | #75 #57 #73 #77 | Commit/push e Changes/History: remover "Include all files", push volta a normal, seleção inicial | feito (#73 já existia) | 5957e84 |
-| E3 | #83 #86 | Diff: botões vão para submenu "Options"; colunas do History redimensionáveis | a fazer | |
+| E3 | #83 #86 | Diff: botões vão para submenu "Options"; colunas do History redimensionáveis | feito | 6179d6d |
 | E4 | #74 #78 #56 | Menu Appearance: Toolbar, "Dynamic panels", visibilidade das telas | a fazer | |
 | E5 | #62 | Tela inicial History; estado de tela/layout independente por aba | a fazer | |
 | E6 | #70 #71 | Multi-repo desligado por padrão; busca única em Settings | a fazer | |
@@ -37,16 +37,6 @@ contagem de processos git antes e depois.
 
 ## 4. Plano
 
-### Etapa E3 — painel de diff e colunas (#83 #86)
-- **Orquestra**: topo
-- **Arquivos prováveis**: `CommitDetails.tsx:365-379`, `ChangesView.tsx:411,433`, `CompareView.tsx:252`,
-  `FilesView.tsx:448`, `DiffView.tsx:554-568`, `CommitList.tsx:108,134-138,416-420`
-- **Ler antes**: issues #83 e #86; `.claude/rules/interface.md`. Larguras já são salvas (`history.columnWidths`):
-  #86 é achar/alargar a alça `.column-resize`, não criar persistência.
-- **Aceite**: print antes/depois; nós no DOM do History iguais; `npm test` verde (unidade + tela)
-- **Segurança**: não
-- **Depende de**: E1 (mesmos menus)
-
 ### Etapa E4 — menu Appearance (#74 #78 #56)
 - **Orquestra**: topo
 - **Arquivos prováveis**: `Screens.tsx:87-147`, `dock.ts:63-73`, `toolbarItems.ts`, `Toolbar.tsx:41,130`,
@@ -56,7 +46,7 @@ contagem de processos git antes e depois.
 - **Aceite**: telas ocultas somem da barra e não quebram o atalho/tela inicial; `npm test` verde
 - **Testes**: unidade e tela
 - **Segurança**: não
-- **Depende de**: E3
+- **Depende de**: —
 
 ### Etapa E5 — tela inicial e independência por aba (#62)
 - **Orquestra**: topo (desenho)
@@ -123,8 +113,9 @@ contagem de processos git antes e depois.
 - 2026-11-11: o branch de trabalho vem da plataforma (`ccr-f146ea2b-tsxm2b`), fora do padrão `feature/*` do guia.
 
 - 2026-11-11 E1, dúvidas para o dono: (a) #76 pede tirar "Force push (with lease)" do menu de clique direito do History, mas ali não existe; o item está na Toolbar (`toolbar.pushForce`, `Toolbar.tsx:100`) e no menu da branch na Sidebar (`sidebar.menu.pushForce`, `branchMenu.ts:48`). Não removido; remover um, os dois ou nenhum? (b) #82 pede "Editor do GitTools" no lugar de "Open in new window", mas esse item abre o diff em janela própria (`openDiffWindow`), não o editor (`FileEditor`, aberto pela tela Files). Rótulo não trocado; confirmar o que se quer.
-- 2026-11-11 E2: clicar na linha WIP não troca o arquivo já ativo em `WipPanes` (só preenche o vazio); mudar isso exige editar `CommitDetails.tsx`. `code-review` e tela não rodaram; junto da E3.
-- 2026-11-11 E1: `code-review` e conferência em tela (`run-gittools`) não rodaram; fazer junto com a E3, que mexe nos mesmos menus. Traduções ar/hi/zh de `common.openInVscode` pedem revisão de nativo.
+- 2026-11-11 E3, achados do `code-review` ainda abertos (não corrigidos, decisão do dono ou etapa própria): (a) Compare: "Abrir no editor" aparece para todo status exceto D, mas abre a cópia da árvore de trabalho, não a versão do ref comparado (`CompareView.tsx:113`); (b) clique na linha WIP chama `onOpenFile('')` e limpa a seleção de commit/força a tela History mesmo ao só expandir (`CommitList.tsx:680`); (c) `common.openInVscode` fixa "VSCode" embora o editor seja configurável; (d) Toolbar perdeu o botão que abre o projeto inteiro no editor (E1); (e) `CommitBox`: `setMode(undefined)` roda após o push mesmo se ele falhar, perdendo a escolha "force" no retry; (f) FilesView: ações do histórico do arquivo só existem depois que o diff carrega. Recusados: sobreposição de alças (colunas adjacentes nunca têm alças de lados opostos) e estado congelado do submenu (a seleção não muda com o menu aberto).
+- 2026-11-11 E2: clicar na linha WIP não troca o arquivo já ativo em `WipPanes` (só preenche o vazio); mudar isso exige editar `CommitDetails.tsx`. `code-review` rodou na E3.
+- 2026-11-11 E1: `code-review` feito na E3; conferência em tela só do menu do diff e da History (menus de arquivo de Changes/Files/Compare não conferidos). Traduções ar/hi/zh de `common.openInVscode` pedem revisão de nativo.
 
 ## 6. Encerramento
 
