@@ -11,6 +11,10 @@ também em computadores fracos. As regras do dia a dia que saem daqui estão no 
 - [6. Plano de melhoria](#6-plano-de-melhoria)
 - [7. Orçamentos](#7-orçamentos)
 - [8. Resultado da Fase 1](#8-resultado-da-fase-1)
+- [9. Resultado da Fase 2](#9-resultado-da-fase-2)
+- [10. Resultado da Fase 3](#10-resultado-da-fase-3)
+- [11. Resultado da Fase 4](#11-resultado-da-fase-4)
+- [12. Resultado da Fase 5](#12-resultado-da-fase-5)
 
 ## 1. Resumo
 
@@ -231,6 +235,9 @@ prioridade para o que o usuário está vendo.
 conversão roda no processo principal, que nesse tempo não atende nenhuma outra janela nem chamada.
 Correção: processo auxiliar (`utilityProcess` ou worker), envio em partes com progresso, formato em colunas e
 cache em disco pela assinatura do histórico.
+**Diagnóstico corrigido na Fase 5:** medido, 98% do tempo é o próprio `git log --numstat`, que roda fora do processo
+principal; a conversão síncrona custava ~65 ms. Foram feitos o formato em colunas, a conversão em lotes e o cache
+pela chave do histórico; o processo auxiliar e o envio em partes não (ver a [seção 12](#12-resultado-da-fase-5)).
 
 ### C. Fluidez de listas
 
@@ -373,6 +380,8 @@ Fase concluída. Resultados na [seção 10](#10-resultado-da-fase-3).
 
 Meta: rolar o histórico sem tarefas longas e em até 16 ms por quadro com a CPU 4× mais lenta.
 
+Fase concluída. Resultados na [seção 11](#11-resultado-da-fase-4).
+
 ### Fase 5 — Carga e trabalho pesado fora da interface (cerca de 1 semana)
 
 | # | Mudança | Achado | Tamanho |
@@ -381,13 +390,15 @@ Meta: rolar o histórico sem tarefas longas e em até 16 ms por quadro com a CPU
 | 5.2 | `React.lazy` nas telas e diálogos que não aparecem na abertura | D3 | M |
 | 5.3 | Criar a janela antes de ler configurações e repositórios; reabrir a sessão em paralelo | D4 | P |
 | 5.4 | Extensão: painel primeiro, descoberta por trás, uma gravação no fim | D5 | M |
-| 5.5 | Dashboards num processo auxiliar, em partes, com cache em disco | B7 | G |
+| 5.5 | Dashboards num processo auxiliar, em partes, com cache em disco (feito: formato em colunas, lotes e cache; o processo auxiliar e as partes foram descartados pela medição) | B7 | G |
 
 Meta: JavaScript da primeira carga em até 700 KB; carga inicial com até 8 processos git.
 
+Fase concluída. Resultados na [seção 12](#12-resultado-da-fase-5).
+
 ## 7. Orçamentos
 
-Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/ui.mjs 4`. "Hoje" é a medição ao fim da Fase 3; a meta é o que o plano busca. Enquanto a meta não é atingida, a regra é **não piorar o "hoje"**.
+Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/ui.mjs 4`. "Hoje" é a medição ao fim da Fase 5 (duas rodadas; a máquina dessa medição deu o `core.mjs` cerca de 25% mais rápido que a linha de base, então compare tempos com cautela; processos e tamanhos não dependem dela); a meta é o que o plano busca. Enquanto a meta não é atingida, a regra é **não piorar o "hoje"**.
 
 | Métrica | Hoje | Meta |
 | --- | --- | --- |
@@ -396,14 +407,15 @@ Valem para o repositório de teste, cenário `moderate`, com `node scripts/perf/
 | Processos git: selecionar 1 commit | 2 | ≤ 2 |
 | Processos git: 10× seta no histórico | 4 | ≤ 6 |
 | Processos git: carga inicial | 6 | ≤ 8 |
-| Rolar o histórico (CPU 4×, 30 quadros de 400 px) | 45–73 ms por quadro (antes da janela: ~41) | ≤ 16 ms |
-| Tarefas longas ao rolar o histórico (CPU 4×) | 1–13 (maior 50–123 ms) | 0 |
-| Arrastar divisória (CPU 4×) | 71–122 ms por passo (34–41 linhas montadas); com o diff de 5.000 linhas, 151–160 ms | ≤ 16 ms |
-| Abrir diff de 5.000 linhas alteradas (CPU 4×) | 0,93–0,99 s | ≤ 300 ms |
-| Marcar 1 linha nesse diff (CPU 4×) | 26–61 ms | ≤ 50 ms |
-| Nós no DOM, em qualquer tela | ≤ 1.645 (histórico, diff de 5.000 linhas, blame de 20 mil) | ≤ 5.000 |
-| `status` no cenário `heavy` | com contagens 129 ms (simples 15 ms); sem contagens, que é o caso da atualização fora das telas que as mostram, igual ao simples | ≤ 2× o `status()` simples |
-| JavaScript da primeira carga (Electron) | 1.251 KB | ≤ 700 KB |
+| Rolar o histórico (CPU 4×, 30 quadros de 400 px) | 28,8–29,2 ms por quadro (fim da Fase 3: 45–73) | ≤ 16 ms |
+| Tarefas longas ao rolar o histórico (CPU 4×) | 0–2 (maior 52 ms) | 0 |
+| Arrastar divisória (CPU 4×) | 56–66 ms por passo (34–41 linhas montadas); com o diff de 5.000 linhas, 90–101 ms | ≤ 16 ms |
+| Abrir diff de 5.000 linhas alteradas (CPU 4×) | 0,44–0,57 s (fim da Fase 3: 0,93–0,99) | ≤ 300 ms |
+| Marcar 1 linha nesse diff (CPU 4×) | 20–34 ms | ≤ 50 ms |
+| Nós no DOM, em qualquer tela | ≤ 1.645 (histórico 1.311, diff de 5.000 linhas 1.261, lado a lado 1.645; blame de 20 mil 661) | ≤ 5.000 |
+| `status` no cenário `heavy` | com contagens 88 ms (simples 12 ms; fim da Fase 3: 129 e 15); sem contagens, que é o caso da atualização fora das telas que as mostram, igual ao simples | ≤ 2× o `status()` simples |
+| JavaScript da primeira carga | 562 KB no webview, 561 KB no Electron, mais o catálogo do idioma ativo (62–119 KB) | ≤ 700 KB |
+| Dashboards: abrir de novo sem mudança de ref | 6–23 ms, 1 processo (memória ou disco); 1ª vez ~2,8 s, 4 processos | não piorar |
 
 A meta do arrasto de divisória depende da lista em janela da Fase 2 (itens 2.1 e 2.6): o custo que resta é de layout
 e pintura do conteúdo montado, e não do React.
@@ -553,3 +565,126 @@ Fase concluída: 3.1 a 3.5 (o 3.5 veio na Fase 1) e o formato compacto do diff. 
 - **Abrir o diff de 5.000 linhas em 300 ms** (hoje 0,93–0,99 s): o que sobra é o texto das linhas (~1,6 MB), a
   conversão e o primeiro desenho. Próximos passos possíveis: mandar só as primeiras centenas de linhas e o resto
   sob demanda (o diff já é desenhado por janela), ou comprimir o texto.
+
+## 11. Resultado da Fase 4
+
+Fase concluída: 4.1 a 4.6. Cada item foi medido com o roteiro que mostra o seu efeito: `core.mjs` para as funções
+puras e, para a interface, roteiros descartáveis sobre o harness de `scripts/readme-media` (CPU 4×, mediana de 3
+rodadas), porque o `ui.mjs` não exercita a barra lateral cheia nem conta componentes redesenhados. Processos git
+sem mudança em toda a fase (atualização 5, selecionar 1 commit 2 no `core.mjs`).
+
+| Item | O que mudou | Resultado medido |
+| --- | --- | --- |
+| 4.6 Comparação de diffs | `sameDiff` (`diffIdentity.ts`) no lugar do `JSON.stringify` em `ChangesView` e `WipPanes`: compara os metadados e para na linha `index` (hashes dos blobs). `applyLines` de `SingleCommit` só limpa a seleção se o diff ainda for o mesmo de quando a ação começou | Comparar o diff de 5.000 linhas: 2,35 → 0,002 ms com `index`; 0,078 ms sem (arquivo não rastreado) |
+| 4.4 `buildTree` | A subpasta é achada por um `Map` do caminho completo, no lugar do `find` entre os filhos; `flattenTree` empurra tudo num array só | 2.000 arquivos 6,3 → 3,0 ms; 10.000 44,9 → 13,1 ms; 30.000 268 → 37 ms. Resultado idêntico (teste de equivalência com a versão antiga) |
+| 4.3 Branches e tags | `groupBranches` (`sidebarGroups.ts`) linear e memorizado por `data.branches`; marcadas num `Set`; `commitColors`, árvore e linhas em `useMemo`; dicas de branch e stash montadas ao passar o mouse | Agrupar 1.100 branches (800 remotas): 0,349 → 0,025 ms |
+| 4.2 Itens sem contexto | `BranchItem`, `TagItem`, `StashItem` e `BranchBadge` são `memo`, recebem primitivos e uma ref de handlers montada pelo painel (como `CommitRow`); a etiqueta acha a branch por `Map` e recebe um `Set` estável das remotas | 10 setas no histórico com 307 linhas de branch na tela: script 446 → 315 ms por bloco (503/446/391 → 384/315/272). Atualização sem mudança de dados: igual (~2 ms de script; o resto é layout ~25 ms e estilo ~9 ms) |
+| 4.5 Ícones por símbolo | Cada tipo de ícone entra uma vez num sprite compartilhado (`<symbol>`, ids internos prefixados) e a linha desenha `<svg><use/></svg>`; `FileIcon` e `FileLabel` são `memo` sem contexto; o tema é lido uma vez por lista; o ajuste "ícones de arquivo" virou `data-file-icons` na raiz | Cenário `heavy`: abrir Changes 490 → 437 ms (script 239 → 168 ms; o novo varia de 385 a 613 ms); nós no DOM 4.602 → 4.148; `MutationObserver` criados 302 → 3; mudar para árvore 401 → 324 ms. **Piorou:** trocar o tema 94 → 118 ms (evento raro; aceito) |
+| 4.1 Contexto dividido | Quatro fatias (`useRepoData`, `useBusy`, `useAppActions`, `useAppSettings`), com as ações estáveis; os 29 consumidores lendo só a fatia que usam; filhos do `RepoView` atrás de `memo` (`paneMemo`), com `locale` como propriedade; lista de arquivos de `SingleCommit` em `useMemo` | Componentes redesenhados e script, cenário `moderate`: stage de 1 arquivo 500 → 195, 45 → 30 ms; 10 setas 1.002 → ~435, 218 → 154 ms; selecionar 1 commit 1.604 → 967, 136 → 118 ms; abrir Changes 439 → 407, 78 → 76 ms |
+
+Pacote da interface: cerca de +4,6 KB na fase inteira (4.2 +0,9; 4.5 +1,3; 4.1 +2,4).
+
+### Dividir o contexto, sozinho, não mudou nada
+
+O achado C2 atribuía os redesenhos ao contexto único. Com as fatias prontas e os consumidores migrados (as duas
+primeiras partes do 4.1), a contagem de componentes redesenhados não se mexeu: a seleção, o foco e a operação em
+andamento são estado do `RepoView`, que redesenhava barra de ferramentas, Dock, barra lateral e todas as telas **por
+propriedade** a cada clique, seta ou mudança de `busy`. O ganho veio da terceira parte (filhos memorizados com
+manipuladores estáveis). A lição vale para código novo: contexto estreito não basta se o pai redesenha os filhos.
+
+A contagem citada na mensagem do commit `8415f40` (875 / 4.373 / 6.076 componentes) vem de um roteiro que contava
+também as subárvores que o React pulou; não serve de comparação com os números acima.
+
+### Metas da Fase 4
+
+| Meta | Resultado | Situação |
+| --- | --- | --- |
+| Rolar o histórico em até 16 ms por quadro (CPU 4×) | 28,8–29,2 ms por quadro (fim da Fase 3: 45–73 ms; ver a ressalva abaixo) | Não atingida |
+| Rolar o histórico sem tarefas longas | 0 e 2 tarefas longas nas duas rodadas (maior 52 ms; fim da Fase 3: 1–13, maior 50–123 ms) | Não atingida, perto |
+
+Ressalva: as duas rodadas são do fim da Fase 5 (`ui.mjs 4 moderate`), numa máquina que também deu o `core.mjs` cerca
+de 25% mais rápido que a linha de base (por exemplo, `blame` 318 → 232 ms e `status()` 12–15 → 9 ms, sem mudança de
+código nessas leituras). Parte da queda vem da máquina; quanto, não dá para separar sem medir as versões alternadas.
+
+A Fase 4 tirou trabalho de React das listas, mas a rolagem do histórico já não era limitada por ele: na Fase 2, com
+todas as linhas montadas, o quadro custava ~41 ms com 2 ms de script e layout zero, ou seja, o piso é pintura e
+composição. Chegar a 16 ms exige menos nós e menos pintura por linha (o SVG do grafo é o primeiro candidato),
+medidos com o `Tracing` do CDP antes de mexer.
+
+### Não feito
+
+- **Branches e tags continuam todas montadas** (sem lista em janela): com 1.100 refs, a barra lateral é a maior
+  lista sem teto que sobrou. Os itens agora são baratos de redesenhar, mas o custo de montar acompanha o repositório.
+- **`ChangesView` redesenha 5 vezes ao abrir** e o `RepoView`, 1 vez por seleção (a seleção é estado dele; os filhos
+  memorizados limitam o estrago).
+- Trocar o tema ficou ~24 ms mais lento com os símbolos compartilhados (dois quadros, nas 3 rodadas). Se voltar a
+  isso: ver se o custo é a troca das variantes claras dos ícones ou a reclonagem dos `<use>`.
+- Não conferidos à mão no navegador: menus, arrastar e duplo clique dos itens da barra lateral (4.2), ícones com
+  gradiente (jenkins, kotlin, maven) e o ajuste de desligar ícones (4.5). Com os ícones desligados, os símbolos
+  ainda são inseridos no sprite (ocultos).
+
+## 12. Resultado da Fase 5
+
+Fase concluída: 5.1 a 5.5. Tamanhos com `npm run build` e `npm run build:extension`; o resto com o roteiro indicado
+em cada linha.
+
+| Item | O que mudou | Resultado medido |
+| --- | --- | --- |
+| 5.1 Idiomas sob demanda | O módulo de i18n não importa catálogo nenhum: cada processo registra como carregar um idioma (`setCatalogLoader`). A interface usa um `import()` por idioma e espera o ativo antes do primeiro desenho; o inglês (reserva) vem depois, com o navegador livre. Processo principal e extensão leem `locales/<id>.json` com `readFile` | Interface na 1ª carga 1.270.862 → 801.675 bytes + o catálogo ativo (62–119 KB; pt-BR 68.668); processo principal 548.101 → 75.923; extensão 793.198 → 77.249 |
+| 5.2 `React.lazy` | `lazyScreens.ts`: dashboards, comparação, editor de arquivo, terminal, Studio de cherry-pick, conflitos, rebase, clone, diálogos, configurações, atalhos e a janela de diff vêm sob demanda, com um `Suspense` por tela; o pedaço dos dashboards é pedido ao passar o mouse no botão | `index.js` do webview 802.241 → 559.353 bytes (Electron 801.675 → 558.787); CSS inicial 98 → 86 KB. Carga a frio até a 1ª linha (`ui.mjs`): mediana 645 → 601 ms, perto do ruído. Processos git iguais |
+| 5.3 Janela antes do git | A leitura das configurações começa ao carregar o módulo; a janela é criada logo depois do `ready`; a reabertura da sessão corre junto com a carga da interface, até 4 repositórios por vez | Electron com Xvfb, 4 execuções: janela com caminho na linha de comando 77–115 → 11–14 ms depois do `ready` (sem caminho, igual: 11–16 ms); fim da carga da interface com caminho 357–518 → 326–383 ms; `reopenSaved` com 3 / 8 / 16 repositórios 22,6 / 44,6 / 99,3 → 18,8 / 34,7 / 65,2 ms |
+| 5.4 Extensão: painel primeiro | A descoberta começa ao anexar o painel; os pedidos que dependem dos repositórios esperam por ela; varredura com até 8 pastas lidas adiantado (mesma ordem e teto); repositórios abertos até 4 por vez e gravados uma vez | Com 3 repositórios: gravações dos recentes 3 → 1, do estado da janela 4 → 1; processos git iguais (3). Tempo no VS Code real não medido |
+| 5.5 Dashboards | Formato colunar (`analyticsWire.ts`); chave do histórico em 1 processo (`analyticsKey`: `show-ref --head` sobre heads, remotes e tags, mais escopo, limite e versão do formato); conversão que cede o event loop a cada 1.000 registros; cache em memória (4 entradas) e em disco (`analyticsCache.ts`, até 16 arquivos, gravação por temporário e `rename`, só guarda se a chave não mudou durante a leitura) | JSON 7,7 → 3,7 MB; `structuredClone` (IPC do Electron) 78 → 25 ms; `stringify` + `parse` (VS Code) 60 → 22 ms; maior pausa do processo principal durante a leitura 77–101 → 25–47 ms. Ver a tabela abaixo |
+
+Dashboards no `core.mjs moderate` (20 mil commits; mesmas linhas no roteiro):
+
+| Leitura | Tempo | Processos | Tamanho |
+| --- | --- | --- | --- |
+| `analytics` sem cache | 2.787–2.890 ms | 3 | 7.505 KB |
+| 1ª vez, pelo cache (falta) | 2.713–2.797 ms | 4 | 3.597 KB |
+| De novo, cache em memória | 6–7 ms | 1 | 3.597 KB |
+| Depois de reiniciar, cache em disco | 23 ms | 1 | 3.597 KB |
+
+No navegador (harness, sem limitar a CPU): os dashboards abrem com os 20.000 commits e os 8 widgets; 1ª abertura
+3,3 s, reabrir 0,3 s sem processo git. Antes, abrir os dashboards depois de reiniciar ou de qualquer mudança de ref
+relia os 20 mil commits; agora isso só acontece quando uma branch, tag ou o HEAD muda de lugar.
+
+### O achado B7 estava errado no diagnóstico
+
+O B7 (seção 5) dizia que a conversão dos 20 mil commits rodava no processo principal e o travava por segundos, e
+propunha um processo auxiliar e envio em partes com progresso. A medição do item 5.5 mostrou outra coisa: 98% dos
+~2,9 s são o próprio `git log --numstat`, que já roda num processo à parte e não bloqueia o processo principal; a
+conversão síncrona custava ~65 ms (as pausas de 77–101 ms medidas). Por isso:
+
+- **Não foi feito o processo auxiliar.** Ele economizaria ~65 ms de pausa, que a conversão em lotes já reduziu para
+  25–47 ms, ao custo de um processo a mais e de copiar o resultado entre processos.
+- **Não foi feito o envio em partes com progresso.** O que demorava era o git, não a entrega; com o formato colunar,
+  a entrega caiu para 22–25 ms.
+- **O ganho real veio do cache pela chave do histórico**: abrir de novo passa de ~2,8 s e 3 processos para 6–23 ms e
+  1 processo.
+
+Os 3,9–4,9 s da linha de base (seção 3) foram medidos noutro container, antes das Fases 1 a 4; os 2,8–2,9 s acima
+são o caminho sem cache, medido na mesma máquina que as linhas com cache.
+
+### Metas da Fase 5
+
+| Meta | Resultado | Situação |
+| --- | --- | --- |
+| JavaScript da primeira carga em até 700 KB | 562 KB + o catálogo do idioma ativo (pt-BR 69 KB; o maior, 119 KB): 631–681 KB. Electron: 561 KB | Atingida |
+| Carga inicial com até 8 processos git | 6 | Atingida |
+
+### Não feito, de propósito
+
+- **Ficaram no pacote inicial** o que é montado na abertura: `KeyboardShortcuts` (o ouvinte precisa estar pronto),
+  `ContextMenu` (6 KB), `Toasts`, `OperationBanner`, `ChangesView` e `Dock`.
+- **Atualização incremental dos dashboards**: ler só os commits novos (`<novas> --not <antigas>`) quando nenhuma ref
+  antiga sumiu, para que um commit novo não custe os ~2,8 s inteiros. Ideia registrada, não feita.
+- **O botão de atualizar dos dashboards** não chega ao backend (o cache da interface responde), então "Atualizado
+  agora" mostra o `generatedAt` antigo. Com o cache por chave, o dado é o mesmo; o botão pode ser simplificado ou
+  removido.
+- **`DiffWindow.tsx` ainda chama `setLocale`**: seguro, mas baixa um catálogo a mais se o idioma salvo difere do
+  navegador e não renova os textos se o idioma for trocado com a janela de diff aberta.
+- **Não conferidos:** o reinício do aplicativo de verdade com o cache em disco (só pelo `core.mjs`, com um backend
+  novo na mesma pasta); o webview do VS Code com as telas sob demanda (o CSS dos dashboards vem num pedaço próprio;
+  a CSP inclui o `cspSource`); o terminal git e o editor de arquivo abertos de fato; o tempo da extensão (5.4) no
+  VS Code real.
