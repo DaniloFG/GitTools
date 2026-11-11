@@ -46,7 +46,39 @@ Estas instruções vieram do usuário e valem para todas as janelas:
    usuário pediu para parar. Se a criação da sessão falhar ou não estiver disponível, deixe a mensagem da seção 6
    pronta e avise o usuário.
 
-## 2. Estado atual (fim da janela 7)
+## 2. Estado atual (fim da janela 8)
+
+- **Janela 8: item 4.1 feito (Fase 4 concluída) e, em paralelo, 5.1, 5.3 e 5.4.**
+  - 4.1 em três commits: `4ffe742` (contexto em quatro fatias: `useRepoData`, `useBusy`, `useAppActions`,
+    `useAppSettings`; ações estáveis, mudam só com idioma e repositório; `useApp()` e `AppContext` ainda existem
+    para compatibilidade), `8415f40` (os 29 consumidores lendo só a fatia que usam; a janela de diff fornece as
+    fatias, com dados nulos) e `9bcbac4` (filhos do `RepoView` atrás de `memo` via `paneMemo`, com `locale` como
+    propriedade; lista de arquivos de `SingleCommit` em `useMemo`). **A divisão sozinha não mudou nada**: o
+    redesenho vinha do `RepoView` por propriedade; o ganho veio do 3º commit. Medido (CPU 4×, moderate, script
+    mediano de 3 rodadas, roteiro descartável `measure-41b.mjs --exato`): stage de 1 arquivo 500 → 195
+    componentes, 45 → 30 ms; 10 setas 1.002 → ~435, 218 → 154 ms; selecionar commit 1.604 → 967, 136 → 118 ms;
+    abrir Changes 439 → 407, 78 → 76 ms. A contagem citada na mensagem de `8415f40` (875/4.373/6.076) é do
+    roteiro antigo, que contava subárvores puladas pelo React; não use.
+  - 5.4 (`f4b184e`): extensão abre o painel antes da varredura; gravações com 3 repositórios 3 → 1 (recentes) e
+    4 → 1 (estado da janela). Tempo no VS Code real não medido.
+  - 5.1 (`aa4dea2`): catálogos sob demanda. Interface 1ª carga 1.271 → 802 KB + catálogo ativo (62–119 KB);
+    processo principal 548 → 76 KB; extensão 793 → 77 KB (JSON em `locales/`, lidos com `readFile`). Meta de
+    700 KB ainda não atingida (depende do 5.2).
+  - 5.3 (`38e131c`): janela antes do git; com caminho na linha de comando 77–115 → 11–14 ms após o `ready`;
+    `reopenSaved` 4 por vez (16 repositórios 99 → 65 ms).
+  - Verificado no último commit: typecheck limpo, 764 testes, `npm run build` e `build:extension` ok.
+- **Pendências desta janela:** (1) `scripts/readme-media/harness.mjs` empacota o backend sem carregador de
+  catálogo (`setCatalogLoader`): mensagens geradas no backend saem como chave crua no `ui.mjs` (tempos não
+  mudam); corrigir antes de medir de novo. (2) `DiffWindow.tsx` ainda chama `setLocale` (seguro, mas baixa um
+  catálogo a mais se o idioma salvo difere do navegador, e não renova o texto na troca com a janela aberta).
+  (3) `ChangesView` redesenha 5× ao abrir e o `RepoView` 1× por seleção (a seleção é estado dele). (4) Os
+  documentos (`docs/PERFORMANCE.md` seções 7 e um "Resultado da Fase 4") ainda não trazem estes números.
+- **Ambiente:** cópias isoladas do `Agent` (`isolation: "worktree"`) nascem do `main` antigo (`814e0d1`), não
+  da branch: o diff delas tem de ser extraído e aplicado com `git apply --3way` (fizemos assim no 5.1 e 5.3).
+  Prefira `git worktree add --detach <pasta> HEAD` à mão. `.claude/` está em `.git/info/exclude`.
+- **A seguir:** pendência (1), depois 5.2 (`React.lazy`), depois 5.5 e a escrita dos resultados das Fases 4 e 5.
+
+### Janela 7
 
 - **Janela 7: item 4.5 feito** (`6d8df08`): `FileIcon` desenha `<svg class="file-icon"><use href="#fi-…"/></svg>`;
   cada tipo de ícone entra uma vez num sprite compartilhado (`ensureIconSymbol` e `symbolMarkup` em `fileIcons.ts`,
@@ -246,9 +278,9 @@ em até 2× o `status()` simples. Ordem sugerida:
 5. Formato compacto do diff (as linhas como texto e os tipos num vetor), que é o que falta para abrir o diff de
    5.000 linhas em 300 ms (hoje 1,0–1,3 s, quase tudo transporte de 2,9 MB).
 
-### Fase 4 — Listas e redesenhos (a próxima)
+### Fase 4 — Listas e redesenhos (concluída na janela 8)
 
-Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **4.6 feito na janela 3, 4.4 na janela 4, 4.3 na janela 5, 4.2 na janela 6, 4.5 na janela 7; o próximo é o 4.1.**
+Detalhes na seção 6 de `docs/PERFORMANCE.md` (C2, C4, C5, C6, C7). **Concluída na janela 8** (4.6 na janela 3, 4.4 na 4, 4.3 na 5, 4.2 na 6, 4.5 na 7, 4.1 na 8). A meta de rolagem (16 ms por quadro) não foi medida de novo; ela depende de menos nós por linha.
 Ordem sugerida: ~~4.6~~ (comparação de diffs por
 identificador, não por `JSON.stringify`: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`, com o `applyLines` que
 chama `setSelection` depois de `await` sem guarda), ~~4.4~~ (`buildTree` com `Map`), ~~4.3~~ (branches e tags lineares),
@@ -264,7 +296,7 @@ cancelamento com a interface (núcleo pronto).
 - **Fase 4 — Listas e redesenhos:** contexto `useApp()` dividido (C2); itens de lista sem contexto (C2/C4);
   branches/tags com agrupamento linear (C4); `buildTree` com `Map` (C5); ícones por símbolo reutilizado (C6);
   comparação de diffs por identificador, não por `JSON.stringify` (C7: `ChangesView.tsx`, `CommitDetails.tsx` `WipPanes`).
-- **Fase 5 — Carga:** idiomas sob demanda (D2: 48% do JavaScript são traduções); `React.lazy` nas telas que não
+- **Fase 5 — Carga (a próxima; 5.1, 5.3 e 5.4 feitos na janela 8; faltam 5.2 e 5.5):** idiomas sob demanda (D2: 48% do JavaScript são traduções); `React.lazy` nas telas que não
   aparecem na abertura (D3); janela criada antes de ler configurações (D4); extensão: painel primeiro, descoberta por
   trás (D5); dashboards num processo auxiliar (B7).
 
