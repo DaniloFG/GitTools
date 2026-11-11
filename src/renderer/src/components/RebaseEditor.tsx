@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { RebaseAction, RebasePlan } from '../../../shared/types'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { errorMessage, relativeDate, shortSha } from '../format'
 import { t, type MessageKey } from '../i18n'
 import { git } from '../git'
@@ -26,7 +26,8 @@ const ACTIONS: { id: RebaseAction; label: MessageKey; help: MessageKey }[] = [
 
 /** Rebase interativo visual: arraste para reordenar e escolha o que fazer com cada commit. */
 export function RebaseEditor({ fromSha, onClose }: { fromSha: string; onClose(): void }) {
-  const { run, toast, data } = useApp()
+  const { run, toast } = useAppActions()
+  const { data } = useRepoData()
   const [plan, setPlan] = useState<RebasePlan | null>(null)
   const [rows, setRows] = useState<Row[]>([])
   const [dragging, setDragging] = useState<number | null>(null)

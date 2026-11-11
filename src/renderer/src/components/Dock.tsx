@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { AppContext } from '../context'
+import { AppActionsContext, BusyContext } from '../context'
 import {
   activateView,
   effectiveDir,
@@ -28,6 +28,7 @@ import {
 } from '../dock'
 import { t } from '../i18n'
 import { startResize } from '../resize'
+import { useDock, useScreen } from '../dockStore'
 import { slotRef } from '../slots'
 import { LoadingOverlay, useLastDefined } from './Loader'
 
@@ -86,10 +87,6 @@ function halfOf(rect: Rect, side: Side): Rect {
 }
 
 interface DockProps {
-  state: DockState
-  onChange(next: DockState): void
-  /** Tela aberta: só aparecem os painéis dela e os fixados nela. */
-  screen: ScreenId
   meta: Record<ViewId, ViewMeta>
   /** Painéis que existem agora (ex.: Conflitos só quando há conflitos; Staged só na visão de listas separadas). */
   available(view: ViewId): boolean
@@ -101,8 +98,14 @@ interface DockProps {
  * de uma borda dele (divide o painel nesse lado) ou para a borda da janela — qualquer painel em qualquer
  * lugar. O conteúdo de cada painel é levado até o lugar dele por `PaneSlot` (ver slots.tsx).
  */
-export function Dock({ state, onChange: change, screen, meta, available }: DockProps) {
-  const app = useContext(AppContext)
+export function Dock({ meta, available }: DockProps) {
+  // Lê o arranjo e a tela por conta própria: quem muda um painel redesenha só este componente, não a tela do repositório.
+  const [state, setDockState] = useDock()
+  /** Tela aberta: só aparecem os painéis dela e os fixados nela. */
+  const [screen] = useScreen()
+  // Só as ações (menus e "restaurar layout"): o indicador de operação lê a fatia de ocupado em `GroupBody`,
+  // e assim o arranjo inteiro não redesenha 2× a cada operação. As ações mudam com o idioma, e os textos acompanham.
+  const actions = useContext(AppActionsContext)
   const rootRef = useRef<HTMLDivElement>(null)
   const [drag, setDrag] = useState<{ view: ViewId; hit: Hit | null } | null>(null)
   /** Grupo que ocupa a janela toda (null = todos à vista). Não é guardado: o arranjo continua o mesmo. */
@@ -125,7 +128,7 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
   const dirOf = (node: ShownSplit): Dir => effectiveDir(node.dir, width)
   /** Só grava quando o arranjo mudou de fato (clicar na aba que já está à frente não muda nada). */
   const onChange = (next: DockState) => {
-    if (next !== latest.current) change(next)
+    if (next !== latest.current) setDockState(next)
   }
 
   const isShown = (view: ViewId) => available(view) && inScreen(state, view, screen)
@@ -251,7 +254,7 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
   /** Menu da aba: as mesmas mudanças do arrastar, para quem não arrasta. */
   const tabMenu = (e: React.MouseEvent, view: ViewId, groupId: string, lonely: boolean) => {
     const sides: Side[] = ['left', 'right', 'top', 'bottom']
-    app?.showMenu(e, [
+    actions?.showMenu(e, [
       {
         label: t('workbench.splitMenu'),
         disabled: lonely,
@@ -265,7 +268,7 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
       { label: maximized === groupId ? t('workbench.restoreSize') : t('workbench.maximize'), onClick: () => setMaximized(maximized === groupId ? null : groupId) },
       // Num painel de outra tela (fixado aqui), "ocultar" é deixar de fixá-lo nesta tela.
       { label: t('workbench.hide'), onClick: () => onChange(hideIn(latest.current, view, screen)) },
-      { label: t('workbench.resetLayout'), onClick: () => void app.resetLayout() }
+      { label: t('workbench.resetLayout'), onClick: () => void actions?.resetLayout() }
     ])
   }
 
@@ -413,7 +416,7 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
       ) : (
         <div className="dock-empty">
           <p className="empty">{t('workbench.allHidden')}</p>
-          <button onClick={() => void app?.resetLayout()}>{t('workbench.resetLayout')}</button>
+          <button onClick={() => void actions?.resetLayout()}>{t('workbench.resetLayout')}</button>
         </div>
       )}
       {drag?.hit && (
@@ -434,9 +437,9 @@ export function Dock({ state, onChange: change, screen, meta, available }: DockP
  * ele é coberto pelo indicador de carregamento, que bloqueia cliques só nesse painel.
  */
 function GroupBody({ group, view, children }: { group: string; view: ViewId; children: ReactNode }) {
-  const app = useContext(AppContext)
-  const label = useLastDefined(app?.busy ?? null)
-  const covered = app?.busy != null && app.busyScope.includes(view)
+  const busyValue = useContext(BusyContext)
+  const label = useLastDefined(busyValue?.busy ?? null)
+  const covered = busyValue?.busy != null && busyValue.busyScope.includes(view)
   return (
     <LoadingOverlay active={covered} label={label ? `${label}…` : undefined} className="dock-body" data-group={group}>
       {children}

@@ -34,23 +34,30 @@ const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'bas
 
 export function buildTree<T>(items: readonly T[], pathOf: (item: T) => string): TreeNode<T>[] {
   const root: TreeDir<T> = { kind: 'dir', name: '', path: '', children: [], fileCount: 0 }
+  // Pastas já criadas, pelo caminho completo. Procurar entre os filhos a cada arquivo custava n × filhos;
+  // o caminho completo identifica a pasta sem varrer nada. Só pastas entram aqui: arquivo com o mesmo
+  // nome de uma pasta continua em `children`, como antes.
+  const dirs = new Map<string, TreeDir<T>>()
   for (const item of items) {
-    const path = pathOf(item)
-    const parts = path.split('/').filter(Boolean)
+    const full = pathOf(item)
+    const parts = full.split('/').filter(Boolean)
     if (parts.length === 0) continue
     let dir = root
     dir.fileCount++
-    for (const part of parts.slice(0, -1)) {
-      const path = dir.path ? `${dir.path}/${part}` : part
-      let next = dir.children.find((c): c is TreeDir<T> => c.kind === 'dir' && c.path === path)
+    // Itera por índice: `slice` alocaria um array a cada arquivo.
+    let path = ''
+    for (let i = 0; i < parts.length - 1; i++) {
+      path = path ? `${path}/${parts[i]}` : parts[i]
+      let next = dirs.get(path)
       if (!next) {
-        next = { kind: 'dir', name: part, path, children: [], fileCount: 0 }
+        next = { kind: 'dir', name: parts[i], path, children: [], fileCount: 0 }
+        dirs.set(path, next)
         dir.children.push(next)
       }
       next.fileCount++
       dir = next
     }
-    dir.children.push({ kind: 'file', name: parts[parts.length - 1], path, item })
+    dir.children.push({ kind: 'file', name: parts[parts.length - 1], path: full, item })
   }
   return finish(root.children)
 }
@@ -74,6 +81,12 @@ export type TreeRow<T> = { kind: 'dir'; node: TreeDir<T>; depth: number; collaps
 /** Linhas visíveis da árvore, na ordem da tela; o conteúdo de pastas recolhidas não aparece. */
 export function flattenTree<T>(nodes: readonly TreeNode<T>[], collapsed: ReadonlySet<string>, depth = 0): TreeRow<T>[] {
   const rows: TreeRow<T>[] = []
+  pushRows(rows, nodes, collapsed, depth)
+  return rows
+}
+
+/** Empilha as linhas no mesmo array. `rows.push(...filho)` copiava cada subárvore a cada nível e podia estourar a pilha com muitos argumentos. */
+function pushRows<T>(rows: TreeRow<T>[], nodes: readonly TreeNode<T>[], collapsed: ReadonlySet<string>, depth: number): void {
   for (const node of nodes) {
     if (node.kind === 'file') {
       rows.push({ kind: 'file', node, depth })
@@ -81,9 +94,8 @@ export function flattenTree<T>(nodes: readonly TreeNode<T>[], collapsed: Readonl
     }
     const isCollapsed = collapsed.has(node.path)
     rows.push({ kind: 'dir', node, depth, collapsed: isCollapsed })
-    if (!isCollapsed) rows.push(...flattenTree(node.children, collapsed, depth + 1))
+    if (!isCollapsed) pushRows(rows, node.children, collapsed, depth + 1)
   }
-  return rows
 }
 
 /** Primeiro arquivo como a lista o desenha: na ordem da lista, ou na árvore (a primeira linha de arquivo). */

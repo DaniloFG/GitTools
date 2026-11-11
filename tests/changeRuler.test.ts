@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { rulerMarks, scrollTargetFor, viewportBox } from '../src/renderer/src/changeRuler'
+import { marksFromRows, rulerMarks, scrollTargetFor, viewportBox } from '../src/renderer/src/changeRuler'
 
 describe('rulerMarks', () => {
   it('converte as linhas em frações da altura total', () => {
@@ -104,5 +104,77 @@ describe('scrollTargetFor', () => {
 
   it('sem rolagem fica no topo', () => {
     expect(scrollTargetFor(0.5, 300, 400)).toBe(0)
+  })
+})
+
+describe('marksFromRows', () => {
+  it('linhas isoladas viram uma marca cada, em fração index/total', () => {
+    const marks = marksFromRows(
+      [
+        { index: 0, kind: 'add' },
+        { index: 5, kind: 'del' }
+      ],
+      10,
+      0
+    )
+    expect(marks).toEqual([
+      { top: 0, height: 0.1, kind: 'add' },
+      { top: 0.5, height: 0.1, kind: 'del' }
+    ])
+  })
+
+  it('linhas seguidas do mesmo tipo viram uma marca só', () => {
+    expect(
+      marksFromRows(
+        [
+          { index: 2, kind: 'add' },
+          { index: 3, kind: 'add' },
+          { index: 4, kind: 'add' }
+        ],
+        10,
+        0
+      )
+    ).toEqual([{ top: 0.2, height: 0.3, kind: 'add' }])
+  })
+
+  it('tipos diferentes seguidos viram modificação, e conflito prevalece', () => {
+    expect(
+      marksFromRows(
+        [
+          { index: 1, kind: 'add' },
+          { index: 2, kind: 'del' }
+        ],
+        10,
+        0
+      )
+    ).toEqual([{ top: 0.1, height: 0.2, kind: 'mod' }])
+    expect(
+      marksFromRows(
+        [
+          { index: 1, kind: 'mod' },
+          { index: 2, kind: 'conflict' }
+        ],
+        10,
+        0
+      )
+    ).toEqual([{ top: 0.1, height: 0.2, kind: 'conflict' }])
+  })
+
+  it('aplica a altura mínima em fração', () => {
+    expect(marksFromRows([{ index: 0, kind: 'add' }], 100, 0.05)).toEqual([{ top: 0, height: 0.05, kind: 'add' }])
+  })
+
+  it('lista vazia ou total zero não há marcas', () => {
+    expect(marksFromRows([], 10, 0)).toEqual([])
+    expect(marksFromRows([{ index: 0, kind: 'add' }], 0, 0)).toEqual([])
+  })
+
+  it('25.000 linhas são processadas em tempo razoável (limite frouxo; a meta é 20 ms)', () => {
+    const rows = Array.from({ length: 25000 }, (_, i) => ({ index: i, kind: i % 7 < 3 ? 'add' : 'del' }))
+    const start = performance.now()
+    const marks = marksFromRows(rows, 25000, 0.001)
+    const elapsed = performance.now() - start
+    expect(marks.length).toBeGreaterThan(0)
+    expect(elapsed).toBeLessThan(500)
   })
 })

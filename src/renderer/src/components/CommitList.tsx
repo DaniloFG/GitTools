@@ -1,13 +1,13 @@
-import { Fragment, memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import type { ChangedFile, CommitInfo } from '../../../shared/types'
-import { showsWorkingChanges, type HistoryScope } from '../historyScope'
+import { Fragment, memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import type { BranchInfo, ChangedFile, CommitInfo } from '../../../shared/types'
+import { LOG_MAX, showsWorkingChanges, type HistoryScope } from '../historyScope'
 import { useActions } from '../actions'
 import { useBranchMenu } from '../branchMenu'
 import type { MenuItem } from './ContextMenu'
 import { buildEntries, sumStats, type ChangeEntry } from '../changeEntries'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { copyText } from '../copy'
-import { endDrag, startDrag } from '../dnd'
+import { endDrag, startDrag, type DragPayload } from '../dnd'
 import { errorMessage, fullDate, relativeDate, shortSha, statusLabel } from '../format'
 import { startReorder, useOrder } from '../reorder'
 import { useLayout } from '../layout'
@@ -21,14 +21,15 @@ import { FileViewOptions } from './ViewOptions'
 import { LineStats } from './LineStats'
 import type { FileStatus } from '../../../shared/types'
 import { Loader } from './Loader'
+import { VirtualList, type VirtualListHandle } from './VirtualList'
 
 const ROW = 30
 const LANE = 14
-/** Linhas desenhadas de início; o resto aparece conforme a lista rola (500 linhas de uma vez pesam em máquinas fracas). */
-const INITIAL_ROWS = 120
-const MORE_ROWS = 160
-/** Quanto falta para o fim da lista (em px) para desenhar mais linhas. */
-const LOAD_AHEAD = 900
+/**
+ * Margem montada acima e abaixo da área visível (cerca de 10 linhas de cada lado). Só o que está na tela
+ * e nessa margem fica no DOM: rolar não acumula linhas, e cada arrasto de divisória refaz pouco layout.
+ */
+const OVERSCAN = 300
 /** Distância do início da linha até o grafo: margem + botão ▸ + espaçamento (ver .row-toggle). */
 const GRAPH_OFFSET = 30
 
@@ -72,18 +73,35 @@ interface Props {
   onOpenFileWindow(sha: string, path: string): void
   /** Abre o diff de um arquivo ainda não commitado no painel de detalhes. */
   onOpenWipFile(path: string): void
+  /** Há commits além dos carregados (e o teto não foi atingido): o rodapé pede mais uma página. */
+  canLoadMore: boolean
+  /** Lê a página seguinte do histórico (o rodapé chama quando se aproxima da área visível). */
+  onLoadMore(): void
 }
 
 type FilesState = ChangedFile[] | 'loading' | { error: string }
 
-export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onOpenFileWindow, onOpenWipFile }: Props) {
-  const { data, repo, workspace, showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useApp()
+export function CommitList({
+  scope,
+  onScope,
+  selected,
+  onSelect,
+  onOpenFile,
+  onOpenFileWindow,
+  onOpenWipFile,
+  canLoadMore,
+  onLoadMore
+}: Props) {
+  // Dados e abas vêm da fatia de dados; as funções, da fatia de ações (estável): a lista não redesenha com a operação.
+  const { data, repo, workspace } = useRepoData()
+  const { showMenu, openStudio, openCompare, openRebase, setView, openConflict, openDiffWindow } = useAppActions()
   const actions = useActions()
   const anchor = useRef<number | null>(null)
+  // Menu da branch (botão direito na etiqueta): as etiquetas não chamam useBranchMenu, quem o chama é este componente.
+  const branchItemsOf = useBranchMenu(onScope)
   const [query, setQuery] = useState('')
   /** A pesquisa filtra a lista com um pequeno atraso, para a digitação não travar em históricos grandes. */
   const deferredQuery = useDeferredValue(query)
-  const [limit, setLimit] = useState(INITIAL_ROWS)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [files, setFiles] = useState<Map<string, FilesState>>(new Map())
   const [columns, moveColumn] = useOrder('history.columns', COLUMNS)
@@ -128,20 +146,32 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
     () => (searching ? commits.flatMap((c, i) => (matchesCommit(c, deferredQuery, locale) ? [i] : [])) : commits.map((_, i) => i)),
     [commits, deferredQuery, searching, locale]
   )
-  const shown = visible.length > limit ? visible.slice(0, limit) : visible
-  const bodyRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<VirtualListHandle>(null)
   /** A linha de alterações é do HEAD: só aparece vendo tudo, o HEAD ou a branch atual. */
   const showWip = showsWorkingChanges(scope, actions.head)
-  // Janela muito alta: as linhas desenhadas podem não bastar para gerar rolagem (e nenhum evento de scroll viria).
+
+  /**
+   * Rodapé "carregando mais": um observador na lista (raiz = a própria janela de rolagem) pede a página seguinte
+   * quando o rodapé chega perto da área visível. Durante a pesquisa não carrega: ela só filtra o que já está lá.
+   */
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+  const onLoadMoreRef = useRef(onLoadMore)
+  onLoadMoreRef.current = onLoadMore
+  const showLoadMore = canLoadMore && !searching
   useEffect(() => {
-    const el = bodyRef.current
-    if (limit < visible.length && el && el.scrollHeight - el.clientHeight < LOAD_AHEAD) setLimit((l) => l + MORE_ROWS)
-  })
-  /** Desenha mais linhas quando falta pouco para o fim do que está desenhado. */
-  const onScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget
-    if (limit < visible.length && el.scrollHeight - el.scrollTop - el.clientHeight < LOAD_AHEAD) setLimit((l) => l + MORE_ROWS)
-  }
+    const el = loadMoreRef.current
+    const root = listRef.current?.element
+    if (!el || !root || !showLoadMore || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) onLoadMoreRef.current()
+      },
+      { root, rootMargin: '600px 0px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+    // Refaz o observador a cada página: um rodapé que continua à vista depois de uma página dispara de novo.
+  }, [showLoadMore, commits.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Arquivos dos commits expandidos são carregados sob demanda (e recarregados se o histórico mudar).
   useEffect(() => setFiles(new Map()), [commits])
@@ -201,15 +231,25 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
       anchor.current = next
       onSelect([nextSha])
     }
-    // A linha pode ainda não estar desenhada (lista parcial): desenha até ela e rola no quadro seguinte.
-    if (next >= limit) setLimit(next + MORE_ROWS)
-    requestAnimationFrame(() => document.querySelectorAll('.commit-row')[next]?.scrollIntoView({ block: 'nearest' }))
+    // O índice vem dos dados: a linha pode não estar montada, então o índice no DOM não serve para rolar.
+    const list = listRef.current
+    const onRow = e.target instanceof HTMLElement && (e.target.classList.contains('commit-row') || e.target === e.currentTarget)
+    list?.scrollToIndex(next)
+    // Com o foco numa linha (ou no contêiner), leva o foco para a linha nova: Ctrl+C copia o `data-copy` dela.
+    if (onRow) {
+      requestAnimationFrame(() => list?.element?.querySelector<HTMLElement>(`.commit-row[data-pos="${next}"]`)?.focus({ preventScroll: true }))
+    }
   }
 
   /** Funções de sempre-atuais para as linhas, que ficam memorizadas e não podem depender delas diretamente. */
   const handlers = useRef({} as RowHandlers)
   const stableColumns = useMemo(() => columns, [columns.join()]) // eslint-disable-line react-hooks/exhaustive-deps
   const dateKey = dateFormatKey()
+
+  // A janela pede chave e altura por posição em `visible`. Estáveis: cada mudança de identidade refaz as posições.
+  const keyOf = useCallback((pos: number) => commits[visible[pos]].sha, [commits, visible])
+  // Commit aberto (com os arquivos) é um item só, de altura medida.
+  const isVariable = useCallback((pos: number) => expanded.has(commits[visible[pos]].sha), [commits, visible, expanded])
 
   const dragShas = (commit: CommitInfo) => (selectedSet.has(commit.sha) ? commits.filter((c) => selectedSet.has(c.sha)).map((c) => c.sha) : [commit.sha])
 
@@ -220,7 +260,33 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
     return [...list.filter((b) => !b.remote), ...list.filter((b) => b.remote)]
   }
 
-  handlers.current = { click, toggle, menu: (e, commit) => menu(e, commit), dragShas }
+  /**
+   * Busca de branch por nome, num Map: cada etiqueta consulta a sua a cada desenho, e um `find` sobre 1.100
+   * branches repetia a varredura em todas. O primeiro de cada nome vence, como o `find` fazia.
+   */
+  const branchByName = useMemo(() => {
+    const map = new Map<string, BranchInfo>()
+    for (const b of data.branches) if (!map.has(b.name)) map.set(b.name, b)
+    return map
+  }, [data.branches])
+  /** Nomes de branches remotas: as etiquetas precisam disso para a classe e o arrasto; muda só com `data.branches`. */
+  const remoteNames = useMemo(() => new Set([...branchByName.values()].filter((b) => b.remote).map((b) => b.name)), [branchByName])
+
+  handlers.current = {
+    click,
+    toggle,
+    menu: (e, commit) => menu(e, commit),
+    dragShas,
+    branchMenu: (e, name) => {
+      const branch = branchByName.get(name)
+      if (branch) showMenu(e, branchItemsOf(branch))
+    },
+    dropOnBranch: (payload, name) => void actions.dropOnBranch(payload, name),
+    checkoutBranch: (name) => {
+      const branch = branchByName.get(name)
+      if (branch && !branch.current) void actions.checkout(name)
+    }
+  }
 
   const menu = (e: React.MouseEvent, commit: CommitInfo) => {
     const shas = dragShas(commit)
@@ -318,7 +384,8 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
                 e.preventDefault()
                 anchor.current = 0
                 onSelect([commits[visible[0]].sha])
-                document.querySelector<HTMLElement>('.commit-list .list-body')?.focus()
+                listRef.current?.scrollToIndex(0)
+                listRef.current?.element?.focus()
               }
             }}
           />
@@ -357,30 +424,56 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
           </span>
         ))}
       </div>
-      <div ref={bodyRef} className="list-body" tabIndex={0} onKeyDown={onKeyDown} onScroll={onScroll}>
-        {showWip && (
-          <WipRow
-            status={data.status}
-            template={template}
-            columns={stableColumns}
-            graphWidth={graphWidth}
-            searching={searching}
-            headRow={rows.find((r) => r.sha === data.status.headSha)}
-            indent={graphFirst}
-            onOpenChanges={() => setView('changes')}
-            onOpenConflict={openConflict}
-            onOpenFile={onOpenWipFile}
-            onOpenDiff={(source, path, title) => openDiffWindow({ source, path, title })}
-          />
-        )}
-        {commits.length === 0 && <p className="empty">{t('history.empty')}</p>}
-        {searching && commits.length > 0 && visible.length === 0 && <p className="empty">{t('history.search.none', { query: deferredQuery })}</p>}
-        {shown.map((index, pos) => {
+      <VirtualList
+        ref={listRef}
+        className="list-body"
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        count={visible.length}
+        rowHeight={ROW}
+        keyOf={keyOf}
+        isVariable={isVariable}
+        overscan={OVERSCAN}
+        // A linha de alterações é sticky no topo: a rolagem por teclado não pode esconder o item atrás dela.
+        stickyTop={showWip ? ROW : 0}
+        footer={
+          showLoadMore ? (
+            <div className="history-more" ref={loadMoreRef}>
+              <Loader size="sm" />
+              <span>{t('history.loadingMore')}</span>
+            </div>
+          ) : !canLoadMore && commits.length >= LOG_MAX ? (
+            <div className="history-more muted">{t('history.limitReached', { count: commits.length })}</div>
+          ) : undefined
+        }
+        header={
+          <>
+            {showWip && (
+              <WipRow
+                status={data.status}
+                template={template}
+                columns={stableColumns}
+                graphWidth={graphWidth}
+                searching={searching}
+                headRow={rows.find((r) => r.sha === data.status.headSha)}
+                indent={graphFirst}
+                onOpenChanges={() => setView('changes')}
+                onOpenConflict={openConflict}
+                onOpenFile={onOpenWipFile}
+                onOpenDiff={(source, path, title) => openDiffWindow({ source, path, title })}
+              />
+            )}
+            {commits.length === 0 && <p className="empty">{t('history.empty')}</p>}
+            {searching && commits.length > 0 && visible.length === 0 && <p className="empty">{t('history.search.none', { query: deferredQuery })}</p>}
+          </>
+        }
+        renderItem={(pos) => {
+          const index = visible[pos]
           const commit = commits[index]
           const row = rows[index]
           const open = expanded.has(commit.sha)
           return (
-            <Fragment key={commit.sha}>
+            <>
               <CommitRow
                 commit={commit}
                 row={row}
@@ -394,7 +487,7 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
                 query={searching ? deferredQuery : ''}
                 handlers={handlers}
                 dateKey={dateKey}
-                onScope={onScope}
+                remoteNames={remoteNames}
               />
               {open && (
                 <CommitFiles
@@ -408,10 +501,10 @@ export function CommitList({ scope, onScope, selected, onSelect, onOpenFile, onO
                   onOpenFileWindow={(path) => onOpenFileWindow(commit.sha, path)}
                 />
               )}
-            </Fragment>
+            </>
           )
-        })}
-      </div>
+        }}
+      />
     </div>
   )
 }
@@ -421,6 +514,11 @@ interface RowHandlers {
   toggle(sha: string, open?: boolean): void
   menu(e: React.MouseEvent, commit: CommitInfo): void
   dragShas(commit: CommitInfo): string[]
+  /** Menu de botão direito de uma etiqueta de branch; nada se a branch não está na lista. */
+  branchMenu(e: React.MouseEvent, name: string): void
+  dropOnBranch(payload: DragPayload, name: string): void
+  /** Checkout pelo duplo clique na etiqueta; não faz nada na branch atual. */
+  checkoutBranch(name: string): void
 }
 
 interface RowProps {
@@ -437,20 +535,21 @@ interface RowProps {
   handlers: React.RefObject<RowHandlers>
   /** Muda com o formato de datas e o idioma: a linha é memorizada e precisa saber que deve se redesenhar. */
   dateKey: string
-  onScope(scope: HistoryScope): void
+  remoteNames: ReadonlySet<string>
 }
 
 /**
  * Uma linha do histórico. Memorizada: clicar numa linha só redesenha a que perdeu e a que ganhou a
  * seleção, não as centenas de outras.
  */
-const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, template, columns, graphWidth, searching, query, handlers, onScope }: RowProps) {
+const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, template, columns, graphWidth, searching, query, handlers, remoteNames }: RowProps) {
   // `dateKey` só existe para invalidar a memorização; a data é escrita pelas funções de formato.
   return (
     <div
       className={`commit-row ${selected ? 'selected' : ''} ${open ? 'expanded' : ''}`}
       style={{ gridTemplateColumns: template }}
       tabIndex={-1}
+      data-pos={pos}
       data-copy={commit.subject}
       data-copy-what="message"
       onClick={(e) => handlers.current.click(e, pos)}
@@ -489,7 +588,7 @@ const CommitRow = memo(function CommitRow({ commit, row, pos, selected, open, te
           case 'subject':
             return (
               <div key={column} className="commit-main">
-                <RefBadges refs={commit.refs} color={row.color} onScope={onScope} />
+                <RefBadges refs={commit.refs} color={row.color} remoteNames={remoteNames} handlers={handlers} />
                 <span className="commit-subject">
                   <Highlight text={commit.subject} query={query} />
                 </span>
@@ -751,7 +850,7 @@ function CommitFiles({
   onOpenFile(path: string): void
   onOpenFileWindow(path: string): void
 }) {
-  const { showMenu, openFileView, openInEditor } = useApp()
+  const { showMenu, openFileView, openInEditor } = useAppActions()
   const actions = useActions()
   const head = actions.head
   const pathsOf = (f: ChangedFile) => (f.oldPath ? [f.path, f.oldPath] : [f.path])
@@ -823,15 +922,14 @@ function CommitFiles({
   )
 }
 
-function RefBadges({ refs, color, onScope }: { refs: string[]; color: number; onScope(scope: HistoryScope): void }) {
-  if (!refs.length) return null
+function RefBadges({ refs, color, remoteNames, handlers }: { refs: string[]; color: number; remoteNames: ReadonlySet<string>; handlers: React.RefObject<RowHandlers> }) {
   return (
     <>
       {refs.map((ref) => {
         if (ref === 'HEAD') return <span key={ref} className="ref ref-head">HEAD</span>
-        if (ref.startsWith('HEAD -> ')) return <BranchBadge key={ref} name={ref.slice(8)} color={color} onScope={onScope} current />
+        if (ref.startsWith('HEAD -> ')) return <BranchBadge key={ref} name={ref.slice(8)} color={color} remoteNames={remoteNames} handlers={handlers} current />
         if (ref.startsWith('tag: ')) return <span key={ref} className="ref ref-tag">⌂ {ref.slice(5)}</span>
-        return <BranchBadge key={ref} name={ref} color={color} onScope={onScope} />
+        return <BranchBadge key={ref} name={ref} color={color} remoteNames={remoteNames} handlers={handlers} />
       })}
     </>
   )
@@ -840,16 +938,13 @@ function RefBadges({ refs, color, onScope }: { refs: string[]; color: number; on
 /**
  * Etiqueta de branch no histórico, na cor da trilha dela: pode ser arrastada, recebe itens soltos e
  * tem o menu da branch no botão direito (o checkout leva para a branch, não para um HEAD destacado).
+ * Memorizada: só recebe primitivos, um Set estável e a ref de handlers.
  */
-function BranchBadge({ name, color, onScope, current = false }: { name: string; color: number; onScope(scope: HistoryScope): void; current?: boolean }) {
-  const { data, showMenu } = useApp()
-  const actions = useActions()
-  const branchMenu = useBranchMenu(onScope)
-  const branch = data.branches.find((b) => b.name === name)
-  const remote = !!branch?.remote
+const BranchBadge = memo(function BranchBadge({ name, color, remoteNames, handlers, current = false }: { name: string; color: number; remoteNames: ReadonlySet<string>; handlers: React.RefObject<RowHandlers>; current?: boolean }) {
+  const remote = remoteNames.has(name)
   const drop = useDrop(
     (p) => !remote && p.type !== 'files' && !(p.type === 'branch' && p.name === name),
-    (p) => void actions.dropOnBranch(p, name)
+    (p) => handlers.current.dropOnBranch(p, name)
   )
   return (
     <span
@@ -861,10 +956,10 @@ function BranchBadge({ name, color, onScope, current = false }: { name: string; 
         startDrag(e, { type: 'branch', name, remote }, `⎇ ${name}`)
       }}
       onDragEnd={endDrag}
-      onContextMenu={branch ? (e) => showMenu(e, branchMenu(branch)) : undefined}
+      onContextMenu={(e) => handlers.current.branchMenu(e, name)}
       onDoubleClick={(e) => {
         e.stopPropagation()
-        if (branch && !branch.current) void actions.checkout(name)
+        handlers.current.checkoutBranch(name)
       }}
       title={`${current ? t('toolbar.currentBranch') : remote ? t('history.badge.remote') : t('history.badge.local')}\n${t('sidebar.branchTooltip')}`}
       {...drop.props}
@@ -873,4 +968,4 @@ function BranchBadge({ name, color, onScope, current = false }: { name: string; 
       {name}
     </span>
   )
-}
+})

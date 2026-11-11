@@ -2,10 +2,11 @@ import { useEffect, useRef } from 'react'
 import { useRecentRepos } from '../recent'
 import { useActions } from '../actions'
 import type { RecentRepo } from '../../../shared/api'
-import { useApp } from '../context'
+import { useAppActions, useRepoData } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { useLayout } from '../layout'
+import { useDock, useScreen } from '../dockStore'
 import { t } from '../i18n'
 import {
   TOOLBAR_ITEM_IDS,
@@ -19,7 +20,7 @@ import { normalizeRoot, repoColor } from '../workspace'
 import { ScreenTabs, usePanelsItems, type ScreenProps } from './Screens'
 import { SponsorButton } from './Sponsor'
 
-interface ToolbarProps extends ScreenProps {
+interface ToolbarProps extends Omit<ScreenProps, 'state' | 'onChange' | 'screen'> {
   onOpenRepository(path?: string, create?: boolean): void
   onClone(): void
 }
@@ -29,10 +30,14 @@ interface ToolbarProps extends ScreenProps {
  * Cada item pode ser escondido pelo menu (Barra de ferramentas); os escondidos ficam salvos como preferência.
  * Em janelas estreitas os botões mostram só o ícone (container query) e as telas rolam na horizontal.
  */
-export function Toolbar({ onOpenRepository, onClone, state, onChange, screen, onScreen, meta, available, changeCount, dashboards, onDashboards }: ToolbarProps) {
-  const { repo, data, toast, showMenu, openStudio, openSettings, openInEditor, workspace } = useApp()
+export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, changeCount, dashboards, onDashboards }: ToolbarProps) {
+  const { repo, data, workspace } = useRepoData()
+  const { toast, showMenu, openStudio, openSettings, openInEditor } = useAppActions()
   const { head, createBranch, createTag, stash, push, pushDialog, fetchRemote, pullRemote } = useActions()
   const { status } = data
+  // Arranjo e tela são lidos aqui (e não recebidos da tela do repositório), para o arrasto de painéis não a redesenhar.
+  const [state, onChange] = useDock()
+  const [screen] = useScreen()
   const [hidden, setHidden] = useLayout<ToolbarItemId[]>('pref.toolbar.hidden', parseHiddenToolbarItems)
   const shown = (id: ToolbarItemId) => isToolbarItemShown(hidden, id)
   const panelItems = usePanelsItems({ state, onChange, screen, meta, available })

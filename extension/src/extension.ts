@@ -4,16 +4,18 @@
 
 import { randomBytes } from 'node:crypto'
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, isAbsolute, join, relative, sep } from 'node:path'
 import * as vscode from 'vscode'
 import { Backend, type BackendHost } from '../../src/backend/backend'
 import { isBridgeChannel, type HostToWebview, type WebviewToHost } from '../../src/shared/channels'
-import { matchLocale, setLocale } from '../../src/shared/i18n'
+import { changeLocale, jsonCatalogLoader, matchLocale, setCatalogLoader } from '../../src/shared/i18n'
 import type { DiffWindowRequest } from '../../src/shared/api'
 import type { Settings } from '../../src/shared/settings'
 import { GitRepository } from '../../src/core/repository'
-import { findRepositories, isIgnoredPath } from '../../src/core/discover'
+import { isIgnoredPath } from '../../src/core/discover'
+import { findRepositoriesConcurrent, mapLimit, waitsForDiscovery } from './discover'
 
 /** Dois caminhos apontam para a mesma pasta? (links simbólicos, como /var → /private/var no macOS, e maiúsculas do Windows) */
 function samePath(a: string, b: string): boolean {
@@ -34,6 +36,8 @@ const DIFF_VIEW = 'gittools.diff'
 const WORKSPACE_KEY = 'gittools.workspace'
 /** Intervalo entre tentativas de abrir um .git recém-criado (um clone ainda está escrevendo o repositório). */
 const NEW_REPO_RETRY_MS = 1500
+/** Repositórios achados abertos ao mesmo tempo (um processo git cada): poucos, pois no Windows cada processo pesa. */
+const OPEN_CONCURRENCY = 4
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -45,8 +49,12 @@ function isInside(folder: string, path: string): boolean {
 
 /** Idioma das mensagens do motor git: o das configurações do GitTools ou, em "sistema", o do VS Code. */
 function applyLocale(settings: Settings) {
-  setLocale(settings.language === 'system' ? matchLocale([vscode.env.language]) : settings.language)
+  // Carrega o catálogo (JSON ao lado do pacote, leitura assíncrona) e só então troca; até lá vale o anterior.
+  void changeLocale(settings.language === 'system' ? matchLocale([vscode.env.language]) : settings.language)
 }
+
+// Catálogos de idioma: um JSON por idioma em dist/locales, gerado pelo build (ver scripts/build-extension.mjs).
+setCatalogLoader(jsonCatalogLoader((name) => readFile(join(__dirname, 'locales', name), 'utf8')))
 
 class Controller {
   readonly backend: Backend
@@ -130,11 +138,16 @@ class Controller {
   /**
    * Abre os repositórios do workspace do VS Code. Só uma vez por janela (depois disso vale a escolha do
    * usuário, e repositórios fechados de propósito não voltam). Os reabertos da última sessão continuam abertos.
+   * A descoberta começa na primeira chamada; o painel não a espera (ver `attachMain` e `setup`).
    */
-  async useWorkspaceRepository(): Promise<void> {
-    await this.backend.restoreWorkspace()
-    this.workspaceReady ??= this.discoverWorkspace()
-    await this.workspaceReady
+  useWorkspaceRepository(): Promise<void> {
+    this.workspaceReady ??= this.backend.restoreWorkspace().then(() => this.discoverWorkspace())
+    return this.workspaceReady
+  }
+
+  /** A descoberta começa (se ainda não começou) sem que ninguém a espere; um erro dela aparece como antes, numa mensagem. */
+  private discoverInBackground(): void {
+    this.useWorkspaceRepository().catch((error: unknown) => void vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error)))
   }
 
   /** Conforme a configuração `multiRepoDetection`: todos os repositórios do workspace, ou só o primeiro (comportamento antigo). */
@@ -153,28 +166,25 @@ class Controller {
       return
     }
     this.startDetectors()
-    await this.openFound(folders)
+    // Sem aviso à interface: todo pedido dela que depende dos repositórios já espera esta descoberta (ver
+    // `setup`), então a primeira lista que ela recebe já está completa. Um "repo:changed" aqui só a faria reler tudo.
+    await this.openFound(folders, false)
   }
 
   /**
    * Abre, cada um na sua aba, os repositórios achados nestas pastas, sem trocar o ativo. Sem nenhum ativo,
    * o primeiro achado vira o ativo. Repositórios já abertos não são duplicados (o Backend já cuida disso).
+   * Os recentes e o estado da janela são gravados uma vez no fim, não uma vez por repositório.
    */
-  private async openFound(folders: string[]): Promise<void> {
-    let first: string | null = null
-    let opened = false
-    for (const path of await findRepositories(folders)) {
-      try {
-        const repo = await GitRepository.open(path)
-        await this.backend.addRepository(repo, { activate: false })
-        first ??= repo.root
-        opened = true
-      } catch {
-        // Pasta que deixou de ser repositório, ou sem permissão: segue para o próximo.
-      }
-    }
-    if (first !== null && this.backend.activeRoot === null) await this.backend.switchRepository(first)
-    if (opened) this.notifyRepositoryChanged()
+  private async openFound(folders: string[], notify = true): Promise<void> {
+    const paths = await findRepositoriesConcurrent(folders)
+    const repos = await mapLimit(paths, OPEN_CONCURRENCY, (path) =>
+      GitRepository.open(path).catch(() => null) // Pasta que deixou de ser repositório, ou sem permissão: fica de fora.
+    )
+    const opened = repos.filter((repo): repo is GitRepository => repo !== null)
+    if (opened.length === 0) return
+    await this.backend.addRepositories(opened, { activateIfNone: true })
+    if (notify) this.notifyRepositoryChanged()
   }
 
   /** Liga a detecção: novas pastas no workspace e repositórios criados (git init, clone) dentro dele. */
@@ -239,7 +249,8 @@ class Controller {
 
   /** Abre (ou mostra) o painel principal do GitTools. */
   async open(): Promise<void> {
-    await this.useWorkspaceRepository()
+    // O painel aparece já; a descoberta começa em `attachMain` e segue por trás, e a interface mostra o
+    // carregamento até ela acabar. Com o painel já aberto, a descoberta já começou.
     if (this.main) {
       this.main.reveal()
       return
@@ -249,6 +260,7 @@ class Controller {
 
   /** Painel principal já criado pelo VS Code (restaurado ao reabrir a janela). */
   attachMain(panel: vscode.WebviewPanel): void {
+    this.discoverInBackground()
     this.main = panel
     panel.onDidDispose(() => {
       this.main = null
@@ -307,7 +319,11 @@ class Controller {
         return
       }
       if (message?.type !== 'request' || !isBridgeChannel(message.channel)) return
-      this.backend.invoke(message.channel, Array.isArray(message.args) ? message.args : []).then(
+      const channel = message.channel
+      // Enquanto a descoberta do workspace roda, os pedidos que dependem dos repositórios esperam por ela:
+      // a interface segue no carregamento em vez de mostrar as boas-vindas e trocar logo depois.
+      const ready = this.workspaceReady && waitsForDiscovery(channel) ? this.workspaceReady.catch(() => undefined) : Promise.resolve()
+      ready.then(() => this.backend.invoke(channel, Array.isArray(message.args) ? message.args : [])).then(
         (result) => panel.webview.postMessage({ type: 'response', id: message.id, ok: true, result } satisfies HostToWebview),
         (error: unknown) =>
           panel.webview.postMessage({ type: 'response', id: message.id, ok: false, error: error instanceof Error ? error.message : String(error) } satisfies HostToWebview)
@@ -363,7 +379,6 @@ export function activate(context: vscode.ExtensionContext) {
     ),
     vscode.window.registerWebviewPanelSerializer(MAIN_VIEW, {
       deserializeWebviewPanel: async (panel) => {
-        await controller.useWorkspaceRepository()
         panel.webview.options = { enableScripts: true, localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'dist', 'webview')] }
         controller.attachMain(panel)
       }

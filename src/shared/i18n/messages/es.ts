@@ -201,12 +201,14 @@ export const es: Messages = {
       graph: 'Grafo'
     },
     count: { one: '{count} commit', other: '{count} commits' },
+    loadingMore: 'Cargando más commits…',
+    limitReached: { other: 'Mostrando los {count} commits más recientes' },
     selected: { one: '{count} seleccionado', other: '{count} seleccionados' },
     hint: 'Ctrl/Shift+clic para seleccionar varios · ▸ o doble clic muestra los archivos · arrastra a una rama',
     empty: 'Todavía no hay commits.',
     log: {
       chip: 'git log',
-      help: 'Este historial es el "git log" en forma visual: cada fila es un commit y el grafo muestra las ramas. Equivale a git log --graph --all --decorate, con hasta 500 commits.',
+      help: 'Este historial es el "git log" en forma visual: cada fila es un commit y el grafo muestra las ramas. Equivale a git log --graph --all --decorate: 500 commits por vez, cargando más al desplazarse (hasta 10.000).',
       tab: 'Historial — el git log en forma visual'
     },
     wip: {
@@ -291,7 +293,11 @@ export const es: Messages = {
     inline: 'Arriba y abajo',
     inlineHelp: 'Líneas eliminadas y añadidas una debajo de la otra',
     split: 'Lado a lado',
-    splitHelp: 'Versión anterior a la izquierda y nueva a la derecha'
+    splitHelp: 'Versión anterior a la izquierda y nueva a la derecha',
+    truncated: {
+      message: 'Este diff es grande y se cortó en {size}: no se muestra el final del archivo.',
+      showAll: 'Mostrar de todos modos'
+    }
   },
   changes: {
     discardTitle: 'Descartar cambios',
@@ -1004,7 +1010,8 @@ export const es: Messages = {
     historyRewritten: 'Historial reescrito.',
     binaryNoLines: 'El archivo binario "{path}" no permite seleccionar líneas.',
     gitNotFound: 'No se pudo ejecutar git: {error}',
-    gitFailed: 'git {command} falló (código {code})'
+    gitFailed: 'git {command} falló (código {code})',
+    gitCanceled: 'Comando git cancelado.'
   },
   main: {
     editorNotFound: 'No se encontró el editor "{editor}". Elige otro en Configuración → Editor y diff.',

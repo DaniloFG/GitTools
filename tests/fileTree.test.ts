@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildTree, flattenTree, parseFileViewMode, splitPath } from '../src/renderer/src/fileTree'
+import type { TreeDir, TreeNode, TreeRow } from '../src/renderer/src/fileTree'
 
 const files = ['README.md', 'src/app/ui/a.tsx', 'src/app/ui/b.tsx', 'src/core/x.ts', 'src/main.ts', 'docs/guide/setup/one.md']
 const tree = buildTree(files, (f) => f)
@@ -55,5 +56,118 @@ describe('stepIndex (navegação entre alterações)', () => {
     expect(stepIndex(0, -1, 3)).toBe(2)
     expect(stepIndex(1, 1, 3)).toBe(2)
     expect(stepIndex(0, 1, 0)).toBe(-1)
+  })
+})
+
+// Referência: a implementação anterior de buildTree/flattenTree, copiada aqui para provar que a versão linear
+// dá exatamente o mesmo resultado. Não usar em código de produção.
+const refCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+
+function refBuildTree<T>(items: readonly T[], pathOf: (item: T) => string): TreeNode<T>[] {
+  const root: TreeDir<T> = { kind: 'dir', name: '', path: '', children: [], fileCount: 0 }
+  for (const item of items) {
+    const path = pathOf(item)
+    const parts = path.split('/').filter(Boolean)
+    if (parts.length === 0) continue
+    let dir = root
+    dir.fileCount++
+    for (const part of parts.slice(0, -1)) {
+      const path = dir.path ? `${dir.path}/${part}` : part
+      let next = dir.children.find((c): c is TreeDir<T> => c.kind === 'dir' && c.path === path)
+      if (!next) {
+        next = { kind: 'dir', name: part, path, children: [], fileCount: 0 }
+        dir.children.push(next)
+      }
+      next.fileCount++
+      dir = next
+    }
+    dir.children.push({ kind: 'file', name: parts[parts.length - 1], path, item })
+  }
+  return refFinish(root.children)
+}
+
+function refFinish<T>(nodes: TreeNode<T>[]): TreeNode<T>[] {
+  const out = nodes.map((node) => {
+    if (node.kind === 'file') return node
+    let dir = node
+    while (dir.children.length === 1 && dir.children[0].kind === 'dir') {
+      const only = dir.children[0] as TreeDir<T>
+      dir = { ...only, name: `${dir.name}/${only.name}` }
+    }
+    return { ...dir, children: refFinish(dir.children) }
+  })
+  return out.sort((a, b) => (a.kind === b.kind ? refCollator.compare(a.name, b.name) : a.kind === 'dir' ? -1 : 1))
+}
+
+function refFlattenTree<T>(nodes: readonly TreeNode<T>[], collapsed: ReadonlySet<string>, depth = 0): TreeRow<T>[] {
+  const rows: TreeRow<T>[] = []
+  for (const node of nodes) {
+    if (node.kind === 'file') {
+      rows.push({ kind: 'file', node, depth })
+      continue
+    }
+    const isCollapsed = collapsed.has(node.path)
+    rows.push({ kind: 'dir', node, depth, collapsed: isCollapsed })
+    if (!isCollapsed) rows.push(...refFlattenTree(node.children, collapsed, depth + 1))
+  }
+  return rows
+}
+
+function collectDirPaths<T>(nodes: TreeNode<T>[], out: string[] = []): string[] {
+  for (const node of nodes) if (node.kind === 'dir') {
+    out.push(node.path)
+    collectDirPaths(node.children, out)
+  }
+  return out
+}
+
+describe('buildTree e flattenTree são iguais à implementação anterior', () => {
+  const pathOf = (p: string) => p
+
+  it('casos de borda: barras repetidas, barra no início e no fim, caminho vazio, arquivo e pasta com o mesmo nome, ordem de inserção', () => {
+    const paths = [
+      'a', 'a/b', 'a/b/c.ts', 'x.ts', 'x.ts/y', // "a" arquivo e "a" pasta no mesmo nível
+      '/lead/file.ts', 'trail/dir/', 'rep//eated///f.ts', '', '/', '//', // descartados ou normalizados
+      'src/app/ui/a.tsx', 'src/app/ui/b.tsx', 'src/app/z.ts', 'src/app/ui/a.tsx', // duplicado
+      'src/Core/a.ts', 'src/core/b.ts', // empate no collator (sensitivity base)
+      'pasta/file10.ts', 'pasta/file2.ts', 'pasta/file1.ts', 'Pasta/x.ts', // ordem numérica
+      'chain/one/two/three/leaf.ts', 'chain/one/other.ts', // cadeia de pastas de filho único
+    ]
+    expect(buildTree(paths, pathOf)).toEqual(refBuildTree(paths, pathOf))
+    expect(buildTree([], pathOf)).toEqual(refBuildTree([], pathOf))
+    expect(buildTree(['', '/'], pathOf)).toEqual(refBuildTree(['', '/'], pathOf))
+
+    const next = buildTree(paths, pathOf)
+    const ref = refBuildTree(paths, pathOf)
+    const dirs = collectDirPaths(ref)
+    for (const set of [new Set<string>(), new Set(dirs), new Set(dirs.filter((_, i) => i % 2 === 0))]) {
+      for (const depth of [0, 2]) expect(flattenTree(next, set, depth)).toEqual(refFlattenTree(ref, set, depth))
+    }
+  })
+
+  it('3 000 caminhos gerados de forma determinística, em várias profundidades, com pastas recolhidas', () => {
+    let seed = 7
+    const rnd = (n: number) => {
+      seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff
+      return seed % n
+    }
+    const names = ['src', 'app', 'ui', 'core', 'Docs', 'docs', 'file10', 'file2', 'a', 'b']
+    const paths = Array.from({ length: 3000 }, (_, i) => {
+      const segs = Array.from({ length: 1 + rnd(6) }, () => names[rnd(names.length)])
+      segs.push(`arq-${i}.ts`)
+      const joined = segs.join('/')
+      return rnd(25) === 0 ? `/${joined}//` : joined
+    })
+
+    const next = buildTree(paths, pathOf)
+    const ref = refBuildTree(paths, pathOf)
+    expect(next).toEqual(ref)
+
+    const dirs = collectDirPaths(ref)
+    expect(dirs.length).toBeGreaterThan(50)
+    const sets = [new Set<string>(), new Set(dirs), new Set(dirs.filter((_, i) => i % 3 === 0))]
+    for (const set of sets) {
+      for (const depth of [0, 2]) expect(flattenTree(next, set, depth)).toEqual(refFlattenTree(ref, set, depth))
+    }
   })
 })

@@ -1,8 +1,8 @@
-import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { DiffLine, FileDiff, LineKey } from '../../../shared/types'
-import { changeKeys, hunkKeys, lineKey, splitRows } from '../../../shared/diffKeys'
+import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { DIFF_MAX_BYTES, type DiffLine, type FileDiff, type LineKey } from '../../../shared/types'
+import { changeKeys, hunkKeys, lineKey } from '../../../shared/diffKeys'
 import { DEFAULT_SETTINGS, type DiffLayout } from '../../../shared/settings'
-import { AppContext } from '../context'
+import { AppActionsContext, AppSettingsContext } from '../context'
 import { copyAndNotify, copyItemsAt, selectionText } from '../copy'
 import { diffLinesText, markedDiffLines } from '../copyText'
 import { stepIndex, useDiffNav } from '../diffNav'
@@ -11,14 +11,18 @@ import { useLayout } from '../layout'
 import { displayCombo, resolveBindings } from '../shortcuts'
 import type { MenuItem } from './ContextMenu'
 import { ChangeRuler } from './ChangeRuler'
+import { VirtualList, type VirtualListHandle } from './VirtualList'
 import { diffViewGroups, ViewOptionsButton } from './ViewOptions'
+import { allowFullDiff } from '../diffLimit'
+import { BLOCK_ROWS, buildRows, changeBlocks, chunkRows, rowKeys, rowKind, type DiffRow } from '../diffBlocks'
+import { marksFromRows, type RulerIndexRow } from '../changeRuler'
 
 /**
  * Escolha entre "cima e baixo" e "lado a lado": todo diff abre no modo padrão das configurações;
  * os botões do cabeçalho trocam o modo só enquanto o diff está aberto.
  */
 export function useDiffLayout(): [DiffLayout, (layout: DiffLayout) => void] {
-  const preferred = useContext(AppContext)?.settings.diffLayout ?? DEFAULT_SETTINGS.diffLayout
+  const preferred = useContext(AppSettingsContext)?.settings.diffLayout ?? DEFAULT_SETTINGS.diffLayout
   const [override, setOverride] = useState<{ preferred: DiffLayout; layout: DiffLayout } | null>(null)
   // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
   const layout = override && override.preferred === preferred ? override.layout : preferred
@@ -31,7 +35,7 @@ export function useDiffLayout(): [DiffLayout, (layout: DiffLayout) => void] {
  * guardada até o padrão das configurações mudar. Quem busca o diff a inclui no pedido (`fullFile`).
  */
 export function useFullFile(): [boolean, (full: boolean) => void] {
-  const preferred = useContext(AppContext)?.settings.diffFullFile ?? DEFAULT_SETTINGS.diffFullFile
+  const preferred = useContext(AppSettingsContext)?.settings.diffFullFile ?? DEFAULT_SETTINGS.diffFullFile
   const [override, setOverride] = useLayout<{ preferred: boolean; full: boolean } | undefined>('diff.fullFile', parseFullFileOverride)
   // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
   const full = override && override.preferred === preferred ? override.full : preferred
@@ -54,21 +58,18 @@ interface Props {
 
 /** Teclas atuais de uma ação (as personalizadas das configurações, se houver). */
 function useShortcutOf(): (action: string) => string {
-  const overrides = useContext(AppContext)?.settings.shortcuts
+  const overrides = useContext(AppSettingsContext)?.settings.shortcuts
   return (action) => displayCombo(resolveBindings(overrides ?? {})[action])
 }
 
 /**
- * Tipo de uma linha do diff lado a lado, para a régua: só o lado direito alterado (add), só o esquerdo (del)
- * ou os dois (mod). Sem alteração, null.
+ * Quantos dígitos cabem no maior número de linha do arquivo. Olha só os cabeçalhos dos hunks, para a largura
+ * das colunas de número ser fixa (layout fixo da tabela) sem percorrer as linhas.
  */
-function splitRowKind(hunk: FileDiff['hunks'][number], row: { left: number | null; right: number | null }): 'add' | 'del' | 'mod' | null {
-  const left = row.left !== null && hunk.lines[row.left].kind !== 'context'
-  const right = row.right !== null && hunk.lines[row.right].kind !== 'context'
-  if (left && right) return 'mod'
-  if (left) return 'del'
-  if (right) return 'add'
-  return null
+function lineNumberDigits(hunks: FileDiff['hunks']): number {
+  let max = 0
+  for (const h of hunks) max = Math.max(max, h.oldStart + h.oldCount, h.newStart + h.newCount)
+  return String(max).length
 }
 
 const TYPE_LABEL: Record<FileDiff['changeType'], MessageKey> = {
@@ -79,10 +80,223 @@ const TYPE_LABEL: Record<FileDiff['changeType'], MessageKey> = {
   copied: 'status.copied'
 }
 
+/** Altura estimada de um bloco. As linhas têm 18 px, mas o código quebra linha: por isso todo bloco é medido. */
+const BLOCK_HEIGHT = BLOCK_ROWS * 18
+/** Margem montada acima e abaixo da tela: rolar não mostra espaço em branco. */
+const OVERSCAN = 800
+/** Limite de linhas que a navegação realça (cada uma é uma consulta ao DOM). */
+const NAV_FLASH_MAX = 200
+/** Todo bloco é de altura variável (ver BLOCK_HEIGHT). Constante de módulo: a identidade não muda. */
+const alwaysVariable = () => true
+
+/** Cada arquivo e cada modo ganham chaves de bloco novas, para as alturas medidas não valerem para outro diff. */
+let diffEpoch = 0
+
+/**
+ * Estado que o bloco lê no momento do desenho e dos eventos. Os manipuladores e a seleção ficam numa ref,
+ * atualizada a cada desenho do diff: um bloco memorizado não precisa ser refeito para ver a seleção nova.
+ */
+interface Live {
+  selection: Set<LineKey> | undefined
+  selectable: boolean
+  /** Por hunk: quantas linhas alteradas estão marcadas, e quantas linhas alteradas ele tem. */
+  hunkSelected: number[]
+  hunkChanged: number[]
+  lineDown(e: React.MouseEvent, key: LineKey): void
+  lineEnter(key: LineKey): void
+  codeDown(e: React.MouseEvent): void
+  codeClick(e: React.MouseEvent, key: LineKey): void
+  toggleHunk(hunk: number, checked: boolean): void
+}
+
+interface BlockProps {
+  file: FileDiff
+  rows: readonly DiffRow[]
+  start: number
+  end: number
+  layout: DiffLayout
+  /**
+   * Estado de seleção que este bloco desenha (ver blockSig). Quando não muda, o bloco não é refeito, mesmo que
+   * a seleção inteira tenha mudado. Não é lido no corpo: a comparação do memo é que importa.
+   */
+  sig: string
+  live: RefObject<Live | null>
+}
+
+/**
+ * Assinatura do que o bloco mostra da seleção: uma letra por cabeçalho (nenhuma, parte ou todas as linhas do hunk)
+ * e um dígito por lado alterado de cada linha (1 marcado, 0 não). Quase não custa: 40 linhas por bloco.
+ */
+function blockSig(
+  file: FileDiff,
+  rows: readonly DiffRow[],
+  start: number,
+  end: number,
+  selection: Set<LineKey> | undefined,
+  selectable: boolean,
+  hunkSelected: readonly number[],
+  hunkChanged: readonly number[]
+): string {
+  if (!selectable) return 'N'
+  let sig = 'S'
+  for (let i = start; i < end; i++) {
+    const row = rows[i]
+    if (row.kind === 'hunk') {
+      const picked = hunkSelected[row.hunk]
+      sig += picked === 0 ? 'n' : picked === hunkChanged[row.hunk] ? 'a' : 'p'
+    } else {
+      for (const key of rowKeys(file, row)) sig += selection?.has(key) ? '1' : '0'
+    }
+  }
+  return sig
+}
+
+/** Um bloco de linhas do diff: uma tabela própria, com o mesmo layout de colunas das demais (ver --ln-digits). */
+const DiffBlock = memo(function DiffBlock({ file, rows, start, end, layout, live }: BlockProps) {
+  const cur = live.current
+  if (!cur) return null
+  const { selection, selectable } = cur
+  const split = layout === 'split'
+
+  /** Um lado da linha lado a lado (índice nulo = célula vazia). */
+  const side = (h: number, index: number | null, which: 'old' | 'new') => {
+    const hunk = file.hunks[h]
+    const half = which === 'new' ? 'half' : ''
+    if (index === null) return <td colSpan={3} className={`cell-empty ${half}`} />
+    const line: DiffLine = hunk.lines[index]
+    const key = lineKey(h, index)
+    const change = line.kind !== 'context'
+    const isSelected = change && selection?.has(key)
+    const cls = `cell-${line.kind} ${isSelected ? 'line-selected' : ''}`
+    // Os manipuladores são lidos da ref no momento do evento: o bloco pode ter sido desenhado com uma seleção antiga.
+    const gutter = change ? { onMouseDown: (e: React.MouseEvent) => live.current?.lineDown(e, key), onMouseEnter: () => live.current?.lineEnter(key) } : {}
+    const code = change
+      ? { onMouseDown: (e: React.MouseEvent) => live.current?.codeDown(e), onClick: (e: React.MouseEvent) => live.current?.codeClick(e, key), onMouseEnter: () => live.current?.lineEnter(key) }
+      : { onMouseDown: (e: React.MouseEvent) => live.current?.codeDown(e) }
+    return (
+      <>
+        <td className={`sel ${half} ${cls}`} {...gutter}>
+          {selectable && change && <span className={`tick ${isSelected ? 'on' : ''}`} />}
+        </td>
+        <td className={`ln ${cls}`} {...gutter}>
+          {(which === 'old' ? line.oldLine : line.newLine) ?? ''}
+        </td>
+        <td className={`code ${cls}`} tabIndex={-1} data-copy={line.content || undefined} data-copy-what="line" {...code}>
+          {line.content}
+          {line.noNewline && <span className="no-newline" title={t('diff.noNewline')}>⏎̸</span>}
+        </td>
+      </>
+    )
+  }
+
+  /** Cabeçalho do hunk, com a caixa que marca o hunk inteiro. `cols` é o colSpan do texto. */
+  const hunkHeader = (r: number, h: number, cols: number) => {
+    const hunk = file.hunks[h]
+    const picked = cur.hunkSelected[h]
+    const hunkAll = selectable && picked === cur.hunkChanged[h]
+    return (
+      <tr key={r} className="hunk-header" data-row={r}>
+        <td className="sel">
+          {selectable && (
+            <input
+              type="checkbox"
+              checked={hunkAll}
+              ref={(el) => {
+                if (el) el.indeterminate = !hunkAll && picked > 0
+              }}
+              onChange={(e) => live.current?.toggleHunk(h, e.target.checked)}
+              title={t('diff.selectHunk')}
+            />
+          )}
+        </td>
+        <td colSpan={cols}>
+          @@ −{hunk.oldStart},{hunk.oldCount} +{hunk.newStart},{hunk.newCount} @@ <span className="muted">{hunk.section}</span>
+        </td>
+      </tr>
+    )
+  }
+
+  const body: React.ReactNode[] = []
+  for (let r = start; r < end; r++) {
+    const row = rows[r]
+    if (row.kind === 'hunk') {
+      body.push(hunkHeader(r, row.hunk, split ? 5 : 4))
+    } else if (row.kind === 'split') {
+      const kind = rowKind(file, row)
+      body.push(
+        <tr key={r} data-row={r} className="line" data-change={kind !== null || undefined} data-kind={kind ?? undefined}>
+          {side(row.hunk, row.left, 'old')}
+          {side(row.hunk, row.right, 'new')}
+        </tr>
+      )
+    } else {
+      const line = file.hunks[row.hunk].lines[row.line]
+      const key = lineKey(row.hunk, row.line)
+      const change = line.kind !== 'context'
+      const isSelected = change && selection?.has(key)
+      body.push(
+        <tr
+          key={r}
+          data-row={r}
+          className={`line line-${line.kind} ${isSelected ? 'line-selected' : ''}`}
+          data-change={change || undefined}
+          data-kind={change ? line.kind : undefined}
+          onMouseEnter={change ? () => live.current?.lineEnter(key) : undefined}
+        >
+          <td className="sel" onMouseDown={change ? (e) => live.current?.lineDown(e, key) : undefined}>
+            {selectable && change && <span className={`tick ${isSelected ? 'on' : ''}`} />}
+          </td>
+          <td className="ln" onMouseDown={change ? (e) => live.current?.lineDown(e, key) : undefined}>
+            {line.oldLine ?? ''}
+          </td>
+          <td className="ln" onMouseDown={change ? (e) => live.current?.lineDown(e, key) : undefined}>
+            {line.newLine ?? ''}
+          </td>
+          <td className="sign" onMouseDown={change ? (e) => live.current?.lineDown(e, key) : undefined}>
+            {line.kind === 'add' ? '+' : line.kind === 'del' ? '−' : ''}
+          </td>
+          <td className="code" tabIndex={-1} data-copy={line.content || undefined} data-copy-what="line" onMouseDown={(e) => live.current?.codeDown(e)} onClick={change ? (e) => live.current?.codeClick(e, key) : undefined}>
+            {line.content}
+            {line.noNewline && <span className="no-newline" title={t('diff.noNewline')}>⏎̸</span>}
+          </td>
+        </tr>
+      )
+    }
+  }
+
+  // Layout fixo, com as mesmas larguras em todos os blocos: as colunas ficam alinhadas entre as tabelas.
+  return (
+    <table className={`diff-table ${split ? 'diff-split' : ''} ${selectable ? 'selectable' : ''}`}>
+      {split ? (
+        <colgroup>
+          <col className="sel" />
+          <col className="ln" />
+          <col />
+          <col className="sel" />
+          <col className="ln" />
+          <col />
+        </colgroup>
+      ) : (
+        <colgroup>
+          <col className="sel" />
+          <col className="ln" />
+          <col className="ln" />
+          <col className="sign" />
+          <col />
+        </colgroup>
+      )}
+      <tbody>{body}</tbody>
+    </table>
+  )
+})
+
 /**
  * Exibe o diff de um arquivo. Com seleção ativa: clique numa linha para marcar/desmarcar,
  * arraste o mouse para marcar várias, Shift+clique para marcar um intervalo, ou use a
  * caixa do bloco (hunk) para marcá-lo inteiro.
+ *
+ * O corpo é uma lista em janela de blocos (BLOCK_ROWS linhas). Só os blocos perto da tela são montados; a
+ * seleção só redesenha os blocos cuja assinatura mudou.
  */
 export function DiffView({ file, selection, onSelectionChange, fileNav }: Props) {
   const selectable = !!selection && !!onSelectionChange && !file.binary
@@ -90,45 +304,93 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
   const [fullFile, setFullFile] = useFullFile()
   const dragMode = useRef<'add' | 'remove' | null>(null)
   const lastClicked = useRef<LineKey | null>(null)
-  const all = changeKeys(file)
   const root = useRef<HTMLDivElement>(null)
+  const listRef = useRef<VirtualListHandle>(null)
+  const live = useRef<Live | null>(null)
   const shortcutOf = useShortcutOf()
-  /** Alteração atual da navegação (índice entre os blocos de linhas alteradas) e quantas existem. */
+  /** Alteração atual da navegação (índice entre os blocos de alteração). */
   const [cursor, setCursor] = useState(-1)
-  const [blocks, setBlocks] = useState(0)
 
-  /** Primeira linha de cada bloco de linhas alteradas seguidas (cada linha alterada tem data-change). */
-  const changeBlocks = () => {
-    const rows = [...(root.current?.querySelectorAll<HTMLElement>('tr.hunk-header, tr.line') ?? [])]
-    const blocks: HTMLElement[][] = []
+  // Tudo o que vem do arquivo e do modo é calculado uma vez por troca, e não a cada desenho.
+  const rows = useMemo(() => buildRows(file, layout), [file, layout])
+  const blocks = useMemo(() => chunkRows(rows.length), [rows])
+  const changes = useMemo(() => changeBlocks(file, rows), [file, rows])
+  const all = useMemo(() => changeKeys(file), [file])
+  /** Posição de cada chave alterada em `all`: o Shift+clique acha as pontas sem procurar na lista. */
+  const pos = useMemo(() => new Map(all.map((k, i) => [k, i] as const)), [all])
+  const hunkChanged = useMemo(() => file.hunks.map((h) => h.lines.reduce((n, l) => (l.kind !== 'context' ? n + 1 : n), 0)), [file])
+  const digits = useMemo(() => lineNumberDigits(file.hunks), [file])
+  /**
+   * Régua: uma marca por linha alterada, em frações do diff inteiro, supondo linhas de mesma altura (18 px).
+   * Com código que quebra linha (pre-wrap), a posição da marca fica aproximada: a régua não mede o DOM, de propósito.
+   */
+  const marks = useMemo(() => {
+    const indexed: RulerIndexRow[] = []
     rows.forEach((row, i) => {
-      if (!row.hasAttribute('data-change')) return
-      if (i > 0 && rows[i - 1].hasAttribute('data-change')) blocks[blocks.length - 1].push(row)
-      else blocks.push([row])
+      const kind = rowKind(file, row)
+      if (kind !== null) indexed.push({ index: i, kind })
     })
-    return blocks
+    return marksFromRows(indexed, rows.length, 0)
+  }, [file, rows])
+  const epoch = useMemo(() => ++diffEpoch, [file, layout])
+  const keyOf = useCallback((i: number) => `${epoch}:${i}`, [epoch])
+
+  // Contagens da seleção: O(tamanho da seleção), não O(alterações). Um hunk é o número antes do ":" da chave.
+  const hunkSelected = new Array<number>(file.hunks.length).fill(0)
+  let selectedCount = 0
+  if (selection && selectable) {
+    for (const key of selection) {
+      if (!pos.has(key)) continue
+      selectedCount++
+      hunkSelected[Number(key.slice(0, key.indexOf(':')))]++
+    }
+  }
+  const allSelected = selectable && all.length > 0 && selectedCount === all.length
+
+  /** Realça as linhas de uma alteração que estão montadas. Uma leitura do DOM por linha, no máximo NAV_FLASH_MAX. */
+  const flash = (start: number, end: number) => {
+    const body = root.current
+    if (!body) return
+    const els: HTMLElement[] = []
+    for (let i = start; i < end && i < start + NAV_FLASH_MAX; i++) {
+      const el = body.querySelector<HTMLElement>(`tr[data-row="${i}"]`)
+      if (el) els.push(el)
+    }
+    for (const el of els) el.classList.remove('nav-flash')
+    // Um reflexo só: reinicia a animação se a mesma alteração for escolhida de novo.
+    void body.offsetWidth
+    for (const el of els) el.classList.add('nav-flash')
+    setTimeout(() => {
+      for (const el of els) el.classList.remove('nav-flash')
+    }, 1400)
+  }
+
+  /** Centraliza a primeira linha da alteração. O bloco dela precisa estar montado: se ainda não está, tenta no quadro seguinte. */
+  const reveal = (start: number, end: number, retry: boolean) => {
+    const body = root.current
+    if (!body) return
+    const first = body.querySelector<HTMLElement>(`tr[data-row="${start}"]`)
+    if (!first) {
+      if (retry) requestAnimationFrame(() => reveal(start, end, false))
+      return
+    }
+    first.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    flash(start, end)
   }
 
   const goChange = (delta: 1 | -1) => {
-    const list = changeBlocks()
-    const next = stepIndex(cursor, delta, list.length)
+    const next = stepIndex(cursor, delta, changes.length)
     if (next < 0) return
     setCursor(next)
-    list[next][0].scrollIntoView({ block: 'center', behavior: 'smooth' })
-    for (const row of list[next]) {
-      row.classList.remove('nav-flash')
-      void row.offsetWidth // reinicia a animação se a mesma alteração for escolhida de novo
-      row.classList.add('nav-flash')
-      setTimeout(() => row.classList.remove('nav-flash'), 1400)
-    }
+    const { start, end } = changes[next]
+    listRef.current?.scrollToIndex(Math.floor(start / BLOCK_ROWS))
+    // O bloco é montado no desenho que a rolagem causa: a procura da linha espera um quadro.
+    requestAnimationFrame(() => reveal(start, end, true))
   }
 
-  // Outro arquivo, outro modo de exibição ou "arquivo inteiro": a contagem recomeça.
-  useLayoutEffect(() => {
-    setCursor(-1)
-    setBlocks(changeBlocks().length)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, layout, fullFile])
+  // Outro arquivo ou outro modo de exibição: a contagem recomeça.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setCursor(-1), [file, layout, fullFile])
 
   useDiffNav({
     el: () => root.current,
@@ -151,14 +413,19 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
     onSelectionChange(next)
   }
 
+  /** Todas as linhas alteradas entre duas chaves (inclusive), na ordem do arquivo. */
+  const between = (from: LineKey, to: LineKey) => {
+    const a = pos.get(from) ?? -1
+    const b = pos.get(to) ?? -1
+    const [lo, hi] = [a, b].sort((m, n) => m - n)
+    return all.slice(lo, hi + 1)
+  }
+
   const onLineDown = (e: React.MouseEvent, key: LineKey) => {
     if (!selectable) return
     e.preventDefault()
     if (e.shiftKey && lastClicked.current) {
-      const a = all.indexOf(lastClicked.current)
-      const b = all.indexOf(key)
-      const [from, to] = [a, b].sort((m, n) => m - n)
-      update(all.slice(from, to + 1), true)
+      update(between(lastClicked.current, key), true)
       return
     }
     const add = !selection!.has(key)
@@ -171,7 +438,8 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
     if (dragMode.current) update([key], dragMode.current === 'add')
   }
 
-  const app = useContext(AppContext)
+  // Só as ações (menu e aviso de cópia): o diff não redesenha com a operação em andamento nem com os dados.
+  const actions = useContext(AppActionsContext)
 
   // O código é texto selecionável: o mouse sobre ele só seleciona. Marcar a linha é clicar nela (sem texto
   // selecionado) ou usar as colunas à esquerda (caixa, números e sinal), onde o arrastar marca várias.
@@ -183,10 +451,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
   const onCodeClick = (e: React.MouseEvent, key: LineKey) => {
     if (!selectable) return
     if (e.shiftKey && lastClicked.current) {
-      const a = all.indexOf(lastClicked.current)
-      const b = all.indexOf(key)
-      const [from, to] = [a, b].sort((m, n) => m - n)
-      update(all.slice(from, to + 1), true)
+      update(between(lastClicked.current, key), true)
       return
     }
     // Com um trecho selecionado, o clique é para copiar, não para marcar a linha.
@@ -197,15 +462,32 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
 
   /** Botão direito no diff: copiar as linhas marcadas e o que estiver na linha ou selecionado. */
   const onMenu = (e: React.MouseEvent) => {
-    if (!app?.showMenu) return
+    if (!actions?.showMenu) return
     const marked = selection && selection.size ? markedDiffLines(file, selection) : []
     const items: MenuItem[] = []
-    if (marked.length) items.push({ label: t('copy.markedLines', { count: marked.length }), onClick: () => void copyAndNotify(diffLinesText(marked), app.toast) })
-    items.push(...copyItemsAt(e.target, app.toast))
-    if (items.length) app.showMenu(e, items)
+    if (marked.length) items.push({ label: t('copy.markedLines', { count: marked.length }), onClick: () => void copyAndNotify(diffLinesText(marked), actions.toast) })
+    items.push(...copyItemsAt(e.target, actions.toast))
+    if (items.length) actions.showMenu(e, items)
   }
 
-  const allSelected = selectable && all.length > 0 && all.every((k) => selection!.has(k))
+  // Os blocos leem a seleção e os manipuladores daqui. Atualizada a cada desenho, antes de qualquer evento.
+  live.current = {
+    selection,
+    selectable,
+    hunkSelected,
+    hunkChanged,
+    lineDown: onLineDown,
+    lineEnter: onLineEnter,
+    codeDown: onCodeDown,
+    codeClick: onCodeClick,
+    toggleHunk: (h, checked) => update(hunkKeys(file, h), checked)
+  }
+
+  const renderItem = (i: number) => {
+    const { start, end } = blocks[i]
+    const sig = blockSig(file, rows, start, end, selection, selectable, hunkSelected, hunkChanged)
+    return <DiffBlock file={file} rows={rows} start={start} end={end} layout={layout} sig={sig} live={live} />
+  }
 
   return (
     <div className="diff-file" ref={root}>
@@ -215,7 +497,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
             type="checkbox"
             checked={allSelected}
             ref={(el) => {
-              if (el) el.indeterminate = !allSelected && all.some((k) => selection!.has(k))
+              if (el) el.indeterminate = !allSelected && selectedCount > 0
             }}
             onChange={(e) => update(all, e.target.checked)}
             title={t('diff.selectFile')}
@@ -229,15 +511,15 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
         <span className="diff-stats">
           <span className="add">+{file.additions}</span> <span className="del">−{file.deletions}</span>
         </span>
-        {selectable && <span className="muted small">{selection!.size ? t('diff.selectedOf', { selected: all.filter((k) => selection!.has(k)).length, count: all.length }) : t('diff.selectHint')}</span>}
+        {selectable && <span className="muted small">{selectedCount ? t('diff.selectedOf', { selected: selectedCount, count: all.length }) : t('diff.selectHint')}</span>}
         <span className="toolbar-spacer" />
-        {blocks > 0 && (
+        {changes.length > 0 && (
           <div className="diff-nav" dir="ltr" role="group" aria-label={t('diffNav.group')}>
             <button onClick={() => goChange(-1)} title={`${t('diffNav.prevChange')} (${shortcutOf('diff.prevChange')})`}>
               ▲
             </button>
             <span className="diff-nav-count" title={t('diffNav.count')}>
-              {cursor < 0 ? '–' : cursor + 1}/{blocks}
+              {cursor < 0 ? '–' : cursor + 1}/{changes.length}
             </span>
             <button onClick={() => goChange(1)} title={`${t('diffNav.nextChange')} (${shortcutOf('diff.nextChange')})`}>
               ▼
@@ -262,154 +544,37 @@ export function DiffView({ file, selection, onSelectionChange, fileNav }: Props)
         )}
       </div>
       <div className="diff-body-wrap">
-      <div className="diff-body" onContextMenu={onMenu}>
-      {file.binary ? (
-        <p className="empty">{t('diff.binary')}</p>
-      ) : file.hunks.length === 0 ? (
-        <p className="empty">{t('diff.noContent')}</p>
-      ) : layout === 'split' ? (
-        <table className={`diff-table diff-split ${selectable ? 'selectable' : ''}`}>
-          <colgroup>
-            <col className="sel" />
-            <col className="ln" />
-            <col />
-            <col className="sel" />
-            <col className="ln" />
-            <col />
-          </colgroup>
-          <tbody>
-            {file.hunks.map((hunk, h) => {
-              const keys = hunkKeys(file, h)
-              const hunkAll = selectable && keys.every((k) => selection!.has(k))
-              const side = (index: number | null, which: 'old' | 'new') => {
-                const half = which === 'new' ? 'half' : ''
-                if (index === null) return <td colSpan={3} className={`cell-empty ${half}`} />
-                const line: DiffLine = hunk.lines[index]
-                const key = lineKey(h, index)
-                const change = line.kind !== 'context'
-                const isSelected = change && selection?.has(key)
-                const cls = `cell-${line.kind} ${isSelected ? 'line-selected' : ''}`
-                const gutter = change ? { onMouseDown: (e: React.MouseEvent) => onLineDown(e, key), onMouseEnter: () => onLineEnter(key) } : {}
-                const code = change ? { onMouseDown: onCodeDown, onClick: (e: React.MouseEvent) => onCodeClick(e, key), onMouseEnter: () => onLineEnter(key) } : { onMouseDown: onCodeDown }
-                return (
-                  <>
-                    <td className={`sel ${half} ${cls}`} {...gutter}>
-                      {selectable && change && <span className={`tick ${isSelected ? 'on' : ''}`} />}
-                    </td>
-                    <td className={`ln ${cls}`} {...gutter}>
-                      {(which === 'old' ? line.oldLine : line.newLine) ?? ''}
-                    </td>
-                    <td className={`code ${cls}`} tabIndex={-1} data-copy={line.content || undefined} data-copy-what="line" {...code}>
-                      {line.content}
-                      {line.noNewline && <span className="no-newline" title={t('diff.noNewline')}>⏎̸</span>}
-                    </td>
-                  </>
-                )
-              }
-              return [
-                <tr key={`h${h}`} className="hunk-header">
-                  <td className="sel">
-                    {selectable && (
-                      <input
-                        type="checkbox"
-                        checked={hunkAll}
-                        ref={(el) => {
-                          if (el) el.indeterminate = !hunkAll && keys.some((k) => selection!.has(k))
-                        }}
-                        onChange={(e) => update(keys, e.target.checked)}
-                        title={t('diff.selectHunk')}
-                      />
-                    )}
-                  </td>
-                  <td colSpan={5}>
-                    @@ −{hunk.oldStart},{hunk.oldCount} +{hunk.newStart},{hunk.newCount} @@ <span className="muted">{hunk.section}</span>
-                  </td>
-                </tr>,
-                ...splitRows(hunk).map((row) => (
-                  <tr
-                    key={`${h}:${row.left ?? '-'}:${row.right ?? '-'}`}
-                    className="line"
-                    data-change={splitRowKind(hunk, row) !== null || undefined}
-                    data-kind={splitRowKind(hunk, row) ?? undefined}
-                  >
-                    {side(row.left, 'old')}
-                    {side(row.right, 'new')}
-                  </tr>
-                ))
-              ]
-            })}
-          </tbody>
-        </table>
-      ) : (
-        <table className={`diff-table ${selectable ? 'selectable' : ''}`}>
-          <tbody>
-            {file.hunks.map((hunk, h) => {
-              const keys = hunkKeys(file, h)
-              const hunkAll = selectable && keys.every((k) => selection!.has(k))
-              return [
-                <tr key={`h${h}`} className="hunk-header">
-                  <td className="sel">
-                    {selectable && (
-                      <input
-                        type="checkbox"
-                        checked={hunkAll}
-                        ref={(el) => {
-                          if (el) el.indeterminate = !hunkAll && keys.some((k) => selection!.has(k))
-                        }}
-                        onChange={(e) => update(keys, e.target.checked)}
-                        title={t('diff.selectHunk')}
-                      />
-                    )}
-                  </td>
-                  <td colSpan={4}>
-                    @@ −{hunk.oldStart},{hunk.oldCount} +{hunk.newStart},{hunk.newCount} @@ <span className="muted">{hunk.section}</span>
-                  </td>
-                </tr>,
-                ...hunk.lines.map((line, l) => {
-                  const key = lineKey(h, l)
-                  const change = line.kind !== 'context'
-                  const isSelected = change && selection?.has(key)
-                  return (
-                    <tr
-                      key={key}
-                      className={`line line-${line.kind} ${isSelected ? 'line-selected' : ''}`}
-                      data-change={change || undefined}
-                      data-kind={change ? line.kind : undefined}
-                      onMouseEnter={change ? () => onLineEnter(key) : undefined}
-                    >
-                      <td className="sel" onMouseDown={change ? (e) => onLineDown(e, key) : undefined}>
-                        {selectable && change && <span className={`tick ${isSelected ? 'on' : ''}`} />}
-                      </td>
-                      <td className="ln" onMouseDown={change ? (e) => onLineDown(e, key) : undefined}>
-                        {line.oldLine ?? ''}
-                      </td>
-                      <td className="ln" onMouseDown={change ? (e) => onLineDown(e, key) : undefined}>
-                        {line.newLine ?? ''}
-                      </td>
-                      <td className="sign" onMouseDown={change ? (e) => onLineDown(e, key) : undefined}>
-                        {line.kind === 'add' ? '+' : line.kind === 'del' ? '−' : ''}
-                      </td>
-                      <td
-                        className="code"
-                        tabIndex={-1}
-                        data-copy={line.content || undefined}
-                        data-copy-what="line"
-                        onMouseDown={onCodeDown}
-                        onClick={change ? (e) => onCodeClick(e, key) : undefined}
-                      >
-                        {line.content}
-                        {line.noNewline && <span className="no-newline" title={t('diff.noNewline')}>⏎̸</span>}
-                      </td>
-                    </tr>
-                  )
-                })
-              ]
-            })}
-          </tbody>
-        </table>
-      )}
-      </div>
-      <ChangeRuler selector="tr[data-change]" scroller=".diff-body" />
+        {file.truncated && (
+          <div className="diff-truncated" role="status">
+            <span>{t('diff.truncated.message', { size: `${DIFF_MAX_BYTES / (1024 * 1024)} MB` })}</span>
+            <button onClick={() => allowFullDiff(file.path)}>{t('diff.truncated.showAll')}</button>
+          </div>
+        )}
+        {file.binary ? (
+          <div className="diff-body" onContextMenu={onMenu}>
+            <p className="empty">{t('diff.binary')}</p>
+          </div>
+        ) : file.hunks.length === 0 ? (
+          <div className="diff-body" onContextMenu={onMenu}>
+            <p className="empty">{t('diff.noContent')}</p>
+          </div>
+        ) : (
+          // data-rows: o roteiro de medição espera o diff inteiro montado como lista; o número é o de linhas da tabela.
+          <VirtualList
+            ref={listRef}
+            className="diff-body"
+            data-rows={rows.length}
+            style={{ '--ln-digits': digits } as React.CSSProperties}
+            onContextMenu={onMenu}
+            count={blocks.length}
+            rowHeight={BLOCK_HEIGHT}
+            keyOf={keyOf}
+            isVariable={alwaysVariable}
+            overscan={OVERSCAN}
+            renderItem={renderItem}
+          />
+        )}
+        <ChangeRuler marks={marks} scroller=".diff-body" />
       </div>
     </div>
   )

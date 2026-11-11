@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { useApp } from '../context'
+import { useAppActions } from '../context'
 import { inScreen, pinnedIn, SCREEN_IDS, SCREEN_VIEWS, toggleIn, type DockState, type ScreenId, type ViewId } from '../dock'
 import { t } from '../i18n'
 import { applySavedLayout, deleteSavedLayout, findByName, saveCurrentLayout, useCurrentLayoutName, useSavedLayouts } from '../savedLayouts'
 import type { ViewMeta } from './Dock'
 import type { MenuItem } from './ContextMenu'
+import { preloadDashboards } from '../lazyScreens'
 
 export interface ScreenProps {
   state: DockState
@@ -100,7 +101,7 @@ export function ScreenTabs({ state, meta, screen, available, onScreen, changeCou
           </button>
         )
       })}
-      <button className={`screen-tab dashboards-tab ${dashboards ? 'active' : ''}`} aria-pressed={dashboards} title={t('dash.tabHelp')} onClick={onDashboards}>
+      <button className={`screen-tab dashboards-tab ${dashboards ? 'active' : ''}`} aria-pressed={dashboards} title={t('dash.tabHelp')} onClick={onDashboards} onMouseEnter={preloadDashboards} onFocus={preloadDashboards}>
         <span aria-hidden>◔</span> {t('dash.title')}
       </button>
     </div>
@@ -112,7 +113,7 @@ export function ScreenTabs({ state, meta, screen, available, onScreen, changeCou
  * restaurar o padrão). Fica no menu único ⚙/☰ da barra, em Aparência.
  */
 export function usePanelsItems({ state, onChange, screen, meta, available }: Pick<ScreenProps, 'state' | 'onChange' | 'screen' | 'meta' | 'available'>): MenuItem[] {
-  const { resetLayout, prompt, confirm, toast } = useApp()
+  const { resetLayout, prompt, confirm, toast } = useAppActions()
   const [saved, setSaved] = useSavedLayouts()
   const currentName = useCurrentLayoutName()
 

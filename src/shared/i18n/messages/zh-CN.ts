@@ -200,12 +200,14 @@ export const zhCN: Messages = {
       graph: '图形'
     },
     count: { other: '{count} 个提交' },
+    loadingMore: '正在加载更多提交…',
+    limitReached: { other: '仅显示最近的 {count} 个提交' },
     selected: { other: '已选 {count} 个' },
     hint: 'Ctrl/Shift+点击可多选 · ▸ 或双击显示文件 · 拖到分支上',
     empty: '还没有提交。',
     log: {
       chip: 'git log',
-      help: '此历史记录就是可视化的 “git log”：每一行是一次提交，图形显示各个分支。相当于 git log --graph --all --decorate，最多 500 个提交。',
+      help: '此历史记录就是可视化的 “git log”：每一行是一次提交，图形显示各个分支。相当于 git log --graph --all --decorate，每次加载 500 个提交，滚动时继续加载（最多 10,000 个）。',
       tab: '历史记录 — 可视化的 git log'
     },
     wip: {
@@ -290,7 +292,11 @@ export const zhCN: Messages = {
     inline: '上下',
     inlineHelp: '删除和新增的行上下排列',
     split: '左右对比',
-    splitHelp: '旧版本在左，新版本在右'
+    splitHelp: '旧版本在左，新版本在右',
+    truncated: {
+      message: '此差异较大，已在 {size} 处截断：文件末尾未显示。',
+      showAll: '仍然显示'
+    }
   },
   changes: {
     discardTitle: '丢弃更改',
@@ -970,7 +976,8 @@ export const zhCN: Messages = {
     historyRewritten: '历史已改写。',
     binaryNoLines: '二进制文件“{path}”不能选择行。',
     gitNotFound: '无法运行 git：{error}',
-    gitFailed: 'git {command} 失败（代码 {code}）'
+    gitFailed: 'git {command} 失败（代码 {code}）',
+    gitCanceled: 'git 命令已取消。'
   },
   main: {
     editorNotFound: '找不到编辑器“{editor}”。请在 设置 → 编辑器和差异 中选择其他编辑器。',

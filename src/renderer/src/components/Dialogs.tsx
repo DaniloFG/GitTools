@@ -1,6 +1,6 @@
 import { useContext, useState } from 'react'
 import type { PushForce, RepoInfo } from '../../../shared/types'
-import { AppContext } from '../context'
+import { RepoDataContext } from '../context'
 import { t } from '../i18n'
 import { Modal } from './Modal'
 import { RepoChip } from './RepoChip'
@@ -83,8 +83,9 @@ export type DialogState =
  * mais de um aberto: é aqui, num ponto só, que todo diálogo recebe essa identificação.
  */
 export function DialogHost({ dialog, onDone, scope }: { dialog: DialogState; onDone(): void; scope?: DialogScope | null }) {
-  const app = useContext(AppContext)
-  const resolved: DialogScope | null = scope !== undefined ? scope : app ? { repo: app.repo, several: app.workspace.repos.length > 1 } : null
+  // Só os dados (repositório e abas): o diálogo não precisa redesenhar com a operação em andamento nem com avisos.
+  const repoData = useContext(RepoDataContext)
+  const resolved: DialogScope | null = scope !== undefined ? scope : repoData ? { repo: repoData.repo, several: repoData.workspace.repos.length > 1 } : null
   if (dialog.kind === 'confirm') return <ConfirmDialog dialog={dialog} onDone={onDone} scope={resolved} />
   if (dialog.kind === 'prompt') return <PromptDialog dialog={dialog} onDone={onDone} scope={resolved} />
   if (dialog.kind === 'push') return <PushDialog dialog={dialog} onDone={onDone} scope={resolved} />

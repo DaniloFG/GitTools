@@ -204,12 +204,14 @@ export const hi: Messages = {
       graph: 'ग्राफ़'
     },
     count: { one: '{count} commit', other: '{count} commits' },
+    loadingMore: 'और commits लोड हो रहे हैं…',
+    limitReached: { other: 'सबसे नए {count} commits दिखाए जा रहे हैं' },
     selected: { one: '{count} चुना गया', other: '{count} चुने गए' },
     hint: 'कई चुनने के लिए Ctrl/Shift+क्लिक · ▸ या डबल क्लिक से फ़ाइलें दिखें · किसी branch पर खींचें',
     empty: 'अभी तक कोई commit नहीं।',
     log: {
       chip: 'git log',
-      help: 'यह इतिहास दृश्य रूप में “git log” है: हर पंक्ति एक commit है और ग्राफ़ branches दिखाता है। यह git log --graph --all --decorate के बराबर है, अधिकतम 500 commit तक।',
+      help: 'यह इतिहास दृश्य रूप में “git log” है: हर पंक्ति एक commit है और ग्राफ़ branches दिखाता है। यह git log --graph --all --decorate के बराबर है, एक बार में 500 commits, स्क्रॉल करने पर और लोड होते हैं (10,000 तक)।',
       tab: 'इतिहास — दृश्य रूप में git log'
     },
     wip: {
@@ -294,7 +296,11 @@ export const hi: Messages = {
     inline: 'ऊपर और नीचे',
     inlineHelp: 'हटाई और जोड़ी गई लाइनें एक के नीचे एक',
     split: 'अगल-बगल',
-    splitHelp: 'पुराना संस्करण बाईं ओर, नया दाईं ओर'
+    splitHelp: 'पुराना संस्करण बाईं ओर, नया दाईं ओर',
+    truncated: {
+      message: 'यह diff बड़ा है और {size} पर काट दिया गया: फ़ाइल का आख़िरी हिस्सा नहीं दिख रहा।',
+      showAll: 'फिर भी दिखाएँ'
+    }
   },
   changes: {
     discardTitle: 'बदलाव हटाएँ',
@@ -1007,7 +1013,8 @@ export const hi: Messages = {
     historyRewritten: 'इतिहास दोबारा लिखा गया।',
     binaryNoLines: 'बाइनरी फ़ाइल "{path}" में लाइनें नहीं चुनी जा सकतीं।',
     gitNotFound: 'git नहीं चलाया जा सका: {error}',
-    gitFailed: 'git {command} विफल रहा (कोड {code})'
+    gitFailed: 'git {command} विफल रहा (कोड {code})',
+    gitCanceled: 'git कमांड रद्द किया गया।'
   },
   main: {
     editorNotFound: 'एडिटर "{editor}" नहीं मिला। सेटिंग्स → एडिटर और diff में दूसरा चुनें।',
