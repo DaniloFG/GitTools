@@ -4,7 +4,7 @@
 //   node scripts/perf/core.mjs [clean|moderate|heavy] [pasta-do-repositório]
 import { build } from 'esbuild'
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -23,6 +23,7 @@ writeFileSync(
   join(work, 'entry.ts'),
   [
     `export { GitRepository } from ${src('src/core/repository')}`,
+    `export { AnalyticsCache } from ${src('src/backend/analyticsCache')}`,
     `export { onGitCommand, runGit } from ${src('src/core/exec')}`,
     `export { buildTree } from ${src('src/renderer/src/fileTree')}`,
     `export { sameDiff } from ${src('src/renderer/src/diffIdentity')}`,
@@ -89,6 +90,38 @@ await read('diff do commit inteiro  [3000 arquivos]', () => repo.diff({ kind: 'c
 await read('listFiles()', () => repo.listFiles())
 await read('blame  [arquivo de 20 mil linhas]', () => repo.blame('big/huge.ts'), 1)
 await read('analytics({ scope: "all" })  [dashboards]', () => repo.analytics({ scope: 'all' }), 1)
+// Mesma leitura pelo cache (backend): em uma pasta temporária, apagada no fim.
+{
+  const cacheDir = mkdtempSync(join(tmpdir(), 'gittools-perf-cache-'))
+  /** Uma chamada medida: tempo, processos git e tamanho (JSON) do que sai do cache. */
+  const cached = async (label, make, runs = 1) => {
+    const times = []
+    let processes = 0
+    let size = 0
+    let wire
+    let cache
+    for (let i = 0; i < runs; i++) {
+      cache = make()
+      spawns = 0
+      const start = performance.now()
+      wire = await cache.get(repo, { scope: 'all' })
+      times.push(performance.now() - start)
+      processes = spawns
+      size = JSON.stringify(wire).length
+      await cache.flush()
+    }
+    times.sort((a, b) => a - b)
+    console.log(`${label.padEnd(56)} ${times[Math.floor(times.length / 2)].toFixed(0).padStart(6)} ms   git ×${String(processes).padStart(2)}   ${(size / 1024).toFixed(0).padStart(6)} KB`)
+    return cache
+  }
+  try {
+    const first = await cached('analytics: 1ª vez, com cache (falta)', () => new m.AnalyticsCache(() => cacheDir))
+    await cached('analytics: cache em memória (acerto)', () => first, 3)
+    await cached('analytics: cache em disco (acerto, backend novo)', () => new m.AnalyticsCache(() => cacheDir), 3)
+  } finally {
+    rmSync(cacheDir, { recursive: true, force: true })
+  }
+}
 await read('compare(main~500, main)', () => repo.compare('main~500', 'main'), 1)
 await read('ATUALIZAÇÃO: dados da aba + resumo da aba', () => Promise.all([repo.status(true), repo.refs(), repo.operationState(), repo.status(), repo.operationState()]))
 await read('SELECIONAR 1 COMMIT: detalhes + diff do 1º arquivo', async () => {

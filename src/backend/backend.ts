@@ -10,8 +10,9 @@ import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { REPO_METHODS, type AppInfo, type DiffWindowRequest, type EditorInfo, type RecentRepo, type RepoMethod } from '../shared/api'
-import type { CherryPickOptions, CrossApply, FileDiff, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
+import type { AnalyticsOptions, CherryPickOptions, CrossApply, FileDiff, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
 import { encodeDiffs } from '../shared/diffWire'
+import { AnalyticsCache } from './analyticsCache'
 import type { BridgeChannel } from '../shared/channels'
 import { t } from '../shared/i18n'
 import { normalizeSettings, type Settings } from '../shared/settings'
@@ -116,6 +117,8 @@ export class Backend {
   // ------------------------------------------------------------- arquivos de dados
 
   private recentFile = () => join(this.host.dataDir(), 'recent-repositories.json')
+  /** Resultado de `analytics` (dashboards) por repositório: memória e disco, na pasta de dados (ver analyticsCache.ts). */
+  private readonly analyticsCache = new AnalyticsCache(() => join(this.host.dataDir(), 'analytics-cache'))
   private settingsFile = () => join(this.host.dataDir(), 'settings.json')
   private workspaceFile = () => join(this.host.dataDir(), 'workspace.json')
 
@@ -555,6 +558,9 @@ export class Backend {
         if (!this.allowed.has(method)) throw new Error(t('main.unknownOperation', { method }))
         const repo = this.repoAt(args[2])
         if (!repo) throw new Error(t('main.noRepository'))
+        // Dashboards: o cache responde sem o `git log` quando a história não mudou (chave em analyticsKey).
+        // Argumentos do método: [opções]. O resultado já sai no formato colunar.
+        if (method === 'analytics') return this.analyticsCache.get(repo, ((args[1] as unknown[] | undefined)?.[0] ?? {}) as AnalyticsOptions)
         const fn = repo[method] as (...a: unknown[]) => Promise<unknown>
         const result = await fn.apply(repo, (args[1] as unknown[]) ?? [])
         // O diff vai no formato compacto (diffWire.ts): menos objetos para copiar pelo IPC. A interface decodifica em git.ts.

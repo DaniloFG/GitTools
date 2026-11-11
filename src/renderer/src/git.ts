@@ -1,4 +1,5 @@
 import type { RepoApi } from '../../shared/api'
+import { decodeAnalytics, isAnalyticsWire } from '../../shared/analyticsWire'
 import { decodeDiffs, isWireDiffs } from '../../shared/diffWire'
 import { t } from './i18n'
 import { Limiter, ReadCache } from './readCache'
@@ -33,12 +34,14 @@ export function getActiveRoot(): string | null {
 type Invoke = (root: string, method: string, ...args: unknown[]) => Promise<unknown>
 
 /**
- * Resposta do backend para uma leitura. O diff chega no formato compacto (diffWire.ts) e volta a FileDiff[] aqui,
- * antes de qualquer cache ou componente: a interface continua recebendo o mesmo objeto de sempre.
+ * Resposta do backend para uma leitura. O diff (diffWire.ts) e o resultado de `analytics` (analyticsWire.ts) chegam
+ * em formato colunar e voltam ao formato de sempre aqui, antes de qualquer cache ou componente: a interface continua
+ * recebendo o mesmo objeto. Não se confia no nome do método: o próprio formato (`wire`) diz o que é.
  */
 function fromBackend(method: string, value: unknown): unknown {
-  if (method !== 'diff' || !isWireDiffs(value)) return value
-  return decodeDiffs(value)
+  if (method === 'diff' && isWireDiffs(value)) return decodeDiffs(value)
+  if (isAnalyticsWire(value)) return decodeAnalytics(value)
+  return value
 }
 
 /**
