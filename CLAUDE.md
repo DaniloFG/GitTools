@@ -152,6 +152,10 @@ registre a exceção num comentário no ponto do código.
   usado por teste entra na lista `include` do `tsconfig.node.json`.
 - Fluxo de branches: trabalho → `develop` → `homolog` → `main`, sempre por PR (ver `CONTRIBUTING.md`).
 - Arquivos gerados não são editados à mão (`fileIcons.generated.ts` vem de `npm run build:icons`).
+- **Versão da extensão do VS Code é automática.** A cada merge na `main` que mexa no código da extensão, o
+  workflow de publicação usa a versão de `extension/package.json` se ela for maior que a última tag `v*`; senão,
+  publica a última tag com o último número + 1 e cria a tag nova (`scripts/extension-version.mjs`). Não suba o
+  patch à mão; suba `extension/package.json` só para uma minor ou major.
 
 ## Trabalho com o Claude em etapas
 
