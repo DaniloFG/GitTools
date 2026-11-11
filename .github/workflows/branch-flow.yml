@@ -43,8 +43,8 @@ jobs:
               ;;
             develop)
               case "$ORIGEM" in
-                feature/*|fix/*|docs/*|chore/*|refactor/*|claude/*) ;;
-                *) falhar "A develop só recebe PR de feature/, fix/, docs/, chore/, refactor/ ou claude/ (origem recebida: '$ORIGEM')." ;;
+                feature/*|fix/*|docs/*|chore/*|refactor/*) ;;
+                *) falhar "A develop só recebe PR de feature/, fix/, docs/, chore/ ou refactor/ (origem recebida: '$ORIGEM')." ;;
               esac
               ;;
             *)

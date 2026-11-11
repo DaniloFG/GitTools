@@ -1,7 +1,7 @@
 # Desempenho do GitTools: análise e plano de melhoria
 
 Este documento registra onde o GitTools gasta tempo hoje, com números medidos, e o plano para deixá-lo rápido
-também em computadores fracos. As regras do dia a dia que saem daqui estão no [`CLAUDE.md`](../CLAUDE.md).
+também em computadores fracos. As regras do dia a dia que saem daqui estão no [`CLAUDE.md`](../CLAUDE.md) e, por área, em `.claude/rules/`.
 
 - [1. Resumo](#1-resumo)
 - [2. Como foi medido](#2-como-foi-medido)
@@ -42,7 +42,7 @@ base; processos git, nós no DOM e tamanhos não dependem da máquina.
 Ficaram acima da meta (seção 7, com o motivo e o próximo passo nas seções 9 a 12): rolar o histórico e arrastar a
 divisória em 16 ms (o piso é pintura e composição, não JavaScript), abrir o diff de 5.000 linhas em 300 ms (o que
 sobra é transporte e primeiro desenho), o stage de 1 arquivo em 6 processos (hoje 9) e o `status` com contagens em
-até 2× o simples. As regras que mantêm o que foi ganho estão no [`CLAUDE.md`](../CLAUDE.md), e o tamanho do pacote
+até 2× o simples. As regras que mantêm o que foi ganho estão no [`CLAUDE.md`](../CLAUDE.md) e em `.claude/rules/`, e o tamanho do pacote
 é conferido no CI (`npm run perf:bundle`).
 
 ## 2. Como foi medido
@@ -74,8 +74,9 @@ Limites do que foi medido, para ler os números com a cautela certa:
 
 Cuidados aprendidos ao medir:
 
-- **Uma medição por vez.** Cada rodada do `ui.mjs` leva uns 5 minutos e varia cerca de ±10% entre rodadas (a rolagem
-  do histórico, mais). Para afirmar ganho, repita, use mediana ou alterne as versões na mesma máquina.
+- **Uma medição por vez.** Cada rodada do `ui.mjs` leva menos de 1 minuto (36 s medidos depois das fases; já levou
+  uns 5 minutos) e varia cerca de ±10% entre rodadas (a rolagem do histórico, mais). Para afirmar ganho, repita, use
+  mediana ou alterne as versões na mesma máquina.
 - **Numa cópia separada** quando outro agente estiver editando os mesmos arquivos: `git worktree add --detach <pasta>
   HEAD`, link simbólico de `node_modules`, `npm run build:extension` na cópia e `git worktree remove --force <pasta>`
   no fim. Dentro da cópia, o `ui.mjs` serve o `extension/dist/webview` dela.
@@ -144,7 +145,7 @@ Medidos e **sem problema** (não vale otimizar): `t()` custa 0,002 ms; `computeG
 
 ## 4. O que já está bem resolvido
 
-Vale preservar; as regras do `CLAUDE.md` partem daqui.
+Vale preservar; as regras do `CLAUDE.md` e de `.claude/rules/` partem daqui.
 
 - **Cache de leituras por repositório** (`src/renderer/src/readCache.ts`): leituras por sha valem para sempre, as
   voláteis valem até a "geração" mudar, chamadas iguais ao mesmo tempo viram uma só, com limite de memória.
