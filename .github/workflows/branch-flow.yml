@@ -61,10 +61,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          # docs/HANDOFF.md é a memória do trabalho de otimização e existe só na branch de trabalho.
+          # docs/HANDOFF.md é a memória de um trabalho em etapas e existe só na branch de trabalho (CLAUDE.md,
+          # "Trabalho com o Claude em etapas").
           # Ele não pode chegar a develop, homolog ou main; por isso o PR é reprovado enquanto o arquivo estiver na árvore.
           if [ -e docs/HANDOFF.md ]; then
-            echo "::error title=Memória de trabalho::O arquivo docs/HANDOFF.md é só da branch de trabalho e não pode entrar em develop, homolog ou main. Remova-o, junto com a linha que o menciona no CLAUDE.md, no commit final do trabalho, antes de abrir o PR."
+            echo "::error title=Memória de trabalho::O arquivo docs/HANDOFF.md é só da branch de trabalho e não pode entrar em develop, homolog ou main. Remova-o (git rm) no commit final do trabalho, antes de abrir o PR."
             exit 1
           fi
 

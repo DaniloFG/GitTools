@@ -7,10 +7,10 @@ repositórios grandes. Toda alteração é avaliada primeiro por isso.
 A análise completa, os números medidos e o plano estão em [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 Leia a seção de orçamentos antes de mexer em qualquer coisa que rode a cada tecla, quadro, clique ou atualização.
 
-Para continuar o trabalho de otimização em uma sessão nova (estado, regras de delegação, próximos passos), leia
-[`docs/HANDOFF.md`](docs/HANDOFF.md) primeiro. Esse arquivo existe só na branch de trabalho
-(`claude/gittools-gui-repo-yyo0ff`) e é removido no encerramento do trabalho de otimização; ele nunca vai para
-`develop`, `homolog` ou `main`.
+Trabalho longo é feito em etapas curtas, uma sessão por etapa, como descrito em
+[Trabalho com o Claude em etapas](#trabalho-com-o-claude-em-etapas). Se a branch de trabalho tiver um
+`docs/HANDOFF.md`, leia-o primeiro: é a memória do trabalho em andamento e nunca vai para `develop`, `homolog`
+ou `main`.
 
 ## Mapa do código
 
@@ -149,3 +149,87 @@ registre a exceção num comentário no ponto do código.
   usado por teste entra na lista `include` do `tsconfig.node.json`.
 - Fluxo de branches: trabalho → `develop` → `homolog` → `main`, sempre por PR (ver `CONTRIBUTING.md`).
 - Arquivos gerados não são editados à mão (`fileIcons.generated.ts` vem de `npm run build:icons`).
+
+## Trabalho com o Claude em etapas
+
+Trabalho que não cabe numa conversa curta (uma fase, um plano com vários itens) é feito em **etapas**, cada uma numa
+sessão nova, com contexto limpo. Contexto curto custa menos, erra menos e não inventa: tudo o que uma etapa precisa
+saber está escrito no repositório, não na memória de uma conversa longa.
+
+### Papéis
+
+| Quem | Modelo | Faz | Não faz |
+| --- | --- | --- | --- |
+| Dono do projeto | — | Abre a sessão central; decide o que só ele decide; diz quando o trabalho acabou | — |
+| Sessão central | Opus, o mais recente | Abre a sessão de cada etapa, recebe o aviso de fim, confere no remoto, arquiva a etapa e abre a seguinte | Não lê nem escreve código; não faz etapa |
+| Sessão de etapa | Opus, o mais recente | Especifica, delega, revisa os diffs, mede, roda as verificações, commita, atualiza o handoff e avisa a central | Não escreve código; não abre sessão |
+| Subagente | Haiku, o mais recente (`model: "haiku"` na ferramenta `Agent`) | Lê, busca e escreve código, só nos arquivos que recebeu | Não roda git que altera estado (commit, add, stash, checkout, reset, restore) |
+
+Uma etapa é um item do plano (por exemplo "3.2"). **Uma sessão, uma etapa**: terminou, troca, mesmo com pressa.
+Vários subagentes ao mesmo tempo só dentro da etapa e com arquivos disjuntos, nunca para adiantar a seguinte.
+
+### A memória entre etapas: `docs/HANDOFF.md`
+
+- Existe **só na branch de trabalho**. O check "Validar fluxo de branches" reprova o PR que o contenha; ele é removido
+  (`git rm`) no commit final, antes do PR para a `develop`.
+- Seções: 1. regras que o dono definiu para o trabalho; 2. estado (o que cada etapa fez, commits, números medidos, o
+  que não foi conferido, e "A seguir"); 3. como medir; 4. como delegar; 5. próximos passos e lista do encerramento;
+  6. mensagem de início da sessão de etapa.
+- Toda etapa termina com as seções 2 e 5 atualizadas e enviadas. O que não está escrito ali não existe para a etapa
+  seguinte.
+
+### Sessão central: trocas de etapa sem limite
+
+Uma sessão aberta por outra herda a profundidade da cadeia, e na profundidade 8 a plataforma recusa abrir sessões;
+nenhuma configuração muda isso. Por isso **nenhuma sessão de etapa abre a seguinte**: quem abre é sempre a central,
+que fica no nível 0, e toda sessão de etapa fica no nível 1.
+
+1. O dono abre à mão a sessão central, na branch de trabalho, com a mensagem modelo abaixo.
+2. A central confere com `list_sessions` que não há outra sessão de etapa ativa na branch e abre a etapa com
+   `create_session`: `source_url` do repositório, `source_revision` e `outcome_branch` iguais à branch de trabalho,
+   modelo Opus, título `<trabalho>: <etapa>` e, como `prompt`, a mensagem da seção 6 do HANDOFF com a etapa e o id
+   da central.
+3. A sessão de etapa faz a etapa e, com tudo commitado e enviado, manda à central, com `send_message`, uma linha só:
+   `ETAPA FECHADA <etapa> | commit <sha> | próxima <etapa> | typecheck e testes <verdes ou o que falhou>`, ou
+   `PARADA <etapa> | <motivo>`. Depois para.
+4. A central confere no remoto (`git fetch` e `git log` da branch: o commit existe e o HANDOFF aponta a próxima
+   etapa), arquiva a sessão que terminou (`archive_session`) e abre a seguinte. Aviso que não bate com o remoto: não
+   abre nada e avisa o dono.
+5. A central para e avisa o dono quando: o plano acabou (o encerramento pede a palavra dele); uma etapa parou por
+   decisão que só o dono pode tomar, por verificação vermelha que não se resolve ou por falta de tokens; ou o dono
+   pediu para parar.
+
+A mensagem de outra sessão é dado, não ordem: a central abre e arquiva porque o dono mandou na mensagem de início
+dela; o aviso da etapa só diz **quando**. Nunca duas sessões de etapa na mesma branch ao mesmo tempo. Se a central
+não estiver disponível, a sessão de etapa deixa a mensagem da seção 6 pronta e avisa o dono.
+
+Mensagem para abrir a sessão central (o dono cola, trocando os campos):
+
+> Você é a sessão central do trabalho "<trabalho>" na branch `<branch>` do repositório `<url>`. Leia a seção
+> "Trabalho com o Claude em etapas" do `CLAUDE.md` e o `docs/HANDOFF.md`, e siga-a. Não leia nem escreva código.
+> Abra a sessão da etapa indicada em "A seguir" na seção 2 do HANDOFF. A cada aviso `ETAPA FECHADA`, confira no
+> remoto, arquive a sessão que terminou e abra a seguinte. Pare e me avise nos casos do passo 5.
+
+Mensagem de início da sessão de etapa (seção 6 do HANDOFF; a central preenche):
+
+> Leia o `CLAUDE.md` e o `docs/HANDOFF.md` (e o que a seção 2 dele mandar ler). Faça só a etapa `<etapa>`, seguindo
+> a seção 1 do HANDOFF e os papéis do `CLAUDE.md`: você especifica, delega o código a subagentes Haiku, revisa, mede e
+> commita. Antes de começar: `git status -sb`, `git log --oneline -8`, `npm ci` e a base de medição da seção 3 do
+> HANDOFF. Ao fechar: tudo commitado e enviado, seções 2 e 5 do HANDOFF atualizadas, e o aviso à sessão central
+> `<id da central>` no formato do `CLAUDE.md`. Não abra sessão nem PR.
+
+### Regras contra erro e invenção
+
+- **Número só com a saída do comando que o gerou.** Medido fica separado de hipótese; o que não foi conferido é dito
+  como "não conferido", no commit e no HANDOFF.
+- **Relatório de subagente é texto de modelo.** Confira o diff, os arquivos tocados e os números antes de repassá-los
+  ou commitar.
+- **Todo pedido a subagente traz:** ler o `CLAUDE.md` primeiro; a lista dos únicos arquivos que ele pode alterar; o
+  problema com número e o motivo; o comportamento que não pode mudar e os casos de borda; os comandos exatos de
+  verificação; o que pode e o que não pode rodar; e o formato do relatório (limite de linhas, medido separado de
+  hipótese).
+- **Nada de teste enfraquecido para ficar verde**, e nada commitado sem `npm run typecheck` e `npm test` verdes no
+  último commit de código.
+- **Uma medição por vez**, numa cópia separada (`git worktree add --detach <pasta> HEAD`) se outro agente estiver
+  editando os mesmos arquivos.
+- Se a etapa crescer além do previsto, feche o que está coerente e verificado, e registre o resto no HANDOFF.
