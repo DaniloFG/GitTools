@@ -140,11 +140,22 @@ export class Backend {
     await writeFile(this.recentFile(), JSON.stringify(kept, null, 2))
   }
 
-  private async rememberRepo(root: string, name: string): Promise<void> {
-    const all = await this.loadRecent()
-    const favorite = all.find((r) => r.path === root)?.favorite
-    const list = all.filter((r) => r.path !== root)
-    list.unshift({ path: root, name, openedAt: Date.now(), ...(favorite ? { favorite } : {}) })
+  private rememberRepo(root: string, name: string): Promise<void> {
+    return this.rememberRepos([{ root, name }])
+  }
+
+  /**
+   * Põe estes repositórios no topo dos recentes, como se cada um fosse aberto em seguida (o último fica
+   * primeiro), com uma leitura e uma gravação para todos.
+   */
+  private async rememberRepos(repos: RepoInfo[]): Promise<void> {
+    if (repos.length === 0) return
+    let list = await this.loadRecent()
+    for (const { root, name } of repos) {
+      const favorite = list.find((r) => r.path === root)?.favorite
+      list = list.filter((r) => r.path !== root)
+      list.unshift({ path: root, name, openedAt: Date.now(), ...(favorite ? { favorite } : {}) })
+    }
     await this.saveRecent(list)
   }
 
@@ -301,6 +312,23 @@ export class Backend {
     await this.rememberRepo(info.root, info.name)
     await this.saveWorkspace()
     return info
+  }
+
+  /**
+   * Vários `addRepository` sem ativar (os repositórios achados no workspace), com uma gravação dos recentes e
+   * uma do estado da janela no fim, em vez de duas por repositório. Com `activateIfNone` e nenhum ativo, o
+   * primeiro da lista vira o ativo (antes isso era um `switchRepository` à parte, com mais uma gravação).
+   * Devolve os repositórios incluídos (os já abertos também), na ordem recebida.
+   */
+  async addRepositories(list: GitRepository[], options: { activateIfNone: boolean }): Promise<RepoInfo[]> {
+    await this.restoreWorkspace()
+    const infos: RepoInfo[] = []
+    for (const next of list) infos.push(await this.repos.get(await this.adopt(next))!.info())
+    if (infos.length === 0) return infos
+    if (options.activateIfNone && this.activeRoot === null) await this.setActive(infos[0].root)
+    await this.rememberRepos(infos)
+    await this.saveWorkspace()
+    return infos
   }
 
   /** Abre o repositório, ou só o ativa se já estiver aberto, e o guarda entre os recentes. */
