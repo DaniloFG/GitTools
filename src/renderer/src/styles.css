@@ -317,10 +317,15 @@ code {
   font-size: 11px;
   color: var(--text-muted);
 }
-.sidebar-section ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* Barra lateral em janela (VirtualList): cada linha de altura medida fica num envoltório. O flow-root impede que
+   a margem da branch atual saia do envoltório, o que deslocaria as posições calculadas a partir da altura medida. */
+.sidebar > [data-virtual-key] {
+  display: flow-root;
+}
+/* Branches e tags com altura fixa (ROW_HEIGHT = 27 em Sidebar.tsx). A branch atual tem borda e fica com altura medida. */
+.sidebar .branch-item:not(.current) {
+  height: 27px;
+  box-sizing: border-box;
 }
 .section-header {
   width: 100%;
