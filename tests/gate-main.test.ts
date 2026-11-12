@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
@@ -73,6 +73,30 @@ fi
 exit 1
 `
 
+// Processo assíncrono: no Git Bash do Windows, a chamada síncrona de processo segura o worker do vitest tempo
+// suficiente para o RPC onTaskUpdate estourar. Com spawn o laço de eventos fica livre entre um passo e outro. Não
+// rejeita por status diferente de zero (os testes conferem o código de saída); erro de spawn vira status null.
+function executar(cmd: string, args: string[], opts: { input?: string; env?: NodeJS.ProcessEnv; cwd?: string } = {}) {
+  return new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve) => {
+    const filho = spawn(cmd, args, { cwd: opts.cwd, env: opts.env, stdio: ['pipe', 'pipe', 'pipe'] })
+    let stdout = ''
+    let stderr = ''
+    filho.stdout.setEncoding('utf8')
+    filho.stderr.setEncoding('utf8')
+    filho.stdout.on('data', (pedaco: string) => {
+      stdout += pedaco
+    })
+    filho.stderr.on('data', (pedaco: string) => {
+      stderr += pedaco
+    })
+    // O filho pode sair sem ler a entrada: o EPIPE no stdin não pode derrubar o teste (a versão síncrona também ignorava).
+    filho.stdin.on('error', () => {})
+    filho.on('error', (erro) => resolve({ status: null, stdout, stderr: stderr + erro.message }))
+    filho.on('close', (status) => resolve({ status, stdout, stderr }))
+    filho.stdin.end(opts.input ?? '')
+  })
+}
+
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), 'gittools-gatemain-'))
   ghLog = join(dir, 'gh.log')
@@ -88,10 +112,9 @@ beforeEach(() => {
   rmSync(ghLog, { force: true })
 })
 
-function rodar(toolName: string, toolInput: Record<string, unknown>) {
-  const r = spawnSync('bash', [script], {
+async function rodar(toolName: string, toolInput: Record<string, unknown>) {
+  const r = await executar('bash', [script], {
     input: JSON.stringify({ tool_name: toolName, tool_input: toolInput }),
-    encoding: 'utf8',
     env: { ...process.env, PATH: `${dir}${delimiter}${process.env.PATH ?? ''}`, GH_LOG: ghLog },
   })
   return { code: r.status, stderr: r.stderr }
@@ -102,44 +125,44 @@ const mcp = (nome: string, entrada: Record<string, unknown>) => rodar(`mcp__gith
 const pr = (numero: number) => ({ owner: 'o', repo: 'r', pullNumber: numero })
 
 describe('gate-main: GitHub MCP', () => {
-  it.each([1, 2])('merge do PR %i (base develop/homolog) passa', (n) => {
-    expect(mcp('merge_pull_request', pr(n)).code).toBe(0)
+  it.each([1, 2])('merge do PR %i (base develop/homolog) passa', async (n) => {
+    expect((await mcp('merge_pull_request', pr(n))).code).toBe(0)
   })
 
-  it('merge do PR com base main bloqueia, com mensagem em português', () => {
-    const r = mcp('merge_pull_request', pr(3))
+  it('merge do PR com base main bloqueia, com mensagem em português', async () => {
+    const r = await mcp('merge_pull_request', pr(3))
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DA MAIN')
     expect(r.stderr).toContain('main')
   })
 
-  it('auto-merge do PR com base main bloqueia; com base develop passa', () => {
-    expect(mcp('enable_pr_auto_merge', pr(3)).code).toBe(2)
-    expect(mcp('enable_pr_auto_merge', pr(1)).code).toBe(0)
+  it('auto-merge do PR com base main bloqueia; com base develop passa', async () => {
+    expect((await mcp('enable_pr_auto_merge', pr(3))).code).toBe(2)
+    expect((await mcp('enable_pr_auto_merge', pr(1))).code).toBe(0)
   })
 
-  it('falha fechada: gh que falha (PR 9) bloqueia e diz que não confirmou a base', () => {
-    const r = mcp('merge_pull_request', pr(9))
+  it('falha fechada: gh que falha (PR 9) bloqueia e diz que não confirmou a base', async () => {
+    const r = await mcp('merge_pull_request', pr(9))
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('não foi possível confirmar a base')
   })
 
-  it('falha fechada: número do PR ausente bloqueia sem chamar o gh', () => {
-    expect(mcp('merge_pull_request', { owner: 'o', repo: 'r' }).code).toBe(2)
+  it('falha fechada: número do PR ausente bloqueia sem chamar o gh', async () => {
+    expect((await mcp('merge_pull_request', { owner: 'o', repo: 'r' })).code).toBe(2)
     expect(existsSync(ghLog)).toBe(false)
   })
 
-  it.each(['push_files', 'create_or_update_file', 'delete_file'])('%s: branch main bloqueia, feature/x passa', (nome) => {
-    expect(mcp(nome, { owner: 'o', repo: 'r', branch: 'main' }).code).toBe(2)
-    expect(mcp(nome, { owner: 'o', repo: 'r', branch: 'refs/heads/main' }).code).toBe(2)
-    expect(mcp(nome, { owner: 'o', repo: 'r', branch: 'feature/x' }).code).toBe(0)
-    expect(mcp(nome, { owner: 'o', repo: 'r', branch: 'feature/main-menu' }).code).toBe(0)
+  it.each(['push_files', 'create_or_update_file', 'delete_file'])('%s: branch main bloqueia, feature/x passa', async (nome) => {
+    expect((await mcp(nome, { owner: 'o', repo: 'r', branch: 'main' })).code).toBe(2)
+    expect((await mcp(nome, { owner: 'o', repo: 'r', branch: 'refs/heads/main' })).code).toBe(2)
+    expect((await mcp(nome, { owner: 'o', repo: 'r', branch: 'feature/x' })).code).toBe(0)
+    expect((await mcp(nome, { owner: 'o', repo: 'r', branch: 'feature/main-menu' })).code).toBe(0)
   })
 
-  it('update_pull_request: trocar a base para main bloqueia; outra base ou só o título passa', () => {
-    expect(mcp('update_pull_request', { ...pr(1), base: 'main' }).code).toBe(2)
-    expect(mcp('update_pull_request', { ...pr(1), base: 'homolog' }).code).toBe(0)
-    expect(mcp('update_pull_request', { ...pr(1), title: 'novo título' }).code).toBe(0)
+  it('update_pull_request: trocar a base para main bloqueia; outra base ou só o título passa', async () => {
+    expect((await mcp('update_pull_request', { ...pr(1), base: 'main' })).code).toBe(2)
+    expect((await mcp('update_pull_request', { ...pr(1), base: 'homolog' })).code).toBe(0)
+    expect((await mcp('update_pull_request', { ...pr(1), title: 'novo título' })).code).toBe(0)
   })
 })
 
@@ -154,8 +177,8 @@ describe('gate-main: git push no Bash', () => {
     'git push --all origin',
     'git -C /tmp/repo push origin main',
     'cd /tmp && git push origin "HEAD:main"',
-  ])('bloqueia: %s', (comando) => {
-    expect(bash(comando).code).toBe(2)
+  ])('bloqueia: %s', async (comando) => {
+    expect((await bash(comando)).code).toBe(2)
   })
 
   it.each([
@@ -167,46 +190,46 @@ describe('gate-main: git push no Bash', () => {
     'git log --oneline main',
     'git status && git diff origin/main',
     'git commit -m "mensagem sobre git push origin main"',
-  ])('passa: %s', (comando) => {
-    expect(bash(comando).code).toBe(0)
+  ])('passa: %s', async (comando) => {
+    expect((await bash(comando)).code).toBe(0)
   })
 })
 
 describe('gate-main: gh no Bash', () => {
-  it('gh pr merge: base main bloqueia; develop e homolog passam', () => {
-    expect(bash('gh pr merge 3').code).toBe(2)
-    expect(bash('gh pr merge 3 --auto --squash').code).toBe(2)
-    expect(bash('gh pr merge 1').code).toBe(0)
-    expect(bash('gh pr merge 2 --auto').code).toBe(0)
+  it('gh pr merge: base main bloqueia; develop e homolog passam', async () => {
+    expect((await bash('gh pr merge 3')).code).toBe(2)
+    expect((await bash('gh pr merge 3 --auto --squash')).code).toBe(2)
+    expect((await bash('gh pr merge 1')).code).toBe(0)
+    expect((await bash('gh pr merge 2 --auto')).code).toBe(0)
   })
 
-  it('gh pr merge pela URL do PR confere a base', () => {
-    expect(bash('gh pr merge https://github.com/o/r/pull/3').code).toBe(2)
-    expect(bash('gh pr merge https://github.com/o/r/pull/1').code).toBe(0)
+  it('gh pr merge pela URL do PR confere a base', async () => {
+    expect((await bash('gh pr merge https://github.com/o/r/pull/3')).code).toBe(2)
+    expect((await bash('gh pr merge https://github.com/o/r/pull/1')).code).toBe(0)
   })
 
-  it('falha fechada: gh pr merge cujo gh falha (PR 9) ou sem número bloqueia', () => {
-    expect(bash('gh pr merge 9').code).toBe(2)
-    expect(bash('gh pr merge').code).toBe(2)
-    expect(bash('gh pr merge minha-branch --auto').code).toBe(2)
+  it('falha fechada: gh pr merge cujo gh falha (PR 9) ou sem número bloqueia', async () => {
+    expect((await bash('gh pr merge 9')).code).toBe(2)
+    expect((await bash('gh pr merge')).code).toBe(2)
+    expect((await bash('gh pr merge minha-branch --auto')).code).toBe(2)
   })
 
-  it('gh api PUT/POST em /pulls/N/merge e auto_merge confere a base', () => {
-    expect(bash('gh api -X PUT repos/o/r/pulls/3/merge').code).toBe(2)
-    expect(bash('gh api --method POST repos/o/r/pulls/3/ccr/auto_merge').code).toBe(2)
-    expect(bash('gh api -XPUT repos/o/r/pulls/1/merge').code).toBe(0)
-    expect(bash('gh api -X PUT repos/o/r/pulls/9/merge').code).toBe(2)
+  it('gh api PUT/POST em /pulls/N/merge e auto_merge confere a base', async () => {
+    expect((await bash('gh api -X PUT repos/o/r/pulls/3/merge')).code).toBe(2)
+    expect((await bash('gh api --method POST repos/o/r/pulls/3/ccr/auto_merge')).code).toBe(2)
+    expect((await bash('gh api -XPUT repos/o/r/pulls/1/merge')).code).toBe(0)
+    expect((await bash('gh api -X PUT repos/o/r/pulls/9/merge')).code).toBe(2)
   })
 
-  it('gh api que muda a base para main bloqueia', () => {
-    expect(bash('gh api -X PATCH repos/o/r/pulls/1 -f base=main').code).toBe(2)
-    expect(bash(`gh api -X PATCH repos/o/r/pulls/1 -f base=refs/heads/main`).code).toBe(2)
-    expect(bash('gh api -X PATCH repos/o/r/pulls/1 -f base=homolog').code).toBe(0)
+  it('gh api que muda a base para main bloqueia', async () => {
+    expect((await bash('gh api -X PATCH repos/o/r/pulls/1 -f base=main')).code).toBe(2)
+    expect((await bash(`gh api -X PATCH repos/o/r/pulls/1 -f base=refs/heads/main`)).code).toBe(2)
+    expect((await bash('gh api -X PATCH repos/o/r/pulls/1 -f base=homolog')).code).toBe(0)
   })
 
-  it('gh só de leitura passa, sem chamar o gh falso', () => {
+  it('gh só de leitura passa, sem chamar o gh falso', async () => {
     for (const comando of ['gh pr view 3', 'gh api repos/o/r/pulls/3', 'gh api -X GET repos/o/r/pulls -f base=main', 'gh pr list']) {
-      expect(bash(comando).code).toBe(0)
+      expect((await bash(comando)).code).toBe(0)
     }
     expect(existsSync(ghLog)).toBe(false)
   })
@@ -216,99 +239,99 @@ describe('gate-main: a homolog recebe só a branch de trabalho, mergeada e valid
   const msgNunca = 'a homolog recebe a branch de trabalho, nunca a develop'
   const msgValidada = 'a branch precisa estar mergeada e validada na develop'
 
-  it.each([2, 10])('PR %i (ancestral da develop e com rótulo) passa por MCP, gh pr merge e gh api', (n) => {
-    expect(mcp('merge_pull_request', pr(n)).code).toBe(0)
-    expect(bash(`gh pr merge ${n}`).code).toBe(0)
-    expect(bash(`gh api -X PUT repos/o/r/pulls/${n}/merge`).code).toBe(0)
+  it.each([2, 10])('PR %i (ancestral da develop e com rótulo) passa por MCP, gh pr merge e gh api', async (n) => {
+    expect((await mcp('merge_pull_request', pr(n))).code).toBe(0)
+    expect((await bash(`gh pr merge ${n}`)).code).toBe(0)
+    expect((await bash(`gh api -X PUT repos/o/r/pulls/${n}/merge`)).code).toBe(0)
   })
 
-  it('origem develop bloqueia em todos os caminhos, sem nem consultar o compare', () => {
-    const r = mcp('merge_pull_request', pr(4))
+  it('origem develop bloqueia em todos os caminhos, sem nem consultar o compare', async () => {
+    const r = await mcp('merge_pull_request', pr(4))
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DE PROMOÇÃO')
     expect(r.stderr).toContain(msgNunca)
-    expect(bash('gh pr merge 4').code).toBe(2)
-    expect(bash('gh api -X PUT repos/o/r/pulls/4/merge').code).toBe(2)
-    expect(mcp('enable_pr_auto_merge', pr(4)).code).toBe(2)
+    expect((await bash('gh pr merge 4')).code).toBe(2)
+    expect((await bash('gh api -X PUT repos/o/r/pulls/4/merge')).code).toBe(2)
+    expect((await mcp('enable_pr_auto_merge', pr(4))).code).toBe(2)
     expect(readFileSync(ghLog, 'utf8')).not.toContain('compare')
   })
 
   it.each([
     ['ahead (a branch não foi mergeada na develop)', 5],
     ['diverged', 6],
-  ])('ponta fora da história da develop (%s) bloqueia com a mensagem da promoção', (_nome, n) => {
-    const r = mcp('merge_pull_request', pr(n))
+  ])('ponta fora da história da develop (%s) bloqueia com a mensagem da promoção', async (_nome, n) => {
+    const r = await mcp('merge_pull_request', pr(n))
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DE PROMOÇÃO')
     expect(r.stderr).toContain(msgValidada)
-    expect(bash(`gh pr merge ${n}`).code).toBe(2)
-    expect(bash(`gh api -X PUT repos/o/r/pulls/${n}/merge`).code).toBe(2)
+    expect((await bash(`gh pr merge ${n}`)).code).toBe(2)
+    expect((await bash(`gh api -X PUT repos/o/r/pulls/${n}/merge`)).code).toBe(2)
   })
 
-  it('sem o rótulo validada-develop bloqueia, mesmo com outro rótulo e a ponta na develop', () => {
-    const r = mcp('merge_pull_request', pr(7))
+  it('sem o rótulo validada-develop bloqueia, mesmo com outro rótulo e a ponta na develop', async () => {
+    const r = await mcp('merge_pull_request', pr(7))
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DE PROMOÇÃO')
     expect(r.stderr).toContain('validada-develop')
-    expect(bash('gh pr merge 7').code).toBe(2)
-    expect(bash('gh api -X PUT repos/o/r/pulls/7/merge').code).toBe(2)
+    expect((await bash('gh pr merge 7')).code).toBe(2)
+    expect((await bash('gh api -X PUT repos/o/r/pulls/7/merge')).code).toBe(2)
   })
 
   it.each([
     ['a consulta de compare falha', 8],
     ['o compare devolve status vazio', 12],
     ['a consulta de origem, ponta e rótulos falha', 11],
-  ])('falha fechada: quando %s, bloqueia', (_nome, n) => {
-    const r = mcp('merge_pull_request', pr(n))
+  ])('falha fechada: quando %s, bloqueia', async (_nome, n) => {
+    const r = await mcp('merge_pull_request', pr(n))
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DE PROMOÇÃO')
-    expect(bash(`gh pr merge ${n}`).code).toBe(2)
-    expect(bash(`gh api -X PUT repos/o/r/pulls/${n}/merge`).code).toBe(2)
+    expect((await bash(`gh pr merge ${n}`)).code).toBe(2)
+    expect((await bash(`gh api -X PUT repos/o/r/pulls/${n}/merge`)).code).toBe(2)
   })
 
-  it('auto-merge na homolog também exige as três condições', () => {
-    expect(mcp('enable_pr_auto_merge', pr(2)).code).toBe(0)
-    for (const n of [4, 5, 7, 8]) expect(mcp('enable_pr_auto_merge', pr(n)).code).toBe(2)
+  it('auto-merge na homolog também exige as três condições', async () => {
+    expect((await mcp('enable_pr_auto_merge', pr(2))).code).toBe(0)
+    for (const n of [4, 5, 7, 8]) expect((await mcp('enable_pr_auto_merge', pr(n))).code).toBe(2)
   })
 
-  it('base develop passa sem nenhuma consulta de promoção (compare, rótulos)', () => {
-    expect(mcp('merge_pull_request', pr(1)).code).toBe(0)
-    expect(bash('gh pr merge 1').code).toBe(0)
+  it('base develop passa sem nenhuma consulta de promoção (compare, rótulos)', async () => {
+    expect((await mcp('merge_pull_request', pr(1))).code).toBe(0)
+    expect((await bash('gh pr merge 1')).code).toBe(0)
     const log = readFileSync(ghLog, 'utf8')
     expect(log).not.toContain('compare')
     expect(log).not.toContain('head.ref')
   })
 
-  it('base main continua bloqueada pela regra da main, sem consultar a promoção', () => {
-    const r = mcp('merge_pull_request', pr(3))
+  it('base main continua bloqueada pela regra da main, sem consultar a promoção', async () => {
+    const r = await mcp('merge_pull_request', pr(3))
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DA MAIN')
     expect(readFileSync(ghLog, 'utf8')).not.toContain('compare')
   })
 
-  it('merge por seletor de ramo (sem número) confere origem, ponta e rótulo', () => {
-    expect(bash('gh pr merge ramo-verde').code).toBe(0)
-    const semRotulo = bash('gh pr merge ramo-sem-rotulo')
+  it('merge por seletor de ramo (sem número) confere origem, ponta e rótulo', async () => {
+    expect((await bash('gh pr merge ramo-verde')).code).toBe(0)
+    const semRotulo = await bash('gh pr merge ramo-sem-rotulo')
     expect(semRotulo.code).toBe(2)
     expect(semRotulo.stderr).toContain('validada-develop')
-    expect(bash('gh pr merge ramo-nao-mergeado').code).toBe(2)
-    const deDevelop = bash('gh pr merge ramo-develop')
+    expect((await bash('gh pr merge ramo-nao-mergeado')).code).toBe(2)
+    const deDevelop = await bash('gh pr merge ramo-develop')
     expect(deDevelop.code).toBe(2)
     expect(deDevelop.stderr).toContain(msgNunca)
   })
 
-  it('por seletor com -R fora do formato dono/repo não dá para confirmar e bloqueia', () => {
-    expect(bash('gh pr merge ramo-verde -R github.com/o/r').code).toBe(2)
+  it('por seletor com -R fora do formato dono/repo não dá para confirmar e bloqueia', async () => {
+    expect((await bash('gh pr merge ramo-verde -R github.com/o/r')).code).toBe(2)
   })
 })
 
 describe('gate-main: caminho comum', () => {
-  it('outra ferramenta passa', () => {
-    expect(rodar('Read', { file_path: '/tmp/x' }).code).toBe(0)
+  it('outra ferramenta passa', async () => {
+    expect((await rodar('Read', { file_path: '/tmp/x' })).code).toBe(0)
   })
 
-  it('comando Bash que não é de git nem de gh passa sem chamar o gh', () => {
-    expect(bash('ls -la && npm run typecheck').code).toBe(0)
+  it('comando Bash que não é de git nem de gh passa sem chamar o gh', async () => {
+    expect((await bash('ls -la && npm run typecheck')).code).toBe(0)
     expect(existsSync(ghLog)).toBe(false)
   })
 })

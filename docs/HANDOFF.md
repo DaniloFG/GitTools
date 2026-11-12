@@ -50,7 +50,10 @@ R1-fix3: o `mkdir ENOENT` em `Backend.saveRecent` era gravação em segundo plan
 `Backend.idle()` e `Controller.whenIdle()` esperam as gravações e o `afterEach` de `tests/extension.test.ts` as espera. O `onTaskUpdate`
 timeout do Windows (npm test ~6 min; a develop levou ~5 min) NÃO foi provado localmente (sem Windows): reconferir o CI.
 R1-fix4: o timeout `onTaskUpdate` no Windows vinha de 3 workers em 4 vCPUs (372 s de relógio, 1022 s somados, contra ~307 s da develop). `vitest.config.ts`
-usa metade dos núcleos no Windows (`maxWorkers`). Não provado localmente (sem Windows; no Linux com escala `win` 92 arquivos verdes): reconferir o CI.
+usava metade dos núcleos (`maxWorkers`): PIOROU (npm test 435 s e 476 s), revertido em R1-fix5.
+R1-fix5: o log do Windows (job 130962380847) mostra gate-main 34,7 s, autosave 78,7 s e gate-issue 12,7 s por causa de `spawnSync` (git e bash) que prende o laço
+de eventos do worker >60 s. Os três arquivos agora usam spawn assíncrono (`executar`), sem mudar asserção; no Linux 1286 testes verdes. Não provado no Windows: reconferir o CI.
+**A tentar** se o CI Windows ainda falhar: cortar processos por teste (bash e git) nesses três arquivos, com contagem antes e depois.
 
 ## 3. Base de medição
 
