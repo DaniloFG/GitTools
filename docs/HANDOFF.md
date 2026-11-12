@@ -16,12 +16,12 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E1`
+**A seguir:** `E2`
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
 | 0 | #91 segurança de caminhos e `tooLarge` | fechada | `7fffbe7` | 41 testes verdes (13 reprovavam antes) |
-| E1 | #93 lista de arquivos do Changes sem rolagem | a fazer | | |
+| E1 | #93 lista de arquivos do Changes sem rolagem | fechada sem correção (não reproduzido) | ver commit | 4 cenários na tela rolam; #91 revisada: aprovada |
 | E2 | #94 combobox do Dashboard escondido | a fazer | | |
 | E3 | #97 menu principal em janela estreita | a fazer | | |
 | E4 | #92 fluxo de conflito: lista lenta e modal que fecha | a fazer | | |
@@ -32,16 +32,15 @@ fechada está na mensagem do commit dela.
 | E11 | #98 Tour: desenho e lista de passos | a fazer | | |
 | E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
 
-### Última etapa fechada: `0` (#91)
+### Última etapa fechada: `E1` (#93, #91 tarefa 0)
 
-- **Feito**: `untrackedStats`/`untrackedDiff` com `resolveInside`; `resolveInsideReal` (realpath) em leitura e escrita
-  de arquivo único; `conflictDetails` devolve `tooLarge` e a tela mostra `conflict.tooLarge` nos seis idiomas.
-- **Medido**: `npx vitest run tests/paths.test.ts tests/conflicts-scale.test.ts tests/path-safety.test.ts` → 41
-  passam; `npm run typecheck` verde.
-- **Não conferido**: ramo `tooLarge` na tela (sem teste de tela); Windows (junction); custo de `lstat`+`realpath`;
-  `npm test` inteiro; `security-review` formal.
-- **Ficou para depois**: item de segurança da #91 fica aberto na issue até fechá-la com o resumo
-  após `security-review` do diff `7fffbe7` (tarefa 0 da E1).
+- **Feito**: `security-review` do `7fffbe7` aprovada e postada na #91 (achado de funcionamento virou a issue #99).
+  #93 **não reproduzida**: na interface compilada (1100×560), `.csection-body` rola com 60 arquivos novos nos modos
+  `stage` e `check`, no arranjo padrão e com a lista sozinha num painel à esquerda. Comentário na #93 pede passos ou print.
+- **Sem código de produto e sem teste novo**: não há falha para o teste reprovar; hipótese de `flex: 1 1 auto` do
+  `.csection` descartada pela medição.
+- **Não conferido**: extensão do VS Code, painel embaixo/à direita, altura abaixo de 560 px, barra de rolagem fixa
+  (headless usa barra sobreposta), `npm test` inteiro.
 
 ## 3. Base de medição
 
@@ -49,17 +48,6 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 `node scripts/perf/core.mjs moderate` e `--trace`; E3 e E12 usam `node scripts/perf/ui.mjs 4 moderate`.
 
 ## 4. Plano
-
-### Etapa `E1` — #93: lista de arquivos do Changes com barra de rolagem em qualquer quantidade
-
-- **Orquestra**: sonnet
-- **Arquivos prováveis**: componente Changes e CSS em `src/renderer/src/`; `tests/web/`
-- **Ler antes**: `.claude/rules/interface.md`, `.claude/rules/testes.md`, skill `run-gittools`
-- **Aceite**: teste de tela reprova antes (poucos arquivos, painel à esquerda, depois crescer); `npm run typecheck` e
-  `npm test` verdes; nós no DOM iguais. Tarefa 0: `security-review` do diff `7fffbe7` e comentário de fechamento na #91.
-- **Testes**: tela
-- **Segurança**: tarefa 0 apenas
-- **Depende de**: nada
 
 ### Etapa `E2` — #94: lista do combobox "Everyone" acima do layout, completa e clicável
 
@@ -126,6 +114,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
   `rerere` só opcional, desligado por padrão, e só se a investigação (E5) provar segurança.
 - **E7**: a tela segue a descrição da issue #96; o `gt-juiz` aprova o esboço.
 - **E11**: cobertura = tudo que o usuário usa, exceto Settings (só passada rápida), como na issue #98.
+- **#93**: reprodução em `scripts/readme-media/lib.mjs` com `layout: { dock }` exige `changes.unstaged` ativo (clicar a aba); `placeMissing` põe `commit.message` no grupo. Reabrir só com passos do dono. #99: retrabalho de link em `untrackedDiff`/`conflictDetails` (fora do plano; pode entrar antes de E4/E5).
 - Instalar dependências em contêiner novo: `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`.
 
 ## 6. Encerramento
