@@ -109,6 +109,23 @@ origem e maturidade entram quando se aplicam.
   uma, menos `develop` e `main`. O check `branch-flow.yml` barra `docs/HANDOFF.md` na `homolog` e na `main`.
 - Não é preciso renomear a branch. O HANDOFF só sai antes do PR para a `homolog`: `git rm docs/HANDOFF.md` e commit.
 
+## Ciclo de vida das branches
+
+A branch de trabalho nasce de `develop`, vai por PR para `develop` e, depois, a **mesma** branch vai por PR para `homolog`.
+As duas passagens dependem dela, então ela fica de pé até o fim do plano: não se apaga logo após o merge na `develop`.
+
+- **O Claude não apaga branches.** A sessão recebe 403 ao tentar (git e `gh api` são bloqueados pelo proxy). Apagar é do
+  dono; fica proibido tentar por qualquer caminho.
+- **`delete_branch_on_merge` não é ligado.** Com ele ligado, a branch sumiria antes do PR para a `homolog`.
+- **Limpeza ao fim do plano**: a central lista as branches já mergeadas na `homolog` e pede ao dono que as apague, com a
+  lista no relatório ou na issue-mãe. `develop`, `homolog` e `main` nunca são apagadas: o ruleset do GitHub bloqueia, e o
+  `gate-main.sh` é a defesa em profundidade.
+- **Apagar não perde trabalho nem quebra a verificação.** Leia a branch pelo SHA, não pelo nome: `compare/BASE...SHA` no
+  lugar do nome, e `refs/pull/N/head` para a ponta de um PR cuja branch sumiu. As duas formas foram provadas na B1 (issue
+  #114). O pipeline (`validacao.yml`, `qa.yml`, `pipeline.mjs`) usa o nome da branch só como rótulo e concorrência.
+- **Registre o SHA da ponta antes de pedir a limpeza**: na descrição do PR para a `homolog` (o `docs/HANDOFF.md` já saiu
+  nesse ponto) e, enquanto ele existir, no próprio HANDOFF.
+
 ## Tamanho
 
 - Um pedido grande = uma issue-mãe; cada etapa = uma sub-issue.
