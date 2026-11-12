@@ -23,14 +23,14 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E4` — provas de #93 e #94
+**A seguir:** `E5` — itens ocultos no menu Aparência (#97)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | E1 | #121 | gate-main: decidir pelo check QA mais recente do sha | feita | a30dc72 | gate-main 89/89; 3 casos reprovam sem a correção |
 | E2 | #128 | Documentar o fluxo: remoção do HANDOFF entra na develop antes do PR da homolog | feita | (ver git log) | 3 textos alinhados; CLAUDE.md 199 linhas |
 | E3 | #92 (+#108) | Prova da #92: mutação do cenário e processos git antes/depois | feita | a897c90 | mutação A não reprova (ver seção 5); B e C1 reprovam; 4 cenários novos, e2e 31 ok |
-| E4 | #93, #94 | Provas restantes: painel à direita/embaixo, altura baixa; combobox compartilhado | a fazer | | |
+| E4 | #93, #94 | Provas restantes: painel à direita/embaixo, altura baixa; combobox compartilhado | feita | 0dc81de | mutação overflow e placePopover reprovam; z-index NÃO (seção 5); e2e 31 ok |
 | E5 | #97 | Prova: itens ocultos pelo menu Aparência (#56) | a fazer | | |
 | E6 | #109 | 5 execuções iguais do e2e-desempenho após a recalibração | a fazer | | |
 | E7 | #98 | Tour: cenário e2e, foco e Esc, zero git, CPU 4× | a fazer | | |
@@ -42,15 +42,14 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: E3 (#92, #108)
+### Última etapa fechada: E4 (#93, #94)
 
-- **Feito**: mutações no produto (restauradas, nada commitado): A (reverter `adfec47`) NÃO reprova, pois desde a E9 da #96
-  `closeEditor` e `toast` são estáveis; C1 (efeito antigo + `closeEditor` instável) reprova com "6 processos git (teto 5)",
-  C2 (efeito novo + instável) passa; B (tirar o `git add` de `saveConflictResolution`) reprova `conflito-resolver-salvar`
-  e `conflito-continuar`. Cenários novos `conflito-resolver-{nosso,deles,a-mao,muitos}`: processos 4, 4, 3, 4 (teto 5).
-  `conflito-continuar/pular/abortar` ok na mesma execução (e2e 31 cenários, 40 s).
-- **Não conferido**: os quatro cenários novos não rodaram contra produto quebrado; "antes 9 / depois 3" não foi reexecutado
-  (o código antigo hoje dá 3, a base de 9 não reproduz); a proteção de #92 contra `onClose` instável não tem teste permanente.
+- **Feito**: `regressao-93` com 4 variantes (esquerda, direita, embaixo, 1100x420); `regressao-94` com 1000x700 (`end`),
+  1100x202 (`up`) e opção rolada para fora não conta como coberta. Combobox: só `PeoplePicker` (`Dashboards.tsx:233`).
+  Unidade de borda já existia. Mutações: `overflow:visible` no `.csection-body` reprova (esquerda); `placePopover` sem
+  up/end reprova; remover o `z-index` do `.dash-popover` NÃO reprova.
+- **Não conferido**: M1 só falha na primeira variante (o cenário para no primeiro erro); extensão do VS Code, barras fixas,
+  confirmação do dono; `.file-item`: 62 montados com 62 arquivos (ROW_BATCH 300), a premissa "lista por janela" não vale nessa faixa.
 
 ## 3. Base de medição
 
@@ -62,12 +61,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
 
-### Etapa E4 — provas de #93 e #94
-
-- **Orquestra**: topo. **Aceite**: `regressao-93` cobre painel à direita e embaixo e janela abaixo de 560 px de altura
-  (extensão do VS Code: "não conferível aqui", registrado); #94 lista onde o combobox compartilhado aparece, cenário
-  cobre o outro uso e a posição junto à borda; mutação de cada um reprova.
-- **Testes**: tela. **Depende de**: E3.
 ### Etapa E5 — itens ocultos no menu Aparência (#97)
 
 - **Orquestra**: topo. **Aceite**: cenário `regressao-97` com itens ocultos pelo usuário (#56) sem item fora da tela
@@ -127,6 +120,8 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 - Sem `status:validada` sem a evidência por critério; sem prova → comentário e segue.
 - E3: mutar o produto exige `npm run build:extension` antes de cada e2e (o dist não segue o código). `ROW=30` fixo em
   `conflito-resolver-muitos`: se a altura da linha da lista mudar, o cenário reprova. Cenários só com `Keep both` não bastam.
+
+- E4: o teste de `end` precisa de janela ~1000 px (botão de pessoas à direita); em 300–480 px o botão fica em x=31 e o popover só transborda. Remover o `z-index` não reprova o 94: se alguém retomar, ache o elemento que empilharia por cima.
 
 ## 6. Encerramento
 
