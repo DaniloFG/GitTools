@@ -3461,8 +3461,13 @@ kbd.duplicate {
 .rebase-text textarea {
   flex: 1;
 }
-.list-body:focus {
+/* Foco por teclado mostra o contorno; o clique com o mouse não (o navegador não marca :focus-visible nele). */
+.list-body:focus:not(:focus-visible) {
   outline: none;
+}
+.list-body:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 :root:not([data-toast-y='top']):not([data-toast-y='middle']) .modal-backdrop ~ .toasts {
   bottom: 72px;
@@ -3668,10 +3673,13 @@ body.reordering * {
 .dock-column > .dock-divider::before {
   inset: -5px 0;
 }
+/* No foco por teclado a barra mantém o fundo accent e ganha contorno da mesma cor, para ser vista no tema. */
 .dock-divider:hover,
 .dock-divider:focus-visible {
   background: var(--accent);
-  outline: none;
+}
+.dock-divider:focus-visible {
+  outline: 2px solid var(--accent);
 }
 .dock > .dock-group {
   flex: 1 1 auto;
@@ -4793,7 +4801,10 @@ tr.nav-flash > td {
 .log-chip:hover,
 .log-chip:focus-visible {
   color: var(--text);
-  outline: none;
+}
+.log-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* O nome do arquivo ganha a cor do status (as mesmas das letras M, A, D…), para ler o que houve só pelo nome. */

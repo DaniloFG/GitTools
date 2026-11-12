@@ -286,6 +286,7 @@ export const hi: Messages = {
     linesContext: 'Commit {sha} की {path} से — "{subject}"',
     takeChecked: { one: '{count} चुनी गई फ़ाइल {target} में ले जाएँ…', other: '{count} चुनी गई फ़ाइलें {target} में ले जाएँ…' },
     dragFile: 'इस फ़ाइल को ले जाने के लिए किसी branch पर खींचें',
+    checkFile: '{path} को ले जाने के लिए चुनें',
     selectLinesHelp: 'लाइनें चुनें और सिर्फ़ उन्हें दूसरी branch में लागू करें।',
     takeWholeFile: 'पूरी फ़ाइल ले जाएँ…'
   },

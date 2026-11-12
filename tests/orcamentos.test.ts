@@ -16,8 +16,8 @@ describe('carregarOrcamentos', () => {
     expect(o.responsivo.larguras).toEqual([320, 480, 640, 1024, 1440])
     expect(o.responsivo.posicoes).toEqual(['esquerda', 'direita', 'embaixo'])
     expect(o.desempenho.tetos.gitStage).toBe(9)
-    // Base medida (#120): baixar para 0 quando a acessibilidade for corrigida; nunca subir sem motivo no commit.
-    expect(o.teclado.tetos).toEqual({ semNomeAcessivel: 3, semFocoVisivel: 5 })
+    // Acessibilidade corrigida (#120): os tetos do teclado ficam em 0; nunca subir sem motivo no commit.
+    expect(o.teclado.tetos).toEqual({ semNomeAcessivel: 0, semFocoVisivel: 0 })
   })
 
   it('lança com a lista de problemas quando o arquivo é inválido', () => {

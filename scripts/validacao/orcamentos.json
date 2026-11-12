@@ -24,8 +24,8 @@
   },
   "teclado": {
     "tetos": {
-      "semNomeAcessivel": 3,
-      "semFocoVisivel": 5
+      "semNomeAcessivel": 0,
+      "semFocoVisivel": 0
     }
   }
 }
