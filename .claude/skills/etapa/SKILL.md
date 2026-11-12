@@ -7,7 +7,8 @@ argument-hint: "[etapa]"
 # Sessão de etapa
 
 > **Modo fábrica (CLAUDE.md prevalece)**: o "pode seguir" do dono já está dado e é permanente. Não existe mais PARADO
-> por decisão do dono: use a escada do CLAUDE.md (decidir; `gt-juiz`; issue de retrabalho e seguir).
+> por decisão do dono: use a escada do CLAUDE.md (decidir; `gt-juiz`; `precisa-refinamento` com `gt-planejador`,
+> skill `backlog` A, e seguir).
 
 Etapa: $ARGUMENTS
 
@@ -62,8 +63,10 @@ Feche o que está coerente e verificado, e registre o resto no HANDOFF, se:
 - o limite de uso está acabando.
 
 Decisão de desenho ou verificação vermelha que não se resolve em duas tentativas não é motivo de parada: consulte o
-`gt-juiz` e siga o veredito. Se ele não resolver, ou o item for grande, abra issue de retrabalho (título, contexto, o
-que foi tentado, aceite) e siga para a próxima etapa, como a escada do CLAUDE.md manda.
+`gt-juiz` e siga o veredito. Se ele não resolver, ou o item for grande, rode `backlog` A (comente o que foi tentado, rótulo
+`precisa-refinamento`, `gt-planejador`) e siga para a próxima etapa, como a escada do CLAUDE.md manda; nunca devolva ao dono.
+Melhoria, débito ou risco que você viu de passagem fora do escopo da etapa: `backlog` B (issue `descoberta`), sem
+implementar.
 
 Nunca pare com alteração solta: ou está commitada e verde, ou foi desfeita. Se um subagente ainda edita, commite só
 o que já está coerente e diga isso.
@@ -81,7 +84,7 @@ o que já está coerente e diga isso.
    rótulo para `status:em-revisao`. Não feche a issue: o fechamento é da central, depois da validação.
 4. Avise a central com `send_message`, **uma linha**:
    `ETAPA FECHADA <etapa> | commit <sha> | próxima <etapa> | typecheck e testes <verdes ou o que falhou>`
-   ou `PARADA <etapa> | <motivo>`.
+   ou `PARADA <etapa> | <motivo>` (só limite de uso ou plataforma indisponível; o resto é `backlog` A).
 5. Pare. Sem central disponível: deixe a mesma linha na sua última mensagem, para o dono.
 
 ## Etapa `ENCERRAMENTO`

@@ -73,10 +73,10 @@ recurso (skill, agente, modelo) cada parte pede.
 - **Modo fábrica**: o "pode seguir" do dono vale em definitivo, para todo trabalho em etapas. Nunca espere resposta ou
   decisão dele: a entrada planeja e abre a central; a central abre etapa após etapa até o plano acabar.
 - **Escada**, nesta ordem: (1) decida com o guia e o código; (2) dúvida de desenho ou verificação que diverge: consulte
-  o `gt-juiz` e siga o veredito; (3) o juiz não resolve ou o item é grande: abra issue nova de retrabalho (título,
-  contexto, o que foi tentado, aceite), registre no HANDOFF e **siga para a próxima etapa**.
-- **Paradas legítimas**: só limite de uso ou plataforma indisponível, com estado e "A seguir" no HANDOFF e mensagem de
-  continuação. Encerramento não pede a palavra do dono; PR e merge seguem **GitHub** (abaixo).
+  o `gt-juiz` e siga o veredito; (3) o juiz não resolve ou o item é grande: rótulo `precisa-refinamento` e
+  `gt-planejador` (skill `backlog`), nunca devolve ao dono, registre no HANDOFF e **siga para a próxima etapa**.
+  Achado de passagem vira issue `descoberta`, nunca refatoração no meio. Plano acabado: puxe o backlog pronto (`backlog`).
+- **Paradas legítimas**: só limite de uso ou plataforma indisponível, com estado e "A seguir" no HANDOFF.
 - **REGRA ABSOLUTA: a triagem manda.** Pedido **Grande** nunca é implementado na sessão de entrada: ela roda `planejar`,
   grava `docs/HANDOFF.md` e abre a central. Código sem triagem é violação.
 - **Gate**: `.claude/hooks/gate-etapas.sh` (hook `PreToolUse`, `.claude/settings.json`) bloqueia o `gt-escritor` sem
@@ -116,8 +116,8 @@ O dono pede que subagentes baratos leiam e escrevam o código; o modelo caro só
 | `gt-escritor` | `haiku`, sempre o mais recente; `sonnet` em escalada | Escreve código, testes e documentação, só nos arquivos recebidos | Não decide desenho; não roda git que altera estado |
 | `gt-juiz` | `opus`, sempre o mais recente | Dá o veredito (aprovado / reprovado com motivo) quando a central precisa de julgamento: verificação que diverge, aviso que não bate, decisão de desenho, diff de etapa arriscada | Não escreve código nem altera arquivo; não decide pela central |
 
-- **Toda chamada a `Agent` nomeia `gt-leitor`, `gt-escritor`, `gt-juiz` ou `gt-validador`, ou passa `model`.** Agente genérico sem
-  modelo herda o modelo caro, e o `Explore` também roda em modelo caro: para ler, use o `gt-leitor`.
+- **Toda chamada a `Agent` nomeia `gt-leitor`, `gt-escritor`, `gt-juiz`, `gt-planejador` ou `gt-validador`, ou passa
+  `model`.** Sem modelo, herda o caro (o `Explore` também): para ler, use o `gt-leitor`.
 - **Suba o modelo, não a insistência.** Dois erros do `gt-escritor` na mesma tarefa, ou tarefa densa (concorrência,
   cancelamento, algoritmo novo): chame-o com `model: "sonnet"`. Ainda não saiu: refaça a especificação.
 - **Correção de revisão volta ao mesmo subagente** (`SendMessage` com o id dele): ele ainda tem o contexto, e outro

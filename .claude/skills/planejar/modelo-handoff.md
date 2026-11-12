@@ -13,7 +13,7 @@ mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `<etapa>` — ou `ENCERRAMENTO`, ou `PARADO: <motivo e o que o dono precisa decidir>`
+**A seguir:** `<etapa>` — ou `ENCERRAMENTO`, ou `PARADO: <limite de uso ou plataforma indisponível>` (trava de outro tipo é `backlog` A, não PARADO)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -52,7 +52,7 @@ Etapa fechada sai daqui (fica a linha na tabela da seção 2).
 
 ## 5. Decisões e armadilhas
 
-Uma linha cada: o que foi tentado e não serviu (e por quê), decisão do dono (com a data), cuidado que custou caro
+Uma linha cada: o que foi tentado e não serviu (e por quê), decisão registrada pelo juiz ou pelo Claude (com a data), trava enviada ao `backlog` A (com o número da issue), cuidado que custou caro
 descobrir.
 
 ## 6. Encerramento

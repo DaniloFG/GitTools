@@ -1,0 +1,39 @@
+name: Débito técnico
+description: Trabalho adiado conscientemente que cobra juros, ou achado de passagem que não cabe no escopo atual. Nada é feito sem issue.
+title: "Débito técnico: "
+labels: ["debito-tecnico", "descoberta", "status:planejada"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Registre só achado concreto (número medido ou risco claro). Acrescente natureza, área e prioridade (`.claude/rules/github.md`, seção Classificação). Não implemente no meio de outro escopo.
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Escopo
+      description: O que foi adiado e por quê, o que entra nesta issue e o que fica de fora. Inclua "Onde vi" (arquivo:linha) e "Descoberta durante #N".
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Critérios de aceite
+      description: Checklist. Cada item precisa ser conferível com um comando ou uma tela.
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: consideracoes
+    attributes:
+      label: Considerações técnicas
+      description: O juro que o débito cobra (custo, risco ou número), arquivos prováveis, processos git e orçamento de desempenho, segurança.
+    validations:
+      required: true
+  - type: textarea
+    id: testes
+    attributes:
+      label: Testes
+      description: Camada de teste (unidade, integração, tela ou medição) e o que cada uma prova. Diga também se o pagamento do débito não muda comportamento.
+    validations:
+      required: true

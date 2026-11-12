@@ -7,7 +7,8 @@ argument-hint: "[nome do trabalho]"
 # Sessão central
 
 > **Modo fábrica (CLAUDE.md prevalece)**: o "pode seguir" do dono já está dado e é permanente. Não existe mais parar
-> para avisar o dono por decisão: use a escada do CLAUDE.md (decidir; `gt-juiz`; issue de retrabalho e seguir).
+> para avisar o dono por decisão: use a escada do CLAUDE.md (decidir; `gt-juiz`; `precisa-refinamento` com
+> `gt-planejador`, skill `backlog` A, e seguir).
 
 Trabalho: $ARGUMENTS
 
@@ -37,8 +38,8 @@ do seu.
 > Você é a sessão central do trabalho "<trabalho>" na branch `<branch>` do repositório `<url>`. Use a skill
 > `central` (se ela não estiver disponível, leia `.claude/skills/central/SKILL.md`) e siga-a. Não leia nem escreva
 > código. Abra a etapa indicada em "A seguir" no `docs/HANDOFF.md`; a cada aviso `ETAPA FECHADA`, confira no remoto,
-> arquive a sessão que terminou e abra a seguinte. Pare e me avise quando o plano acabar, quando houver limite de uso
-> ou plataforma indisponível, ou quando eu pedir.
+> arquive a sessão que terminou e abra a seguinte. Acabado o plano, siga a skill `backlog` (C) para o próximo. Pare e me
+> avise só quando não houver backlog pronto, quando houver limite de uso ou plataforma indisponível, ou quando eu pedir.
 
 Aberta à mão, a central roda no modelo em que o dono a abriu, e as etapas de topo herdam esse modelo. O dono a abre,
 portanto, no modelo que quer para as etapas; o contexto da central é pequeno, e coordenar nele custa pouco.
@@ -118,7 +119,7 @@ decide é você:
 - **Aprovado**: siga como no aviso (arquive a etapa e abra a seguinte).
 - **Reprovado**: não abra a seguinte. Devolva o motivo à etapa com `send_message`, se a sessão ainda estiver aberta;
   senão abra uma etapa de correção com o motivo no prompt. Se a correção também não resolver, ou o item for grande:
-  issue de retrabalho (título, contexto, o que foi tentado, aceite) e siga para a seguinte.
+  `backlog` A (comente o que foi tentado, `precisa-refinamento`, `gt-planejador`) e siga para a seguinte.
 
 O juiz nunca escreve código.
 
@@ -127,14 +128,15 @@ O juiz nunca escreve código.
 Só nestes casos, que são as paradas legítimas:
 
 - **O plano acabou**: "A seguir" diz `ENCERRAMENTO`. O encerramento não pede a palavra do dono: abra a etapa
-  `ENCERRAMENTO` como qualquer outra; o plano acaba quando ela fecha.
+  `ENCERRAMENTO` como qualquer outra; o plano acaba quando ela fecha. Só é parada se `backlog` C não achar issue pronta
+  e A não tiver o que refinar (passo 9 do encerramento).
 - **Limite de uso**, para você ou para uma etapa.
 - **Plataforma indisponível**: `create_session` falhou ou não está disponível. Deixe pronta a mensagem de início da
   etapa para o dono colar.
 - O dono pediu para parar.
 
-Verificação vermelha, decisão de desenho e aviso que não bate não são paradas: são da escada (juiz, correção, issue de
-retrabalho, siga). Ao parar, uma mensagem curta: etapas fechadas (com commit), onde parou e o motivo.
+Verificação vermelha, decisão de desenho e aviso que não bate não são paradas: são da escada (juiz, correção,
+`backlog` A, siga). Ao parar, uma mensagem curta: etapas fechadas (com commit), onde parou e o motivo.
 
 ## Encerramento do plano
 
@@ -158,6 +160,8 @@ promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esfor
    comente a evidência final, troque para `status:validada` e feche com `state_reason: completed`. A issue-mãe fecha
    por último, com a mesma regra.
 8. **Fim**: avise o dono em uma linha, com o `PR ABERTO <n> (aguarda dono)`. Você não faz merge na `main`.
+9. **Próximo plano**: com o encerramento feito, rode `backlog` C. Havendo backlog pronto, a triagem de tamanho decide
+   (Grande: `planejar` e nova central); sem backlog pronto, `backlog` A nas `precisa-refinamento` mais prioritárias.
 
 ## HANDOFF em formato antigo
 

@@ -7,7 +7,8 @@ argument-hint: "[nome do trabalho]"
 # Planejar um trabalho em etapas
 
 > **Modo fábrica (CLAUDE.md prevalece)**: o "pode seguir" do dono já está dado e é permanente. Não existe mais PARADO
-> nem "avise o dono" por decisão: use a escada do CLAUDE.md (decidir; `gt-juiz`; issue de retrabalho e seguir).
+> nem "avise o dono" por decisão: use a escada do CLAUDE.md (decidir; `gt-juiz`; `precisa-refinamento` com
+> `gt-planejador`, skill `backlog` A, e seguir).
 
 Trabalho: $ARGUMENTS
 
@@ -51,7 +52,8 @@ Para cada etapa, decida também:
 
 Antes de escrever o HANDOFF, garanta as issues (`.claude/rules/github.md`, políticas 4 e 5): uma issue-mãe do trabalho e
 uma sub-issue por etapa (`issue_write` com `parent_issue_number`, ou `sub_issue_write`). Procure antes com
-`search_issues`, para não duplicar. Cada issue traz Escopo, Critérios de aceite (checklist), Considerações técnicas e
+`search_issues`, para não duplicar: issue puxada do backlog (`backlog` C) já tem os 4 campos, então reaproveite-a como
+sub-issue em vez de criar outra. Cada issue traz Escopo, Critérios de aceite (checklist), Considerações técnicas e
 Testes, copiados dos templates de `.github/ISSUE_TEMPLATE/`. A coluna `Issue` do HANDOFF recebe o número de cada uma.
 
 ## 4. Escrever o `docs/HANDOFF.md`
