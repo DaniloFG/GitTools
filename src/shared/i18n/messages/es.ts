@@ -885,6 +885,18 @@ export const es: Messages = {
       reset: 'Restaurar valores',
       show: 'Mostrar ejemplo'
     },
+    conflicts: {
+      title: 'Conflictos',
+      description: 'Cómo se comporta la pantalla Conflictos al terminar una operación y al abrir la aplicación.',
+      summary: 'Al terminar la operación',
+      summaryHelp: 'Cuando la operación termine, la pantalla se cierra y vuelve a la pantalla anterior.',
+      summaryKeep: 'Mantener el resumen hasta que yo la cierre',
+      summaryClose: 'Cerrar sola',
+      startup: 'Al abrir la aplicación con un conflicto pendiente',
+      startupHelp: 'Vale para la primera lectura de cada repositorio en la sesión, cuando ya tiene un conflicto.',
+      startupOpen: 'Abrir la pantalla directamente, manteniendo el banner y la alerta',
+      startupBanner: 'Solo banner y alerta (la pantalla se abre al hacer clic)'
+    },
     about: {
       title: 'Acerca de',
       description: 'Versiones e información del sistema.',

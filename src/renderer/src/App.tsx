@@ -52,7 +52,7 @@ import { getLocale, t, type MessageKey } from './i18n'
 import { resetLayout as clearLayout, useLayout } from './layout'
 import { clearCurrentLayout } from './savedLayouts'
 import { historySignature, mergeData } from './stable'
-import { shouldOpenOnStartup, type ConflictStartupSetting } from './conflictScreenPolicy'
+import { shouldOpenOnStartup } from './conflictScreenPolicy'
 import { createSingleFlight, SKIPPED } from './singleFlight'
 import { dropSession, getSession, isOwnEcho, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
 import { canLoadMoreLog, checkedRefs, logLimitFor, nextLogPage, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
@@ -114,12 +114,6 @@ function describeWork(work: UnsavedReason[]): string {
  * usuário fechou. Sai do conjunto quando o repositório é fechado (ver `commit`).
  */
 const conflictsStartupSeen = new Set<string>()
-
-/**
- * Abrir a tela Conflitos sozinha quando o repositório ativo já tem conflito na primeira leitura. Constante por
- * enquanto: vira a configuração `conflictStartup` em E10 (docs/ESBOCO-CONFLITOS.md, seção 5).
- */
-const CONFLICT_STARTUP: ConflictStartupSetting = 'open'
 
 /** Mesma lista (mesmos repositórios, na mesma ordem e com o mesmo ativo)? */
 function sameOpened(a: OpenRepositories, b: OpenRepositories): boolean {
@@ -903,7 +897,8 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
     if (!dataReady) return
     const alreadyOpenedFor = conflictsStartupSeen.has(repo.root)
     conflictsStartupSeen.add(repo.root)
-    if (shouldOpenOnStartup({ hasConflicts: conflicts > 0, setting: CONFLICT_STARTUP, alreadyOpenedFor })) setConflictsScreen(true)
+    // A opção vem de `settingsRef` (configuração salva, ver acima): a leitura é só desta partida, não reage a mudanças.
+    if (shouldOpenOnStartup({ hasConflicts: conflicts > 0, setting: settingsRef.current.conflictStartup, alreadyOpenedFor })) setConflictsScreen(true)
     // `conflicts` só vale na primeira leitura: não é dependência de propósito.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataReady, repo.root, setConflictsScreen])

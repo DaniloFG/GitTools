@@ -885,6 +885,18 @@ export const en: Messages = {
       reset: 'Restore default',
       show: 'Show example'
     },
+    conflicts: {
+      title: 'Conflicts',
+      description: 'How the Conflicts screen behaves when an operation ends and when the app opens.',
+      summary: 'When the operation ends',
+      summaryHelp: 'When the operation ends, the screen closes and returns to the previous screen.',
+      summaryKeep: 'Keep the summary until I close it',
+      summaryClose: 'Close it automatically',
+      startup: 'When the app opens with a pending conflict',
+      startupHelp: 'Applies to the first load of each repository in the session, when it already has a conflict.',
+      startupOpen: 'Open the screen right away, keeping the banner and alert',
+      startupBanner: 'Banner and alert only (the screen opens when you click)'
+    },
     about: {
       title: 'About',
       description: 'Versions and system information.',

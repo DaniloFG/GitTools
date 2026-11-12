@@ -63,6 +63,26 @@ describe('continuar automaticamente após resolver conflitos', () => {
   })
 })
 
+describe('conflitos: resumo ao terminar e abertura na partida', () => {
+  it('vêm com o resumo mantido na tela e a tela abrindo sozinha na partida', () => {
+    expect(DEFAULT_SETTINGS.conflictSummary).toBe('keep')
+    expect(DEFAULT_SETTINGS.conflictStartup).toBe('open')
+    expect(normalizeSettings({})).toMatchObject({ conflictSummary: 'keep', conflictStartup: 'open' })
+  })
+
+  it('guardam os valores válidos das duas opções', () => {
+    expect(normalizeSettings({ conflictSummary: 'close' }).conflictSummary).toBe('close')
+    expect(normalizeSettings({ conflictStartup: 'bannerOnly' }).conflictStartup).toBe('bannerOnly')
+  })
+
+  it('valor fora da lista (ou de outro tipo) cai no padrão de cada opção', () => {
+    expect(normalizeSettings({ conflictSummary: 'fechar' }).conflictSummary).toBe('keep')
+    expect(normalizeSettings({ conflictSummary: true }).conflictSummary).toBe('keep')
+    expect(normalizeSettings({ conflictStartup: 'banner' }).conflictStartup).toBe('open')
+    expect(normalizeSettings({ conflictStartup: null }).conflictStartup).toBe('open')
+  })
+})
+
 describe('detecção de vários repositórios', () => {
   // Vem desligada: abrir o app não varre pasta e subpastas por padrão (desempenho). Só `true` literal liga.
   it('vem desligada, e só liga se o usuário pedir `true`', () => {

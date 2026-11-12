@@ -1,13 +1,11 @@
 // Quando a tela Conflitos abre sozinha na partida e quando fecha depois de resolver. Lógica pura, sem React, para
-// ser testada direto (tests/conflict-screen-policy.test.ts). As chaves ainda não estão em Settings: aqui só a regra.
+// ser testada direto (tests/conflict-screen-policy.test.ts). Os tipos das opções moram em `shared/settings.ts` (o
+// código compartilhado não importa o renderer); aqui só são reexportados, e a regra.
 
+import type { ConflictStartupSetting, ConflictSummarySetting } from '../../shared/settings'
 import type { OperationKind } from '../../shared/types'
 
-/** Abrir a tela na partida, ou só mostrar o banner. */
-export type ConflictStartupSetting = 'open' | 'bannerOnly'
-
-/** Ao terminar a operação com conflitos resolvidos: manter a tela aberta, ou fechá-la. */
-export type ConflictSummarySetting = 'keep' | 'close'
+export type { ConflictStartupSetting, ConflictSummarySetting }
 
 export interface StartupInput {
   hasConflicts: boolean

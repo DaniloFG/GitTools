@@ -1,9 +1,10 @@
 import { memo, Suspense, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
-import { useAppActions, useBusy, useRepoData } from '../context'
+import { useAppActions, useAppSettings, useBusy, useRepoData } from '../context'
 import { t, type MessageKey } from '../i18n'
 import { BULK_RESOLUTIONS, bulkHelp, bulkLabel } from '../bulkConflicts'
 import { buildConflictRows, effectiveTab, keepSelection, nextPending, type ConflictKind, type ConflictTab } from '../conflictRows'
 import { filterConflictRows, type ConflictFilter, type ConflictSituation } from '../conflictFilter'
+import { shouldCloseAfterResolve } from '../conflictScreenPolicy'
 import { ConflictEditor } from '../lazyScreens'
 import { REUSE_NAMES, useConflictFlow, type ConflictFocus } from './ConflictFlow'
 import { LoaderPane } from './Loader'
@@ -243,6 +244,22 @@ export function ConflictsScreen({ locale }: { locale: string }) {
 
   const showChanges = useCallback(() => setView('changes'), [setView])
   const close = useCallback(() => setConflictsScreen(false), [setConflictsScreen])
+
+  // Opção "fechar sozinha" (`conflictSummary`): a tela fecha quando a operação que ela acompanhava termina. Sem estado
+  // novo: `sawOperation` é só uma marca de ref. Ela é consumida ao terminar, então mudar a opção depois não fecha a
+  // tela por um fim de operação antigo.
+  const { settings } = useAppSettings()
+  const conflictSummary = settings.conflictSummary
+  const sawOperation = useRef(false)
+  useEffect(() => {
+    if (kind !== 'none') {
+      sawOperation.current = true
+      return
+    }
+    const hadOperation = sawOperation.current
+    sawOperation.current = false
+    if (shouldCloseAfterResolve({ setting: conflictSummary, operationKind: kind, hadOperation })) setConflictsScreen(false)
+  }, [kind, conflictSummary, setConflictsScreen])
 
   const heading =
     kind === 'none'

@@ -7,6 +7,7 @@ import type { Settings } from '../../../../shared/settings'
 import type { MessageKey } from '../../i18n'
 import { AboutSection } from './AboutSection'
 import { AppearanceSection } from './AppearanceSection'
+import { ConflictsSection } from './ConflictsSection'
 import { EditorSection } from './EditorSection'
 import { GeneralSection } from './GeneralSection'
 import { IdentitySection } from './IdentitySection'
@@ -70,6 +71,14 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     title: 'settings.editor.title',
     description: 'settings.editor.description',
     component: EditorSection,
+    searchable: true
+  },
+  {
+    id: 'conflicts',
+    icon: '⚔',
+    title: 'settings.conflicts.title',
+    description: 'settings.conflicts.description',
+    component: ConflictsSection,
     searchable: true
   },
   {

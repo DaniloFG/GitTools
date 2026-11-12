@@ -886,6 +886,18 @@ export const ptBR = {
       reset: 'Restaurar padrão',
       show: 'Mostrar exemplo'
     },
+    conflicts: {
+      title: 'Conflitos',
+      description: 'Como a tela Conflitos se comporta ao terminar uma operação e ao abrir o app.',
+      summary: 'Ao terminar a operação',
+      summaryHelp: 'Quando a operação terminar, a tela fecha e volta à tela anterior.',
+      summaryKeep: 'Manter o resumo até eu fechar',
+      summaryClose: 'Fechar sozinha',
+      startup: 'Ao abrir o app com conflito pendente',
+      startupHelp: 'Vale na primeira leitura de cada repositório na sessão, quando ele já tem conflito.',
+      startupOpen: 'Abrir a tela direto, mantendo banner e alerta',
+      startupBanner: 'Só banner e alerta (a tela abre ao clicar)'
+    },
     about: {
       title: 'Sobre',
       description: 'Versões e informações do sistema.',

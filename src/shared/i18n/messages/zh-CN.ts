@@ -854,6 +854,18 @@ export const zhCN: Messages = {
       reset: '恢复默认',
       show: '显示示例'
     },
+    conflicts: {
+      title: '冲突',
+      description: '操作结束和打开应用时，冲突页面的行为。',
+      summary: '操作结束时',
+      summaryHelp: '操作结束后，页面会关闭并返回上一个页面。',
+      summaryKeep: '保留摘要，直到我关闭',
+      summaryClose: '自动关闭',
+      startup: '打开应用时存在待处理冲突',
+      startupHelp: '适用于会话中每个仓库的首次读取，且该仓库已有冲突时。',
+      startupOpen: '直接打开页面，同时保留横幅和提醒',
+      startupBanner: '仅显示横幅和提醒（点击后再打开页面）'
+    },
     about: {
       title: '关于',
       description: '版本和系统信息。',
