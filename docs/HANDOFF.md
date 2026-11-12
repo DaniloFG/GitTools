@@ -23,7 +23,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E9`
+**A seguir:** nenhuma etapa; resta o ENCERRAMENTO (seção 6)
 
 | Etapa | Issue | Objetivo | Orquestra | Estado | Commit |
 | --- | --- | --- | --- | --- | --- |
@@ -35,31 +35,23 @@ fechada está na mensagem do commit dela.
 | E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | fechada | c627a0f |
 | E7 | #149 (#96) | Conflitos: merge por Alterações, 320 px, hi/ar/zh-CN | topo | fechada | 59eaddc |
 | E8 | #150 (#93, #94, #108) | Rolagem do Changes e empilhamento do combobox | topo | fechada | d8ef5fc |
-| E9 | #151 (#97, #119, #140) | Barra estreita (direita/embaixo), Dashboard ≥ 1050, `.wip-open` | topo | a fazer | |
+| E9 | #151 (#97, #119, #140) | Barra estreita (direita/embaixo), Dashboard ≥ 1050, `.wip-open` | topo | fechada | 84c95cf |
 
 Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede da E3; E6 destrava E7; E5, E8 e E9 fecham a #108.
 
 ### Última etapa fechada
 
-**E8** (d8ef5fc): `regressao-93` roda as 4 variantes até o fim (falhas reunidas); runner aceita `E2E_SO=id1,id2`.
-Mutações: `.csection-body{overflow:visible}` reprova nas 4 posições; `.dash-filters` sem `z-index:20` reprova o 94
-(3 opções cobertas); `openUp=false` em `placePopover` reprova. O `z-index:30` do `.dash-popover` NÃO reprova (fica
-dentro do contexto de `.dash-filters`): o critério da #150 foi ajustado para a causa real. e2e 41 ok. Não conferido:
-extensão, barras fixas, confirmação do dono (#93).
+**E9** (84c95cf): `regressao-97-telas-ocultas` roda também com painel à direita e embaixo e com cherry-pick em conflito
+(banner vermelho), medindo banner e `.wip-open`. #140 era defeito real (`.wip-open` em 259..390 a 320 px): corrigido com
+`.wip-title` encolhível; reprova sem a correção. Mutação de reverter `7cd72d1` reprova barra-estreita e telas-ocultas.
+#119: 400 caixas do Dashboard a 1280 px idênticas antes/depois de `dfad82f`. e2e 41 ok, testes 1474 ok, perf:bundle ok.
+Não conferido: extensão no VS Code.
 
 ## 3. Base de medição
 
 Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
-
-### Etapa E9 — barra estreita, Dashboard e `.wip-open` (#151, #97, #119, #140)
-
-- **Orquestra**: topo.
-- **Arquivos prováveis**: cenário `regressao-97-telas-ocultas`, CSS do History e do Dashboard.
-- **Aceite**: telas ocultas com painel à direita/embaixo e alerta de conflito; mutação de `7cd72d1`; Dashboard 1280 px
-  igual (caixas ou pixels) antes/depois de `dfad82f`; #140 reproduzida e corrigida ou fechada com evidência.
-- **Testes**: e2e + `e2e-responsivo`. **Segurança**: não.
 
 ## 5. Decisões e armadilhas
 
@@ -81,6 +73,7 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
 - 2026-11-12 (E6): o clone é raso mas `b1dd21c` existe; base em worktree com `node_modules` por link e o `ui.mjs` novo (cai no Tour após imprimir o resto). A tela Conflitos não tem base anterior (é nova). Teto sem medida no `desempenho.tetos` reprova o `qa.mjs`: por isso `perfUi` separado.
 - 2026-11-12 (E7): o e2e não filtra por id; `language` muda por `app:saveSettings` + `page.reload()`. O `.gitignore` já cobre `validacao-out/`.
 - 2026-11-12 (E8): `node scripts/validacao/e2e.mjs` é a entrada (não `runner.mjs`); `E2E_SO` filtra. Mutação: edita, `build:extension`, roda, `git checkout -- arquivo`.
+- 2026-11-12 (E9): `git checkout -- arquivo` na mutação apaga também correção não commitada no mesmo arquivo; commite antes de mutar. `expect.visivel(seletor, minimo)` exige o mínimo.
 
 ## 6. Encerramento
 
