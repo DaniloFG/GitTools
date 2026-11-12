@@ -169,19 +169,19 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
             </button>
           )}
           {shown('branch') && (
-            <span className="current-branch" title={t('toolbar.currentBranch')}>
+            <span className="current-branch" data-tour="branch" title={t('toolbar.currentBranch')}>
               ⎇ {head ?? t('toolbar.detached', { sha: status.headSha?.slice(0, 7) ?? t('toolbar.noCommits') })}
             </span>
           )}
           <div className="toolbar-spacer" />
           {shown('fetch') && (
-        <button className="tb-btn" disabled={busy !== null} onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')} aria-label={t('toolbar.fetch')}>
+        <button className="tb-btn" data-tour="fetch" disabled={busy !== null} onClick={() => fetchRemote()} title={t('toolbar.fetchHelp')} aria-label={t('toolbar.fetch')}>
           <span aria-hidden>⟳</span>
           <span className="tb-label">{t('toolbar.fetch')}</span>
         </button>
       )}
       {shown('pull') && (
-        <button className="tb-btn" disabled={busy !== null} onClick={() => pullRemote()} title={t('toolbar.pullHelp')} aria-label={t('toolbar.pull')}>
+        <button className="tb-btn" data-tour="pull" disabled={busy !== null} onClick={() => pullRemote()} title={t('toolbar.pullHelp')} aria-label={t('toolbar.pull')}>
           <span aria-hidden>↓</span>
           <span className="tb-label">{t('toolbar.pull')}</span>
           {status.behind > 0 && <span className="badge">{status.behind}</span>}
@@ -189,7 +189,7 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
       )}
       {shown('push') && (
         <span className="split-button">
-          <button className="tb-btn" disabled={busy !== null} onClick={() => push()} onContextMenu={pushMenu} title={t('toolbar.pushHelp')} aria-label={t('toolbar.push')}>
+          <button className="tb-btn" data-tour="push" disabled={busy !== null} onClick={() => push()} onContextMenu={pushMenu} title={t('toolbar.pushHelp')} aria-label={t('toolbar.push')}>
             <span aria-hidden>↑</span>
             <span className="tb-label">{t('toolbar.push')}</span>
             {status.ahead > 0 && <span className="badge">{status.ahead}</span>}
@@ -201,7 +201,7 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
       )}
       {shown('new') && (
         <span className="split-button">
-          <button className="tb-btn" onClick={newMenu} title={t('toolbar.newHelp')} aria-label={t('toolbar.new')} aria-haspopup="menu">
+          <button className="tb-btn" data-tour="new" onClick={newMenu} title={t('toolbar.newHelp')} aria-label={t('toolbar.new')} aria-haspopup="menu">
             <span aria-hidden>＋</span>
             <span className="tb-label">{t('toolbar.new')}</span>
           </button>
@@ -211,13 +211,13 @@ export function Toolbar({ onOpenRepository, onClone, onScreen, meta, available, 
         </span>
       )}
       {shown('studio') && (
-        <button className="primary tb-btn" onClick={() => openStudio({ target: head ?? undefined })} aria-label={t('studio.name')}>
+        <button className="primary tb-btn" data-tour="studio" onClick={() => openStudio({ target: head ?? undefined })} aria-label={t('studio.name')}>
           <span aria-hidden>🍒</span>
           <span className="tb-label">{t('studio.name')}</span>
         </button>
       )}
           <SponsorButton compact />
-          <button className="icon-button tb-menu" onClick={barMenu} title={t('toolbar.menuHelp')} aria-label={t('toolbar.menu')} aria-haspopup="menu">
+          <button className="icon-button tb-menu" data-tour="settings" onClick={barMenu} title={t('toolbar.menuHelp')} aria-label={t('toolbar.menu')} aria-haspopup="menu">
             ⚙
           </button>
         </div>

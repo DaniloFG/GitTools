@@ -487,19 +487,22 @@ export const ar: Messages = {
     abortFilesMessage: 'إعادة الملفات المتعارضة إلى نسخة آخر إيداع؟',
     abortMessage: 'التراجع عن العملية والعودة إلى الحالة السابقة لها؟',
     conflictsHelp: {
-      one: 'ملف واحد فيه تعارض. اختر نسخة أو عدّله وحدده كمحلول.',
-      other: 'ملفات فيها تعارض: {count}. لكل ملف، اختر نسخة أو عدّله وحدده كمحلول.'
+      one: 'ملف واحد فيه تعارض. انقر على هذا الشريط لحله في شاشة التعارضات.',
+      other: 'ملفات فيها تعارض: {count}. انقر على هذا الشريط لحلها في شاشة التعارضات.'
     },
     noConflicts: 'لا توجد تعارضات معلقة. تابع لإنهاء العملية.',
-    sideBySide: 'الحل جنبًا إلى جنب',
-    sideBySideHelp: 'مقارنة النسخة الحالية بالواردة والاختيار كتلة بكتلة',
     useOursHelp: 'يُبقي نسخة الفرع الحالي (HEAD)',
     useTheirsHelp: 'يُبقي النسخة التي يجري تطبيقها',
     resolved: 'تم الحل',
     resolvedHelp: 'عدّلت الملف وأزلت علامات <<<<<<< >>>>>>>',
     continue: 'متابعة',
     skip: 'تخطي هذا الإيداع',
-    showChanges: 'عرض التغييرات'
+    showChanges: 'عرض التغييرات',
+    reuseBoth: 'في إيداعات سابقة اخترت «نسختنا» لـ {ours} ملف(ات) و«نسختهم» لـ {theirs}: {files}',
+    reuseOurs: 'في إيداعات سابقة اخترت «نسختنا» لـ {count} ملف(ات): {files}',
+    reuseTheirs: 'في إيداعات سابقة اخترت «نسختهم» لـ {count} ملف(ات): {files}',
+    reuseApply: 'تطبيق',
+    reuseIgnore: 'تجاهل'
   },
   studio: {
     name: 'استوديو الانتقاء',
@@ -567,8 +570,6 @@ export const ar: Messages = {
     includesIntermediate: '(يشمل الإيداعات الواقعة بينهما)'
   },
   conflictBulk: {
-    title: 'حل الكل',
-    resolveAllLabel: 'حل الكل:',
     keepOurs: 'الاحتفاظ بكل النسخ المحلية (ours)',
     keepOursHelp: 'يُبقي نسخة الفرع الحالي (HEAD) في كل الملفات المتعارضة',
     takeTheirs: 'قبول كل النسخ الواردة (theirs)',
@@ -594,13 +595,45 @@ export const ar: Messages = {
     },
     done: { one: 'تم حل ملف واحد.', other: 'تم حل {count} من الملفات.' },
     partial: 'تم الحل: {resolved}. لم يُحل: {failed} ({list}).',
-    filterLabel: 'تصفية الملفات المتعارضة',
-    filterPlaceholder: 'تصفية الملفات…',
-    showing: 'عرض {shown} من {count}',
     noMatch: 'لا يوجد ملف يطابق التصفية.',
     notConflicted: 'ليس في حالة تعارض',
     hasMarkers: 'ما زال فيه علامات تعارض',
     stillConflicted: 'ما زال في حالة تعارض'
+  },
+  conflictsScreen: {
+    title: 'التعارضات',
+    open: 'فتح شاشة التعارضات',
+    step: 'الخطوة {step} من {total}',
+    counts: 'المعلّق: {pending} من {total}',
+    filterKind: 'تصفية حسب نوع التعارض',
+    kindAll: 'كل الأنواع',
+    filterSituation: 'تصفية حسب الحالة',
+    situationAll: 'كل الحالات',
+    situationPending: 'معلّقة',
+    situationDecided: 'محسومة',
+    searchLabel: 'البحث عن ملف بالاسم',
+    searchPlaceholder: 'بحث بالاسم…',
+    listLabel: 'ملفات فيها تعارض',
+    tabsLabel: 'عرض التعارضات',
+    tabList: 'القائمة',
+    tabEditor: 'المحرر',
+    fileActions: 'إجراءات الملف المحدد',
+    empty: 'لا توجد ملفات فيها تعارض.',
+    sideOurs: 'نسختنا',
+    sideTheirs: 'نسختهم',
+    remembered: 'اخترت هذا الجانب في إيداع سابق: {side}',
+    help: 'اختر ملفًا لحله جنبًا إلى جنب',
+    helpDetail: 'انقر على ملف لفتحه في لوحة المحرر وحله هناك. ينتقل F8 إلى الملف المعلّق التالي. إجراء كل الملفات في الشريط السفلي.',
+    mergeFooter: 'في الدمج (merge)، بعد حل التعارضات أجرِ الإيداع من شاشة التغييرات.',
+    kinds: {
+      bothModified: 'عدّله الطرفان',
+      bothAdded: 'أضافه الطرفان',
+      bothDeleted: 'حذفه الطرفان',
+      addedByUs: 'أضفناه نحن',
+      addedByThem: 'أضافوه هم',
+      deletedByUs: 'حذفناه نحن',
+      deletedByThem: 'حذفوه هم'
+    }
   },
   conflict: {
     titleShort: 'تعارض في {path}',
@@ -610,6 +643,7 @@ export const ar: Messages = {
     deletedByUs: 'حذف الفرع الحالي هذا الملف، لكن النسخة الواردة عدّلته.',
     deletedByThem: 'حذفت النسخة الواردة هذا الملف، لكن الفرع الحالي عدّله.',
     unreadable: 'تعذّرت قراءة الملف.',
+    tooLarge: 'الملف كبير جدًا على المحرّر: أبقِ النسخة الحالية أو الواردة، أو افتح الملف في المحرّر.',
     deleteFile: 'حذف الملف',
     keepOurs: 'الإبقاء على النسخة الحالية (HEAD)',
     keepTheirs: 'الإبقاء على النسخة الواردة',
@@ -802,6 +836,8 @@ export const ar: Messages = {
       detected: 'المكتشفة: {language}',
       multiRepo: 'اكتشاف عدة مستودعات في مساحة العمل',
       multiRepoHelp: 'عند فتح GitTools في VS Code، يُفتح كل مستودع (.git) موجود في مساحة العمل في علامة تبويب خاصة به، ويستمر في مراقبة المستودعات الجديدة.',
+      autoContinue: 'المتابعة تلقائيًا بعد حل التعارضات',
+      autoContinueHelp: 'في cherry-pick أو revert أو rebase، عند حل آخر ملف متعارض في خطوة ما، يتابع GitTools إلى الخطوة التالية من تلقاء نفسه. لا ينطبق على merge.',
     },
     appearance: {
       title: 'المظهر',
@@ -861,6 +897,18 @@ export const ar: Messages = {
       reset: 'استعادة الافتراضي',
       show: 'عرض مثال'
     },
+    conflicts: {
+      title: 'التعارضات',
+      description: 'سلوك شاشة التعارضات عند انتهاء عملية وعند فتح التطبيق.',
+      summary: 'عند انتهاء العملية',
+      summaryHelp: 'عند انتهاء العملية تُغلق الشاشة وتعود إلى الشاشة السابقة.',
+      summaryKeep: 'إبقاء الملخص حتى أغلقه',
+      summaryClose: 'الإغلاق تلقائيًا',
+      startup: 'عند فتح التطبيق مع وجود تعارض معلّق',
+      startupHelp: 'يسري على القراءة الأولى لكل مستودع في الجلسة، عندما يكون فيه تعارض بالفعل.',
+      startupOpen: 'فتح الشاشة مباشرة مع الإبقاء على الشريط والتنبيه',
+      startupBanner: 'الشريط والتنبيه فقط (تُفتح الشاشة عند النقر)'
+    },
     about: {
       title: 'حول',
       description: 'الإصدارات ومعلومات النظام.',
@@ -918,7 +966,8 @@ export const ar: Messages = {
       multiSelect: 'تحديد عدة إيداعات أو ملفات',
       lineRange: 'تحديد نطاق من الأسطر في الفروقات',
       commit: 'تأكيد الإيداع',
-      close: 'إغلاق مربع الحوار أو القائمة'
+      close: 'إغلاق مربع الحوار أو القائمة',
+      nextConflictFile: 'ملف التعارض المعلّق التالي (شاشة التعارضات)'
     },
     helpTitle: 'اختصارات لوحة المفاتيح',
     helpFooter: 'يمكن تغيير الاختصارات من الإعدادات ← اختصارات لوحة المفاتيح.',
@@ -1769,5 +1818,18 @@ export const ar: Messages = {
     urlMissing: 'العنوان {url} ليس وجهة دفع لهذا المستودع البعيد.',
     invalidName: 'اسم مستودع بعيد غير صالح: استخدم أحرفًا أو أرقامًا أو نقطة أو شرطة أو شرطة سفلية.',
     invalidUrl: 'أدخل رابط المستودع البعيد (ولا يمكن أن يبدأ بـ "-").'
+  },
+  tour: {
+    invite: {
+      title: 'هل تريد جولة في الواجهة؟',
+      accept: 'ابدأ الجولة',
+      dismiss: 'ليس الآن'
+    },
+    button: 'جولة',
+    settings: {
+      title: 'جولة',
+      description: 'جولة سريعة تبرز أجزاء الواجهة الرئيسية دون تغيير أي شيء.',
+      start: 'ابدأ الجولة'
+    }
   }
 }

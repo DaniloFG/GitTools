@@ -1,0 +1,39 @@
+name: Tarefa técnica
+description: Trabalho técnico sem mudança de comportamento para o usuário (refactor, ferramentas, build, documentação). Nada é feito sem issue.
+title: "Tarefa técnica: "
+labels: ["tarefa-tecnica", "status:planejada"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Melhoria e refactor usam este template com o rótulo do tipo (`enhancement` ou `refactor`), `.claude/rules/github.md`.
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Escopo
+      description: O que entra nesta issue e o que fica de fora.
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Critérios de aceite
+      description: Checklist. Cada item precisa ser conferível com um comando ou uma tela.
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: consideracoes
+    attributes:
+      label: Considerações técnicas
+      description: Arquivos prováveis, processos git e orçamento de desempenho, segurança, dependências.
+    validations:
+      required: true
+  - type: textarea
+    id: testes
+    attributes:
+      label: Testes
+      description: Camada de teste (unidade, integração, tela ou medição) e o que cada uma prova. Diga também se a tarefa não muda comportamento.
+    validations:
+      required: true

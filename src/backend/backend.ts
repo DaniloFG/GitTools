@@ -90,6 +90,7 @@ export class Backend {
   private restoring: Promise<void> | null = null
   /** Gravações de workspace.json em fila, na ordem em que foram pedidas. */
   private saving: Promise<void> = Promise.resolve()
+  private savingRecent: Promise<void> = Promise.resolve()
 
   constructor(private readonly host: BackendHost) {
     // Log de comandos git em tempo real: guarda os últimos e repassa cada início/fim para a interface.
@@ -139,11 +140,21 @@ export class Backend {
   }
 
   /** Grava a lista: os favoritos ficam sempre; dos demais, só os 15 mais recentes. */
-  private async saveRecent(list: RecentRepo[]): Promise<void> {
+  private saveRecent(list: RecentRepo[]): Promise<void> {
     let others = 0
     const kept = list.filter((r) => r.favorite || ++others <= 15)
-    await mkdir(this.host.dataDir(), { recursive: true })
-    await writeFile(this.recentFile(), JSON.stringify(kept, null, 2))
+    // Em fila, como `saveWorkspace`: `idle()` sabe esperar a gravação, e duas gravações nunca se cruzam.
+    const write = this.savingRecent.then(async () => {
+      await mkdir(this.host.dataDir(), { recursive: true })
+      await writeFile(this.recentFile(), JSON.stringify(kept, null, 2))
+    })
+    this.savingRecent = write.catch(() => undefined)
+    return write
+  }
+
+  /** Espera as gravações em andamento (recentes e espaço de trabalho). Quem apaga a pasta de dados chama antes. */
+  async idle(): Promise<void> {
+    await Promise.all([this.saving, this.savingRecent])
   }
 
   private rememberRepo(root: string, name: string): Promise<void> {

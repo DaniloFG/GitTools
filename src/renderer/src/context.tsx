@@ -105,6 +105,8 @@ export interface AppActions {
   /** Mostra o commit nos painéis de commit (descrição, arquivos e diff), sem trocar de tela. */
   showCommit(sha: string): void
   setDashboards(open: boolean): void
+  /** Abre ou fecha a tela Conflitos (ocupa o lugar dos painéis, como os Dashboards). */
+  setConflictsScreen(open: boolean): void
   /** Traz à frente os painéis da tela, onde quer que estejam (mostrando os que estavam escondidos). */
   setView(view: View): void
   /** Abre o diff de um arquivo numa janela própria do sistema. */
@@ -126,12 +128,15 @@ export interface AppActions {
 }
 
 /**
- * Fatia 4: configurações do app e a tela de Dashboards. Muda ao salvar uma configuração ou ao abrir Dashboards.
+ * Fatia 4: configurações do app e as telas que ocupam o lugar dos painéis (Dashboards e Conflitos). Muda ao salvar uma
+ * configuração ou ao abrir/fechar uma delas.
  */
 export interface AppSettingsValue {
   settings: Settings
   /** A tela de Dashboards está aberta (ocupa o lugar dos painéis). */
   dashboardsOpen: boolean
+  /** A tela Conflitos está aberta (ocupa o lugar dos painéis). */
+  conflictsOpen: boolean
 }
 
 /**

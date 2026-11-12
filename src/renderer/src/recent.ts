@@ -7,7 +7,22 @@ import type { RecentRepo } from '../../shared/api'
  */
 export function useRecentRepos(reloadKey?: unknown) {
   const [recent, setRecent] = useState<RecentRepo[]>([])
-  const reload = useCallback(() => window.gittools.recentRepositories().then(setRecent, () => setRecent([])), [])
+  /** A primeira leitura terminou (com erro também): antes disso a lista vazia ainda não quer dizer "sem recentes". */
+  const [loaded, setLoaded] = useState(false)
+  const reload = useCallback(
+    () =>
+      window.gittools.recentRepositories().then(
+        (list) => {
+          setRecent(list)
+          setLoaded(true)
+        },
+        () => {
+          setRecent([])
+          setLoaded(true)
+        }
+      ),
+    []
+  )
   useEffect(() => void reload(), [reload, reloadKey])
 
   // Um erro aqui chega a quem chamou (que mostra o aviso); a lista é recarregada de qualquer jeito.
@@ -32,6 +47,7 @@ export function useRecentRepos(reloadKey?: unknown) {
     [reload]
   )
   return {
+    loaded,
     favorites: recent.filter((r) => r.favorite),
     others: recent.filter((r) => !r.favorite),
     setFavorite,

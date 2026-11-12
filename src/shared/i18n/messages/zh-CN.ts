@@ -470,17 +470,20 @@ export const zhCN: Messages = {
     abort: '中止',
     abortFilesMessage: '将有冲突的文件恢复为最后一次提交的版本？',
     abortMessage: '撤销此操作并回到开始之前的状态？',
-    conflictsHelp: { other: '{count} 个文件有冲突。请为每个文件选择一个版本，或编辑后标记为已解决。' },
+    conflictsHelp: { other: '{count} 个文件有冲突。点击此横条，在“冲突”界面中解决。' },
     noConflicts: '没有待解决的冲突。继续即可完成。',
-    sideBySide: '并排解决',
-    sideBySideHelp: '比较当前版本与传入版本，逐块选择',
     useOursHelp: '保留当前分支（HEAD）的版本',
     useTheirsHelp: '保留正在应用的版本',
     resolved: '已解决',
     resolvedHelp: '我已编辑文件并删除了 <<<<<<< >>>>>>> 标记',
     continue: '继续',
     skip: '跳过此提交',
-    showChanges: '查看更改'
+    showChanges: '查看更改',
+    reuseBoth: '在之前的提交中，你已为 {ours} 个文件选择“我方”，为 {theirs} 个文件选择“对方”：{files}',
+    reuseOurs: '在之前的提交中，你已为 {count} 个文件选择“我方”：{files}',
+    reuseTheirs: '在之前的提交中，你已为 {count} 个文件选择“对方”：{files}',
+    reuseApply: '应用',
+    reuseIgnore: '忽略'
   },
   studio: {
     name: '拣选工作台',
@@ -539,8 +542,6 @@ export const zhCN: Messages = {
     includesIntermediate: '（包括中间的提交）'
   },
   conflictBulk: {
-    title: '全部解决',
-    resolveAllLabel: '全部解决：',
     keepOurs: '全部保留本地 (ours)',
     keepOursHelp: '在所有冲突文件中保留当前分支的版本 (HEAD)',
     takeTheirs: '全部接受传入内容 (theirs)',
@@ -557,13 +558,45 @@ export const zhCN: Messages = {
     confirmResolved: { other: '这将把 {count} 个文件标记为已解决，仍含 <<<<<<< 标记的文件会被跳过。' },
     done: { other: '已解决 {count} 个文件。' },
     partial: '已解决：{resolved}。未解决：{failed}（{list}）。',
-    filterLabel: '筛选冲突文件',
-    filterPlaceholder: '筛选文件…',
-    showing: '显示 {shown} / {count}',
     noMatch: '没有符合筛选条件的文件。',
     notConflicted: '不在冲突中',
     hasMarkers: '仍有冲突标记',
     stillConflicted: '仍处于冲突中'
+  },
+  conflictsScreen: {
+    title: '冲突',
+    open: '打开“冲突”界面',
+    step: '第 {step} 步，共 {total} 步',
+    counts: '待处理：{pending} / {total}',
+    filterKind: '按冲突类型筛选',
+    kindAll: '所有类型',
+    filterSituation: '按状态筛选',
+    situationAll: '所有状态',
+    situationPending: '待处理',
+    situationDecided: '已决定',
+    searchLabel: '按名称搜索文件',
+    searchPlaceholder: '按名称搜索…',
+    listLabel: '有冲突的文件',
+    tabsLabel: '冲突视图',
+    tabList: '列表',
+    tabEditor: '编辑器',
+    fileActions: '所选文件的操作',
+    empty: '没有冲突的文件。',
+    sideOurs: '我方',
+    sideTheirs: '对方',
+    remembered: '你在之前的提交中已选择这一方：{side}',
+    help: '选择一个文件，并排解决冲突',
+    helpDetail: '点击文件即可在编辑器面板中打开并解决。按 F8 跳到下一个待处理的文件。针对所有文件的操作在下方的栏中。',
+    mergeFooter: '合并（merge）时，解决冲突后请在“更改”中提交。',
+    kinds: {
+      bothModified: '双方都修改',
+      bothAdded: '双方都新增',
+      bothDeleted: '双方都删除',
+      addedByUs: '我方新增',
+      addedByThem: '对方新增',
+      deletedByUs: '我方删除',
+      deletedByThem: '对方删除'
+    }
   },
   conflict: {
     titleShort: '{path} 中的冲突',
@@ -573,6 +606,7 @@ export const zhCN: Messages = {
     deletedByUs: '当前分支删除了此文件，但传入的版本修改了它。',
     deletedByThem: '传入的版本删除了此文件，但当前分支修改了它。',
     unreadable: '无法读取该文件。',
+    tooLarge: '文件太大，编辑器无法处理：请保留当前版本或传入的版本，或在编辑器中打开该文件。',
     deleteFile: '删除文件',
     keepOurs: '保留当前版本（HEAD）',
     keepTheirs: '保留传入的版本',
@@ -759,6 +793,8 @@ export const zhCN: Messages = {
       detected: '检测到：{language}',
       multiRepo: '检测工作区中的多个仓库',
       multiRepoHelp: '在 VS Code 中打开 GitTools 时，会为工作区中找到的每个仓库（.git）各开一个标签页，并持续监视新出现的仓库。',
+      autoContinue: '解决冲突后自动继续',
+      autoContinueHelp: '在 cherry-pick、revert 或 rebase 中，解决某一步的最后一个冲突文件后，GitTools 会自动继续下一步。不适用于 merge。',
     },
     appearance: {
       title: '外观',
@@ -818,6 +854,18 @@ export const zhCN: Messages = {
       reset: '恢复默认',
       show: '显示示例'
     },
+    conflicts: {
+      title: '冲突',
+      description: '操作结束和打开应用时，冲突页面的行为。',
+      summary: '操作结束时',
+      summaryHelp: '操作结束后，页面会关闭并返回上一个页面。',
+      summaryKeep: '保留摘要，直到我关闭',
+      summaryClose: '自动关闭',
+      startup: '打开应用时存在待处理冲突',
+      startupHelp: '适用于会话中每个仓库的首次读取，且该仓库已有冲突时。',
+      startupOpen: '直接打开页面，同时保留横幅和提醒',
+      startupBanner: '仅显示横幅和提醒（点击后再打开页面）'
+    },
     about: {
       title: '关于',
       description: '版本和系统信息。',
@@ -875,7 +923,8 @@ export const zhCN: Messages = {
       multiSelect: '选择多个提交或文件',
       lineRange: '在差异中选择一段行',
       commit: '确认提交',
-      close: '关闭对话框或菜单'
+      close: '关闭对话框或菜单',
+      nextConflictFile: '下一个待解决的冲突文件（“冲突”界面）'
     },
     helpTitle: '键盘快捷键',
     helpFooter: '可以在 设置 → 键盘快捷键 中更改快捷键。',
@@ -1725,5 +1774,18 @@ export const zhCN: Messages = {
     urlMissing: '地址 {url} 不是此远程的推送目标。',
     invalidName: '远程仓库名称无效：请使用字母、数字、点、连字符或下划线。',
     invalidUrl: '请输入远程仓库 URL（不能以“-”开头）。'
+  },
+  tour: {
+    invite: {
+      title: '想快速了解一下界面吗？',
+      accept: '开始导览',
+      dismiss: '暂不'
+    },
+    button: '导览',
+    settings: {
+      title: '导览',
+      description: '快速浏览界面的主要部分，不会更改任何内容。',
+      start: '开始导览'
+    }
   }
 }

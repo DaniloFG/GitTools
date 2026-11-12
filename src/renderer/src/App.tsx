@@ -29,10 +29,12 @@ import { CommitList } from './components/CommitList'
 import { ContextMenu, type MenuItem, type MenuState } from './components/ContextMenu'
 // Só tipos: a tela de diálogos é carregada sob demanda (ver lazyScreens.ts).
 import type { ConfirmRequest, DialogScope, DialogState } from './components/Dialogs'
-import { CherryPickStudio, CloneDialog, CompareView, ConflictEditor, Dashboards, DialogHost, RebaseEditor, SettingsCenter, ShortcutsHelp } from './lazyScreens'
+import { CherryPickStudio, CloneDialog, CompareView, ConflictsScreen, Dashboards, DialogHost, RebaseEditor, SettingsCenter, ShortcutsHelp, Tour } from './lazyScreens'
+import type { TourProps } from './components/Tour'
 import { FilesPanes } from './components/FilesView'
 import { GitLogView } from './components/GitLogView'
 import { KeyboardShortcuts } from './components/KeyboardShortcuts'
+import { ConflictFlowProvider, type ConflictFocus } from './components/ConflictFlow'
 import { OperationBanner } from './components/OperationBanner'
 import { SidebarPanes } from './components/Sidebar'
 import { Loader, useDelayedLoading, useLastDefined } from './components/Loader'
@@ -48,16 +50,18 @@ import { errorMessage, shortSha } from './format'
 import { gitCalls, gitFor, gitInBackground, markChanged, OWN_CHANGE_WINDOW_MS, readCache, setActiveRoot } from './git'
 import { draftPaths } from './editorDrafts'
 import { getLocale, t, type MessageKey } from './i18n'
-import { resetLayout as clearLayout, useLayout } from './layout'
+import { resetLayout as clearLayout, readLayout, useLayout } from './layout'
 import { clearCurrentLayout } from './savedLayouts'
 import { historySignature, mergeData } from './stable'
+import { shouldOpenOnStartup } from './conflictScreenPolicy'
 import { createSingleFlight, SKIPPED } from './singleFlight'
 import { dropSession, getSession, isOwnEcho, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
 import { canLoadMoreLog, checkedRefs, logLimitFor, nextLogPage, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
-import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
+import { REPO_VIEWS, SCREEN_IDS, viewAvailable, type ViewId } from './dock'
 import { forgetScreen, openScreen, readScreen, setScreenRoot } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
 import { PaneSlot, WhenShown, useAnyShown } from './slots'
+import { parseHiddenScreens } from './screenVisibility'
 import {
   cycleIndex,
   normalizeRoot,
@@ -106,6 +110,13 @@ function describeWork(work: UnsavedReason[]): string {
     .join(', ')
 }
 
+/**
+ * Repositórios para os quais a tela Conflitos já foi avaliada na partida nesta sessão. Fica fora do componente
+ * porque cada aba é remontada a cada troca (`key` do RepoView): sem isso, voltar à aba reabriria a tela que o
+ * usuário fechou. Sai do conjunto quando o repositório é fechado (ver `commit`).
+ */
+const conflictsStartupSeen = new Set<string>()
+
 /** Mesma lista (mesmos repositórios, na mesma ordem e com o mesmo ativo)? */
 function sameOpened(a: OpenRepositories, b: OpenRepositories): boolean {
   return a.active === b.active && a.repos.length === b.repos.length && a.repos.every((r, i) => r.root === b.repos[i].root)
@@ -141,6 +152,9 @@ function isEcho(root: string): boolean {
   return echo
 }
 
+/** Sem repositório não há tela para abrir: o Tour do Welcome tem só os passos que ficam à vista (ver `TourProps`). */
+const noView = () => undefined
+
 /**
  * Nível do app: as abas dos repositórios abertos, configurações, avisos e os diálogos do próprio app.
  * Cada aba é um `RepoView` com `key` do repositório: ao trocar de aba, ele é remontado do zero, e nenhum estado
@@ -153,6 +167,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [cloneOpen, setCloneOpen] = useState(false)
+  /** O Tour está aberto (sem repositório, quem o desenha é o App; com repositório, o RepoView, que sabe trocar de tela). */
+  const [tourOpen, setTourOpen] = useState(false)
   const [systemLocales, setSystemLocales] = useState<readonly string[]>(navigator.languages)
   const [toasts, setToasts] = useState<Toast[]>([])
   const toastId = useRef(0)
@@ -196,6 +212,19 @@ export function App() {
   // (o App redesenha ao mudar `toasts`) e arrastaria junto o valor de ações de cada repositório (ver RepoView).
   const openSettings = useCallback((section?: string) => setSettingsOpen(section ?? 'general'), [])
   const openShortcuts = useCallback(() => setHelpOpen(true), [])
+  const closeTour = useCallback(() => setTourOpen(false), [])
+
+  // O botão da seção Tour nas Configurações pede o passeio por um evento (a seção não conhece o App): as
+  // Configurações fecham, sem salvar o rascunho, e o Tour abre.
+  useEffect(() => {
+    const onTour = () => {
+      setPreview(null)
+      setSettingsOpen(null)
+      setTourOpen(true)
+    }
+    window.addEventListener('gittools:tour', onTour)
+    return () => window.removeEventListener('gittools:tour', onTour)
+  }, [])
 
   // A Central de Configurações pede um aviso de exemplo para ver onde as notificações aparecem.
   useEffect(() => {
@@ -222,6 +251,7 @@ export function App() {
     for (const { root } of openedRef.current.repos) {
       if (roots.has(root)) continue
       dropSession(root)
+      conflictsStartupSeen.delete(root)
       // A tela da aba também é esquecida: reabri-la começa no Histórico (ver dockStore.ts).
       forgetScreen(root)
       readCache.drop(root)
@@ -511,6 +541,13 @@ export function App() {
     await window.gittools.saveSettings(next)
   }, [])
 
+  /**
+   * Clique no alerta de conflito da aba ativa. O estado da tela Conflitos é do RepoView (some com a aba), então o
+   * pedido vai como um contador: o RepoView abre a tela quando o número muda. Outra aba só é ativada (ver RepoTabs).
+   */
+  const [conflictsRequest, setConflictsRequest] = useState(0)
+  const openConflictsFromTab = useCallback(() => setConflictsRequest((n) => n + 1), [])
+
   const tabMenu = (event: React.MouseEvent, root: string) => {
     event.preventDefault()
     event.stopPropagation()
@@ -583,8 +620,14 @@ export function App() {
     </>
   )
 
+  /** Resposta ao convite do Tour: grava a escolha e, se aceito, começa o passeio sem esperar a gravação. */
+  const answerTourInvite = (accept: boolean) => {
+    if (accept) setTourOpen(true)
+    saveSettings({ ...settings, tourOffer: accept ? 'accepted' : 'dismissed' }).catch((error) => toast('error', errorMessage(error)))
+  }
+
   const activeRepo = opened.repos.find((r) => r.root === opened.active) ?? null
-  const appModalOpen = !!(settingsOpen || helpOpen || cloneOpen || dialog)
+  const appModalOpen = !!(settingsOpen || helpOpen || cloneOpen || dialog || tourOpen)
 
   if (!activeRepo) {
     // Sem repositório na tela, nenhuma chamada git deve ir para o último que saiu.
@@ -597,8 +640,16 @@ export function App() {
           onOpen={(path, create) => void openRepo(path, create)}
           onClone={() => setCloneOpen(true)}
           onSettings={() => setSettingsOpen('general')}
+          tourOffer={settings.tourOffer}
+          onTourInvite={answerTourInvite}
+          onTour={() => setTourOpen(true)}
         />
         {settingsDialogs}
+        {tourOpen && (
+          <Suspense fallback={null}>
+            <Tour hasRepo={false} hiddenScreens={[]} initial={{ view: null, dashboards: false, conflicts: false }} onOpenView={noView} onClose={closeTour} />
+          </Suspense>
+        )}
         <Suspense fallback={null}>
           {dialog && <DialogHost dialog={dialog.state} scope={dialog.scope} onDone={() => setDialog(null)} />}
         </Suspense>
@@ -621,6 +672,7 @@ export function App() {
           onAdd={(e) => void addMenu(e)}
           onDropCommits={(target, shas) => void applyAcross(activeRepo.root, target, shas)}
           onWarm={warm}
+          onConflicts={openConflictsFromTab}
         />
         <RepoView
           key={activeRepo.root}
@@ -633,6 +685,10 @@ export function App() {
           appModalOpen={appModalOpen}
           openSettings={openSettings}
           openShortcuts={openShortcuts}
+          onSaveSettings={saveSettings}
+          conflictsRequest={conflictsRequest}
+          tourOpen={tourOpen}
+          onTourClose={closeTour}
         />
         {crossBusy && (
           <div className="busy" role="status" aria-live="polite">
@@ -673,6 +729,8 @@ function AppProviders({
   actions,
   settings,
   app,
+  onSaveSettings,
+  conflictFocus,
   children
 }: {
   repoData: RepoDataValue
@@ -680,6 +738,8 @@ function AppProviders({
   actions: AppActions
   settings: AppSettingsValue
   app: AppContextValue
+  onSaveSettings(next: Settings): Promise<void>
+  conflictFocus: ConflictFocus | null
   children: ReactNode
 }) {
   return (
@@ -687,7 +747,12 @@ function AppProviders({
       <BusyContext.Provider value={busy}>
         <AppActionsContext.Provider value={actions}>
           <AppSettingsContext.Provider value={settings}>
-            <AppContext.Provider value={app}>{children}</AppContext.Provider>
+            <AppContext.Provider value={app}>
+              {/* Estado do fluxo de conflitos (continuar sozinho, decisões lembradas): fica aqui para rodar com a tela fechada. */}
+              <ConflictFlowProvider onSaveSettings={onSaveSettings} focus={conflictFocus}>
+                {children}
+              </ConflictFlowProvider>
+            </AppContext.Provider>
           </AppSettingsContext.Provider>
         </AppActionsContext.Provider>
       </BusyContext.Provider>
@@ -716,6 +781,7 @@ const ToolbarPane = paneMemo(Toolbar)
 const OperationBannerPane = paneMemo(OperationBanner)
 const DockPane = paneMemo(Dock)
 const DashboardsPane = memo(Dashboards)
+const ConflictsScreenPane = memo(ConflictsScreen)
 const SidebarPanesPane = paneMemo(SidebarPanes)
 const CommitListPane = paneMemo(CommitList)
 const CommitPanesPane = paneMemo(CommitPanes)
@@ -738,12 +804,19 @@ interface RepoViewProps {
   appModalOpen: boolean
   openSettings(section?: string): void
   openShortcuts(): void
+  /** Grava as configurações (usada pelo "Continuar automaticamente" da tela Conflitos). */
+  onSaveSettings(next: Settings): Promise<void>
+  /** Contador de pedidos para abrir a tela Conflitos vindos do alerta da aba (ver `openConflictsFromTab`). */
+  conflictsRequest: number
+  /** O Tour está aberto: este componente o desenha, porque só ele troca de tela e sabe a tela de partida. */
+  tourOpen: boolean
+  onTourClose(): void
 }
 
 /**
  * A tela de um repositório (uma aba). Todo o estado daqui é deste repositório, e a aba é remontada a cada troca.
  */
-function RepoView({ repo, several, workspace, settings, onSummary, notify, appModalOpen, openSettings, openShortcuts }: RepoViewProps) {
+function RepoView({ repo, several, workspace, settings, onSummary, notify, appModalOpen, openSettings, openShortcuts, onSaveSettings, conflictsRequest, tourOpen, onTourClose }: RepoViewProps) {
   // As chamadas do proxy `git` passam a ir para este repositório (ver git.ts).
   setActiveRoot(repo.root)
   // A tela aberta (menu do topo) é de cada aba: a aba ativa é a raiz deste repositório (ver dockStore.ts).
@@ -768,12 +841,27 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [studio, setStudio] = useState<StudioRequest | null>(null)
-  const [conflict, setConflict] = useState<string | null>(null)
+  /** Arquivo que a tela Conflitos deve selecionar ao abrir (ver `openConflict`); o editor de conflitos é um painel dela. */
+  const [conflictFocus, setConflictFocus] = useState<ConflictFocus | null>(null)
   const [compare, setCompare] = useState<CompareRequest>(() => session.ui.compare)
   const [filePath, setFilePath] = useState<string | null>(() => session.ui.filePath)
   const [rebaseFrom, setRebaseFrom] = useState<string | null>(null)
   /** A tela de Dashboards está aberta (no lugar dos painéis, que continuam montados por trás). */
-  const [dashboardsOpen, setDashboards] = useState(false)
+  const [dashboardsOpen, setDashboardsOpen] = useState(false)
+  /**
+   * A tela Conflitos está aberta (também no lugar dos painéis). Começa fechada a cada troca de repositório (o RepoView
+   * é remontado), então o repositório novo sem conflito nunca a herda aberta; com conflito, vale a regra da partida.
+   */
+  const [conflictsOpen, setConflictsOpen] = useState(false)
+  // Uma tela que ocupa o lugar dos painéis por vez: abrir uma fecha a outra.
+  const setDashboards = useCallback((open: boolean) => {
+    setDashboardsOpen(open)
+    if (open) setConflictsOpen(false)
+  }, [])
+  const setConflictsScreen = useCallback((open: boolean) => {
+    setConflictsOpen(open)
+    if (open) setDashboardsOpen(false)
+  }, [])
   const scopeRef = useRef(scope)
   scopeRef.current = scope
 
@@ -840,14 +928,57 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   const availableRef = useRef(available)
   availableRef.current = available
 
+  // Partida: com conflito já na primeira leitura do repositório, a tela Conflitos abre uma vez por repositório e
+  // sessão. O repositório entra no conjunto na primeira leitura de qualquer jeito: conflito que surge depois (um
+  // merge feito agora) não abre a tela sozinho, e fechar a tela não a faz voltar ao reler o status.
+  const dataReady = data !== null
+  useEffect(() => {
+    if (!dataReady) return
+    const alreadyOpenedFor = conflictsStartupSeen.has(repo.root)
+    conflictsStartupSeen.add(repo.root)
+    // A opção vem de `settingsRef` (configuração salva, ver acima): a leitura é só desta partida, não reage a mudanças.
+    if (shouldOpenOnStartup({ hasConflicts: conflicts > 0, setting: settingsRef.current.conflictStartup, alreadyOpenedFor })) setConflictsScreen(true)
+    // `conflicts` só vale na primeira leitura: não é dependência de propósito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataReady, repo.root, setConflictsScreen])
+
+  // Pedido do alerta da aba: abre a tela quando o contador muda (o valor inicial, de antes desta aba, não conta).
+  const seenRequest = useRef(conflictsRequest)
+  useEffect(() => {
+    if (seenRequest.current === conflictsRequest) return
+    seenRequest.current = conflictsRequest
+    setConflictsScreen(true)
+  }, [conflictsRequest, setConflictsScreen])
+
   /**
    * Troca para um menu do topo: traz os painéis dele. Os de outras telas não entram junto (só os fixados ali).
    * Quem quer ir a outra tela chama isto, em vez de trazer painéis alheios.
    */
   const setView = useCallback((view: View) => {
-    setDashboards(false)
+    setDashboardsOpen(false)
+    setConflictsOpen(false)
     openScreen(view, (v) => availableRef.current(v))
   }, [])
+
+  // Tour: abre a tela de um passo pelo mesmo caminho do clique na aba e, ao sair, devolve a tela e o Dashboards ao
+  // que eram na partida. O id vem de uma lista fixa; o que não for tela conhecida é ignorado.
+  const tourOpenView = useCallback(
+    (screen: string) => {
+      const id = SCREEN_IDS.find((s) => s === screen)
+      if (id) setView(id)
+    },
+    [setView]
+  )
+  const tourClose = useCallback<TourProps['onClose']>(
+    (restore) => {
+      // Primeiro a tela de partida (isso fecha Dashboards e Conflitos), depois a tela especial que estava aberta.
+      tourOpenView(restore.view ?? '')
+      if (restore.dashboards) setDashboards(true)
+      else if (restore.conflicts) setConflictsScreen(true)
+      onTourClose()
+    },
+    [setDashboards, setConflictsScreen, tourOpenView, onTourClose]
+  )
 
   const askConfirm = useCallback((request: Parameters<AppContextValue['confirm']>[0]) => new Promise<boolean>((resolve) => setDialog({ kind: 'confirm', ...request, resolve })), [])
 
@@ -1100,8 +1231,8 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   const repoDataValue = useMemo<RepoDataValue | null>(() => (data ? { repo, workspace, data } : null), [repo, workspace, data])
   /** Operação em andamento: fica numa fatia própria porque muda duas vezes em cada operação. */
   const busyValue = useMemo<BusyValue>(() => ({ busy, busyScope }), [busy, busyScope])
-  /** Configurações e a tela de Dashboards. */
-  const settingsValue = useMemo<AppSettingsValue>(() => ({ settings, dashboardsOpen }), [settings, dashboardsOpen])
+  /** Configurações e as telas Dashboards e Conflitos. */
+  const settingsValue = useMemo<AppSettingsValue>(() => ({ settings, dashboardsOpen, conflictsOpen }), [settings, dashboardsOpen, conflictsOpen])
 
   /**
    * Ações. O valor só muda quando o idioma ou o repositório ativo muda: cada função abaixo precisa ser estável.
@@ -1138,10 +1269,15 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
         setSelected([sha])
       },
       setDashboards,
+      setConflictsScreen,
       setView,
       openDiffWindow,
       resetLayout,
-      openConflict: (path) => setConflict(path),
+      // O editor de conflitos já não é um diálogo: abrir um arquivo é abrir a tela Conflitos com ele selecionado.
+      openConflict: (path) => {
+        setConflictFocus({ path })
+        setConflictsScreen(true)
+      },
       openCompare: (request) => {
         setCompare(request)
         setView('compare')
@@ -1164,7 +1300,7 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       openSettings,
       openShortcuts
     }),
-    [locale, repo.root, refresh, run, toast, setView, openDiffWindow, resetLayout, askConfirm, openSettings, openShortcuts]
+    [locale, repo.root, refresh, run, toast, setView, setDashboards, setConflictsScreen, openDiffWindow, resetLayout, askConfirm, openSettings, openShortcuts]
   )
 
   /** Valor combinado (o de `useApp`): só para quem ainda lê `AppContext` direto. Redesenha com qualquer fatia. */
@@ -1209,8 +1345,7 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   // do retorno antecipado abaixo por causa da regra dos hooks.
   const openRepoDialog = useCallback(() => void workspace.openRepo(), [workspace])
   const openRepository = useCallback((path?: string, create?: boolean) => void workspace.openRepo(path, create), [workspace])
-  const openDashboards = useCallback(() => setDashboards(true), [])
-  const showChanges = useCallback(() => setView('changes'), [setView])
+  const openDashboards = useCallback(() => setDashboards(true), [setDashboards])
   const changeScope = useCallback(
     (s: HistoryScope, options?: { reveal?: boolean }) => {
       setScope(s)
@@ -1258,10 +1393,10 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
     )
   }
 
-  const modalOpen = !!(studio || conflict || rebaseFrom || dialog || appModalOpen)
+  const modalOpen = !!(studio || rebaseFrom || dialog || appModalOpen)
 
   return (
-    <AppProviders repoData={repoDataValue} busy={busyValue} actions={actions} settings={settingsValue} app={context}>
+    <AppProviders repoData={repoDataValue} busy={busyValue} actions={actions} settings={settingsValue} app={context} onSaveSettings={onSaveSettings} conflictFocus={conflictFocus}>
       <KeyboardShortcutsPane locale={locale} disabled={modalOpen} onOpenRepository={openRepoDialog} />
       <ToolbarPane
         locale={locale}
@@ -1274,13 +1409,18 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
         dashboards={dashboardsOpen}
         onDashboards={openDashboards}
       />
-      <OperationBannerPane locale={locale} onShowChanges={showChanges} />
-      <div className={dashboardsOpen ? 'dock-hidden' : 'dock-wrap'}>
+      <OperationBannerPane locale={locale} />
+      <div className={dashboardsOpen || conflictsOpen ? 'dock-hidden' : 'dock-wrap'}>
         <DockPane locale={locale} meta={meta} available={available} />
       </div>
       {dashboardsOpen && (
         <Suspense fallback={null}>
           <DashboardsPane locale={locale} />
+        </Suspense>
+      )}
+      {conflictsOpen && (
+        <Suspense fallback={null}>
+          <ConflictsScreenPane locale={locale} />
         </Suspense>
       )}
       {/* Cada tela é desenhada aqui e levada, por portais, ao painel onde o usuário a deixou. */}
@@ -1316,14 +1456,20 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       <PaneSlot id="gitlog">
         <GitLogViewPane locale={locale} />
       </PaneSlot>
+      {tourOpen && (
+        <Suspense fallback={null}>
+          <Tour
+            hasRepo
+            hiddenScreens={parseHiddenScreens(readLayout('pref.screens.hidden'))}
+            initial={{ view: readScreen(), dashboards: dashboardsOpen, conflicts: conflictsOpen }}
+            onOpenView={tourOpenView}
+            onClose={tourClose}
+          />
+        </Suspense>
+      )}
       {studio && (
         <Suspense fallback={null}>
           <CherryPickStudio request={studio} onClose={() => setStudio(null)} />
-        </Suspense>
-      )}
-      {conflict && (
-        <Suspense fallback={null}>
-          <ConflictEditor path={conflict} onClose={() => setConflict(null)} />
         </Suspense>
       )}
       {rebaseFrom && (

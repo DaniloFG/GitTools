@@ -478,19 +478,22 @@ export const en: Messages = {
     abortFilesMessage: 'Restore the conflicted files to the last commit?',
     abortMessage: 'Undo the operation and go back to how things were before it started?',
     conflictsHelp: {
-      one: '{count} conflicted file. Choose a version or edit it and mark it as resolved.',
-      other: '{count} conflicted files. For each one, choose a version or edit it and mark it as resolved.'
+      one: '{count} conflicted file. Click this bar to resolve it in the Conflicts screen.',
+      other: '{count} conflicted files. Click this bar to resolve them in the Conflicts screen.'
     },
     noConflicts: 'No pending conflicts. Continue to finish.',
-    sideBySide: 'Resolve side by side',
-    sideBySideHelp: 'Compare the current version with the incoming one and choose block by block',
     useOursHelp: 'Keeps the version from the current branch (HEAD)',
     useTheirsHelp: 'Keeps the version being applied',
     resolved: 'Resolved',
     resolvedHelp: 'I edited the file and removed the <<<<<<< >>>>>>> markers',
     continue: 'Continue',
     skip: 'Skip this commit',
-    showChanges: 'Show changes'
+    showChanges: 'Show changes',
+    reuseBoth: 'In earlier commits you already chose "ours" for {ours} file(s) and "theirs" for {theirs}: {files}',
+    reuseOurs: 'In earlier commits you already chose "ours" for {count} file(s): {files}',
+    reuseTheirs: 'In earlier commits you already chose "theirs" for {count} file(s): {files}',
+    reuseApply: 'Apply',
+    reuseIgnore: 'Ignore'
   },
   studio: {
     name: 'Cherry-pick Studio',
@@ -558,8 +561,6 @@ export const en: Messages = {
     includesIntermediate: '(includes the commits in between)'
   },
   conflictBulk: {
-    title: 'Resolve all',
-    resolveAllLabel: 'Resolve all:',
     keepOurs: 'Keep all local (ours)',
     keepOursHelp: 'Keeps the current branch version (HEAD) in every conflicted file',
     takeTheirs: 'Accept all incoming (theirs)',
@@ -585,13 +586,45 @@ export const en: Messages = {
     },
     done: { one: '1 file resolved.', other: '{count} files resolved.' },
     partial: 'Resolved: {resolved}. Not resolved: {failed} ({list}).',
-    filterLabel: 'Filter conflicted files',
-    filterPlaceholder: 'Filter files…',
-    showing: 'Showing {shown} of {count}',
     noMatch: 'No file matches the filter.',
     notConflicted: 'Not in conflict',
     hasMarkers: 'Still has conflict markers',
     stillConflicted: 'Still in conflict'
+  },
+  conflictsScreen: {
+    title: 'Conflicts',
+    open: 'Open the Conflicts screen',
+    step: 'step {step} of {total}',
+    counts: 'Pending: {pending} of {total}',
+    filterKind: 'Filter by conflict type',
+    kindAll: 'All types',
+    filterSituation: 'Filter by status',
+    situationAll: 'All statuses',
+    situationPending: 'Pending',
+    situationDecided: 'Decided',
+    searchLabel: 'Search files by name',
+    searchPlaceholder: 'Search by name…',
+    listLabel: 'Conflicted files',
+    tabsLabel: 'Conflicts view',
+    tabList: 'List',
+    tabEditor: 'Editor',
+    fileActions: 'Actions for the selected file',
+    empty: 'No conflicted files.',
+    sideOurs: 'Ours',
+    sideTheirs: 'Theirs',
+    remembered: 'You already chose this side in an earlier commit: {side}',
+    help: 'Select a file to resolve side by side',
+    helpDetail: 'Click a file to open it in the editor panel and resolve it there. F8 jumps to the next pending file. The action for all files is in the bar below.',
+    mergeFooter: 'In a merge, once the conflicts are resolved, make the commit in Changes.',
+    kinds: {
+      bothModified: 'Both modified',
+      bothAdded: 'Both added',
+      bothDeleted: 'Both deleted',
+      addedByUs: 'Added by us',
+      addedByThem: 'Added by them',
+      deletedByUs: 'Deleted by us',
+      deletedByThem: 'Deleted by them'
+    }
   },
   conflict: {
     titleShort: 'Conflict in {path}',
@@ -601,6 +634,7 @@ export const en: Messages = {
     deletedByUs: 'The current branch deleted this file, but the incoming version changed it.',
     deletedByThem: 'The incoming version deleted this file, but the current branch changed it.',
     unreadable: 'The file could not be read.',
+    tooLarge: 'The file is too large for the editor: keep the current or the incoming version, or open it in the editor.',
     deleteFile: 'Delete the file',
     keepOurs: 'Keep the current version (HEAD)',
     keepTheirs: 'Keep the incoming version',
@@ -790,6 +824,8 @@ export const en: Messages = {
       detected: 'Detected: {language}',
       multiRepo: 'Detect several repositories in the workspace',
       multiRepoHelp: 'When GitTools opens in VS Code, it opens each repository (.git) found in the workspace in its own tab and keeps watching for new repositories.',
+      autoContinue: 'Continue automatically after resolving conflicts',
+      autoContinueHelp: 'In a cherry-pick, revert or rebase, when you resolve the last conflicted file of a step, GitTools continues to the next one on its own. It does not apply to merge.',
     },
     appearance: {
       title: 'Appearance',
@@ -849,6 +885,18 @@ export const en: Messages = {
       reset: 'Restore default',
       show: 'Show example'
     },
+    conflicts: {
+      title: 'Conflicts',
+      description: 'How the Conflicts screen behaves when an operation ends and when the app opens.',
+      summary: 'When the operation ends',
+      summaryHelp: 'When the operation ends, the screen closes and returns to the previous screen.',
+      summaryKeep: 'Keep the summary until I close it',
+      summaryClose: 'Close it automatically',
+      startup: 'When the app opens with a pending conflict',
+      startupHelp: 'Applies to the first load of each repository in the session, when it already has a conflict.',
+      startupOpen: 'Open the screen right away, keeping the banner and alert',
+      startupBanner: 'Banner and alert only (the screen opens when you click)'
+    },
     about: {
       title: 'About',
       description: 'Versions and system information.',
@@ -906,7 +954,8 @@ export const en: Messages = {
       multiSelect: 'Select several commits or files',
       lineRange: 'Select a range of lines in the diff',
       commit: 'Confirm the commit',
-      close: 'Close dialog or menu'
+      close: 'Close dialog or menu',
+      nextConflictFile: 'Next pending conflicted file (Conflicts screen)'
     },
     helpTitle: 'Keyboard shortcuts',
     helpFooter: 'Shortcuts can be changed in Settings → Keyboard shortcuts.',
@@ -1761,5 +1810,18 @@ export const en: Messages = {
     urlMissing: 'The URL {url} is not a push destination of this remote.',
     invalidName: 'Invalid remote name: use letters, digits, dot, hyphen or underscore.',
     invalidUrl: 'Enter the remote URL (it cannot start with "-").'
+  },
+  tour: {
+    invite: {
+      title: 'Want a quick tour of the interface?',
+      accept: 'Take the Tour',
+      dismiss: 'Not now'
+    },
+    button: 'Tour',
+    settings: {
+      title: 'Tour',
+      description: 'A quick walkthrough that highlights the main parts of the interface, without changing anything.',
+      start: 'Take the Tour'
+    }
   }
 }
