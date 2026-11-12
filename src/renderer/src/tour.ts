@@ -199,3 +199,44 @@ export function progressOf(state: TourState): { current: number; total: number }
   const total = state.list.length
   return { current: Math.min(state.index + 1, total), total }
 }
+
+/** Retângulo em pixels: o alvo do passo ou o cartão. */
+export interface Box {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+/** Espaço entre o alvo e o cartão. */
+export const GAP = 12
+/** Espaço mínimo entre o cartão e a borda da janela. */
+export const MARGIN = 8
+
+/**
+ * Onde pôr o cartão: no lado do alvo com mais espaço entre os que comportam o cartão, sem cobri-lo e sem sair da
+ * janela. Se nenhum lado comporta (alvo enorme), vai para o canto de baixo. Conta pura, sem ler o DOM.
+ */
+export function placeCard(target: Box, card: { width: number; height: number }, view: { width: number; height: number }): { left: number; top: number } {
+  const right = target.left + target.width
+  const bottom = target.top + target.height
+  const space = { above: target.top, below: view.height - bottom, before: target.left, after: view.width - right }
+  /** Mantém `value` entre a margem e `max` (o maior valor que ainda deixa a margem do outro lado). */
+  const clamp = (value: number, max: number) => Math.max(MARGIN, Math.min(value, max - MARGIN))
+  const centeredLeft = clamp(target.left + target.width / 2 - card.width / 2, view.width - card.width)
+  const centeredTop = clamp(target.top + target.height / 2 - card.height / 2, view.height - card.height)
+  const fits = (Object.keys(space) as (keyof typeof space)[]).filter((side) => space[side] >= (side === 'above' || side === 'below' ? card.height : card.width) + GAP + MARGIN)
+  const best = fits.sort((a, b) => space[b] - space[a])[0]
+  switch (best) {
+    case 'below':
+      return { left: centeredLeft, top: bottom + GAP }
+    case 'above':
+      return { left: centeredLeft, top: target.top - GAP - card.height }
+    case 'after':
+      return { left: right + GAP, top: centeredTop }
+    case 'before':
+      return { left: target.left - GAP - card.width, top: centeredTop }
+    default:
+      return { left: Math.max(MARGIN, view.width - card.width - MARGIN), top: Math.max(MARGIN, view.height - card.height - MARGIN) }
+  }
+}

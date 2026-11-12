@@ -12,7 +12,7 @@ export const tourPtBR: TourMessages = {
     studio: 'Abre o Studio para copiar commits para a branch atual.',
     conflicts: 'Mostra conflitos ou operação em andamento; abre a tela Conflitos.',
     settings: 'O botão de engrenagem abre as Configurações (8 seções) e, em Aparência, a barra, as telas e os painéis.',
-    screens: 'As abas de tela: History, Changes, Files, Compare, Branches, Git Log e Dashboards.',
+    screens: 'As abas de tela: Histórico, Alterações, Arquivos, Comparar, Branches, Log do git e Dashboards.',
     history: 'A lista de commits; clique num deles para ver os detalhes.',
     'history-diff': 'As diferenças do commit escolhido, arquivo por arquivo.',
     'changes-commit': 'Escreva a mensagem e confirme o que está preparado.',

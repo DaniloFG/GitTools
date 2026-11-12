@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { getLocale, t, type MessageKey } from '../i18n'
 import { readLayout, writeLayout } from '../layout'
-import { advance, markSeen, parseSeen, progressOf, restoreTarget, settle, startTour, TOUR_SEEN_KEY, type TourInitial, type TourState, type TourStep, type TourStepId } from '../tour'
+import { advance, markSeen, parseSeen, placeCard, progressOf, restoreTarget, settle, startTour, TOUR_SEEN_KEY, type TourInitial, type TourState, type TourStep, type TourStepId } from '../tour'
 import { loadTourTexts, tourT } from '../tourText'
 import './tour.css'
 
@@ -28,8 +28,6 @@ const SEEN_LAYOUT_KEY = `pref.${TOUR_SEEN_KEY}`
 const MAX_FRAMES = 12
 /** Janela estreita: o cartão vira faixa no rodapé (o CSS decide; aqui só não posicionamos). Mesmo valor do tour.css. */
 const NARROW = 640
-const GAP = 12
-const MARGIN = 8
 /** Folga do destaque em volta do alvo. */
 const PAD = 4
 
@@ -55,41 +53,6 @@ const STEP_NAME: Record<TourStepId, MessageKey> = {
   branches: 'workbench.views.branches',
   gitlog: 'gitlog.title',
   dashboards: 'dash.title'
-}
-
-interface Box {
-  left: number
-  top: number
-  width: number
-  height: number
-}
-
-/**
- * Onde pôr o cartão: no lado do alvo com mais espaço entre os que comportam o cartão, sem cobri-lo e sem sair da
- * janela. Se nenhum lado comporta (alvo enorme), vai para o canto de baixo. Conta pura, sem ler o DOM.
- */
-export function placeCard(target: Box, card: { width: number; height: number }, view: { width: number; height: number }): { left: number; top: number } {
-  const right = target.left + target.width
-  const bottom = target.top + target.height
-  const space = { above: target.top, below: view.height - bottom, before: target.left, after: view.width - right }
-  /** Mantém `value` entre a margem e `max` (o maior valor que ainda deixa a margem do outro lado). */
-  const clamp = (value: number, max: number) => Math.max(MARGIN, Math.min(value, max - MARGIN))
-  const centeredLeft = clamp(target.left + target.width / 2 - card.width / 2, view.width - card.width)
-  const centeredTop = clamp(target.top + target.height / 2 - card.height / 2, view.height - card.height)
-  const fits = (Object.keys(space) as (keyof typeof space)[]).filter((side) => space[side] >= (side === 'above' || side === 'below' ? card.height : card.width) + GAP + MARGIN)
-  const best = fits.sort((a, b) => space[b] - space[a])[0]
-  switch (best) {
-    case 'below':
-      return { left: centeredLeft, top: bottom + GAP }
-    case 'above':
-      return { left: centeredLeft, top: target.top - GAP - card.height }
-    case 'after':
-      return { left: right + GAP, top: centeredTop }
-    case 'before':
-      return { left: target.left - GAP - card.width, top: centeredTop }
-    default:
-      return { left: Math.max(MARGIN, view.width - card.width - MARGIN), top: Math.max(MARGIN, view.height - card.height - MARGIN) }
-  }
 }
 
 /** O alvo do passo existe agora? Passos de outra tela só existem depois de abri-la, então valem até lá. */
