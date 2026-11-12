@@ -1,6 +1,7 @@
 name: Fluxo de branches
 
-# Impõe a ordem de promoção: trabalho → develop → homolog → main.
+# Impõe o fluxo: branch de trabalho → develop (ambiente livre, aceita qualquer origem), a MESMA branch de trabalho →
+# homolog (nunca a develop) e homolog → main. Cada ambiente tem a sua validação (workflow Validação).
 # Roda em todo PR para develop, homolog ou main e falha se a origem não for a permitida.
 # O check "Validar fluxo de branches" é obrigatório nas rulesets (scripts/apply-branch-protection.sh).
 
@@ -39,12 +40,15 @@ jobs:
               [ "$ORIGEM" = "homolog" ] || falhar "A main só recebe PR da homolog (origem recebida: '$ORIGEM')."
               ;;
             homolog)
-              [ "$ORIGEM" = "develop" ] || falhar "A homolog só recebe PR da develop (origem recebida: '$ORIGEM')."
+              # A develop nunca é promovida: a homolog recebe a branch de trabalho, já mergeada e validada na develop.
+              case "$ORIGEM" in
+                develop|main) falhar "A homolog recebe a branch de trabalho, nunca a develop nem a main (origem recebida: '$ORIGEM')." ;;
+              esac
               ;;
             develop)
+              # A develop é ambiente livre: aceita qualquer branch de trabalho (até ccr-*), menos as branches do fluxo.
               case "$ORIGEM" in
-                feature/*|fix/*|docs/*|chore/*|refactor/*) ;;
-                *) falhar "A develop só recebe PR de feature/, fix/, docs/, chore/ ou refactor/ (origem recebida: '$ORIGEM')." ;;
+                homolog|main) falhar "A develop não recebe a homolog nem a main (origem recebida: '$ORIGEM')." ;;
               esac
               ;;
             *)
@@ -57,16 +61,19 @@ jobs:
       - name: Fazer checkout do código do PR
         uses: actions/checkout@v4
 
-      - name: Garantir que a memória de trabalho não entre na branch de destino
+      - name: Garantir que a memória de trabalho não entre na homolog nem na main
+        env:
+          DESTINO: ${{ github.base_ref }}
         run: |
           set -euo pipefail
 
           # docs/HANDOFF.md é a memória de um trabalho em etapas e existe só na branch de trabalho (CLAUDE.md,
           # "Trabalho com o Claude em etapas").
-          # Ele não pode chegar a develop, homolog ou main; por isso o PR é reprovado enquanto o arquivo estiver na árvore.
-          if [ -e docs/HANDOFF.md ]; then
-            echo "::error title=Memória de trabalho::O arquivo docs/HANDOFF.md é só da branch de trabalho e não pode entrar em develop, homolog ou main. Remova-o (git rm) no commit final do trabalho, antes de abrir o PR."
+          # Na develop (ambiente livre) ele é permitido; não pode chegar a homolog nem a main, e por isso o PR para
+          # esses destinos é reprovado enquanto o arquivo estiver na árvore.
+          if [ "$DESTINO" != develop ] && [ -e docs/HANDOFF.md ]; then
+            echo "::error title=Memória de trabalho::O arquivo docs/HANDOFF.md é só da branch de trabalho e não pode entrar em homolog nem main. Remova-o (git rm) no commit final do trabalho, antes de abrir o PR."
             exit 1
           fi
 
-          echo "Nenhuma memória de trabalho na árvore do PR."
+          echo "Memória de trabalho conferida para o destino $DESTINO."

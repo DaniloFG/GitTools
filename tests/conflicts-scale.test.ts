@@ -348,6 +348,20 @@ describe('6. caminho fora do repositório no editor de conflitos', () => {
     expect(details.ours).toBe('main 0\n')
   }, LONG)
 
+  it('conflictDetails marca tooLarge acima do teto (2 MB) para a tela dizer o motivo', async () => {
+    const t = await contentConflict(['x.txt'])
+    writeFileSync(join(t.dir, 'x.txt'), 'a'.repeat(2 * 1024 * 1024 + 1))
+    expect((await t.repo.conflictDetails('x.txt')).tooLarge).toBe(true)
+  }, LONG)
+
+  it('conflictDetails no limite exato (2 MB) lê o arquivo e não marca tooLarge', async () => {
+    const t = await contentConflict(['x.txt'])
+    writeFileSync(join(t.dir, 'x.txt'), '<<<<<<< HEAD\n' + 'a'.repeat(2 * 1024 * 1024 - 13))
+    const details = await t.repo.conflictDetails('x.txt')
+    expect(details.tooLarge).toBe(false)
+    expect(details.working).not.toBeNull()
+  }, LONG)
+
   it('saveConflictResolution com "../" ou caminho absoluto não grava fora do repositório', async () => {
     const { t, outside, rel } = await setup()
     await expect(t.repo.saveConflictResolution(rel, 'PWNED\n')).rejects.toThrow()

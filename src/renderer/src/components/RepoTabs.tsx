@@ -11,6 +11,8 @@ interface RepoTabsProps {
   summaries: Record<string, RepoSummary>
   onActivate(root: string): void
   onClose(root: string): void
+  /** Clique no alerta de conflito da aba ativa: abre a tela Conflitos. Em outra aba, o alerta só ativa a aba. */
+  onConflicts(root: string): void
   onMenu(event: React.MouseEvent, root: string): void
   onAdd(event: React.MouseEvent): void
   /** Commits soltos sobre uma aba (de outro repositório, o ativo): pede a confirmação da aplicação. */
@@ -26,7 +28,7 @@ export const WARM_DELAY_MS = 180
  * Barra de abas dos repositórios abertos. Cada aba tem a cor do repositório (estável), o nome, a branch e os
  * indicadores (alterações, conflito, operação em andamento). Clique troca; clique do meio ou × fecha.
  */
-export function RepoTabs({ repos, active, summaries, onActivate, onClose, onMenu, onAdd, onDropCommits, onWarm }: RepoTabsProps) {
+export function RepoTabs({ repos, active, summaries, onActivate, onClose, onConflicts, onMenu, onAdd, onDropCommits, onWarm }: RepoTabsProps) {
   return (
     <div className="repo-tabs" role="tablist" aria-label={t('repoTabs.list')}>
       {repos.map((repo) => (
@@ -37,6 +39,7 @@ export function RepoTabs({ repos, active, summaries, onActivate, onClose, onMenu
           summary={summaries[repo.root]}
           onActivate={onActivate}
           onClose={onClose}
+          onConflicts={onConflicts}
           onMenu={onMenu}
           onDropCommits={onDropCommits}
           onWarm={onWarm}
@@ -55,12 +58,13 @@ interface RepoTabProps {
   summary: RepoSummary | undefined
   onActivate(root: string): void
   onClose(root: string): void
+  onConflicts(root: string): void
   onMenu(event: React.MouseEvent, root: string): void
   onDropCommits(root: string, shas: string[]): void
   onWarm?(root: string): void
 }
 
-function RepoTab({ repo, isActive, summary, onActivate, onClose, onMenu, onDropCommits, onWarm }: RepoTabProps) {
+function RepoTab({ repo, isActive, summary, onActivate, onClose, onConflicts, onMenu, onDropCommits, onWarm }: RepoTabProps) {
   const warmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const stopWarm = () => {
     if (warmTimer.current) clearTimeout(warmTimer.current)
@@ -122,9 +126,20 @@ function RepoTab({ repo, isActive, summary, onActivate, onClose, onMenu, onDropC
         </span>
       )}
       {summary && summary.conflicts > 0 && (
-        <span className="repo-tab-flag conflict" title={t('repoTabs.conflicts')} aria-label={t('repoTabs.conflicts')}>
+        <button
+          type="button"
+          className="repo-tab-flag conflict"
+          title={t('repoTabs.conflicts')}
+          aria-label={t('repoTabs.conflicts')}
+          onClick={(e) => {
+            // Na aba ativa abre a tela Conflitos; em outra aba o clique vale como clique na aba (ativa-a).
+            e.stopPropagation()
+            if (isActive) onConflicts(repo.root)
+            else onActivate(repo.root)
+          }}
+        >
           ⚠
-        </span>
+        </button>
       )}
       {summary && summary.operation !== 'none' && (
         <span className="repo-tab-flag operation" title={t('repoTabs.operation')} aria-label={t('repoTabs.operation')}>

@@ -81,7 +81,9 @@ export const FIXED_SHORTCUTS: [string, MessageKey][] = [
   ['Ctrl+click / Shift+click', 'shortcuts.fixed.multiSelect'],
   ['Shift+click', 'shortcuts.fixed.lineRange'],
   ['Ctrl+Enter', 'shortcuts.fixed.commit'],
-  ['Esc', 'shortcuts.fixed.close']
+  ['Esc', 'shortcuts.fixed.close'],
+  // Só vale com a tela Conflitos aberta (ouvinte no próprio elemento dela, ver ConflictsScreen.tsx).
+  ['F8', 'shortcuts.fixed.nextConflictFile']
 ]
 
 const IS_MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Aplica as rulesets que impõem o fluxo trabalho → develop → homolog → main.
+# Aplica as rulesets que impõem o fluxo: trabalho → develop, trabalho → homolog (nunca develop → homolog) e homolog → main.
 # Idempotente: cria a ruleset se ela não existir, ou atualiza a existente com o mesmo nome.
 #
 # Uso: scripts/apply-branch-protection.sh [owner/repo]
@@ -63,8 +63,8 @@ aplicar() {
   fi
 }
 
-# Promoções entram por merge commit: squash ou rebase quebram o histórico comum
-# entre develop, homolog e main e geram conflitos na promoção seguinte.
+# Os merges em homolog e main entram por merge commit: squash ou rebase quebram o histórico comum
+# entre a branch de trabalho, homolog e main e geram conflitos no PR seguinte.
 aplicar "Fluxo: main" main '["merge"]'
 aplicar "Fluxo: homolog" homolog '["merge"]'
 aplicar "Fluxo: develop" develop '["merge","squash"]'

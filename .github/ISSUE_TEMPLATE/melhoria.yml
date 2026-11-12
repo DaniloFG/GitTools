@@ -1,0 +1,39 @@
+name: Melhoria
+description: Algo que já funciona e pode ficar melhor (desempenho, estrutura, experiência, engenharia). Nada é feito sem issue.
+title: "Melhoria: "
+labels: ["enhancement", "status:planejada"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Acrescente os rótulos de natureza, área e prioridade (`.claude/rules/github.md`, seção Classificação). Achado de passagem leva também `descoberta`.
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Escopo
+      description: O que entra nesta issue e o que fica de fora.
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Critérios de aceite
+      description: Checklist. Cada item precisa ser conferível com um comando ou uma tela.
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: consideracoes
+    attributes:
+      label: Considerações técnicas
+      description: Arquivos prováveis, processos git e orçamento de desempenho, segurança, dependências.
+    validations:
+      required: true
+  - type: textarea
+    id: testes
+    attributes:
+      label: Testes
+      description: Camada de teste (unidade, integração, tela ou medição) e o que cada uma prova. Em melhoria de desempenho, o número de antes e o de depois.
+    validations:
+      required: true

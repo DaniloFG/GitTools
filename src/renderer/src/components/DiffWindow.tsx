@@ -137,7 +137,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [toast, locale]
   )
-  const settingsValue = useMemo<AppSettingsValue>(() => ({ settings, dashboardsOpen: false }), [settings])
+  const settingsValue = useMemo<AppSettingsValue>(() => ({ settings, dashboardsOpen: false, conflictsOpen: false }), [settings])
   const busyValue = useMemo<BusyValue>(() => ({ busy: null, busyScope: [] }), [])
   const context = useMemo(
     () => ({ ...busyValue, ...actions, ...settingsValue }) as AppContextValue,

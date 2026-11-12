@@ -88,7 +88,7 @@ export function ScreenTabs({ state, meta, screen, available, onScreen, changeCou
   }, [])
 
   return (
-    <div ref={ref} className="screen-tabs" role="group" aria-label={t('workbench.screens')} title={t('workbench.screensHelp')}>
+    <div ref={ref} className="screen-tabs" data-tour="screens" role="group" aria-label={t('workbench.screens')} title={t('workbench.screensHelp')}>
       {SCREENS.map((item) => {
         // Escondida pelo menu (Aparência → Telas): não desenha a aba.
         if (!isScreenShown(hiddenScreens, item.id, currentTop)) return null
@@ -107,7 +107,7 @@ export function ScreenTabs({ state, meta, screen, available, onScreen, changeCou
         )
       })}
       {isScreenShown(hiddenScreens, 'dashboards', currentTop) && (
-        <button className={`screen-tab dashboards-tab ${dashboards ? 'active' : ''}`} aria-pressed={dashboards} title={t('dash.tabHelp')} onClick={onDashboards} onMouseEnter={preloadDashboards} onFocus={preloadDashboards}>
+        <button data-tour="dashboards" className={`screen-tab dashboards-tab ${dashboards ? 'active' : ''}`} aria-pressed={dashboards} title={t('dash.tabHelp')} onClick={onDashboards} onMouseEnter={preloadDashboards} onFocus={preloadDashboards}>
           <span aria-hidden>◔</span> {t('dash.title')}
         </button>
       )}

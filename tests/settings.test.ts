@@ -54,6 +54,53 @@ describe('configurações de exibição', () => {
   })
 })
 
+describe('continuar automaticamente após resolver conflitos', () => {
+  it('vem desligado, e só liga se o usuário pedir `true`', () => {
+    expect(DEFAULT_SETTINGS.autoContinueConflicts).toBe(false)
+    expect(normalizeSettings({}).autoContinueConflicts).toBe(false)
+    expect(normalizeSettings({ autoContinueConflicts: true }).autoContinueConflicts).toBe(true)
+    expect(normalizeSettings({ autoContinueConflicts: 'sim' }).autoContinueConflicts).toBe(false)
+  })
+})
+
+describe('conflitos: resumo ao terminar e abertura na partida', () => {
+  it('vêm com o resumo mantido na tela e a tela abrindo sozinha na partida', () => {
+    expect(DEFAULT_SETTINGS.conflictSummary).toBe('keep')
+    expect(DEFAULT_SETTINGS.conflictStartup).toBe('open')
+    expect(normalizeSettings({})).toMatchObject({ conflictSummary: 'keep', conflictStartup: 'open' })
+  })
+
+  it('guardam os valores válidos das duas opções', () => {
+    expect(normalizeSettings({ conflictSummary: 'close' }).conflictSummary).toBe('close')
+    expect(normalizeSettings({ conflictStartup: 'bannerOnly' }).conflictStartup).toBe('bannerOnly')
+  })
+
+  it('valor fora da lista (ou de outro tipo) cai no padrão de cada opção', () => {
+    expect(normalizeSettings({ conflictSummary: 'fechar' }).conflictSummary).toBe('keep')
+    expect(normalizeSettings({ conflictSummary: true }).conflictSummary).toBe('keep')
+    expect(normalizeSettings({ conflictStartup: 'banner' }).conflictStartup).toBe('open')
+    expect(normalizeSettings({ conflictStartup: null }).conflictStartup).toBe('open')
+  })
+})
+
+describe('convite do Tour na primeira abertura', () => {
+  it('vem pendente: o convite fica até o usuário responder', () => {
+    expect(DEFAULT_SETTINGS.tourOffer).toBe('pending')
+    expect(normalizeSettings({}).tourOffer).toBe('pending')
+  })
+
+  it('guarda as duas respostas: aceitar e dispensar', () => {
+    expect(normalizeSettings({ tourOffer: 'accepted' }).tourOffer).toBe('accepted')
+    expect(normalizeSettings({ tourOffer: 'dismissed' }).tourOffer).toBe('dismissed')
+  })
+
+  it('valor fora da lista (ou de outro tipo) volta a pendente', () => {
+    expect(normalizeSettings({ tourOffer: 'xyz' }).tourOffer).toBe('pending')
+    expect(normalizeSettings({ tourOffer: true }).tourOffer).toBe('pending')
+    expect(normalizeSettings({ tourOffer: null }).tourOffer).toBe('pending')
+  })
+})
+
 describe('detecção de vários repositórios', () => {
   // Vem desligada: abrir o app não varre pasta e subpastas por padrão (desempenho). Só `true` literal liga.
   it('vem desligada, e só liga se o usuário pedir `true`', () => {

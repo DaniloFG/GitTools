@@ -1,0 +1,39 @@
+name: Feature
+description: Funcionalidade nova ou mudança de comportamento. Nada é implementado sem issue.
+title: "Feature: "
+labels: ["feature", "status:planejada"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Pedido grande vira issue-mãe com sub-issues (`.claude/rules/github.md`). Preencha todos os campos.
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Escopo
+      description: O que entra nesta issue e o que fica de fora.
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Critérios de aceite
+      description: Checklist. Cada item precisa ser conferível com um comando ou uma tela.
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: consideracoes
+    attributes:
+      label: Considerações técnicas
+      description: Arquivos prováveis, processos git e orçamento de desempenho, segurança, dependências.
+    validations:
+      required: true
+  - type: textarea
+    id: testes
+    attributes:
+      label: Testes
+      description: Camada de teste (unidade, integração, tela ou medição) e o que cada uma prova.
+    validations:
+      required: true

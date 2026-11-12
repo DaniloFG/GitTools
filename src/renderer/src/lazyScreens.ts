@@ -21,6 +21,7 @@ interface PaneProps {
 }
 
 export const Dashboards = screen<ComponentType<PaneProps>>(() => import('./components/Dashboards').then((m) => ({ default: m.Dashboards })))
+export const ConflictsScreen = screen<ComponentType<PaneProps>>(() => import('./components/ConflictsScreen').then((m) => ({ default: m.ConflictsScreen })))
 export const CompareView = screen<ComponentType<PaneProps & { request: CompareRequest; onRequest(request: CompareRequest): void }>>(() =>
   import('./components/CompareView').then((m) => ({ default: m.CompareView }))
 )
@@ -33,6 +34,7 @@ export const CloneDialog = screen(() => import('./components/CloneDialog').then(
 export const DialogHost = screen(() => import('./components/Dialogs').then((m) => ({ default: m.DialogHost })))
 export const SettingsCenter = screen(() => import('./components/settings/SettingsCenter').then((m) => ({ default: m.SettingsCenter })))
 export const ShortcutsHelp = screen(() => import('./components/settings/ShortcutsHelp').then((m) => ({ default: m.ShortcutsHelp })))
+export const Tour = screen(() => import('./components/Tour').then((m) => ({ default: m.Tour })))
 export const DiffWindowApp = screen(() => import('./components/DiffWindow').then((m) => ({ default: m.DiffWindowApp })))
 
 /**

@@ -478,19 +478,22 @@ export const es: Messages = {
     abortFilesMessage: '¿Devolver los archivos en conflicto a la versión del último commit?',
     abortMessage: '¿Deshacer la operación y volver al estado anterior?',
     conflictsHelp: {
-      one: '{count} archivo en conflicto. Elige una versión o edítalo y márcalo como resuelto.',
-      other: '{count} archivos en conflicto. Para cada uno, elige una versión o edítalo y márcalo como resuelto.'
+      one: '{count} archivo en conflicto. Haz clic en esta franja para resolverlo en la pantalla Conflictos.',
+      other: '{count} archivos en conflicto. Haz clic en esta franja para resolverlos en la pantalla Conflictos.'
     },
     noConflicts: 'No hay conflictos pendientes. Continúa para terminar.',
-    sideBySide: 'Resolver lado a lado',
-    sideBySideHelp: 'Comparar la versión actual con la entrante y elegir bloque por bloque',
     useOursHelp: 'Mantiene la versión de la rama actual (HEAD)',
     useTheirsHelp: 'Mantiene la versión que se está aplicando',
     resolved: 'Resuelto',
     resolvedHelp: 'Ya edité el archivo y quité los marcadores <<<<<<< >>>>>>>',
     continue: 'Continuar',
     skip: 'Omitir este commit',
-    showChanges: 'Ver cambios'
+    showChanges: 'Ver cambios',
+    reuseBoth: 'En commits anteriores ya elegiste «nuestro» para {ours} archivo(s) y «suyo» para {theirs}: {files}',
+    reuseOurs: 'En commits anteriores ya elegiste «nuestro» para {count} archivo(s): {files}',
+    reuseTheirs: 'En commits anteriores ya elegiste «suyo» para {count} archivo(s): {files}',
+    reuseApply: 'Aplicar',
+    reuseIgnore: 'Ignorar'
   },
   studio: {
     name: 'Cherry-pick Studio',
@@ -558,8 +561,6 @@ export const es: Messages = {
     includesIntermediate: '(incluye los commits intermedios)'
   },
   conflictBulk: {
-    title: 'Resolver todos',
-    resolveAllLabel: 'Resolver todos:',
     keepOurs: 'Mantener todos los locales (ours)',
     keepOursHelp: 'Mantiene la versión de la rama actual (HEAD) en todos los archivos en conflicto',
     takeTheirs: 'Aceptar todos los entrantes (theirs)',
@@ -585,13 +586,45 @@ export const es: Messages = {
     },
     done: { one: '1 archivo resuelto.', other: '{count} archivos resueltos.' },
     partial: 'Resueltos: {resolved}. No resueltos: {failed} ({list}).',
-    filterLabel: 'Filtrar archivos en conflicto',
-    filterPlaceholder: 'Filtrar archivos…',
-    showing: 'Mostrando {shown} de {count}',
     noMatch: 'Ningún archivo coincide con el filtro.',
     notConflicted: 'No está en conflicto',
     hasMarkers: 'Todavía tiene marcadores de conflicto',
     stillConflicted: 'Sigue en conflicto'
+  },
+  conflictsScreen: {
+    title: 'Conflictos',
+    open: 'Abrir la pantalla Conflictos',
+    step: 'paso {step} de {total}',
+    counts: 'Pendientes: {pending} de {total}',
+    filterKind: 'Filtrar por tipo de conflicto',
+    kindAll: 'Todos los tipos',
+    filterSituation: 'Filtrar por estado',
+    situationAll: 'Todos los estados',
+    situationPending: 'Pendientes',
+    situationDecided: 'Decididos',
+    searchLabel: 'Buscar archivo por nombre',
+    searchPlaceholder: 'Buscar por nombre…',
+    listLabel: 'Archivos en conflicto',
+    tabsLabel: 'Vista de conflictos',
+    tabList: 'Lista',
+    tabEditor: 'Editor',
+    fileActions: 'Acciones del archivo seleccionado',
+    empty: 'Ningún archivo en conflicto.',
+    sideOurs: 'Nuestro',
+    sideTheirs: 'Suyo',
+    remembered: 'Ya elegiste este lado en un commit anterior: {side}',
+    help: 'Selecciona un archivo para resolverlo lado a lado',
+    helpDetail: 'Haz clic en un archivo para abrirlo en el panel del editor y resolverlo allí. F8 salta al siguiente archivo pendiente. La acción para todos los archivos está en la barra de abajo.',
+    mergeFooter: 'En un merge, después de resolver los conflictos, haz el commit en Cambios.',
+    kinds: {
+      bothModified: 'Ambos modificaron',
+      bothAdded: 'Ambos añadieron',
+      bothDeleted: 'Ambos eliminaron',
+      addedByUs: 'Añadido por nosotros',
+      addedByThem: 'Añadido por ellos',
+      deletedByUs: 'Eliminado por nosotros',
+      deletedByThem: 'Eliminado por ellos'
+    }
   },
   conflict: {
     titleShort: 'Conflicto en {path}',
@@ -601,6 +634,7 @@ export const es: Messages = {
     deletedByUs: 'La rama actual eliminó este archivo, pero la versión entrante lo modificó.',
     deletedByThem: 'La versión entrante eliminó este archivo, pero la rama actual lo modificó.',
     unreadable: 'No se pudo leer el archivo.',
+    tooLarge: 'El archivo es demasiado grande para el editor: conserva la versión actual o la entrante, o ábrelo en el editor.',
     deleteFile: 'Eliminar el archivo',
     keepOurs: 'Conservar la versión actual (HEAD)',
     keepTheirs: 'Conservar la versión entrante',
@@ -790,6 +824,8 @@ export const es: Messages = {
       detected: 'Detectado: {language}',
       multiRepo: 'Detectar varios repositorios en el espacio de trabajo',
       multiRepoHelp: 'Al abrir GitTools en VS Code, abre cada repositorio (.git) encontrado en el espacio de trabajo en su propia pestaña y sigue detectando los repositorios nuevos.',
+      autoContinue: 'Continuar automáticamente tras resolver los conflictos',
+      autoContinueHelp: 'En un cherry-pick, revert o rebase, al resolver el último archivo en conflicto de un paso, GitTools continúa solo con el siguiente. No se aplica a merge.',
     },
     appearance: {
       title: 'Apariencia',
@@ -849,6 +885,18 @@ export const es: Messages = {
       reset: 'Restaurar valores',
       show: 'Mostrar ejemplo'
     },
+    conflicts: {
+      title: 'Conflictos',
+      description: 'Cómo se comporta la pantalla Conflictos al terminar una operación y al abrir la aplicación.',
+      summary: 'Al terminar la operación',
+      summaryHelp: 'Cuando la operación termine, la pantalla se cierra y vuelve a la pantalla anterior.',
+      summaryKeep: 'Mantener el resumen hasta que yo la cierre',
+      summaryClose: 'Cerrar sola',
+      startup: 'Al abrir la aplicación con un conflicto pendiente',
+      startupHelp: 'Vale para la primera lectura de cada repositorio en la sesión, cuando ya tiene un conflicto.',
+      startupOpen: 'Abrir la pantalla directamente, manteniendo el banner y la alerta',
+      startupBanner: 'Solo banner y alerta (la pantalla se abre al hacer clic)'
+    },
     about: {
       title: 'Acerca de',
       description: 'Versiones e información del sistema.',
@@ -906,7 +954,8 @@ export const es: Messages = {
       multiSelect: 'Seleccionar varios commits o archivos',
       lineRange: 'Seleccionar un rango de líneas del diff',
       commit: 'Confirmar el commit',
-      close: 'Cerrar diálogo o menú'
+      close: 'Cerrar diálogo o menú',
+      nextConflictFile: 'Siguiente archivo en conflicto pendiente (pantalla Conflictos)'
     },
     helpTitle: 'Atajos de teclado',
     helpFooter: 'Los atajos se pueden cambiar en Configuración → Atajos de teclado.',
@@ -1761,5 +1810,18 @@ export const es: Messages = {
     urlMissing: 'La URL {url} no es un destino de push de este remote.',
     invalidName: 'Nombre de remoto no válido: usa letras, números, punto, guion o guion bajo.',
     invalidUrl: 'Indica la URL del remoto (no puede empezar por "-").'
+  },
+  tour: {
+    invite: {
+      title: '¿Quieres un recorrido por la interfaz?',
+      accept: 'Hacer el tour',
+      dismiss: 'Ahora no'
+    },
+    button: 'Tour',
+    settings: {
+      title: 'Tour',
+      description: 'Un recorrido rápido que destaca las partes principales de la interfaz, sin cambiar nada.',
+      start: 'Hacer el tour'
+    }
   }
 }
