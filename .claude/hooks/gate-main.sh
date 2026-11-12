@@ -85,14 +85,18 @@ exigir_promocao() {
 
 # Exige o check-run `QA` da ponta com conclusão `success` (issue #110). Falha fechada: consulta que falha, resposta
 # vazia, sha ilegível, check ausente, `failure`, `in_progress` ou conclusão null bloqueiam. Argumentos: dono repo sha
+# Issue #121: com vários check-runs `QA` no mesmo sha decide o de maior `id` (o mais recente), não a ordem da lista.
+# Um QA antigo cancelado não esconde nem derruba o mais novo; se o mais novo está vermelho ou em andamento, bloqueia.
 exigir_qa() {
   local conclusao
   if ! nome_valido "$1" || ! nome_valido "$2" || ! [[ $3 =~ ^[0-9a-fA-F]{7,64}$ ]]; then
     bloquear_qa "não foi possível confirmar o check QA (dono, repositório ou commit da ponta inválido)."
   fi
-  # O jq devolve a conclusão do primeiro check chamado QA; sem check ou sem conclusão, sai vazio.
+  # O jq devolve a conclusão do check QA de maior id (max_by, o mais recente); sem check, ou sem conclusão no mais
+  # recente, sai vazio. Check sem id (null) perde para qualquer id numérico; entre checks todos sem id, o jq
+  # desempata pelo último da lista (a API sempre manda id, então é só a rede de segurança).
   if ! conclusao=$(gh_cmd api "repos/$1/$2/commits/$3/check-runs?check_name=QA&filter=latest" \
-    --jq '[.check_runs[] | select(.name=="QA") | .conclusion] | first // ""' 2>/dev/null); then
+    --jq '[.check_runs[] | select(.name=="QA")] | max_by(.id) | .conclusion // ""' 2>/dev/null); then
     bloquear_qa "não foi possível consultar o check QA do commit ${3:0:12} (o gh falhou); na dúvida, bloqueia."
   fi
   case "$conclusao" in
