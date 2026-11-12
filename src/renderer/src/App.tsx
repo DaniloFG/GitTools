@@ -127,16 +127,18 @@ function sameOpened(a: OpenRepositories, b: OpenRepositories): boolean {
  * a primeira resposta "eco" consome o carimbo, então a segunda pergunta precisa receber a mesma resposta.
  * Limpa no microtask seguinte, quando os dois ouvintes já terminaram: o aviso seguinte é decidido do zero.
  */
-let lastEcho: { root: string; echo: boolean } | null = null
+let lastEcho: { root: string; external: boolean; echo: boolean } | null = null
 
 /**
  * O aviso do observador para `root` é eco de uma alteração feita por esta interface, e os dados já foram lidos
  * depois dela (ver `isOwnEcho`). O ouvinte do app e o da aba usam esta mesma função: nenhum invalida antes.
+ * `external`: a pasta .git mudou sem comando próprio (ver `isOwnEcho`); nunca é eco.
  */
-function isEcho(root: string): boolean {
-  if (lastEcho?.root === root) return lastEcho.echo
+function isEcho(root: string, external: boolean): boolean {
+  if (lastEcho?.root === root && lastEcho.external === external) return lastEcho.echo
   const session = peekSession(root)
   const echo = isOwnEcho({
+    external,
     ownChange: readCache.hasRecentChange(root, OWN_CHANGE_WINDOW_MS),
     generation: readCache.generation(root),
     lastLoaded: session?.loaded?.generation ?? null,
@@ -144,8 +146,10 @@ function isEcho(root: string): boolean {
     again: session?.again ?? false
   })
   // Eco de uma alteração já lida: o carimbo sai, para que um commit do terminal logo depois não passe por eco.
-  if (echo) readCache.consumeChange(root)
-  lastEcho = { root, echo }
+  // Mudança de fora que passou: o carimbo também sai, senão afetaria o próximo aviso. O aviso de fora manda reler o
+  // repositório, e essa leitura já inclui a alteração própria.
+  if (echo || external) readCache.consumeChange(root)
+  lastEcho = { root, external, echo }
   queueMicrotask(() => {
     lastEcho = null
   })
@@ -516,10 +520,10 @@ export function App() {
   // (ela pode ter mudado por fora, como um repositório aberto pelo VS Code).
   useEffect(
     () =>
-      window.gittools.onRepositoryChanged((root) => {
+      window.gittools.onRepositoryChanged((root, external) => {
         if (root !== undefined) {
           // Eco de uma alteração desta interface: os dados já foram lidos depois dela. Nada a invalidar.
-          if (isEcho(root)) return
+          if (isEcho(root, external === true)) return
           // Mudou por fora (ou por outra aba): o que estava guardado deste repositório deixa de valer.
           readCache.invalidate(root)
           if (openedRef.current.repos.some((r) => r.root === root)) void refreshSummary(root)
@@ -1155,11 +1159,11 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null
-    const off = window.gittools.onRepositoryChanged((root) => {
+    const off = window.gittools.onRepositoryChanged((root, external) => {
       // Mudança em outro repositório não mexe nos dados desta aba (o indicador dela fica no nível do app).
       if (root !== undefined && root !== repo.root) return
       // Eco de uma alteração desta interface: os dados já foram lidos depois dela (o ouvinte do app decide igual).
-      if (root !== undefined && isEcho(root)) return
+      if (root !== undefined && isEcho(root, external === true)) return
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => void refresh(), 150)
     })

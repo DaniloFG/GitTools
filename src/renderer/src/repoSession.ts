@@ -147,6 +147,11 @@ export function getSession(root: string): RepoSession {
 
 /** O que é preciso saber para decidir se um aviso do observador é eco da alteração feita pela própria interface. */
 export interface EchoInput {
+  /**
+   * A pasta .git mudou sem um comando próprio (o backend confere a assinatura da .git, ver gitSignature.ts). Quando
+   * é true, nunca é eco, mesmo dentro da janela de alteração própria.
+   */
+  external: boolean
   /** Houve alteração própria recente (ver `ReadCache.hasRecentChange`). */
   ownChange: boolean
   /** Geração atual do repositório. */
@@ -164,8 +169,9 @@ export interface EchoInput {
  * ler de novo. Sem alteração própria recente, nunca é eco: o aviso é de algo de fora (um commit no terminal).
  */
 export function isOwnEcho(input: EchoInput): boolean {
-  const { ownChange, generation, lastLoaded, loadingGeneration, again } = input
-  if (!ownChange) return false
+  const { external, ownChange, generation, lastLoaded, loadingGeneration, again } = input
+  // Mudança de fora dentro da janela de alteração própria: o carimbo não a explica, então não é eco.
+  if (external || !ownChange) return false
   // Leitura em andamento: vale se começou depois da alteração, ou se outra rodada já vai começar depois dela.
   if (loadingGeneration !== null) return again || loadingGeneration === generation
   return lastLoaded === generation

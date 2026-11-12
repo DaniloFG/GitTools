@@ -1,7 +1,7 @@
-import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
-import { afterEach, describe, expect, it, type TestContext } from 'vitest'
+import { afterEach, describe, expect, it, vi, type TestContext } from 'vitest'
 import { readRegularFile } from '../src/core/paths'
 import { GitRepository } from '../src/core/repository'
 import { createRepo, lines, linkOrSkip } from './helpers'
@@ -9,8 +9,27 @@ import { createRepo, lines, linkOrSkip } from './helpers'
 // Auditoria (issue #91): caminho que sai do repositório por "../", por caminho absoluto ou por link de pasta/arquivo.
 // Cada teste tenta o ataque. O conteúdo "SEGREDO FORA" nunca pode sair pela leitura nem ser alterado pela escrita.
 
+// Janela entre a checagem (`lstat`) e a abertura: o espião de `open` roda `swapBeforeOpen` logo antes da abertura real
+// do caminho combinado, para trocar o arquivo por link nesse instante. Só `readRegularFile` abre o arquivo de trabalho
+// assim; sem `O_NOFOLLOW` na abertura, o segredo de fora sairia. Repassa tudo ao módulo real.
+const swap = vi.hoisted(() => ({ path: null as string | null, run: null as (() => void) | null }))
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  const open = (...args: Parameters<typeof actual.open>) => {
+    if (swap.run && String(args[0]) === swap.path) {
+      const run = swap.run
+      swap.run = null
+      run()
+    }
+    return actual.open(...args)
+  }
+  return { ...actual, open }
+})
+
 const outDirs: string[] = []
 afterEach(() => {
+  swap.path = null
+  swap.run = null
   while (outDirs.length) rmSync(outDirs.pop()!, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
@@ -223,5 +242,50 @@ describe('leitura do arquivo de trabalho não segue link na abertura (TOCTOU)', 
   it('readRegularFile recusa diretório', async () => {
     const t = await createRepo()
     await expect(readRegularFile(t.dir)).rejects.toThrow()
+  })
+})
+
+describe('cada chamador de readRegularFile recusa o arquivo trocado por link entre a checagem e a abertura', () => {
+  /** Arquivo comum no repositório que vira link para o segredo de fora justo antes da abertura. */
+  async function armar(ctx: TestContext, nome: string) {
+    if (process.platform === 'win32') ctx.skip('sem O_NOFOLLOW no Windows')
+    const t = await createRepo()
+    const o = outside()
+    const full = join(t.dir, nome)
+    writeFileSync(full, 'antes\n')
+    // macOS: tmpdir() fica em /var, que é link para /private/var. O produto abre o caminho resolvido por realpath,
+    // então o espião tem de comparar com esse caminho; senão a troca nunca acontece e o teste lê 'antes'.
+    swap.path = realpathSync.native(full)
+    swap.run = () => {
+      unlinkSync(full)
+      linkOrSkip(ctx, o.file, full, 'file')
+    }
+    return t
+  }
+
+  it('readFile não devolve o segredo de fora', async (ctx) => {
+    const t = await armar(ctx, 'troca.txt')
+    await expect(t.repo.readFile('troca.txt')).rejects.toThrow()
+    expect(swap.run).toBeNull() // a troca aconteceu: o teste passou pela janela
+  })
+
+  it('conflictDetails devolve working null, sem o segredo', async (ctx) => {
+    const t = await armar(ctx, 'troca.txt')
+    const d = await t.repo.conflictDetails('troca.txt')
+    expect(swap.run).toBeNull()
+    expect(d.working).toBeNull()
+    expect(JSON.stringify(d)).not.toContain('SEGREDO FORA')
+  })
+
+  it('untrackedDiff não monta o diff com o segredo', async (ctx) => {
+    const t = await armar(ctx, 'troca.txt')
+    await expect(untrackedDiff.call(t.repo, 'troca.txt')).rejects.toThrow()
+    expect(swap.run).toBeNull()
+  })
+
+  it('untrackedStats não conta as linhas do segredo', async (ctx) => {
+    const t = await armar(ctx, 'troca.txt')
+    expect(await untrackedStats.call(t.repo, 'troca.txt')).toEqual({})
+    expect(swap.run).toBeNull()
   })
 })
