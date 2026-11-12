@@ -261,6 +261,11 @@ describe('gate-main: não apaga develop, homolog nem main (issue #116)', () => {
     'git -C x update-ref -d refs/heads/develop',
     'git push origin ":$VAR"',
     'git push origin :$BRANCH',
+    // Issue #124 (revisão): aspas somem antes da análise, então `$B` chega como token; apagar com variável não se confere.
+    'git push origin --delete $BRANCH',
+    'git push origin -d "$B"',
+    'git push --delete origin $B',
+    'gh api -X DELETE repos/o/r/git/refs/heads/$B',
   ])('bloqueia: %s', async (comando) => {
     const r = await bash(comando)
     expect(r.code).toBe(2)
@@ -285,6 +290,7 @@ describe('gate-main: não apaga develop, homolog nem main (issue #116)', () => {
     'git push origin :heads/feature/x',
     'git push origin $BRANCH',
     'git push origin HEAD:$BRANCH',
+    'git push --dry-run origin $BRANCH',
   ])('passa: %s', async (comando) => {
     expect((await bash(comando)).code).toBe(0)
   })

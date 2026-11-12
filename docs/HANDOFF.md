@@ -38,14 +38,16 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E9 | #95 | Cherry-pick: entregas pendentes, tamanho a decidir pelo refinamento | feita | 5f2edcb | passo N de M sem processo novo; e2e 38 ok; run() não fecha a tela Conflitos; pacote 695.877 |
 | E10 | #120 | Acessibilidade: 3 controles sem nome, 5 sem foco visível | feita | cf8db35 | qa teclado 3/5 → 0/0, tetos em 0; pacote 696.098 |
 | E11 | #125 | readFile: janela TOCTOU em conflictDetails | feita | (ver git log) | openRegularFile (O_NOFOLLOW+fstat); mutação reprova; 1415 testes ok |
-| E12 | #124 | gate-main: escapes da trava de apagar branch | feita | a8911a2 | 12 casos de bloqueio novos reprovam sem a correção; gate-main 108/108; 1434 testes ok |
+| E12 | #124 | gate-main: escapes da trava de apagar branch | feita | a8911a2 + correção | 16 casos de bloqueio novos reprovam sem a correção; gate-main 113/113; 1439 testes ok |
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
 ### Última etapa fechada: E12 (#124)
 
 - **Feito**: `gate-main.sh` bloqueia push de apagar com `heads/<protegida>` (sem `refs/`), `push --delete heads/<protegida>`,
-  `git update-ref -d` em ref protegida e destino de apagar vindo de variável (não verificável). 20 casos novos em `gate-main.test.ts`.
+  `git update-ref -d` em ref protegida e apagar por variável (refspec com dois-pontos, `--delete`/`-d` com `$`, `gh api DELETE` de ref
+  com `$`). Juiz reprovou a 1ª versão (só o refspec); corrigido. Limites no cabeçalho: refspec `SRC:DST` com variável, `update-ref -d` e
+  `branch -D` com variável. 25 casos novos em `gate-main.test.ts`.
 - **Descobertas**: #134 (pasta-mãe trocada por link, ressalva da E11) e #135 (falta teste dos chamadores de `readRegularFile`).
 - **Não conferido**: `code-review`/`security-review` (sem `origin/HEAD`): revisão manual do diff.
 

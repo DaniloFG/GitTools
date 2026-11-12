@@ -13,11 +13,15 @@
 # Branches protegidas (issue #116, defesa em profundidade da regra "o Claude não apaga branches"): apagar `main`,
 # `develop` ou `homolog` bloqueia por `git push --delete`, `git push origin :ref`, `git branch -d/-D`,
 # `git update-ref -d` e `gh api -X DELETE .../git/refs/heads/<ref>`. O ref pode vir como `heads/<ref>`, sem `refs/`
-# (issue #124). O destino de apagar em variável (`git push origin :$VAR`) é bloqueado, porque não dá para conferir
-# o valor (issue #124). O proxy já responde 403 ao DELETE; o hook barra antes, com a mensagem.
+# (issue #124). O proxy já responde 403 ao DELETE; o hook barra antes, com a mensagem.
+# Apagar com destino em variável é bloqueado (issue #124), porque o valor não dá para conferir: `git push origin
+# :$VAR` (com `+` opcional), qualquer argumento com `$` num `git push --delete`/`-d` e `gh api -X DELETE` cujo
+# endpoint de branch (`/git/refs/heads`) tem `$`.
 # Limites conhecidos (heurística sobre texto, não um parser de shell): `git push` sem destino com a main
-# já checada fora, `gh pr edit --base main` e `gh api --input arquivo.json` não são inspecionados. Destino em variável
-# que não apaga (`git push origin $BRANCH`, `HEAD:$X`) e `git update-ref -d $VAR` também não: o valor não é lido.
+# já checada fora, `gh pr edit --base main` e `gh api --input arquivo.json` não são inspecionados.
+# Também não são verificados, porque o valor da variável não é lido: `git push origin "$SRC:$DST"` (apaga DST se
+# SRC estiver vazio, sem `--delete`), destino em variável que não apaga (`git push origin $BRANCH`, `HEAD:$X`),
+# `git update-ref -d $VAR` e `git branch -D $VAR`. Um `refs/remotes/origin/<outra>` apagado por update-ref passa.
 entrada=$(cat)
 
 # Caminho comum: ferramenta que não é do GitHub MCP nem Bash sai aqui, sem abrir jq nem gh.
@@ -251,6 +255,8 @@ analisar_git() {
       -*) ;;
       *)
         if [[ $tok =~ $re_apaga_variavel ]]; then bloquear_apagar "git push apagando por variável ($tok): o destino não dá para conferir."; fi
+        # Issue #124 (revisão): com --delete/-d, qualquer argumento com `$` (remoto ou ref) não dá para conferir.
+        if [ "$apaga_push" = 1 ] && [[ $tok == *'$'* ]]; then bloquear_apagar "git push --delete/-d com variável ($tok): o nome da branch não dá para conferir."; fi
         if [[ ${tok#+} =~ ^:(refs/)?(heads/)?(main|develop|homolog)$ ]]; then bloquear_apagar "git push apagando a branch protegida (${tok#*:})."; fi
         if [ "$apaga_push" = 1 ] && [[ $tok =~ $re_protegida_push ]]; then bloquear_apagar "git push --delete na branch protegida $tok."; fi
         ;;
@@ -337,6 +343,10 @@ gh_api() { # endpoint metodo [campos...]
   # Apagar branch protegida pela API de refs (inclui o `/` codificado como %2F).
   if [ "$metodo" = DELETE ] && [[ $ep =~ /git/refs/(heads(/|%2[Ff]))(main|develop|homolog)$ ]]; then
     bloquear_apagar "gh api DELETE na branch protegida ${BASH_REMATCH[3]}."
+  fi
+  # Issue #124 (revisão): DELETE de ref com variável no endpoint (`refs/heads/$B`) não dá para conferir o nome.
+  if [ "$metodo" = DELETE ] && [[ $ep == */git/refs/heads* ]] && [[ $ep == *'$'* ]]; then
+    bloquear_apagar "gh api DELETE com variável no endpoint de branch ($ep)."
   fi
   case "$metodo" in PUT|POST|PATCH) ;; *) return 0 ;; esac
   # (d) mudar a base para a main, por campo (-f base=main) ou por JSON ("base": "main").
