@@ -16,7 +16,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E7`
+**A seguir:** `E8` (ler `docs/ESBOCO-CONFLITOS.md`, aprovado pelo juiz)
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
@@ -27,21 +27,17 @@ fechada está na mensagem do commit dela.
 | E4 | #92 fluxo de conflito: lista lenta e modal que fecha | fechada | `adfec47` | modal de 3 opções: aparecia, some; salvar+refresh 9 → 3 processos git |
 | E5 | #95 investigação: medir cherry-pick e `rerere` | fechada | `b544667` | 3 processos por parada (início 5); teto travado em teste; números na #95 |
 | E6 | #95 implementar os caminhos decididos (seção 5) | fechada | `80caaea`, `4ed4c12` | `orderCommits` em empate de data corrigido; continuar automático + reaproveitar decisão; 1010 testes verdes, pacote 689.842/700.000 |
-| E7 | #96 esboço da tela Conflitos | a fazer | | |
+| E7 | #96 esboço da tela Conflitos | fechada | ver commit | `docs/ESBOCO-CONFLITOS.md` (147 linhas), juiz APROVADO na 2ª rodada |
 | E8-E10 | #96 implementação em incrementos | depende de E4, E6, E7 | | |
 | E11 | #98 Tour: desenho e lista de passos | a fazer | | |
 | E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
 
-### Última etapa fechada: `E6` (#95, implementação)
+### Última etapa fechada: `E7` (#96, esboço)
 
-- **`orderCommits`**: `--no-walk` ignora `--topo-order`; empate de `%ct` reordena por pais diretos (Kahn, qualquer tamanho, 0 processo);
-  pai direto sem processo, senão `merge-base --is-ancestor`). Sem empate: 1 `rev-list`, 3 processos (travado em teste).
-- **UI**: `conflictFlow.ts` (puro, 19 testes) + `OperationBanner`; setting `autoContinueConflicts` (default false) só em
-  Settings > Geral. Reaproveitar decisão: resumo com Aplicar/Ignorar, teto 200, nunca silencioso.
-- **Não conferido**: banner na tela (`run-gittools`) e `ui.mjs`; sem teste de componente. `code-review` e
-  `security-review` formais não rodaram (sem mudança de IPC; `merge-base` só recebe shas validados).
-- **Dívida**: checkbox no próprio banner exigiria `updateSettings` no contexto (App.tsx); decisão só é lembrada quando
-  o usuário resolve pelo banner, não pelo `ConflictEditor`.
+- `docs/ESBOCO-CONFLITOS.md`: tela, entradas/saída, banner, duas configurações (`conflictSummary`, `conflictStartup`), módulos puros,
+  incrementos E8-E10 e cinco decisões do modo fábrica. Só documento: nenhum código, nada medido, sem typecheck/testes.
+- Juiz reprovou a 1ª versão (questões deixadas ao dono, janela E8/E9 sem onde resolver, gatilho de fechar ambíguo); corrigido e aprovado.
+- **Remover `docs/ESBOCO-CONFLITOS.md` no encerramento** (`git rm`), junto do HANDOFF.
 
 ## 3. Base de medição
 
@@ -52,8 +48,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 
 ### Etapas seguintes (detalhar quando destravadas)
 
-- **E7** (#96): esboço da tela Conflitos (lista, operação, editor embutido, duas configurações) para o juiz aprovar.
-- **E8-E10** (#96): lista e estado da operação; editor embutido; seção "Conflitos" em Settings; banner informativo.
+- **E8-E10** (#96): detalhados na seção 8 de `docs/ESBOCO-CONFLITOS.md` (E8 lista/estado, E9 editor embutido, E10 seção Conflitos).
 - **E11** (#98): lista final de recursos e ordem dos passos (juiz aprova); desenho do convite e do cartão.
 - **E12-E13** (#98): infraestrutura sob demanda (chunk separado, `data-tour`, convite); depois conteúdo nos seis idiomas
   e teste "todo alvo existe". Medir pacote da primeira carga e CPU 4×.
@@ -68,7 +63,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
   `gt-juiz`; o que ele não resolve vira issue de retrabalho, e a próxima etapa segue.
 - **E6**: entram "continuar automático" e "reaproveitar decisão", com resumo antes de confirmar (nunca silencioso).
   `rerere` só opcional, desligado por padrão, e só se a investigação (E5) provar segurança.
-- **E7**: a tela segue a descrição da issue #96; o `gt-juiz` aprova o esboço.
+- **E7**: tela é `ScreenId` fora de `SCREEN_VIEWS`; sem pilha de telas (`conflictReturnView`); tipo de conflito sai do XY do `status` (sem processo); "renomeado" fora.
 - **E11**: cobertura = tudo que o usuário usa, exceto Settings (só passada rápida), como na issue #98.
 - **#93**: reprodução em `scripts/readme-media/lib.mjs` com `layout: { dock }` exige `changes.unstaged` ativo (clicar a aba); `placeMissing` põe `commit.message` no grupo. Reabrir só com passos do dono. #99: retrabalho de link em `untrackedDiff`/`conflictDetails` (fora do plano; pode entrar antes de E4/E5).
 - **Tela do Dashboard**: roteiro de repro em scratchpad usa `launch` + `.dashboards-tab` + `.dash-people > button`; `elementFromPoint` prova cobertura. `.dash-filters` z 20 empata com `.modal-backdrop`; o modal vence pela ordem do DOM (conferido).
