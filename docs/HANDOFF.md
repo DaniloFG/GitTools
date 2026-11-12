@@ -43,14 +43,12 @@ juntas fecham a #108 (mutações de #92, #93, #94, #97).
 
 ### Última etapa fechada
 
-Nenhuma ainda. O planejamento (sessão de entrada) criou #139 e as sub-issues #143 a #151, mais as descobertas
-#140 (`.wip-open` a 320 px), #141 (`ui.mjs` sem Conflitos/Tour) e #142 (`origin/HEAD`). A candidata (c) do ENC da #131
-já era a #132. Não conferido: nada foi executado além do planejamento.
+Nenhuma. O planejamento criou #139, as sub-issues #143 a #151 e as descobertas #140, #141, #142 (a candidata (c)
+do ENC da #131 já era a #132). Nada foi executado além do planejamento.
 
 ## 3. Base de medição
 
-Não se aplica ao planejamento. As etapas E3, E4 e E6 tiram a própria base (`medir`) no `3f0239b` (homolog) antes de
-mexer: `node scripts/perf/core.mjs moderate`, `node scripts/perf/ui.mjs 4 moderate`, `npm run perf:bundle`.
+Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
 
@@ -140,22 +138,16 @@ mexer: `node scripts/perf/core.mjs moderate`, `node scripts/perf/ui.mjs 4 modera
 
 - 2026-11-12: a plataforma não designou branch (HEAD solto na `homolog`); criada `chore/plano-4-provas` a partir de
   `3f0239b`. `git remote set-head origin -a` falha sem `origin/main` buscado; usei `git fetch origin main` primeiro.
-- 2026-11-12: a #92 aparece como `status:planejada` embora tenha comentário de revisão; a E5 corrige o rótulo
-  (ler os rótulos antes: a atualização substitui todos).
-- 2026-11-12: #133 e a regra "nasce da main" são do dono; este plano segue o pedido (nasce da homolog).
+- 2026-11-12: #92 está `status:planejada` apesar da revisão; a E5 corrige o rótulo. #133 é do dono (base da branch).
 - A #108 só fecha depois de E5, E8 e E9 (mutações de #92, #93, #94, #97).
 
 ## 6. Encerramento
 
 Só com a palavra do dono de que o trabalho acabou.
 
-- [ ] Todas as etapas fechadas; pendências viraram etapa, issue ou foram aceitas pelo dono
-- [ ] Documentação que o trabalho tornou falsa foi corrigida (`docs/PERFORMANCE.md`, README, `CLAUDE.md`, `.claude/`)
-- [ ] `git rm docs/HANDOFF.md`
-- [ ] Worktree usado removido, depois do último push (`git worktree remove <caminho>` e `git worktree prune`)
-- [ ] `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension` e `npm run perf:bundle` verdes
-- [ ] Resumo para o PR: o que mudou, antes e depois medidos, o que não foi conferido
-- [ ] Issues das etapas validadas (evidência comentada, `status:validada`, fechadas); issue-mãe #139 fechada por último
-- [ ] PR branch → `develop` mergeado e validado; `git rm docs/HANDOFF.md` em commit; PR da mesma branch → `homolog`
-  (rótulo `validada-develop`) mergeado e validado; PR `homolog` → `main` aberto e deixado ao dono
-  (`.claude/rules/github.md`); SHA da ponta registrado na descrição do PR da homolog; lista de branches para o dono apagar
+- [ ] Etapas fechadas; pendências viraram etapa, issue ou foram aceitas pelo dono; documentação corrigida
+- [ ] `git rm docs/HANDOFF.md` (último commit); worktree removido (`git worktree remove`, `git worktree prune`)
+- [ ] `typecheck`, `npm test`, `build`, `build:extension` e `perf:bundle` verdes; resumo para o PR
+- [ ] Issues validadas (evidência por critério, `status:validada`, fechadas); a mãe #139 por último
+- [ ] PR → `develop` e validar; mesma branch → `homolog` (`validada-develop`) e validar; `homolog` → `main` só aberto
+  (`.claude/rules/github.md`); SHA da ponta na descrição do PR da homolog; branches para o dono apagar
