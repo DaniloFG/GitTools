@@ -23,7 +23,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E5`
+**A seguir:** `E6`
 
 | Etapa | Issue | Objetivo | Orquestra | Estado | Commit |
 | --- | --- | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ fechada está na mensagem do commit dela.
 | E2 | #144 (#135) | Teste por chamador de `readRegularFile` (link no lugar do arquivo) | sonnet | fechada | 7a308ce |
 | E3 | #145 (#134) | Corrida da pasta-mãe trocada por link: fechar ou documentar | topo | fechada (documentada) | f7ce096 |
 | E4 | #146 (#132) | Aviso externo logo após ação da interface (`isOwnEcho`) | topo | fechada | 4b9f8e5 |
-| E5 | #147 (#92, #95) | Provas de conflitos e cherry-pick | topo | a fazer | |
+| E5 | #147 (#92, #95) | Provas de conflitos e cherry-pick | topo | fechada | bf8dd18 |
 | E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | a fazer | |
 | E7 | #149 (#96) | Conflitos: merge por Alterações, 320 px, hi/ar/zh-CN | topo | a fazer | |
 | E8 | #150 (#93, #94, #108) | Rolagem do Changes e empilhamento do combobox | topo | a fazer | |
@@ -41,29 +41,17 @@ Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede 
 
 ### Última etapa fechada
 
-**E4** (4b9f8e5): o backend manda `repo:changed { root, external }`; `external` vem de 5 `fs.stat` (HEAD, index,
-packed-refs, refs, refs/heads; `src/backend/gitSignature.ts`) contra a assinatura deixada pelo último comando próprio de
-escrita; `external` nunca é eco (`isOwnEcho`). Sem processo git novo. typecheck verde; `npm test` 1474; e2e 39 cenários com
-`changes-alteracao-externa-apos-acao` (reprova no produto anterior); `perf:bundle` 695.635 / 696.201. Mutação: testes de
-unidade, multiRepo e o e2e reprovam sem a mudança (cópias fora do repo). Não conferido: custo dos stats em ms.
-Limites aceitos: subpastas de refs e tags fora da assinatura; externo que cai dentro de um comando próprio de escrita é
-absorvido; ordem dos avisos (`announceSeq`) sem teste.
+**E5** (bf8dd18): só teste, produto intacto. `conflito-cherry-pick-sequencia` compara `HEAD^{tree}` com o fluxo refeito
+à mão (reprova ao mudar a 3ª parada). `adfec47` existe após `git fetch --unshallow`: `conflict-save.mjs` dá 9 processos
+em `adfec47^` (FALHA) e 3 em `adfec47`. Mutação A no HEAD passa 39/39 (inalcançável: `closeEditor` estável); C1 reprova
+os 4 cenários novos e `salvar`; B reprova `salvar`/`a-mao`; N reprova `nosso`/`deles`/`muitos`. `security-review` do
+`5f2edcb`: sem achados. Não conferido: `sequencer/todo` só no git 2.43.0 (limite aceito); typecheck/`npm test` (só .mjs).
 
 ## 3. Base de medição
 
 Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
-
-### Etapa E5 — provas de conflitos e cherry-pick (#147, #92, #95)
-
-- **Orquestra**: topo. **Depende de**: E1.
-- **Arquivos prováveis**: pouco ou nenhum produto; cenários em `scripts/validacao/e2e/cenarios/` (`conflito-*`).
-- **Ler antes**: comentários da #92 e da #95 (ler nas issues); `scripts/readme-media/conflict-save.mjs`.
-- **Aceite**: mutação de `adfec47` em worktree do commit anterior à E9 da #96 reprova `conflito-resolver-salvar`
-  (ou inalcançável hoje, com motivo); processos "antes 9 / depois 3" reexecutados; 4 cenários novos vistos reprovando
-  contra produto quebrado; #95: `security-review` real e `HEAD^{tree}` igual ao do fluxo manual.
-- **Testes**: e2e + mutação. **Segurança**: sim (#95).
 
 ### Etapa E6 — `ui.mjs` com Conflitos e Tour (#148, #141, #96, #98)
 
@@ -112,6 +100,9 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
 - 2026-11-12 (E4): `createRepo().git` e `app.git` passam por `runGit` e o backend os conta como PRÓPRIOS; alteração
   externa em teste/e2e usa `execFile('git', …)`. `.mjs` não é pego por typecheck/vitest: `node --check` (crase em
   `String.raw` do harness quebrou o e2e). `comparablePath` (realpathSync) não entra no caminho do comando.
+
+- 2026-11-12 (E5): o clone vem raso; `git fetch --unshallow origin` antes de procurar commit antigo. Mutação em worktree em
+  `$scratchpad/wt/*` com `node_modules` por link; `git worktree remove --force` ao fim. O e2e não tem filtro: roda os 39.
 
 ## 6. Encerramento
 
