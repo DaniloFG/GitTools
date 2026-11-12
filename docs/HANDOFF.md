@@ -23,7 +23,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E9` — Cherry-pick de vários commits (#95)
+**A seguir:** `E10` — Acessibilidade (#120)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -35,20 +35,21 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E6 | #109 | 5 execuções iguais do e2e-desempenho após a recalibração | feita | (ver git log) | 5/5 ok; quadro 31,6-44,9 ms; carga a frio 587-675 ms; tetos intactos |
 | E7 | #98 | Tour: cenário e2e, foco e Esc, zero git, CPU 4× | feita | (ver git log) | e2e 33 ok, zero git; bug de foco achado e corrigido; pacote 695.255 |
 | E8 | #96 | Conflitos: itens não conferidos (1500 conflitos, Esc, medições) | feita | 15c13e4 | e2e 37 ok; 1500 conflitos: 41 linhas, 3880 nós, 0 git; Esc corrigido; escolhas preservadas |
-| E9 | #95 | Cherry-pick: entregas pendentes, tamanho a decidir pelo refinamento | a fazer | | |
+| E9 | #95 | Cherry-pick: entregas pendentes, tamanho a decidir pelo refinamento | feita | 5f2edcb | passo N de M sem processo novo; e2e 38 ok; run() não fecha a tela Conflitos; pacote 695.877 |
 | E10 | #120 | Acessibilidade: 3 controles sem nome, 5 sem foco visível | a fazer | | |
 | E11 | #125 | readFile: janela TOCTOU em conflictDetails | a fazer | | |
 | E12 | #124 | gate-main: escapes da trava de apagar branch | a fazer | | |
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: E8 (#96)
+### Última etapa fechada: E9 (#95)
 
-- **Feito**: 4 cenários e2e (`conflito-escala`, `-configuracoes`, `-editor-esc`, `-escolhas-preservadas`); bug real: Esc
-  no editor embutido não fechava nada (corrigido em `ConflictsScreen.tsx`, cenário reprovava antes); escolhas por trecho
-  agora sobrevivem à troca de arquivo (`conflictDrafts.ts`, teto 50, mutação reprova). typecheck, 1408 testes, build, `perf:bundle` verdes.
-- **Não conferido**: `ui.mjs 4` com a tela Conflitos aberta (o roteiro não a abre); `core.mjs` não tem `--trace`; merge
-  concluído pelo commit de Alterações; 320 px; hi/ar/zh-CN sem revisão humana. #96 fica `em-revisao` com isso dito.
+- **Feito**: `operationState` dá `step/total` do cherry-pick lendo `sequencer/todo` (total vem de `cherryPickCommits`,
+  só vale se o todo é o da sequência do app); título da tela Conflitos mostra o passo; bug real: `run()` mandava ao
+  Changes quando o continue parava de novo, fechando a tela (cenário `conflito-cherry-pick-sequencia` reprovava).
+  typecheck, 1412 testes, build, `perf:bundle` (695.877) verdes; e2e 38 ok. Teto de 3 processos por parada já existia.
+- **Não conferido**: `security-review` como skill falhou (sem `origin/HEAD`), feita à mão; formato do todo só no git 2.43;
+  sequência iniciada fora do app não mostra passo (limite aceito); `rerere` fora (sub-issue opcional, baixa, não criada).
 
 ## 3. Base de medição
 
@@ -60,12 +61,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
 
-### Etapa E9 — Cherry-pick de vários commits (#95)
-
-- **Orquestra**: topo. **Segurança**: sim (caminhos e conflitos). **Aceite**: o do refinamento do `gt-planejador`
-  (continuar automático com progresso, reaproveitar decisão, `rerere` opcional, orçamento de 3 processos por parada,
-  progresso "commit N de M" no cherry-pick). Refinado: Média; `orderCommits` e auto-continue/reaproveitar já existem;
-  `rerere` NÃO entra (sub-issue opcional, baixa). **Depende de**: E8.
 ### Etapa E10 — Acessibilidade (#120)
 
 - **Orquestra**: topo. **Aceite**: 0 controles sem nome acessível e 0 focáveis sem foco visível; o teto em
@@ -105,6 +100,7 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 - E6: `build:extension` antes do `qa.mjs` (o dist não segue o código); 5 execuções levam ~1 min cada.
 
 - E7: `ui.mjs 4 moderate` não abre o Tour; medir o Tour aberto exigiria roteiro novo (candidato a issue `descoberta`).
+- E9: `git checkout -p` sem tty trava o shell; `conflictResult` de uma recusa também traz conflitos (não use como sinal de sequência nova); `operationState` na entrada de `cherryPickCommits` custa um `rev-parse` e reprova o teto de processos.
 - E8: o runner e2e não filtra por id (suíte inteira ~80 s); `ui.mjs` não abre Conflitos; aviso do watcher logo após ação da própria interface é descartado por 1 s (`isOwnEcho`, App.tsx): issue descoberta.
 
 ## 6. Encerramento
