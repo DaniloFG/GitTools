@@ -1,6 +1,6 @@
 // Passeio guiado pela interface (issue #98): a lista de passos, os saltos, a saída e o progresso. Lógica pura, sem
 // React, para ser testada direto (tests/tour.test.ts). O cartão e o destaque ficam no componente; os textos, em
-// tourText.ts. Desenho: docs/DESENHO-TOUR.md (seções 2 a 5 e 7).
+// tourText.ts.
 
 import { TOP_SCREEN_IDS } from './screenVisibility'
 

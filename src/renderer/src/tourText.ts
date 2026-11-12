@@ -1,5 +1,5 @@
 // Textos do passeio (issue #98). Ficam fora do catálogo comum: cada idioma é um pedaço do pacote (import()),
-// baixado só quando o Tour precisa dele (a folga da primeira carga é pequena; docs/DESENHO-TOUR.md, seção 5).
+// baixado só quando o Tour precisa dele (a folga da primeira carga é pequena).
 // A reserva é o inglês. Sem React: quem desenha chama `loadTourTexts` e depois `tourT`.
 
 import { DEFAULT_LOCALE, getLocale, type LocaleId } from '../../shared/i18n'

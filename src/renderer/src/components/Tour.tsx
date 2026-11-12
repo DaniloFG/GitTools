@@ -5,7 +5,7 @@ import { advance, markSeen, parseSeen, placeCard, progressOf, restoreTarget, set
 import { loadTourTexts, tourT } from '../tourText'
 import './tour.css'
 
-// Passeio guiado (issue #98, docs/DESENHO-TOUR.md seção 7). Este módulo é um pedaço à parte do pacote (lazyScreens.ts):
+// Passeio guiado (issue #98). Este módulo é um pedaço à parte do pacote (lazyScreens.ts):
 // fechado, o Tour não custa nada. Aberto: um destaque fixo, um cartão e nenhum ouvinte na window além do `resize`.
 // Nunca clica em nada do app nem executa ação de git; o único efeito fora dele é abrir a tela de um passo (`onOpenView`).
 
