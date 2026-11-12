@@ -68,6 +68,15 @@ recurso (skill, agente, modelo) cada parte pede.
 - **Toda sessão termina de um de dois jeitos**: entregue e verificado, ou com o estado escrito no `docs/HANDOFF.md`
   para outra continuar. Trabalho pela metade só na conversa não existe.
 
+## Autonomia e consulta ao juiz
+
+- Quando o dono dá autonomia sobre o repositório (ex.: "implemente as issues"), a sessão decide e age sozinha dentro
+  das regras deste guia: triagem, branch, código por subagente, testes, commit e push na branch designada. Pergunta
+  ao dono só o que é dele (escopo, prioridade entre issues, subir teto de orçamento); PR só quando ele pedir.
+- **Dúvida de desenho, verificação que diverge ou diff arriscado: consulte o `gt-juiz`** antes de seguir ou de
+  perguntar ao dono. Ele só dá o veredito; quem decide e executa é a sessão. Registre a decisão no commit ou HANDOFF.
+- Issues do GitHub entram em ordem de risco (segurança, bug, funcionalidade nova); uma issue, um incremento commitado.
+
 ## Recursos certos para cada pedido
 
 Antes de fazer à mão, veja se a lista de skills da sessão cobre o pedido. Skill citada aqui e ausente dela: faça à
