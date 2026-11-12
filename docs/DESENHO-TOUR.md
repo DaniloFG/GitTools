@@ -39,7 +39,7 @@ vêm dos arquivos citados; o que é estimativa está marcado como hipótese.
 | 16 | files | Files | `data-view="files.list"` | existente, `Dock.tsx:282` | Os arquivos rastreados; abra um para ver histórico e conteúdo. | com repo |
 | 17 | compare | Compare | `data-view="compare.setup"` | existente, `Dock.tsx:282` | Escolha duas referências (branches, tags ou commits) para comparar. | com repo |
 | 18 | branches | Branches | `data-view="branches"` | existente, `Dock.tsx:282` | Branches, tags e stashes: troque de branch e veja o que existe. | com repo |
-| 19 | gitlog | Git Log | `data-view="gitlog"` | existente, `Dock.tsx:282` | A visão de log do histórico (texto a confirmar com o dono em E13). | com repo |
+| 19 | gitlog | Git Log | `data-view="gitlog"` | existente, `Dock.tsx:282` | Os comandos git que o GitTools executou, com cópia de cada um. | com repo |
 | 20 | dashboards | Dashboards | `data-tour="dashboards"` | `Screens.tsx:110` | Gráficos e números do repositório; o passeio só mostra a aba, não abre a tela. | com repo |
 
 Notas:
@@ -66,7 +66,7 @@ vistos, e a próxima vez com repositório retoma nos que faltam.
 - **Dock em `left`, `right` ou `bottom`** (e `top`, que também existe em `dock.ts:101`): o alvo é achado pelo seletor no
   documento inteiro, então o lado não muda a regra. O cartão vai para o lado do alvo com mais espaço, nunca por cima dele.
 - **Passos 12 a 19 trocam de tela** pelo mesmo caminho do clique na aba (`openScreen`, `App.tsx:918-922`). Não há ação
-  de git nem de dados; é a única exceção a "só mostra". Decisão para o dono.
+  de git nem de dados; é a única exceção a "só mostra". Decidido: aprovada, coberta pela regra de saída.
 - **Saída**: ao sair (Sair, Esc ou fim do passeio), a tela e o estado de Dashboards voltam ao que eram ao começar.
   O módulo de passos guarda os dois valores iniciais e tem teste para a saída em qualquer passo.
 
@@ -75,7 +75,7 @@ vistos, e a próxima vez com repositório retoma nos que faltam.
 - **Onde**: no Welcome, cartão pequeno abaixo dos botões (`Welcome.tsx:73-74`), sem cobrir Abrir, Clonar ou
   Configurações. Título "Quer um passeio pela interface?"; botões "Fazer o Tour" e "Agora não".
 - **Quando aparece**: `tourOffer` é `'pending'` **e** não há repositório recente. Quem já usa o app não recebe o convite
-  depois de atualizar (decisão proposta; o dono confirma).
+  depois de atualizar.
 - **Chave nova**: `tourOffer: 'pending' | 'accepted' | 'dismissed'`, padrão `'pending'`. Entra em `Settings`
   (`shared/settings.ts:80`, depois de `conflictStartup`), em `DEFAULT_SETTINGS` (`:85`) e em `normalizeSettings`
   (`:132`): valor fora da lista volta a `'pending'`. "Fazer o Tour" grava `accepted`; "Agora não" grava `dismissed`.
@@ -127,7 +127,7 @@ vistos, e a próxima vez com repositório retoma nos que faltam.
 | **E13** revisão e verificação | revisão dos textos nos seis idiomas; testes "todo passo tem texto nos 6 idiomas" e "todo alvo existe"; roteiro na tela com `run-gittools` | conferência na tela (com e sem repositório, 320/480/640 px, claro e escuro, console sem erro); medições da seção 9 |
 
 Divergência com o pedido: o typecheck exige os seis textos de cada passo, então eles entram em E12, e E13 fica com
-revisão, testes de conteúdo e medições. Alternativa (E12 sem textos, E13 com todos): o juiz escolhe.
+revisão, testes de conteúdo e medições.
 
 ## 9. Medições e riscos
 
@@ -143,7 +143,7 @@ revisão, testes de conteúdo e medições. Alternativa (E12 sem textos, E13 com
   chunk carregado só com `tourOffer` em `pending`; medir antes.
 - A extensão do VS Code usa a mesma interface. Onde ela grava `tourOffer` é critério de aceite da E12, com teste de
   integração; não é dúvida aberta.
-- O texto de `gitlog` (passo 19) precisa de confirmação do dono.
+- O texto do passo 19 sai do código de `GitLogView.tsx`; a E13 revisa os textos como os demais, sem esperar o dono.
 
 **Não será feito**: nenhuma ação (clicar em botão, abrir repositório, buscar, puxar, enviar, comando git); nenhum atalho
 de teclado, dependência nova, vídeo ou print; nenhum passo por configuração nem sobre as abas de repositório

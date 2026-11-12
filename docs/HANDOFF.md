@@ -16,7 +16,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E11` (#98, desenho do Tour: lista de passos aprovada pelo `gt-juiz`)
+**A seguir:** `E12` (#98, infraestrutura do Tour, conforme `docs/DESENHO-TOUR.md`, seção 8)
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
@@ -31,15 +31,14 @@ fechada está na mensagem do commit dela.
 | E8 | #96 tela Conflitos: lista, estado, rodapé | fechada | `9af47be` | pacote JS 689.842 → 693.527/700.000; 60 conflitos: 41 linhas montadas, 1.169 nós |
 | E9 | #96 editor embutido, banner informativo, F8, abas | fechada | `1fc81c2` | pacote JS 691.046/700.000; salvar+refresh 3 processos git; 320/480/640 sem rolagem horizontal |
 | E10 | #96 seção Conflitos nas configurações | fechada | `485aebb` | pacote JS 692.522/700.000; 1159 testes verdes |
-| E11 | #98 Tour: desenho e lista de passos | a fazer | | |
-| E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
+| E11 | #98 Tour: desenho e lista de passos | fechada | ver commit | `docs/DESENHO-TOUR.md` (150 linhas), 20 passos; juiz: 1ª rodada reprovou, 2ª só pediu fim de decisões abertas, aplicado |
+| E12-E13 | #98 Tour: infraestrutura (com textos dos 6 idiomas) e revisão/medições | a fazer | | |
 
-### Última etapa fechada: `E10` (#96, seção Conflitos)
+### Última etapa fechada: `E11` (#98, desenho do Tour)
 
-- `conflictSummary` e `conflictStartup` em `Settings` (tipos em `shared/settings.ts`, reexportados por `conflictScreenPolicy.ts`); `ConflictsSection` (ícone ⚔, searchable) com os dois selects e `autoContinueConflicts` movido da Geral. Partida lê `settingsRef.current.conflictStartup`; `ConflictsScreen` fecha ao fim da operação com `shouldCloseAfterResolve` (marca em ref).
-- Verificado: typecheck, 1159 testes, builds, `perf:bundle` (692.522/700.000).
-- **Não conferido**: seção e fechamento automático na tela; traduções hi/ar/zh-CN sem revisão; sem teste de `SETTINGS_SECTIONS` (sections.tsx fora do tsconfig.node). Aviso ao trocar de arquivo com edição (limitação da E9) ficou de fora: retrabalho.
-- **Remover `docs/ESBOCO-CONFLITOS.md` no encerramento** (`git rm`), junto do HANDOFF.
+- `docs/DESENHO-TOUR.md` (só documentação): 20 passos, 3 sem repositório; convite no Welcome com `tourOffer` (`pending|accepted|dismissed`) só sem repositório recente; botão Tour no Welcome e seção `tour` nas configurações; passos 12-19 trocam de tela (volta ao estado inicial ao sair); passo 20 só mostra a aba; textos em `messages/tour/<idioma>.ts` (chunks `tour-<idioma>`), E12 leva os 6 idiomas.
+- Verificado: só `wc -l`/grep no documento; sem código, sem typecheck novo. **Não conferido**: custo em bytes do convite (hipótese ~3 KB de 7.478 de folga), `tourOffer` na extensão (critério de aceite da E12).
+- **Remover `docs/DESENHO-TOUR.md` no encerramento** (`git rm`), junto do HANDOFF e do `ESBOCO-CONFLITOS.md`.
 
 ## 3. Base de medição
 
@@ -50,9 +49,8 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 
 ### Etapas seguintes (detalhar quando destravadas)
 
-- **E11** (#98): lista final de recursos e ordem dos passos (juiz aprova); desenho do convite e do cartão.
-- **E12-E13** (#98): infraestrutura sob demanda (chunk separado, `data-tour`, convite); depois conteúdo nos seis idiomas
-  e teste "todo alvo existe". Medir pacote da primeira carga e CPU 4×.
+- **E12** (#98): `docs/DESENHO-TOUR.md` seção 8 (módulo puro, `data-tour`, chunk, convite, `tourOffer` + extensão, seção, 6 idiomas). Medir pacote cedo.
+- **E13** (#98): revisão dos textos, testes "todo passo tem 6 idiomas" e "todo alvo existe", `run-gittools`, medições (seção 9).
 
 ## 5. Decisões e armadilhas
 
