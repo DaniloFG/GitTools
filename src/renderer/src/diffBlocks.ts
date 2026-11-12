@@ -101,3 +101,25 @@ export function rowKeys(file: FileDiff, row: DiffRow): LineKey[] {
   if (row.right !== null && hunk.lines[row.right].kind !== 'context') keys.push(lineKey(row.hunk, row.right))
   return keys
 }
+
+/** Teto da largura do código sem quebra (em caracteres): uma linha minificada de megabytes não vira uma tabela gigante. */
+const CODE_CH_MAX = 5000
+
+/**
+ * Comprimento, em caracteres, da maior linha de código do arquivo, para dar às tabelas sem quebra uma largura
+ * única (`--code-ch`). Uma passada pelos dados do arquivo, feita só quando a quebra está desligada. O tab conta
+ * como 8 colunas (o `tab-size` padrão) e há uma folga para o marcador de "sem quebra de linha no fim". Texto
+ * além do teto, ou mais largo que o cálculo (ex.: ideogramas), só transborda da tabela e continua rolável.
+ */
+export function longestCodeChars(hunks: FileDiff['hunks']): number {
+  let max = 0
+  for (const hunk of hunks) {
+    for (const line of hunk.lines) {
+      const text = line.content
+      let width = text.length
+      for (let at = text.indexOf('\t'); at !== -1; at = text.indexOf('\t', at + 1)) width += 7
+      if (width > max) max = width
+    }
+  }
+  return Math.min(max + 2, CODE_CH_MAX)
+}

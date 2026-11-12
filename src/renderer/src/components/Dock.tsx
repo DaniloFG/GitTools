@@ -43,9 +43,12 @@ export interface ViewMeta {
 /** Faixa junto às bordas da janela onde soltar um painel o encaixa naquele lado. */
 const EDGE = 28
 const THRESHOLD = 5
-/** Menor tamanho a que arrastar uma divisória leva um painel. */
+/**
+ * Menor tamanho a que arrastar uma divisória leva um painel. Na altura (#160) cabem a barra de abas, o cabeçalho do
+ * arquivo e do trecho e ao menos uma linha do diff: com 80px sobravam só os cabeçalhos e o diff parecia vazio.
+ */
 const MIN_WIDTH = 140
-const MIN_HEIGHT = 80
+const MIN_HEIGHT = 140
 /** Em janelas muito pequenas os painéis encolhem até este tamanho, todos juntos, em vez de sair da tela. */
 const SQUEEZE_WIDTH = 48
 const SQUEEZE_HEIGHT = 40

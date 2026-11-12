@@ -67,6 +67,8 @@ export const DIFF_MAX_BYTES = 4 * 1024 * 1024
 /** Opções comuns a qualquer diff. */
 interface DiffSourceOptions {
   path?: string
+  /** Caminho anterior de um arquivo renomeado: entra no pathspec para o git achar a renomeação. */
+  oldPath?: string
   /** Mostra o arquivo inteiro (todo o contexto), não só as linhas em volta das alterações. */
   fullFile?: boolean
   /** "Mostrar mesmo assim": diff sem o teto DIFF_MAX_BYTES. */

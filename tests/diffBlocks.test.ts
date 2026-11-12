@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { FileDiff, DiffHunk, DiffLine } from '../src/shared/types'
 import { lineKey, splitRows } from '../src/shared/diffKeys'
-import { BLOCK_ROWS, buildRows, changeBlocks, chunkRows, rowKeys, rowKind, type DiffRow } from '../src/renderer/src/diffBlocks'
+import { BLOCK_ROWS, buildRows, changeBlocks, chunkRows, longestCodeChars, rowKeys, rowKind, type DiffRow } from '../src/renderer/src/diffBlocks'
 import { marksFromRows, type RulerIndexRow } from '../src/renderer/src/changeRuler'
 
 const line = (kind: DiffLine['kind'], content: string, oldLine: number | null, newLine: number | null): DiffLine => ({ kind, content, oldLine, newLine })
@@ -173,5 +173,32 @@ describe('marcas da régua a partir das linhas', () => {
       { top: 0.2, height: 0.4, kind: 'mod' },
       { top: 0.9, height: 0.1, kind: 'add' }
     ])
+  })
+})
+
+describe('longestCodeChars (largura do diff sem quebra de linha)', () => {
+  const hunk = (...contents: string[]): DiffHunk => ({
+    oldStart: 1,
+    oldCount: contents.length,
+    newStart: 1,
+    newCount: contents.length,
+    section: '',
+    lines: contents.map((c, i) => line('context', c, i + 1, i + 1))
+  })
+
+  it('sem linhas, só a folga de 2 caracteres', () => {
+    expect(longestCodeChars([])).toBe(2)
+  })
+
+  it('pega a maior linha de todos os hunks, mais a folga', () => {
+    expect(longestCodeChars([hunk('abc', ''), hunk('abcdefghij')])).toBe(12)
+  })
+
+  it('cada tab conta como 8 colunas', () => {
+    expect(longestCodeChars([hunk('\t\tx')])).toBe(3 + 14 + 2)
+  })
+
+  it('respeita o teto de 5000 caracteres', () => {
+    expect(longestCodeChars([hunk('x'.repeat(20000))])).toBe(5000)
   })
 })

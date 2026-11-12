@@ -299,6 +299,7 @@ export const zhCN: Messages = {
     inlineHelp: '删除和新增的行上下排列',
     split: '左右对比',
     splitHelp: '旧版本在左，新版本在右',
+    wrapLines: '长行自动换行',
     truncated: {
       message: '此差异较大，已在 {size} 处截断：文件末尾未显示。',
       showAll: '仍然显示'
@@ -762,6 +763,10 @@ export const zhCN: Messages = {
       diffContentLabel: '差异显示',
       diffContentChanges: '仅修改的部分',
       diffContentFull: '整个文件',
+      wrapLines: '差异中的长行',
+      wrapLinesHelp: '选择长行是换到下一行，还是保持在同一行并显示水平滚动条。差异 ⋯ 菜单中的“长行自动换行”只在该差异打开期间切换。',
+      wrapLinesOn: '换行',
+      wrapLinesOff: '不换行',
       inlineBlame: '编辑器中的 Git 助手',
       inlineBlameHelp: '在 GitTools 编辑器中编辑文件时，光标所在行末尾会出现气泡，显示是谁、何时修改了这一行，以及该提交做了什么。',
       inlineBlameLabel: '显示光标所在行的作者、日期和提交',
