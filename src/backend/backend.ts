@@ -97,6 +97,46 @@ const GIT_LOG_LIMIT = 500
 /** Repositórios da sessão anterior reabertos ao mesmo tempo (cada um abre processos git). */
 const REOPEN_CONCURRENCY = 4
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+/** Teto de cada texto do pedido (caminhos, título, raiz, sha, refs): o pedido vai na URL da janela, então não cresce sem limite. */
+const DIFF_WINDOW_TEXT_MAX = 4096
+
+function isText(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= DIFF_WINDOW_TEXT_MAX
+}
+
+/**
+ * Confere o pedido de `app:openDiffWindow` antes de ele chegar ao processo principal: a interface é nossa, mas o
+ * canal não confia nela. Confere o formato (kind conhecido, tipos dos campos e tamanho dos textos); o caminho nunca
+ * toca o disco aqui.
+ */
+export function isDiffWindowRequest(request: unknown): request is DiffWindowRequest {
+  if (!isRecord(request)) return false
+  const { path, title, root, source } = request
+  if (!isText(path) || !isRecord(source)) return false
+  if (title !== undefined && !isText(title)) return false
+  if (root !== undefined && !isText(root)) return false
+  const { kind, sha, from, to, oldPath, path: caminho, fullFile, uncapped } = source
+  if (oldPath !== undefined && !isText(oldPath)) return false
+  if (caminho !== undefined && !isText(caminho)) return false
+  if (fullFile !== undefined && typeof fullFile !== 'boolean') return false
+  if (uncapped !== undefined && typeof uncapped !== 'boolean') return false
+  switch (kind) {
+    case 'unstaged':
+    case 'staged':
+      return true
+    case 'commit':
+      return isText(sha)
+    case 'range':
+      return isText(from) && isText(to)
+    default:
+      return false
+  }
+}
+
 export class Backend {
   /** Repositórios abertos nesta sessão, pelo root de cada um. */
   readonly repos = new Map<string, GitRepository>()
@@ -626,8 +666,9 @@ export class Backend {
       case 'app:gitLog':
         return this.gitLog
       case 'app:openDiffWindow': {
-        const request = args[0] as DiffWindowRequest
-        if (!request || typeof request.path !== 'string' || !request.source) throw new Error(t('main.unknownOperation', { method: 'openDiffWindow' }))
+        // Argumentos: [pedido]; o formato é conferido antes de chegar à janela (ver isDiffWindowRequest).
+        const request = args[0]
+        if (!isDiffWindowRequest(request)) throw new Error(t('main.unknownOperation', { method: 'openDiffWindow' }))
         host.openDiffWindow(request)
         return
       }

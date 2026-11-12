@@ -72,7 +72,7 @@ interface Props {
   /** Abre o diff de um arquivo do commit no painel de detalhes. */
   onOpenFile(sha: string, path: string): void
   /** Abre só o diff do arquivo, numa janela própria (duplo clique). */
-  onOpenFileWindow(sha: string, path: string): void
+  onOpenFileWindow(sha: string, path: string, oldPath?: string): void
   /** Abre o diff de um arquivo ainda não commitado no painel de detalhes. */
   onOpenWipFile(path: string): void
   /** Há commits além dos carregados (e o teto não foi atingido): o rodapé pede mais uma página. */
@@ -501,7 +501,7 @@ export function CommitList({
                   showLanes={!searching && graphFirst}
                   indent={graphFirst}
                   onOpenFile={(path) => onOpenFile(commit.sha, path)}
-                  onOpenFileWindow={(path) => onOpenFileWindow(commit.sha, path)}
+                  onOpenFileWindow={(path, oldPath) => onOpenFileWindow(commit.sha, path, oldPath)}
                 />
               )}
             </>
@@ -856,7 +856,7 @@ function CommitFiles({
   /** Recua a lista até depois do grafo (quando ele é a primeira coluna). */
   indent: boolean
   onOpenFile(path: string): void
-  onOpenFileWindow(path: string): void
+  onOpenFileWindow(path: string, oldPath?: string): void
 }) {
   const { showMenu, openFileView, openInEditor } = useAppActions()
   const { settings } = useAppSettings()
@@ -868,7 +868,7 @@ function CommitFiles({
   const menu = (e: React.MouseEvent, file: ChangedFile) =>
     showMenu(e, [
       { label: t('history.files.openDiff'), onClick: () => onOpenFile(file.path) },
-      { label: t('history.files.openWindow'), onClick: () => onOpenFileWindow(file.path) },
+      { label: t('history.files.openWindow'), onClick: () => onOpenFileWindow(file.path, file.oldPath) },
       ...(head ? [{ label: t('history.files.take', { target: head }), onClick: () => actions.filesOntoBranch(sha, pathsOf(file), head) }] : []),
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
       { label: t(editorLabelKey(editor)), onClick: openEditorItem(editor, file.path, { openFileView, openInEditor }) },
@@ -909,7 +909,7 @@ function CommitFiles({
                 data-copy-what="path"
                 title={`${file.oldPath ? `${file.oldPath} → ` : ''}${file.path}\n${t('history.files.help')}`}
                 onClick={() => onOpenFile(file.path)}
-                onDoubleClick={() => onOpenFileWindow(file.path)}
+                onDoubleClick={() => onOpenFileWindow(file.path, file.oldPath)}
                 onContextMenu={(e) => menu(e, file)}
                 draggable
                 onDragStart={(e) => {

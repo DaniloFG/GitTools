@@ -1389,7 +1389,7 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   )
 
   const openFileWindow = useCallback(
-    (sha: string, path: string) => openDiffWindow({ source: { kind: 'commit', sha }, path, title: `${path} · ${shortSha(sha)}` }),
+    (sha: string, path: string, oldPath?: string) => openDiffWindow({ source: { kind: 'commit', sha, oldPath }, path, title: `${path} · ${shortSha(sha)}` }),
     [openDiffWindow]
   )
 

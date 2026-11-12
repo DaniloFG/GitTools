@@ -16,7 +16,9 @@
   <a href="https://github.com/sponsors/DaniloFG"><img alt="Sponsor on GitHub" src="https://img.shields.io/badge/Sponsor-GitHub%20Sponsors-db61a2?logo=githubsponsors&logoColor=white" /></a>
 </p>
 
-![GitTools Dashboards inside VS Code: KPIs, commits over time, top contributors, activity calendar and most changed files](media/readme/dashboards-overview.png)
+![GitTools inside VS Code: history graph, commit details and live git log](media/readme/hero.png)
+
+![Commit: details, files and line selection for cherry-pick](media/readme/commit.png)
 
 ## Why GitTools?
 
@@ -50,6 +52,8 @@ The new **Dashboards** tab (`Ctrl+5`) sits at the top, fills the whole panel and
 governance and audit views — no export, no BI tool, no leaving VS Code. Every dashboard opens with several distinct
 charts, and **every chart can switch form with one click** (area, lines, bars, donut, treemap, heatmap, radar,
 scatter, funnel, gauge, calendar…) or become a table.
+
+![GitTools Dashboards inside VS Code: KPIs, commits over time, top contributors, activity calendar and most changed files](media/readme/dashboards-overview.png)
 
 | Dashboard | What it shows |
 | --------- | ------------- |
