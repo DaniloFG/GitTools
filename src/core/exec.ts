@@ -410,10 +410,12 @@ function execute(
     log.finish(-1, message)
     reject(new GitError(message, args, -1, '', ''))
   })
-  // Cancelado: o git já morreu, então não esperamos o fim dos canais de saída (um processo neto pode
-  // mantê-los abertos). Um pedido cancelado não usa a saída, então responder agora é seguro.
+  // Cancelado, no tempo limite ou no teto de saída: o git foi morto de propósito e não esperamos o fim dos
+  // canais de saída, porque um processo neto pode mantê-los abertos (o `close` nunca chegaria e o pedido ficaria
+  // preso). Nesses casos a saída já não é completa de qualquer jeito, então responder agora é seguro.
+  // `complete` é idempotente: o `close` que chegar depois não faz nada.
   child.on('exit', (code) => {
-    if (aborted) complete(code)
+    if (aborted || timedOut || stoppedAtLimit) complete(code)
   })
   child.on('close', (code) => complete(code))
   child.stdin.on('error', () => {
