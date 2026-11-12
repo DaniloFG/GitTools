@@ -88,8 +88,20 @@ export default {
     await arrastar(-250)
     await conferir('depois de subir de novo')
 
-    // Devolve o divisor ao lugar de partida: o layout é guardado e os cenários seguintes dependem dele.
-    await arrastar(100)
-    await conferir('de volta ao tamanho de partida')
+    // No limite (divisor arrastado até o fim): o diff ainda mostra linhas de código, não só os cabeçalhos.
+    await arrastar(2000)
+    await expect.pagina(
+      (s) => document.querySelector(s)?.getBoundingClientRect().height > 10 && document.querySelectorAll(`${s} tr`).length > 0,
+      CORPO,
+      'ao menos uma linha do diff no tamanho mínimo do painel'
+    )
+    const minimo = await medir()
+    expect.verdadeiro(minimo !== null && minimo.visiveis >= 1, `no tamanho mínimo o diff não mostra linhas: ${JSON.stringify(minimo)}`)
+    // Duplo clique no divisor restaura o tamanho de partida.
+    await app.page.evaluate(() => {
+      const d = [...document.querySelectorAll('.dock-divider')].find((e) => e.getBoundingClientRect().width > 300)
+      d?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    })
+    await conferir('depois de restaurar com duplo clique')
   }
 }
