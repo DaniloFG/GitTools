@@ -23,7 +23,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E6`
+**A seguir:** `E7`
 
 | Etapa | Issue | Objetivo | Orquestra | Estado | Commit |
 | --- | --- | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ fechada está na mensagem do commit dela.
 | E3 | #145 (#134) | Corrida da pasta-mãe trocada por link: fechar ou documentar | topo | fechada (documentada) | f7ce096 |
 | E4 | #146 (#132) | Aviso externo logo após ação da interface (`isOwnEcho`) | topo | fechada | 4b9f8e5 |
 | E5 | #147 (#92, #95) | Provas de conflitos e cherry-pick | topo | fechada | bf8dd18 |
-| E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | a fazer | |
+| E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | fechada | COMMIT |
 | E7 | #149 (#96) | Conflitos: merge por Alterações, 320 px, hi/ar/zh-CN | topo | a fazer | |
 | E8 | #150 (#93, #94, #108) | Rolagem do Changes e empilhamento do combobox | topo | a fazer | |
 | E9 | #151 (#97, #119, #140) | Barra estreita (direita/embaixo), Dashboard ≥ 1050, `.wip-open` | topo | a fazer | |
@@ -41,26 +41,17 @@ Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede 
 
 ### Última etapa fechada
 
-**E5** (bf8dd18): só teste, produto intacto. `conflito-cherry-pick-sequencia` compara `HEAD^{tree}` com o fluxo refeito
-à mão (reprova ao mudar a 3ª parada). `adfec47` existe após `git fetch --unshallow`: `conflict-save.mjs` dá 9 processos
-em `adfec47^` (FALHA) e 3 em `adfec47`. Mutação A no HEAD passa 39/39 (inalcançável: `closeEditor` estável); C1 reprova
-os 4 cenários novos e `salvar`; B reprova `salvar`/`a-mao`; N reprova `nosso`/`deles`/`muitos`. `security-review` do
-`5f2edcb`: sem achados. Não conferido: `sequencer/todo` só no git 2.43.0 (limite aceito); typecheck/`npm test` (só .mjs).
+**E6** (COMMIT): `ui.mjs` abre Tour e Conflitos (1500 arquivos, cherry-pick fora do app) e confere `perfUi` em
+`orcamentos.json` (fora do `qa.mjs`; sai 1 se estourar). Hoje vs base `b1dd21c` (antes do Tour), CPU 4×, moderate: Tour
+fechado igual (1029 nós, 6/2/4 git, rolagem 41,3 vs 41,5 ms). Tour aberto: 0 git, +15 nós, 16,2 ms/quadro. Conflitos:
+10 git na recarga, 41 linhas, 4484 nós, rolagem 16,0 ms/quadro. `conflict-save.mjs`: 3 processos. `perf:bundle`
+695.635 (≤ 700.000). Não conferido: `npm test` inteiro (só .mjs/.json; `orcamentos.test.ts` verde), `code-review`.
 
 ## 3. Base de medição
 
 Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
-
-### Etapa E6 — `ui.mjs` com Conflitos e Tour (#148, #141, #96, #98)
-
-- **Orquestra**: topo.
-- **Arquivos prováveis**: `scripts/perf/ui.mjs`, `scripts/validacao/orcamentos.json`.
-- **Ler antes**: skill `medir`, `docs/PERFORMANCE.md` (seções de interface e 7).
-- **Aceite**: `node scripts/perf/ui.mjs 4 moderate` abre Conflitos e Tour; base anterior à E12 do Plano 2 versus hoje
-  (Tour fechado igual); Tour aberto e Conflitos com números; `perf:bundle` ≤ 700.000.
-- **Testes**: medição. **Segurança**: não.
 
 ### Etapa E7 — tela Conflitos: restante da #96 (#149)
 
@@ -103,6 +94,7 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
 
 - 2026-11-12 (E5): o clone vem raso; `git fetch --unshallow origin` antes de procurar commit antigo. Mutação em worktree em
   `$scratchpad/wt/*` com `node_modules` por link; `git worktree remove --force` ao fim. O e2e não tem filtro: roda os 39.
+- 2026-11-12 (E6): o clone é raso mas `b1dd21c` existe; base em worktree com `node_modules` por link e o `ui.mjs` novo (cai no Tour após imprimir o resto). A tela Conflitos não tem base anterior (é nova). Teto sem medida no `desempenho.tetos` reprova o `qa.mjs`: por isso `perfUi` separado.
 
 ## 6. Encerramento
 
