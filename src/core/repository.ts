@@ -1086,22 +1086,84 @@ export class GitRepository implements RepoApi {
   /**
    * Ordena commits do mais antigo para o mais novo e informa se há merges entre eles.
    * Os shas seguem pela entrada padrão (`--stdin`): uma lista grande não cabe na linha de comando.
+   *
+   * `--no-walk=sorted` ordena só pela data de committer e ignora `--topo-order`: com datas iguais (commits criados
+   * no mesmo segundo) mantém a ordem recebida, e o filho podia ser aplicado antes do pai. Por isso o mesmo
+   * `rev-list` já traz a data (`%ct`) e, só dentro de cada grupo de commits consecutivos com a mesma data, a
+   * ordem é refeita pela ancestralidade. Sem empate, nenhum processo a mais.
+   * No grupo, o pai direto (já em `parents`) resolve de graça; só os pares sem ligação direta custam um
+   * `merge-base --is-ancestor`. Grupo com mais de MAX_TIED_GROUP commits não consulta o git (o custo cresceria
+   * com o quadrado do grupo) e mantém a ordem anterior. Nada percorre o histórico do repositório.
    */
   private async orderCommits(shas: string[]): Promise<{ ordered: string[]; parents: Map<string, string[]> }> {
     shas.forEach((s) => assertRef(s, 'commit'))
-    const { stdout } = await this.git(['rev-list', '--no-walk=sorted', '--parents', '--stdin', '--'], {
+    const { stdout } = await this.git(['rev-list', '--no-walk=sorted', '--parents', '--stdin', '--format=%ct', '--'], {
       input: shas.map((s) => `${s}\n`).join('')
     })
+    // Saída: "commit <sha> <pais...>" seguida de uma linha com a data, para cada commit.
     const parents = new Map<string, string[]>()
-    const ordered = stdout
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => {
-        const [sha, ...ps] = line.split(' ')
+    const ordered: string[] = []
+    const dates: string[] = []
+    for (const line of stdout.split('\n')) {
+      if (line.startsWith('commit ')) {
+        const [sha, ...ps] = line.slice('commit '.length).split(' ')
         parents.set(sha, ps)
-        return sha
+        ordered.push(sha)
+      } else if (line) {
+        dates.push(line)
+      }
+    }
+    ordered.reverse()
+    dates.reverse()
+
+    const MAX_TIED_GROUP = 20
+    const isAncestor = async (a: string, b: string) =>
+      (await this.git(['merge-base', '--is-ancestor', a, b], { okExitCodes: [0, 1] })).exitCode === 0
+    // Ordena o grupo empatado: pais antes dos filhos; sem relação, mantém a ordem em que vieram.
+    const sortTied = async (group: string[]): Promise<string[]> => {
+      // before[i][j]: group[i] é ancestral de group[j].
+      const before = group.map(() => group.map(() => false))
+      group.forEach((sha, j) => {
+        for (const p of parents.get(sha) ?? []) {
+          const i = group.indexOf(p)
+          if (i >= 0) before[i][j] = true
+        }
       })
-      .reverse()
+      const close = () => {
+        for (let k = 0; k < group.length; k++)
+          for (let i = 0; i < group.length; i++)
+            for (let j = 0; j < group.length; j++) if (before[i][k] && before[k][j]) before[i][j] = true
+      }
+      close()
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          if (before[i][j] || before[j][i]) continue
+          if (await isAncestor(group[i], group[j])) before[i][j] = true
+          else if (await isAncestor(group[j], group[i])) before[j][i] = true
+          else continue
+          close()
+        }
+      }
+      const rest = group.map((_, i) => i)
+      const out: string[] = []
+      while (rest.length) {
+        // O primeiro que não tem ancestral pendente; a relação é acíclica, o `max` é só uma guarda.
+        const k = Math.max(0, rest.findIndex((i) => !rest.some((j) => before[j][i])))
+        out.push(group[rest[k]])
+        rest.splice(k, 1)
+      }
+      return out
+    }
+
+    for (let start = 0; start < ordered.length; ) {
+      let end = start + 1
+      while (end < ordered.length && dates[end] === dates[start]) end++
+      if (end - start > 1 && end - start <= MAX_TIED_GROUP) {
+        const sorted = await sortTied(ordered.slice(start, end))
+        sorted.forEach((sha, i) => (ordered[start + i] = sha))
+      }
+      start = end
+    }
     return { ordered, parents }
   }
 
