@@ -23,7 +23,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E5` — itens ocultos no menu Aparência (#97)
+**A seguir:** `E6` — flakiness do e2e-desempenho (#109)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E2 | #128 | Documentar o fluxo: remoção do HANDOFF entra na develop antes do PR da homolog | feita | (ver git log) | 3 textos alinhados; CLAUDE.md 199 linhas |
 | E3 | #92 (+#108) | Prova da #92: mutação do cenário e processos git antes/depois | feita | a897c90 | mutação A não reprova (ver seção 5); B e C1 reprovam; 4 cenários novos, e2e 31 ok |
 | E4 | #93, #94 | Provas restantes: painel à direita/embaixo, altura baixa; combobox compartilhado | feita | 0dc81de | mutação overflow e placePopover reprovam; z-index NÃO (seção 5); e2e 31 ok |
-| E5 | #97 | Prova: itens ocultos pelo menu Aparência (#56) | a fazer | | |
+| E5 | #97 | Prova: itens ocultos pelo menu Aparência (#56) | feita | 4c0a34f | mutação isScreenShown reprova; e2e 32 ok |
 | E6 | #109 | 5 execuções iguais do e2e-desempenho após a recalibração | a fazer | | |
 | E7 | #98 | Tour: cenário e2e, foco e Esc, zero git, CPU 4× | a fazer | | |
 | E8 | #96 | Conflitos: itens não conferidos (1500 conflitos, Esc, medições) | a fazer | | |
@@ -42,14 +42,12 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: E4 (#93, #94)
+### Última etapa fechada: E5 (#97)
 
-- **Feito**: `regressao-93` com 4 variantes (esquerda, direita, embaixo, 1100x420); `regressao-94` com 1000x700 (`end`),
-  1100x202 (`up`) e opção rolada para fora não conta como coberta. Combobox: só `PeoplePicker` (`Dashboards.tsx:233`).
-  Unidade de borda já existia. Mutações: `overflow:visible` no `.csection-body` reprova (esquerda); `placePopover` sem
-  up/end reprova; remover o `z-index` do `.dash-popover` NÃO reprova.
-- **Não conferido**: M1 só falha na primeira variante (o cenário para no primeiro erro); extensão do VS Code, barras fixas,
-  confirmação do dono; `.file-item`: 62 montados com 62 arquivos (ROW_BATCH 300), a premissa "lista por janela" não vale nessa faixa.
+- **Feito**: `regressao-97-telas-ocultas` esconde Changes/Files/Compare pelo menu real, confere 4 abas, tela aberta
+  escondida continua à vista, 320/480/640 px sem item fora nem rolagem; desfaz no fim. Mutação em `isScreenShown`
+  (sempre true) reprova.
+- **Não conferido**: extensão do VS Code; painel à direita/embaixo com telas escondidas; alerta de conflito no topo.
 
 ## 3. Base de medição
 
@@ -61,10 +59,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
 
-### Etapa E5 — itens ocultos no menu Aparência (#97)
-
-- **Orquestra**: topo. **Aceite**: cenário `regressao-97` com itens ocultos pelo usuário (#56) sem item fora da tela
-  nem rolagem horizontal; mutação reprova. **Testes**: tela. **Depende de**: E4.
 ### Etapa E6 — flakiness do e2e-desempenho (#109)
 
 - **Orquestra**: topo. **Aceite**: `node scripts/validacao/qa.mjs desempenho` 5 vezes seguidas, todas ok, saídas
@@ -122,6 +116,8 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
   `conflito-resolver-muitos`: se a altura da linha da lista mudar, o cenário reprova. Cenários só com `Keep both` não bastam.
 
 - E4: o teste de `end` precisa de janela ~1000 px (botão de pessoas à direita); em 300–480 px o botão fica em x=31 e o popover só transborda. Remover o `z-index` não reprova o 94: se alguém retomar, ache o elemento que empilharia por cima.
+
+- E5: o menu é aberto com `.toolbar .tb-menu` + hover em Appearance/Screens; `alternados` copiado antes de `reverse` (laço infinito se mutar a lista).
 
 ## 6. Encerramento
 
