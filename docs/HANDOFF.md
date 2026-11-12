@@ -24,16 +24,16 @@ A `main` já tinha skills, hooks e `CLAUDE.md` atuais (conferido): nada foi traz
 
 ## 2. Estado
 
-**Última etapa fechada:** `3` — Quebra de linha opcional (#158): `wrapLines` (padrão `true`) em Settings e item no ⋯ do diff (só enquanto aberto); sem quebra o `.diff-body` ganha `diff-nowrap` e `--code-ch` (maior linha, teto 5000) e rola na horizontal; `.merge-final` do ConflictEditor segue a configuração.
+**Última etapa fechada:** `4` — "Open in new window" do History (#156): a causa era o arquivo renomeado (o diff de commit filtrava só pelo caminho novo e o git o devolvia como adição inteira). `DiffSource.oldPath` entra no pathspec (staged/commit/range); `isDiffWindowRequest` valida o canal `app:openDiffWindow`; e2e `history-renomeacao-diff` reprova sem a correção.
 
-**A seguir:** `4` — "Open in new window" abre a comparação do commit (#156)
+**A seguir:** `5` — Commit diff: altura do painel e divisor (#160)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | 1 | #157 | READMEs: History, depois Commit, depois Dashboards | fechada | ver `git log` | 1ª imagem History, 2ª Commit |
 | 2 | #155 | Seleção do diff lado a lado confinada ao lado de origem | fechada | ver `git log` | perf:bundle JS 1ª carga 695.532 → 695.747 (teto 700.000) |
 | 3 | #158 | Quebra de linha opcional nos editores (Settings + menu ⋯) | fechada | ver `git log` | perf:bundle JS 1ª carga 695.747 → 697.685 webview / 697.119 Electron (teto 700.000; folga ~2.300) |
-| 4 | #156 | "Open in new window" do History abre a comparação do commit | a fazer | | |
+| 4 | #156 | "Open in new window" do History abre a comparação do commit | fechada | ver `git log` | perf:bundle JS 1ª carga Electron 697.119 → 697.198 (teto 700.000; folga ~2.800) |
 | 5 | #160 | Commit diff: linhas ocupam a altura do painel e não somem após arrastar o divisor | a fazer | | |
 | 6 | #154 | ENCERRAMENTO | a fazer | | |
 
@@ -43,23 +43,6 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 `npm run perf:bundle` e nós no DOM do diff (skill `medir`); gravar aqui o número de partida na primeira que medir.
 
 ## 4. Plano
-
-### Etapa `4` — "Open in new window" abre a comparação do commit
-
-- **Orquestra**: topo
-- **Arquivos prováveis**: `CommitDetails.tsx` (:166-174, :240, :374), `CommitList.tsx` (:504, :871, :912),
-  `App.tsx` (:1223-1226, :1387-1389), `DiffWindow.tsx` (:42-83), `diffWindowRequest.ts`, `src/main/index.ts` (:107-136),
-  `src/backend/backend.ts` (:534-537), `extension/src/extension.ts` (:294-362), `src/shared/api.ts` (:238-245).
-- **Levantamento (leitura, não confirmado)**: o `source: {kind:'commit', sha}` sai certo de todos os pontos lidos;
-  não se achou a causa por leitura. Pistas: `DiffWindow.tsx:79` cai em `files[0]` em silêncio; `CommitDetails.tsx:474`
-  e `ChangesView.tsx:432` abrem pelo estado de trabalho; o rótulo "Open in new window" é `diffExtra.openWindow` (`en.ts:1749`,
-  menu ⋯ do diff). **Primeiro passo: reproduzir** (skill `run-gittools`) e escrever o teste que reprova (e2e: abrir
-  a janela a partir do History e conferir `request.source.kind==='commit'`, o sha e o conteúdo do diff).
-- **Segurança**: sim. `backend.ts:535` valida só `path` e a presença de `source`: validar `source.kind` e o `sha` no
-  canal `app:openDiffWindow` (regra "todo canal novo valida o que recebe"), se a correção mexer ali; terminar com
-  `security-review`. Janela isolada e navegação fechada não regridem.
-- **Aceite**: e2e novo que reprova sem a correção; `tests/` do `diffWindowRequest`; typecheck e `npm test` verdes.
-- **Testes**: unidade, integração do canal, tela. **Depende de**: nada (fica por último: a causa é incerta).
 
 ### Etapa `5` — Commit diff: altura do painel e divisor (#160)
 
@@ -90,6 +73,7 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 
 - 2026-11-12: o arraste do Playwright não estende seleção em `td.code` do diff (também sem a mudança; caret cai fora do lugar, causa não achada). O cenário `diff-selecao-lado` aperta o mouse de verdade e estende a seleção pela API; não repetir a tentativa de `mouse.move` com o botão apertado.
 - 2026-11-12: etapa 3: CodeEditor/ConflictEditor (textarea) já eram `wrap=off`; só diff e `.merge-final` mudaram. `useWrapLines` é useState (vale só com o diff aberto, como o layout). Folga do bundle agora ~2.300 bytes: a etapa 4 não deve crescer a primeira carga. Não conferido: salto de rolagem ao alternar a quebra em diff grande; CJK conta 1 coluna em `--code-ch`.
+- 2026-11-12: etapa 4: o clique no History enviava o request certo (sha, path); o defeito só aparece em arquivo RENOMEADO (git aplica o pathspec antes do `-M`). Compare, staged (ChangesView/CommitDetails wip) e histórico de arquivo (FilesView, `FileHistoryEntry` sem `oldPath`) seguem sem `oldPath`: issues issue #161. `useFullFile` em `DiffWindow.tsx:56` roda antes do provider de settings (a janela ignora `diffFullFile`): issue #162.
 
 ## 6. Encerramento
 
