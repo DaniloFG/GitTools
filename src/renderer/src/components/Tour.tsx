@@ -6,7 +6,7 @@ import { loadTourTexts, tourT } from '../tourText'
 import './tour.css'
 
 // Passeio guiado (issue #98). Este módulo é um pedaço à parte do pacote (lazyScreens.ts):
-// fechado, o Tour não custa nada. Aberto: um destaque fixo, um cartão e nenhum ouvinte na window além do `resize`.
+// fechado, o Tour não custa nada. Aberto: um destaque fixo, um cartão e nenhum ouvinte na window além do `resize` (e um `focusin` no document que prende o foco no cartão).
 // Nunca clica em nada do app nem executa ação de git; o único efeito fora dele é abrir a tela de um passo (`onOpenView`).
 
 export interface TourProps {
@@ -88,6 +88,20 @@ export function Tour({ hasRepo, hiddenScreens, initial, onOpenView, onClose }: T
     // Só na abertura.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Foco preso no cartão (diálogo modal): uma tela aberta por um passo pode pegar o foco (o filtro da lista de
+  // Arquivos, por exemplo), e aí setas e Esc não chegam ao onKeyDown do cartão. Quando o foco sai para fora dele,
+  // o cartão o recebe de volta. Ouve só `focusin` (sem setState); a limpeza vem ANTES do efeito de devolver o foco
+  // ao elemento de origem (abaixo), senão esse foco seria roubado de volta pelo cartão ao fechar.
+  useEffect(() => {
+    if (!ready) return
+    const onFocusIn = (event: FocusEvent) => {
+      const card = cardRef.current
+      if (card && event.target instanceof Node && !card.contains(event.target)) card.focus({ preventScroll: true })
+    }
+    document.addEventListener('focusin', onFocusIn, { passive: true })
+    return () => document.removeEventListener('focusin', onFocusIn)
+  }, [ready])
 
   // Ao fechar, o foco volta ao elemento que abriu o Tour (se ele ainda estiver na tela).
   useEffect(

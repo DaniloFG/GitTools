@@ -23,7 +23,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E7` — Tour (#98)
+**A seguir:** `E8` — Conflitos (#96)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -33,7 +33,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E4 | #93, #94 | Provas restantes: painel à direita/embaixo, altura baixa; combobox compartilhado | feita | 0dc81de | mutação overflow e placePopover reprovam; z-index NÃO (seção 5); e2e 31 ok |
 | E5 | #97 | Prova: itens ocultos pelo menu Aparência (#56) | feita | 4c0a34f | mutação isScreenShown reprova; e2e 32 ok |
 | E6 | #109 | 5 execuções iguais do e2e-desempenho após a recalibração | feita | (ver git log) | 5/5 ok; quadro 31,6-44,9 ms; carga a frio 587-675 ms; tetos intactos |
-| E7 | #98 | Tour: cenário e2e, foco e Esc, zero git, CPU 4× | a fazer | | |
+| E7 | #98 | Tour: cenário e2e, foco e Esc, zero git, CPU 4× | feita | (ver git log) | e2e 33 ok, zero git; bug de foco achado e corrigido; pacote 695.255 |
 | E8 | #96 | Conflitos: itens não conferidos (1500 conflitos, Esc, medições) | a fazer | | |
 | E9 | #95 | Cherry-pick: entregas pendentes, tamanho a decidir pelo refinamento | a fazer | | |
 | E10 | #120 | Acessibilidade: 3 controles sem nome, 5 sem foco visível | a fazer | | |
@@ -42,12 +42,13 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: E6 (#109)
+### Última etapa fechada: E7 (#98)
 
-- **Feito**: `qa.mjs desempenho` 5 vezes seguidas, todas ok, sem mudar teto nem código. Pior caso: tarefa longa 60 ms
-  (teto 150), 2 tarefas longas na rolagem (teto 10), quadro 44,9 ms (teto 90), carga a frio 675 ms (teto 5000);
-  git 6/2/9/2/4 nos tetos exatos; DOM 1302. `tests/orcamentos.test.ts` 10 ok.
-- **Não conferido**: Windows e máquina fraca de verdade; só CPU 4× emulada neste contêiner.
+- **Feito**: cenário `tour.mjs` (abre pelo evento de Configurações, foco no cartão, Tab preso, destaque e cartão dentro
+  da janela em todos os passos, setas, Esc, foco devolvido). Achou bug real: a tela aberta por um passo roubava o foco e
+  setas/Esc morriam (parou em 14 de 18); corrigido com `focusin` em `Tour.tsx`. O cenário reprovava antes da correção.
+  e2e 33 ok com zero processos git; typecheck, 1398 testes e gate de cobertura verdes; `perf:bundle` 695.255 (era 695.821).
+- **Não conferido**: Tour ABERTO com CPU 4× (`ui.mjs` não cobre o Tour; só o e2e, 889 ms); Windows.
 
 ## 3. Base de medição
 
@@ -58,12 +59,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
-
-### Etapa E7 — Tour (#98)
-
-- **Orquestra**: topo. **Aceite**: cenário e2e do Tour em `scripts/validacao/e2e/cenarios/`; zero processos git durante
-  o passeio; foco e `Esc`; CPU 4× (`ui.mjs 4 moderate`) com o Tour aberto; `perf:bundle` não piora.
-- **Testes**: tela e medição. **Depende de**: E6.
 
 ### Etapa E8 — Conflitos (#96)
 
@@ -114,6 +109,8 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 
 - E5: o menu é aberto com `.toolbar .tb-menu` + hover em Appearance/Screens; `alternados` copiado antes de `reverse` (laço infinito se mutar a lista).
 - E6: `build:extension` antes do `qa.mjs` (o dist não segue o código); 5 execuções levam ~1 min cada.
+
+- E7: `ui.mjs 4 moderate` não abre o Tour; medir o Tour aberto exigiria roteiro novo (candidato a issue `descoberta`).
 
 ## 6. Encerramento
 
