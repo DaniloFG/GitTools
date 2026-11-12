@@ -21,7 +21,7 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 
 ## 2. Estado
 
-**A seguir:** `Q4`
+**A seguir:** `Q5`
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -29,7 +29,7 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | Q1 | #107 | Runner determinístico de cenários e2e | fechada | `48b7a9a` | 7 cenários em ~3,7 s; 1303 testes verdes |
 | Q2 | #108 | Jornadas funcionais e regressões | fechada | `cb8e437` | 27 cenários (20 novos) em ~31 s; mutação reprova #93, #94 e #97; 1312 testes verdes |
 | Q3 | #109 | Responsividade, desempenho e teclado | fechada | `1d56c8f` | 3 fases em ~10 s cada; 1322 testes verdes; teclado: 3 sem nome e 5 sem foco (#120) |
-| Q4 | #110 | Esteira QA e gates de cobertura e merge | a fazer | | |
+| Q4 | #110 | Esteira QA e gates de cobertura e merge | fechada | `25d1b2a` | 1357 testes verdes; gate-main 61 (9 reprovam com o hook antigo); gate-cobertura 23 |
 | Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | a fazer | | |
 | B1 | #114 | Spike: branch apagada, restauração, pipeline | a fazer | | |
 | B2 | #115 | Política de ciclo de vida das branches no guia | a fazer | | |
@@ -37,16 +37,16 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | D1 | #99 | Link não rastreado fora do repositório (descoberta) | a fazer | | |
 | ENC | #106, #113 | Encerramento: PRs, validações e issues | a fazer | | |
 
-### Última etapa fechada: `Q3` (#109)
+### Última etapa fechada: `Q4` (#110)
 
-- **Feito**: `node scripts/validacao/qa.mjs <responsivo|desempenho|teclado>` (fases `e2e-responsivo`, `e2e-desempenho`, `e2e-teclado` em `FASES`),
-  tetos em `scripts/validacao/orcamentos.json` (lógica em `orcamentos.mjs`), relatório `validacao-out/qa-<fase>.json`.
-  Responsivo: 3 posições × 5 larguras (History e Branches) + alerta de conflito; desempenho: CPU 4× no `moderate`.
-- **Medido** (5 execuções cada): responsivo 5/5 ok; desempenho 4/5 (1 vez 8 tarefas longas, por isso o teto é 10); teclado
-  estável em 3 sem nome e 5 sem foco visível, teto = base (#120). Processos git = "Hoje" da seção 7 (6/2/2/4/9).
-- **Não conferido**: pipeline completo com as fases novas; Windows/macOS; caminho do watchdog estourado e do Stage ausente.
-- **Achados**: #120 (acessibilidade); #119 (Dashboard a 320 px) segue fora do responsivo.
-- Q4 (workflow QA) deve rodar `qa.mjs` nas três fases; cada uma abre um Chromium próprio (~10 s).
+- **Feito**: `.github/workflows/qa.yml` (job `QA`, PR e push em develop/homolog/main, `contents: read`, artefato do relatório);
+  `scripts/validacao/gate-cobertura.mjs` (+ `cobertura.mjs`): tela sem cenário e PR em `components/` sem cenário reprovam,
+  exceção `sem-e2e` (rótulo + linha `sem-e2e: <motivo>` no corpo); `gate-main.sh` exige check-run `QA` success na ponta
+  para merge em develop/homolog (falha de consulta bloqueia). `github.md` lista o `QA`.
+- **security-review** (manual sobre o diff): sem segredo, sem `pull_request_target`, corpo do PR nunca vai a shell, git sem shell.
+- **Não conferido**: execução do `qa.yml` no Actions e seu tempo (meta < 15 min); `git diff` real do PR; teste de sha ilegível.
+- **Limite**: o gate lê `screenVisibility.ts` e os cenários da árvore do PR, não da base. Dono (#101): exigir `QA` na proteção de branch.
+- **Atenção ENC**: `validacao.yml` e `qa.yml` rodam o mesmo pipeline em push na develop/homolog (custo dobrado); a ENC avalia.
 
 ## 3. Base de medição
 
@@ -58,9 +58,7 @@ DOM (meta 20). Testes do plano 1: 1245 verdes (E13) mais os dos gates (111 nos t
 ### Etapas `Q1` a `Q5` — QA embutido (issue-mãe #106)
 
 - **Orquestra**: topo. **Ler antes**: a issue da etapa (aceite = critérios dela), `scripts/validacao/` e `docs/PERFORMANCE.md` seção 7
-- **Q3 #109** responsivo,
-  desempenho e teclado; **Q4 #110** workflow `QA` em PR e push (develop, homolog, main), gate de cobertura e trava no
-  `gate-main.sh`; **Q5 #111** `.claude/rules/qa.md`, skill `qa` e ajustes de `etapa`, `validar` e template de PR
+- **Q5 #111** `.claude/rules/qa.md`, skill `qa` e ajustes de `etapa`, `validar` e template de PR
 - **Testes**: unidade, tela, medição. **Segurança**: Q4 (hook e workflow): `security-review`. **Depende de**: R1; Q2 a Q4 dependem de Q1
 - Sem dependência nova em `package.json` (Playwright só no job, `npm i --no-save`). Determinismo: dados fixos, sem rede, sem `sleep` fixo.
 
