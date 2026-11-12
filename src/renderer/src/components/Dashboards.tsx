@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Analytics, GitCommandEntry } from '../../../shared/types'
 import { useAppActions, useRepoData } from '../context'
 import { errorMessage, fullDate } from '../format'
@@ -10,6 +10,7 @@ import { compact, int, shortDate } from '../analytics/charts/format'
 import { auditFlags } from '../analytics/metrics'
 import { DAY, DEFAULT_FILTERS, PERIODS, applyFilters, buildDataset, endOfDay, periodRange, startOfDay, type Filters, type PeriodId } from '../analytics/model'
 import { autoGranularity } from '../analytics/metrics'
+import { placePopover, type PopoverPlacement } from '../analytics/popoverPlacement'
 import { WidgetCard } from '../analytics/WidgetCard'
 import { DASHBOARDS, WIDGETS, WIDGET_BY_ID, addCustom, addWidget, parsePrefs, removeCustom, renameCustom, resetDashboard, widgetsFor, withWidgets, type DashPrefs } from '../analytics/widgets'
 import { tk } from '../analytics/widgets/helpers'
@@ -314,11 +315,35 @@ const isoDay = (ms: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Medidas do `.dash-popover` em dashboard.css (largura, altura desejada e espaço até o botão): o cálculo de posição
+// precisa delas, e o CSS as usa; mudar uma aqui pede mudar a outra.
+const POPOVER_WIDTH = 280
+const POPOVER_HEIGHT = 340
+const POPOVER_GAP = 6
+const POPOVER_MARGIN = 8
+
 /** Escolha de pessoas: lista com busca e caixas de seleção. */
 function PeoplePicker({ ds, selected, onChange }: { ds: ReturnType<typeof buildDataset> | null; selected: string[]; onChange(next: string[]): void }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  // Onde a lista cabe, calculado uma vez ao abrir. useLayoutEffect faz isso antes de pintar, sem salto na tela.
+  // Não há listener de resize nem de scroll: a lista fica onde abriu até fechar, e reabrir recalcula.
+  const [place, setPlace] = useState<PopoverPlacement | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!open || !el) return
+    const r = el.getBoundingClientRect()
+    setPlace(
+      placePopover({
+        anchor: { top: r.top, bottom: r.bottom, left: r.left, right: r.right },
+        size: { width: POPOVER_WIDTH, maxHeight: POPOVER_HEIGHT },
+        viewport: { width: window.innerWidth, height: window.innerHeight },
+        gap: POPOVER_GAP,
+        margin: POPOVER_MARGIN
+      })
+    )
+  }, [open])
   useEffect(() => {
     if (!open) return
     const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
@@ -337,7 +362,7 @@ function PeoplePicker({ ds, selected, onChange }: { ds: ReturnType<typeof buildD
         {selected.length ? t('dash.filters.peopleSelected', { count: selected.length }) : t('dash.filters.allPeople')} ▾
       </button>
       {open && (
-        <div className="dash-popover" role="listbox" aria-multiselectable>
+        <div className={`dash-popover${place?.openUp ? ' up' : ''}${place?.alignEnd ? ' end' : ''}`} style={place ? { maxHeight: place.maxHeight } : undefined} role="listbox" aria-multiselectable>
           <input autoFocus placeholder={t('dash.filters.searchPerson')} value={query} onChange={(e) => setQuery(e.target.value)} />
           <ul>
             {list.map((p) => (
