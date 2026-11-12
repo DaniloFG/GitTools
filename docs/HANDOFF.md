@@ -24,42 +24,24 @@ A `main` já tinha skills, hooks e `CLAUDE.md` atuais (conferido): nada foi traz
 
 ## 2. Estado
 
-**Última etapa fechada:** `1` — READMEs: History, Commit, depois Dashboards (só documentação; `extension/media/readme/commit.png` é cópia de `linhas-do-commit.png`).
+**Última etapa fechada:** `2` — Seleção do diff lado a lado confinada ao lado de origem (#155): `data-side` nos `td.code` + `data-sel-side` na tabela, gravado no `mousedown` e removido no `mouseup`; CSS `user-select:none` no outro lado.
 
-**A seguir:** `2` — Seleção confinada ao lado (diff lado a lado)
+**A seguir:** `3` — Quebra de linha opcional nos editores (#158)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | 1 | #157 | READMEs: History, depois Commit, depois Dashboards | fechada | ver `git log` | 1ª imagem History, 2ª Commit |
-| 2 | #155 | Seleção do diff lado a lado confinada ao lado de origem | a fazer | | |
+| 2 | #155 | Seleção do diff lado a lado confinada ao lado de origem | fechada | ver `git log` | perf:bundle JS 1ª carga 695.532 → 695.747 (teto 700.000) |
 | 3 | #158 | Quebra de linha opcional nos editores (Settings + menu ⋯) | a fazer | | |
 | 4 | #156 | "Open in new window" do History abre a comparação do commit | a fazer | | |
 | 5 | #154 | ENCERRAMENTO | a fazer | | |
 
 ## 3. Base de medição
 
-Não conferida ainda. Etapas 2 e 3 tocam `DiffView.tsx` (caminho quente): cada uma mede antes e depois
+Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webview 696.098 (teto 700.000: folga ~4.000 bytes). Etapas 2 e 3 tocam `DiffView.tsx` (caminho quente): cada uma mede antes e depois
 `npm run perf:bundle` e nós no DOM do diff (skill `medir`); gravar aqui o número de partida na primeira que medir.
 
 ## 4. Plano
-
-### Etapa `2` — Seleção confinada ao lado (diff lado a lado)
-
-- **Orquestra**: topo
-- **Arquivos prováveis**: `src/renderer/src/components/DiffView.tsx` (`DiffBlock` :157, `side()` :164-192,
-  `onCodeDown` :448), `styles.css` (:1111-1198, :2871-2880), módulo `.ts` novo para decidir o lado + teste,
-  `scripts/validacao/e2e/cenarios/history-diff-commit.mjs` ou cenário novo.
-- **Levantamento** (não rodado no navegador): cada linha `split` é um `<tr>` com as duas metades (`DiffView.tsx:226-233`),
-  e nenhum `user-select` cobre `.code`; o arraste cruza lados por ordem de documento. O pedido do dono diz "separar
-  cada lado em componente individual"; corte mínimo sugerido: gravar o lado do `pointerdown` (ref + atributo
-  `data-side` na tabela, sem `setState`) e aplicar `user-select: none` ao outro lado via CSS, limpando no
-  `pointerup`. Se não bastar (copiar), separar em duas tabelas/colunas por bloco. Decidir pelo teste real.
-- **Restrições**: princípio 4 (nada de React por evento de mouse); nós no DOM não crescem; `td.code` novo recebe a
-  marca de lado (só o `td.sel` tem `half` hoje).
-- **Aceite**: cenário e2e que arrasta do lado antigo ao novo e confere que `getSelection()` só contém texto do lado de
-  origem, reprovando sem a mudança; `npm run typecheck`, `npx vitest run` do módulo novo; `perf:bundle` e nós no
-  DOM iguais ou menores.
-- **Testes**: unidade (decisão do lado) e tela (e2e). **Segurança**: não. **Depende de**: nada (faz antes da 3: mesmo componente).
 
 ### Etapa `3` — Quebra de linha opcional nos editores
 
@@ -108,6 +90,8 @@ Não conferida ainda. Etapas 2 e 3 tocam `DiffView.tsx` (caminho quente): cada u
 - 2026-11-12: `RebaseEditor` fora do escopo do #158 (não é editor de código); padrão da quebra = `true`.
 - 2026-11-12: etapa 4 começa por reprodução; se não reproduzir, o `gt-juiz` decide (não inventar correção).
 - Gate: `.claude/triagem.local` com `media <assunto>` e `.claude/issue.local` (fora do git) em cada sessão de etapa.
+
+- 2026-11-12: o arraste do Playwright não estende seleção em `td.code` do diff (também sem a mudança; caret cai fora do lugar, causa não achada). O cenário `diff-selecao-lado` aperta o mouse de verdade e estende a seleção pela API; não repetir a tentativa de `mouse.move` com o botão apertado.
 
 ## 6. Encerramento
 

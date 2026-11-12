@@ -183,7 +183,7 @@ const DiffBlock = memo(function DiffBlock({ file, rows, start, end, layout, live
         <td className={`ln ${cls}`} {...gutter}>
           {(which === 'old' ? line.oldLine : line.newLine) ?? ''}
         </td>
-        <td className={`code ${cls}`} tabIndex={-1} data-copy={line.content || undefined} data-copy-what="line" {...code}>
+        <td className={`code ${cls}`} tabIndex={-1} data-copy={line.content || undefined} data-copy-what="line" data-side={which} {...code}>
           {line.content}
           {line.noNewline && <span className="no-newline" title={t('diff.noNewline')}>⏎̸</span>}
         </td>
@@ -446,6 +446,14 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
   // O código é texto selecionável: o mouse sobre ele só seleciona. Marcar a linha é clicar nela (sem texto
   // selecionado) ou usar as colunas à esquerda (caixa, números e sinal), onde o arrastar marca várias.
   const onCodeDown = (e: React.MouseEvent) => {
+    // Lado a lado: grava o lado onde o arraste começou na tabela (atributo, sem setState) e o CSS torna o outro
+    // lado não selecionável até soltar o mouse; assim a seleção e a cópia não misturam antigo e novo.
+    const table = (e.currentTarget as HTMLElement).closest<HTMLElement>('table.diff-split')
+    const side = (e.currentTarget as HTMLElement).dataset.side
+    if (table && side && !e.shiftKey) {
+      table.dataset.selSide = side
+      window.addEventListener('mouseup', () => delete table.dataset.selSide, { once: true })
+    }
     // Shift+clique marca um intervalo; sem isso o navegador estenderia o texto selecionado.
     if (selectable && e.shiftKey) e.preventDefault()
   }

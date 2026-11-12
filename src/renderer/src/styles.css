@@ -1193,6 +1193,11 @@ mark {
 .diff-split td.code {
   overflow-wrap: anywhere;
 }
+/* Seleção confinada ao lado onde o arraste começou (ver onCodeDown em DiffView). */
+.diff-split[data-sel-side='old'] td.code[data-side='new'],
+.diff-split[data-sel-side='new'] td.code[data-side='old'] {
+  user-select: none;
+}
 .diff-split td.half {
   border-inline-start: 1px solid var(--border);
 }
