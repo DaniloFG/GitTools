@@ -1,0 +1,31 @@
+{
+  "origem": "docs/PERFORMANCE.md, seção 7",
+  "calibragem": "Contagens de processos git = Hoje da seção 7. Tempos e tarefas longas: margem sobre 5 execuções (quadro 32-54 ms, carga a frio 530-682 ms, tarefas longas 0-8). Teclado: base medida, issue #120.",
+  "responsivo": {
+    "larguras": [320, 480, 640, 1024, 1440],
+    "posicoes": ["esquerda", "direita", "embaixo"],
+    "altura": 700
+  },
+  "desempenho": {
+    "cpu": 4,
+    "cenario": "moderate",
+    "tetos": {
+      "gitCargaInicial": 6,
+      "gitFoco": 2,
+      "gitStage": 9,
+      "gitSelecionarCommit": 2,
+      "gitSetas10x": 4,
+      "nosDom": 5000,
+      "tarefasLongasRolagem": 10,
+      "maiorTarefaLongaMs": 150,
+      "msPorQuadroRolagem": 90,
+      "msCargaFrio": 5000
+    }
+  },
+  "teclado": {
+    "tetos": {
+      "semNomeAcessivel": 3,
+      "semFocoVisivel": 5
+    }
+  }
+}

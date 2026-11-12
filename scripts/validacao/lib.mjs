@@ -18,7 +18,11 @@ export const FASES = [
   { nome: 'build', comando: ['npm', 'run', 'build'] },
   { nome: 'build-extension', comando: ['npm', 'run', 'build:extension'] },
   { nome: 'perf-bundle', comando: ['npm', 'run', 'perf:bundle'] },
-  { nome: 'e2e', comando: ['node', 'scripts/validacao/e2e.mjs'] }
+  { nome: 'e2e', comando: ['node', 'scripts/validacao/e2e.mjs'] },
+  // QA não funcional na interface real (scripts/validacao/qa.mjs), com os tetos de orcamentos.json.
+  { nome: 'e2e-responsivo', comando: ['node', 'scripts/validacao/qa.mjs', 'responsivo'] },
+  { nome: 'e2e-desempenho', comando: ['node', 'scripts/validacao/qa.mjs', 'desempenho'] },
+  { nome: 'e2e-teclado', comando: ['node', 'scripts/validacao/qa.mjs', 'teclado'] }
 ]
 
 /**

@@ -21,14 +21,14 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 
 ## 2. Estado
 
-**A seguir:** `Q3`
+**A seguir:** `Q4`
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | R1 | #92 a #98, #100 a #105, #112 | Publicar o plano 1 na develop e validar | fechada | `38a0479` | PR #118 mergeado; validação da develop VALIDADO (árvore `951ac51`, [run](https://github.com/DaniloFG/GitTools/actions/runs/43154515685)) |
 | Q1 | #107 | Runner determinístico de cenários e2e | fechada | `48b7a9a` | 7 cenários em ~3,7 s; 1303 testes verdes |
 | Q2 | #108 | Jornadas funcionais e regressões | fechada | `cb8e437` | 27 cenários (20 novos) em ~31 s; mutação reprova #93, #94 e #97; 1312 testes verdes |
-| Q3 | #109 | Responsividade, desempenho e teclado | a fazer | | |
+| Q3 | #109 | Responsividade, desempenho e teclado | fechada | `COMMIT` | 3 fases em ~10 s cada; 1322 testes verdes; teclado: 3 sem nome e 5 sem foco (#120) |
 | Q4 | #110 | Esteira QA e gates de cobertura e merge | a fazer | | |
 | Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | a fazer | | |
 | B1 | #114 | Spike: branch apagada, restauração, pipeline | a fazer | | |
@@ -37,19 +37,16 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | D1 | #99 | Link não rastreado fora do repositório (descoberta) | a fazer | | |
 | ENC | #106, #113 | Encerramento: PRs, validações e issues | a fazer | | |
 
-### Última etapa fechada: `Q2` (#108)
+### Última etapa fechada: `Q3` (#109)
 
-- **Feito**: 20 cenários em `scripts/validacao/e2e/cenarios/` (abrir, Changes listar/stage/descartar/commit, History diff,
-  branch criar/trocar/apagar, stash, conflito salvar/continuar/pular/abortar, regressões #93, #94, #97). Cada um confere o
-  resultado lendo o git. Runner: `app.repoNovo({wip,nome,preparar})` (repo próprio, limpo ao fim do cenário), `app.git(...)`
-  (execFile assíncrono), `app.aba(nome)`, `expect.igual/pagina/ate`; cenário com `escreve: true` ignora "altera o
-  repositório" (saída ≠ 0 do git continua reprovando); `gitTolerado` existe e ninguém usa.
-- **Medido**: `node scripts/validacao/e2e.mjs` 3× → ok (27 cenários, ~31 s); `npm test` 94 arquivos, 1312 testes; typecheck verde.
-  Mutação manual (reverter a CSS e rodar): #97 (tabs sem encolher), #94 (`z-index` do popover), #93 (`overflow` do
-  `.csection-body`) reprovam o cenário certo. #92 (conflito) NÃO mutado: não conferido.
-- **Não conferido**: Windows/macOS; extensão do VS Code; painel embaixo/direita e altura < 560 px na #93.
-- **Achado**: #119 (Dashboard a 320 px rola na horizontal).
-- Q3/Q4 criam cenários no mesmo formato; o e2e subiu de ~4 s para ~31 s (criar/limpar repos com `createDemoRepo`, que é síncrono).
+- **Feito**: `node scripts/validacao/qa.mjs <responsivo|desempenho|teclado>` (fases `e2e-responsivo`, `e2e-desempenho`, `e2e-teclado` em `FASES`),
+  tetos em `scripts/validacao/orcamentos.json` (lógica em `orcamentos.mjs`), relatório `validacao-out/qa-<fase>.json`.
+  Responsivo: 3 posições × 5 larguras (History e Branches) + alerta de conflito; desempenho: CPU 4× no `moderate`.
+- **Medido** (5 execuções cada): responsivo 5/5 ok; desempenho 4/5 (1 vez 8 tarefas longas, por isso o teto é 10); teclado
+  estável em 3 sem nome e 5 sem foco visível, teto = base (#120). Processos git = "Hoje" da seção 7 (6/2/2/4/9).
+- **Não conferido**: pipeline completo com as fases novas; Windows/macOS; caminho do watchdog estourado e do Stage ausente.
+- **Achados**: #120 (acessibilidade); #119 (Dashboard a 320 px) segue fora do responsivo.
+- Q4 (workflow QA) deve rodar `qa.mjs` nas três fases; cada uma abre um Chromium próprio (~10 s).
 
 ## 3. Base de medição
 
