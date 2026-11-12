@@ -20,7 +20,8 @@
     "build:extension": "node scripts/build-extension.mjs",
     "package:extension": "npm run build:extension && cd extension && vsce package --no-dependencies --baseContentUrl https://github.com/DaniloFG/GitTools/blob/main/extension --baseImagesUrl https://github.com/DaniloFG/GitTools/raw/main/extension --out ../release/",
     "build:icons": "node scripts/build-file-icons.mjs",
-    "perf:bundle": "node scripts/perf/bundle-size.mjs"
+    "perf:bundle": "node scripts/perf/bundle-size.mjs",
+    "validar": "node scripts/validacao/pipeline.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
