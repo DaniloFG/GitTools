@@ -16,7 +16,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E8` (ler `docs/ESBOCO-CONFLITOS.md`, aprovado pelo juiz)
+**A seguir:** `E9` (ler `docs/ESBOCO-CONFLITOS.md`, seção 8, e a seção 5 daqui)
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
@@ -28,15 +28,17 @@ fechada está na mensagem do commit dela.
 | E5 | #95 investigação: medir cherry-pick e `rerere` | fechada | `b544667` | 3 processos por parada (início 5); teto travado em teste; números na #95 |
 | E6 | #95 implementar os caminhos decididos (seção 5) | fechada | `80caaea`, `4ed4c12` | `orderCommits` em empate de data corrigido; continuar automático + reaproveitar decisão; 1010 testes verdes, pacote 689.842/700.000 |
 | E7 | #96 esboço da tela Conflitos | fechada | ver commit | `docs/ESBOCO-CONFLITOS.md` (147 linhas), juiz APROVADO na 2ª rodada |
-| E8-E10 | #96 implementação em incrementos | depende de E4, E6, E7 | | |
+| E8 | #96 tela Conflitos: lista, estado, rodapé | fechada | `9af47be` | pacote JS 689.842 → 693.527/700.000; 60 conflitos: 41 linhas montadas, 1.169 nós |
+| E9-E10 | #96 editor embutido e seção Conflitos | E9 a fazer | | |
 | E11 | #98 Tour: desenho e lista de passos | a fazer | | |
 | E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
 
-### Última etapa fechada: `E7` (#96, esboço)
+### Última etapa fechada: `E8` (#96, tela Conflitos)
 
-- `docs/ESBOCO-CONFLITOS.md`: tela, entradas/saída, banner, duas configurações (`conflictSummary`, `conflictStartup`), módulos puros,
-  incrementos E8-E10 e cinco decisões do modo fábrica. Só documento: nenhum código, nada medido, sem typecheck/testes.
-- Juiz reprovou a 1ª versão (questões deixadas ao dono, janela E8/E9 sem onde resolver, gatilho de fechar ambíguo); corrigido e aprovado.
+- `ConflictsScreen.tsx` (lazy, substitui o dock como Dashboards), `ConflictFlow.tsx` (provedor: decisões, continuar sozinho, ações).
+  Banner informativo (esconde a lista com a tela aberta); continuar/pular/abortar/auto/reaproveitar no rodapé. Entradas: ⚠ da aba ativa, banner, painel `changes.conflicts`, partida.
+- Verificado: typecheck, 1147 testes, builds, `perf:bundle`; tela vista com 60 conflitos. Code-review high: 5 achados corrigidos.
+- **Não conferido**: `core.mjs --trace`, `ui.mjs 4×`, janela estreita depois da correção, Esc dentro do `ConflictEditor`, merge concluindo pelo commit de Alterações (merge perdeu o "Continuar" do banner: decisão 5 do esboço). Sem teste de React.
 - **Remover `docs/ESBOCO-CONFLITOS.md` no encerramento** (`git rm`), junto do HANDOFF.
 
 ## 3. Base de medição
@@ -48,7 +50,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 
 ### Etapas seguintes (detalhar quando destravadas)
 
-- **E8-E10** (#96): detalhados na seção 8 de `docs/ESBOCO-CONFLITOS.md` (E8 lista/estado, E9 editor embutido, E10 seção Conflitos).
+- **E9-E10** (#96): seção 8 de `docs/ESBOCO-CONFLITOS.md` (E9 editor embutido e ações por arquivo, E10 seção Conflitos). E9 deve: tirar a lista por arquivo e `resolveEvery` do banner, medir `ui.mjs` em 320/480/640, `security-review`; E10 liga `CONFLICT_STARTUP` (App.tsx) e `shouldCloseAfterResolve`.
 - **E11** (#98): lista final de recursos e ordem dos passos (juiz aprova); desenho do convite e do cartão.
 - **E12-E13** (#98): infraestrutura sob demanda (chunk separado, `data-tour`, convite); depois conteúdo nos seis idiomas
   e teste "todo alvo existe". Medir pacote da primeira carga e CPU 4×.
@@ -70,6 +72,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 - **E5**: `onGitCommand` (`e.exitCode === undefined`) conta processos iniciados; testes com datas de commit distintas
   usam `process.env.GIT_COMMITTER_DATE` (o `runGit` herda `process.env`). `rerere` com `reset --hard` na `main` errada
   muda o conflito: use uma tag do ponto de partida.
+- **E8**: o `RepoView` é remontado por aba (`key`), por isso `conflictsStartupSeen` é módulo e o provedor fica no `AppProviders`. `.app > .dock-hidden` foi copiado para `styles.css` (a regra original só carrega com o chunk dos Dashboards). Esc da tela: `onKeyDown` no `<section>`, nunca `window` (regra da interface). Filtro "Decididas" só tem decisões lembradas de paradas anteriores.
 - Instalar dependências em contêiner novo: `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`.
 
 ## 6. Encerramento
