@@ -108,10 +108,24 @@ origem e maturidade entram quando se aplicam.
 - A `develop` aceita qualquer branch de trabalho (inclusive `ccr-*` e com `docs/HANDOFF.md`); a `homolog` aceita qualquer
   uma, menos `develop` e `main`. O check `branch-flow.yml` barra `docs/HANDOFF.md` na `homolog` e na `main`.
 - Não é preciso renomear a branch. O HANDOFF só sai antes do PR para a `homolog`: `git rm docs/HANDOFF.md` e commit.
+- A origem da branch é a `main`, não a `develop` (seção "Origem da branch").
+
+## Origem da branch
+
+Toda branch de trabalho nova nasce da `main` atualizada (`git fetch origin main`), nunca da `develop` nem da `homolog`.
+Motivo: essas duas podem sofrer alterações simultâneas e quebrar o corte; a `main` é a versão de produção, e a branch
+cortada dela nasce limpa, com o contexto verdadeiro de produção. O fluxo de PR não muda: branch → `develop`, a mesma
+branch → `homolog`, `homolog` → `main`.
+
+- A `main` não traz o que só existe na `develop` (ferramentas ainda não promovidas). O trabalho não depende disso; se
+  depender, traz o necessário por cherry-pick explícito, registrado no HANDOFF ou na descrição do PR.
+- Plano em curso continua na branch que já tem: não se recorta no meio.
+- Quando a plataforma designa a branch (`ccr-*`, `outcome_branch`), a sessão a alinha à `main` antes de começar, desde
+  que ela ainda não tenha commit de trabalho.
 
 ## Ciclo de vida das branches
 
-A branch de trabalho nasce de `develop`, vai por PR para `develop` e, depois, a **mesma** branch vai por PR para `homolog`.
+A branch de trabalho nasce da `main`, vai por PR para `develop` e, depois, a **mesma** branch vai por PR para `homolog`.
 As duas passagens dependem dela, então ela fica de pé até o fim do plano: não se apaga logo após o merge na `develop`.
 
 - **O Claude não apaga branches.** A sessão recebe 403 ao tentar (git e `gh api` são bloqueados pelo proxy). Apagar é do
