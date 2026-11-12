@@ -21,7 +21,7 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 
 ## 2. Estado
 
-**A seguir:** `B1`
+**A seguir:** `B2`
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -31,20 +31,19 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | Q3 | #109 | Responsividade, desempenho e teclado | fechada | `1d56c8f` | 3 fases em ~10 s cada; 1322 testes verdes; teclado: 3 sem nome e 5 sem foco (#120) |
 | Q4 | #110 | Esteira QA e gates de cobertura e merge | fechada | `25d1b2a` | 1357 testes verdes; gate-main 61 (9 reprovam com o hook antigo); gate-cobertura 23 |
 | Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | fechada | `3f8edac` | 1357 testes verdes; `CLAUDE.md` em 199 linhas; só documentação |
-| B1 | #114 | Spike: branch apagada, restauração, pipeline | a fazer | | |
+| B1 | #114 | Spike: branch apagada, restauração, pipeline | fechada (parcial) | ver git log | compare por SHA e `refs/pull/N/head` provados; DELETE não testável da sessão (403) |
 | B2 | #115 | Política de ciclo de vida das branches no guia | a fazer | | |
 | B3 | #116 | Limpeza no fim do plano e trava contra apagar branches | a fazer | | |
 | D1 | #99 | Link não rastreado fora do repositório (descoberta) | a fazer | | |
 | ENC | #106, #113 | Encerramento: PRs, validações e issues | a fazer | | |
 
-### Última etapa fechada: `Q5` (#111)
+### Última etapa fechada: `B1` (#114)
 
-- **Feito**: `.claude/rules/qa.md` e skill `qa` (cenário, prova de reprovação, execução, relatório); `etapa`, `validar`,
-  `gt-validador` e template de PR exigem cenário e2e (ou `sem-e2e`) e o check `QA` verde; `testes.md` e `github.md` citam o QA.
-- **Não conferido**: execução real do `qa.yml` no Actions e seu tempo; `code-review` e `security-review` não rodaram (só documentação).
-- **Descoberta**: #121 (`gate-main.sh` pega o primeiro check `QA` do sha; push e PR duplicados podem esconder um vermelho). Não implementada.
-- **Atenção ENC**: `validacao.yml` e `qa.yml` rodam o mesmo pipeline em push na develop/homolog (custo dobrado); a ENC avalia.
-- **Limite**: o gate de cobertura só olha `components/`; exigir `QA` na proteção de branch é do dono (#101).
+- **Feito**: spike comentado na #113 (provas, rulesets, pipeline). `compare/…...SHA` e `refs/pull/N/head` funcionam; o pipeline
+  (`validacao.yml`, `qa.yml`, `pipeline.mjs`) só usa o nome da branch como rótulo/concorrência. Só existe a ruleset `Main`
+  (deletion + non_fast_forward); nenhuma para `develop`/`homolog`; `apply-branch-protection.sh` não rodado (é do dono, #101).
+- **Não conferido**: o `DELETE` da branch com PR aberto: a sessão não apaga branch (git e `gh api` bloqueados pelo proxy, 403).
+- **Para o dono**: apagar `spike/base` e `spike/work` (PR #123 fechado). **Para B2/B3**: a política deve assumir que o Claude não apaga branches; a trava do `gate-main.sh` é defesa em profundidade; #117 depende do dono.
 
 ## 3. Base de medição
 
@@ -61,8 +60,7 @@ DOM (meta 20). Testes do plano 1: 1245 verdes (E13) mais os dos gates (111 nos t
 
 ### Etapas `B1` a `B3` — ciclo de vida das branches (issue-mãe #113)
 
-- **Orquestra**: topo (B1 e B3), sonnet (B2, documentação). **Depende de**: B1 antes de B2 e B3
-- **B1 #114** spike com UMA pergunta e prazo curto, em branches descartáveis `spike/*`; resultado comentado na #113
+- **Orquestra**: topo (B3), sonnet (B2, documentação). **Depende de**: B1 antes de B2 e B3
 - **B2 #115** seção "Ciclo de vida das branches" em `github.md` e `CONTRIBUTING.md`; **B3 #116** passo de limpeza
   em `central`/`pr` e `gate-main.sh` bloqueando apagar develop, homolog e main (`security-review`, testes com `gh` falso)
 - #117 (limpeza única das branches antigas) segue `bloqueada` até B1 e B3; entra aqui só se destravar.
