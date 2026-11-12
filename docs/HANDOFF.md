@@ -15,11 +15,13 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**A seguir:** `E1`
+**A seguir:** `E2`
+
+**Última etapa fechada:** E1: SessionStart disparou de verdade (`claude -p` numa cópia sem `origin/HEAD` criou `origin/develop`, 2 execuções) e `security-review` rodou até o fim ali ("No vulnerabilities found", diff só de HANDOFF); `origin-head.test.ts` 8/8.
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
-| E1 | #166 | security-review sem origin/HEAD + disparo real do SessionStart (#143, #142) | a fazer | | |
+| E1 | #166 | security-review sem origin/HEAD + disparo real do SessionStart (#143, #142) | fechada | (este commit) | disparo real + security-review ok |
 | E2 | #167 | security-review do diff da #95 (#147, #95); depende da E1 | a fazer | | |
 | E3 | #168 | processos git por ação e stats em ms (#146, #132) | a fazer | | |
 | E4 | #169 | relato da #93, z-index do `.dash-popover`, fechar #108 (#150, #93, #94) | a fazer | | |
@@ -36,12 +38,6 @@ Só a E3 mede. Base: `4b9f8e5^` contra `4b9f8e5` (commit da correção da #132),
 
 Cada etapa: ler a issue e os comentários de fechamento do Plano 4, executar, comentar a evidência por critério e
 trocar o rótulo para `status:em-revisao`. Issues antigas só fecham com prova completa.
-
-### Etapa E1 — security-review numa cópia sem origin/HEAD (#166)
-- **Orquestra**: topo. **Segurança**: sim.
-- **Ler antes**: `.claude/hooks/origin-head.sh`, `.claude/settings.json`, comentários da #143.
-- **Aceite**: clone fora do repositório sem `origin/HEAD`; `security-review` roda até o fim e a saída vai para a #143; disparo real do SessionStart provado (ou limite documentado); `npx vitest run tests/origin-head.test.ts` 8/8.
-- **Testes**: execução real; unidade existente como regressão.
 
 ### Etapa E2 — security-review do diff da #95 (#167)
 - **Orquestra**: topo. **Depende de**: E1. **Segurança**: sim (nível `high`).
@@ -66,7 +62,8 @@ trocar o rótulo para `status:em-revisao`. Issues antigas só fecham com prova c
 
 - 2026-11-12: #143 destrava #147; por isso E1 antes de E2.
 - 2026-11-12: relato da #93 e divergência do `.dash-popover` seguem a escada (pergunta registrada sem bloquear; `gt-juiz`).
-- Cópia de teste sem `origin/HEAD` vive no scratchpad, nunca no repositório.
+- Cópia de teste sem `origin/HEAD` vive no scratchpad, nunca no repositório. Apagar a ref remota de `develop` na cópia é bloqueado pelo `gate-main.sh`: monte a cópia com `git init` + `git fetch origin <branch-de-trabalho>`.
+- `claude -p` roda os hooks de `.claude/settings.json` do cwd (prova do SessionStart); `/security-review` em `-p` funciona.
 
 ## 6. Encerramento
 
