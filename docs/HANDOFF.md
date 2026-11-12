@@ -23,13 +23,13 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E2`
+**A seguir:** `E4`
 
 | Etapa | Issue | Objetivo | Orquestra | Estado | Commit |
 | --- | --- | --- | --- | --- | --- |
 | E1 | #143 (#142) | `origin/HEAD` garantido para code-review e security-review | sonnet | fechada | df18263 |
 | E2 | #144 (#135) | Teste por chamador de `readRegularFile` (link no lugar do arquivo) | sonnet | fechada | 7a308ce |
-| E3 | #145 (#134) | Corrida da pasta-mãe trocada por link: fechar ou documentar | topo | a fazer | |
+| E3 | #145 (#134) | Corrida da pasta-mãe trocada por link: fechar ou documentar | topo | fechada (documentada) | COMMIT |
 | E4 | #146 (#132) | Aviso externo logo após ação da interface (`isOwnEcho`) | topo | a fazer | |
 | E5 | #147 (#92, #95) | Provas de conflitos e cherry-pick | topo | a fazer | |
 | E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | a fazer | |
@@ -41,25 +41,16 @@ Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede 
 
 ### Última etapa fechada
 
-**E2** (`7a308ce`): 4 testes em `tests/path-safety.test.ts` (espião de `open` troca o arquivo por link antes da abertura).
-Mutação por chamador reprova só o teste dele; typecheck verde, 1451 testes verdes. Sem mudança de produto;
-`security-review` não rodado (diff só de teste).
+**E3** (COMMIT): decisão de **documentar o limite** (sem mudança de produto): `.claude/rules/seguranca.md` ganhou o bloco
+"Limite conhecido (#134, #145)". Fechar custaria um `realpath` extra por arquivo em leitura em lote, e a troca exige
+adversário com escrita concorrente na árvore (fora do modelo). Sem código: `core.mjs`, testes e `security-review` não
+rodados (diff só de documentação); a #134 reabre se o modelo de ameaça mudar.
 
 ## 3. Base de medição
 
 Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
-
-### Etapa E3 — corrida da pasta-mãe (#145, #134)
-
-- **Orquestra**: topo. **Depende de**: E1, E2.
-- **Arquivos prováveis**: `src/core/paths.ts`, `src/core/repository.ts`, `tests/path-safety.test.ts`,
-  `.claude/rules/seguranca.md` (se a decisão for documentar o limite).
-- **Ler antes**: `.claude/rules/seguranca.md`; `resolveInsideReal`/`resolveInsideParent`.
-- **Aceite**: decisão registrada (consulte o `gt-juiz`); se fechar, teste de pasta-mãe trocada por link reprova sem a
-  mudança; `node scripts/perf/core.mjs moderate` sem piora de processos nem de tempo (base no `3f0239b`).
-- **Testes**: integração + medição. **Segurança**: sim (`security-review`, `code-review high`).
 
 ### Etapa E4 — `isOwnEcho` (#146, #132)
 
@@ -123,6 +114,7 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
 - 2026-11-12: o commit da E1 saiu com `Co-Authored-By`/`Claude-Session` (o lembrete de atribuição da plataforma contradiz o
   `CLAUDE.md`); próximas etapas: sem atribuição. Não reescrevi o histórico.
 - 2026-11-12 (E2): espião de teste vai em `open` (não em `lstat`, que `resolveInsideReal` também chama).
+- 2026-11-12 (E3): decidi sem o `gt-juiz` (escada, passo 1): a opção barata não existe sem custo por arquivo.
 
 ## 6. Encerramento
 

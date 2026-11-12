@@ -37,6 +37,16 @@ enfraquecê-las, e código novo segue o mesmo desenho.
 | Política de conteúdo | `src/renderer/index.html` e `html()` em `extension/src/extension.ts` | Sem script de fora; no webview, script só com `nonce` e `default-src 'none'` |
 | Editor externo | `src/main/editors.ts` | Sem shell, exceto `.cmd`/`.bat` no Windows, com tudo entre aspas; variáveis do Electron não vazam para o editor |
 
+**Limite conhecido (#134, #145).** `resolveInsideReal` e `resolveInsideParent` (`src/core/paths.ts`) conferem o
+`realpath` da pasta na hora da chamada; `openRegularFile` fecha a troca do último componente (`O_NOFOLLOW` + `fstat`).
+Fica um limite aceito: se uma pasta-mãe virar link para fora entre a conferência e a abertura, a leitura segue o link.
+Aceito porque exige processo com escrita concorrente na árvore do repositório (que já poderia alterar hooks, `.git/config`
+e os arquivos), fora do modelo "repositório baixado que o usuário abre". Fechar exigiria conferir o `realpath` do
+descritor ou abrir relativo à pasta: uma chamada extra de disco por arquivo em leituras em lote (princípios 2 e 3
+do `CLAUDE.md`), sem ganho no modelo.
+- **Leitura de arquivo de usuário** só passa por `resolveInsideReal`/`resolveInsideParent` + `openRegularFile`/
+  `readRegularFile`. Se o modelo de ameaça incluir adversário concorrente, reabra a #134.
+
 ## Regras para código novo
 
 - **Processo novo só por lista de argumentos.** Nada de `exec`, `execSync`, `shell: true` nem comando montado por
