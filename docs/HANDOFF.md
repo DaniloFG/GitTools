@@ -23,13 +23,13 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E3` — prova da regressão #92 e processos git (#92, #108)
+**A seguir:** `E4` — provas de #93 e #94
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | E1 | #121 | gate-main: decidir pelo check QA mais recente do sha | feita | a30dc72 | gate-main 89/89; 3 casos reprovam sem a correção |
 | E2 | #128 | Documentar o fluxo: remoção do HANDOFF entra na develop antes do PR da homolog | feita | (ver git log) | 3 textos alinhados; CLAUDE.md 199 linhas |
-| E3 | #92 (+#108) | Prova da #92: mutação do cenário e processos git antes/depois | a fazer | | |
+| E3 | #92 (+#108) | Prova da #92: mutação do cenário e processos git antes/depois | feita | a897c90 | mutação A não reprova (ver seção 5); B e C1 reprovam; 4 cenários novos, e2e 31 ok |
 | E4 | #93, #94 | Provas restantes: painel à direita/embaixo, altura baixa; combobox compartilhado | a fazer | | |
 | E5 | #97 | Prova: itens ocultos pelo menu Aparência (#56) | a fazer | | |
 | E6 | #109 | 5 execuções iguais do e2e-desempenho após a recalibração | a fazer | | |
@@ -42,9 +42,15 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: E2 (#128)
+### Última etapa fechada: E3 (#92, #108)
 
-- **Feito**: `central`, `pr` e `rules/github.md` dizem o mesmo fluxo (`git rm` do HANDOFF antes do PR para a develop; validar develop; só então homolog). `gate-main.sh` intocado. **Não conferido**: typecheck e testes (só documentação); `branch-flow.yml` não revisto.
+- **Feito**: mutações no produto (restauradas, nada commitado): A (reverter `adfec47`) NÃO reprova, pois desde a E9 da #96
+  `closeEditor` e `toast` são estáveis; C1 (efeito antigo + `closeEditor` instável) reprova com "6 processos git (teto 5)",
+  C2 (efeito novo + instável) passa; B (tirar o `git add` de `saveConflictResolution`) reprova `conflito-resolver-salvar`
+  e `conflito-continuar`. Cenários novos `conflito-resolver-{nosso,deles,a-mao,muitos}`: processos 4, 4, 3, 4 (teto 5).
+  `conflito-continuar/pular/abortar` ok na mesma execução (e2e 31 cenários, 40 s).
+- **Não conferido**: os quatro cenários novos não rodaram contra produto quebrado; "antes 9 / depois 3" não foi reexecutado
+  (o código antigo hoje dá 3, a base de 9 não reproduz); a proteção de #92 contra `onClose` instável não tem teste permanente.
 
 ## 3. Base de medição
 
@@ -56,13 +62,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
 
-### Etapa E3 — prova da regressão #92 e processos git (#92, #108)
-
-- **Orquestra**: topo. **Arquivos**: `scripts/validacao/e2e/cenarios/conflito-resolver-salvar*`, runner.
-- **Aceite**: reverter a correção da #92 (modal de três opções / arquivo que permanece na lista) faz o cenário
-  reprovar (saída colada na issue); `--trace` antes e depois do número de processos de "salvar + atualizar";
-  fluxo com poucos e muitos arquivos e nosso/deles/à mão cobertos ou o que não couber fica "não conferido".
-- **Testes**: tela e medição. **Depende de**: E1 (QA confiável).
 ### Etapa E4 — provas de #93 e #94
 
 - **Orquestra**: topo. **Aceite**: `regressao-93` cobre painel à direita e embaixo e janela abaixo de 560 px de altura
@@ -126,6 +125,8 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 - Refinamento (2026-11-12): #98 Pequena (só cenário e2e `tour.mjs` e medição; `docs/DESENHO-TOUR.md` sumiu, os passos
   estão em `tour.ts`); #96 Média (decisão: preservar escolhas por arquivo ao trocar de arquivo); #95 Média.
 - Sem `status:validada` sem a evidência por critério; sem prova → comentário e segue.
+- E3: mutar o produto exige `npm run build:extension` antes de cada e2e (o dist não segue o código). `ROW=30` fixo em
+  `conflito-resolver-muitos`: se a altura da linha da lista mudar, o cenário reprova. Cenários só com `Keep both` não bastam.
 
 ## 6. Encerramento
 
