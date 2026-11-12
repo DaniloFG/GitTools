@@ -108,6 +108,20 @@ class Controller {
     void this.backend.loadSettings().then(applyLocale)
   }
 
+  /** Tarefas em segundo plano que ninguém espera (`void`): a `whenIdle` as espera, para o teste não apagar a pasta no meio. */
+  private readonly background = new Set<Promise<unknown>>()
+  private track<T>(task: Promise<T>): Promise<T> {
+    this.background.add(task)
+    const done = () => void this.background.delete(task)
+    task.then(done, done)
+    return task
+  }
+
+  async whenIdle(): Promise<void> {
+    while (this.background.size > 0) await Promise.allSettled([...this.background])
+    await this.backend.idle()
+  }
+
   dispose() {
     this.stopDetectors()
     this.backend.dispose()
@@ -147,7 +161,7 @@ class Controller {
 
   /** A descoberta começa (se ainda não começou) sem que ninguém a espere; um erro dela aparece como antes, numa mensagem. */
   private discoverInBackground(): void {
-    this.useWorkspaceRepository().catch((error: unknown) => void vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error)))
+    this.track(this.useWorkspaceRepository()).catch((error: unknown) => void vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error)))
   }
 
   /** Conforme a configuração `multiRepoDetection`: todos os repositórios do workspace, ou só o primeiro (comportamento antigo). */
@@ -193,9 +207,9 @@ class Controller {
     const watcher = vscode.workspace.createFileSystemWatcher('**/.git')
     this.detectors = [
       vscode.workspace.onDidChangeWorkspaceFolders((event) => {
-        void this.openFound(event.added.map((f) => f.uri.fsPath))
+        void this.track(this.openFound(event.added.map((f) => f.uri.fsPath)))
       }),
-      watcher.onDidCreate((uri) => void this.openCreated(uri.fsPath)),
+      watcher.onDidCreate((uri) => void this.track(this.openCreated(uri.fsPath))),
       watcher
     ]
   }
@@ -214,7 +228,7 @@ class Controller {
     }
     if (this.detectors) return
     this.startDetectors()
-    void this.openFound(this.folderPaths())
+    void this.track(this.openFound(this.folderPaths()))
   }
 
   /** Um `.git` apareceu dentro do workspace: abre o repositório como aba nova, sem trocar o ativo. */
@@ -265,12 +279,14 @@ class Controller {
     panel.onDidDispose(() => {
       this.main = null
     })
-    void this.backend
-      .restoreWorkspace()
-      .then(() => this.backend.repo?.info())
-      .then((info) => {
-        if (info) panel.title = `GitTools — ${info.name}`
-      })
+    void this.track(
+      this.backend
+        .restoreWorkspace()
+        .then(() => this.backend.repo?.info())
+        .then((info) => {
+          if (info) panel.title = `GitTools — ${info.name}`
+        })
+    )
     this.setup(panel)
   }
 
@@ -360,7 +376,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     status,
-    { dispose: () => controller.dispose() },
+    // `whenIdle` é para os testes esperarem as gravações em segundo plano antes de apagar a pasta de dados.
+    Object.assign({ dispose: () => controller.dispose() }, { whenIdle: () => controller.whenIdle() }),
     vscode.commands.registerCommand('gittools.open', run(() => controller.open())),
     vscode.commands.registerCommand(
       'gittools.openRepository',

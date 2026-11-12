@@ -55,13 +55,17 @@ async function ask(panel: FakePanel, channel: string, ...args: unknown[]) {
 }
 
 beforeEach(() => fake.reset())
-afterEach(() => {
+const started: { dispose(): void; whenIdle?: () => Promise<void> }[][] = []
+afterEach(async () => {
+  // Gravações em segundo plano (recentes, workspace) terminam antes de a pasta temporária sumir.
+  for (const subs of started.splice(0)) await Promise.all(subs.map((x) => x.whenIdle?.()))
   while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true })
 })
 
 async function start(options: { root?: string; workspaceState?: Memento } = {}) {
   const { context, subscriptions } = extensionContext(options)
   activate(context as never)
+  started.push(subscriptions)
   // Cada janela usa os próprios comandos (a última ativação substitui os registros em `fake.commands`).
   const handlers = new Map(fake.commands)
   return { context, subscriptions, run: (id: string, ...args: unknown[]) => handlers.get(id)!(...args) }

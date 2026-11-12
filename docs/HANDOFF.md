@@ -46,6 +46,9 @@ R1-fix: o PR #118 ficou vermelho no macOS (`gate-issue.test.ts`, caminho `/tmp/.
 O `gate-issue.sh` agora normaliza em bash puro (`normalizar`), com teste que simula o `realpath` sem `-m`. Windows: reconferir o CI.
 R1-fix2: no Windows (Git Bash) o caminho chega como `C:\...` e o `/tmp` do teste não existia; o hook converte `C:\x` em `/c/x`
 (`para_posix`) e o teste monta o `..` a partir do tmp real. Reconferir o CI.
+R1-fix3: o `mkdir ENOENT` em `Backend.saveRecent` era gravação em segundo plano depois do `rmSync` do teste. Agora `saveRecent` entra em fila,
+`Backend.idle()` e `Controller.whenIdle()` esperam as gravações e o `afterEach` de `tests/extension.test.ts` as espera. O `onTaskUpdate`
+timeout do Windows (npm test ~6 min; a develop levou ~5 min) NÃO foi provado localmente (sem Windows): reconferir o CI.
 
 ## 3. Base de medição
 
