@@ -27,7 +27,7 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | --- | --- | --- | --- | --- | --- |
 | R1 | #92 a #98, #100 a #105, #112 | Publicar o plano 1 na develop e validar | fechada | `38a0479` | PR #118 mergeado; validação da develop VALIDADO (árvore `951ac51`, [run](https://github.com/DaniloFG/GitTools/actions/runs/43154515685)) |
 | Q1 | #107 | Runner determinístico de cenários e2e | fechada | `48b7a9a` | 7 cenários em ~3,7 s; 1303 testes verdes |
-| Q2 | #108 | Jornadas funcionais e regressões | fechada | (ver git log) | 27 cenários (20 novos) em ~31 s; mutação reprova #93, #94 e #97; 1312 testes verdes |
+| Q2 | #108 | Jornadas funcionais e regressões | fechada | `cb8e437` | 27 cenários (20 novos) em ~31 s; mutação reprova #93, #94 e #97; 1312 testes verdes |
 | Q3 | #109 | Responsividade, desempenho e teclado | a fazer | | |
 | Q4 | #110 | Esteira QA e gates de cobertura e merge | a fazer | | |
 | Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | a fazer | | |
