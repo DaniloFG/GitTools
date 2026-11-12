@@ -23,7 +23,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E7`
+**A seguir:** `E8`
 
 | Etapa | Issue | Objetivo | Orquestra | Estado | Commit |
 | --- | --- | --- | --- | --- | --- |
@@ -33,7 +33,7 @@ fechada está na mensagem do commit dela.
 | E4 | #146 (#132) | Aviso externo logo após ação da interface (`isOwnEcho`) | topo | fechada | 4b9f8e5 |
 | E5 | #147 (#92, #95) | Provas de conflitos e cherry-pick | topo | fechada | bf8dd18 |
 | E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | fechada | c627a0f |
-| E7 | #149 (#96) | Conflitos: merge por Alterações, 320 px, hi/ar/zh-CN | topo | a fazer | |
+| E7 | #149 (#96) | Conflitos: merge por Alterações, 320 px, hi/ar/zh-CN | topo | fechada | 59eaddc |
 | E8 | #150 (#93, #94, #108) | Rolagem do Changes e empilhamento do combobox | topo | a fazer | |
 | E9 | #151 (#97, #119, #140) | Barra estreita (direita/embaixo), Dashboard ≥ 1050, `.wip-open` | topo | a fazer | |
 
@@ -41,25 +41,17 @@ Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede 
 
 ### Última etapa fechada
 
-**E6** (c627a0f): `ui.mjs` abre Tour e Conflitos (1500 arquivos, cherry-pick fora do app) e confere `perfUi` em
-`orcamentos.json` (fora do `qa.mjs`; sai 1 se estourar). Hoje vs base `b1dd21c` (antes do Tour), CPU 4×, moderate: Tour
-fechado igual (1029 nós, 6/2/4 git, rolagem 41,3 vs 41,5 ms). Tour aberto: 0 git, +15 nós, 16,2 ms/quadro. Conflitos:
-10 git na recarga, 41 linhas, 4484 nós, rolagem 16,0 ms/quadro. `conflict-save.mjs`: 3 processos. `perf:bundle`
-695.635 (≤ 700.000). Não conferido: `npm test` inteiro (só .mjs/.json; `orcamentos.test.ts` verde), `code-review`.
+**E7** (59eaddc): dois cenários e2e, sem mudança de produto. `conflito-merge-por-alteracoes` (merge real, resolve na
+tela, commit pela aba Changes: MERGE_HEAD some, dois pais) e `conflito-estreito-idiomas` (320/480/640/1000 px × en,
+hi, ar-rtl, zh-CN: sem rolagem horizontal, rodapé não cobre o editor). Mutações: `commit --only` em `repository.ts`
+reprova o 1º; `.conflict-editor{min-width:480px}` reprova o 2º (160 px fora a 320). e2e 41 cenários ok; gate-cobertura ok.
+Capturas em `validacao-out/conflitos-*.png` (ar-320 e hi-640 vistas). Não conferido: texto traduzido (revisão humana).
 
 ## 3. Base de medição
 
 Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
-
-### Etapa E7 — tela Conflitos: restante da #96 (#149)
-
-- **Orquestra**: topo. **Depende de**: E6.
-- **Arquivos prováveis**: `src/renderer/src/ConflictsScreen.tsx`, CSS, cenários e2e, catálogos se houver texto.
-- **Aceite**: merge pelo commit de Alterações encerra a operação (e2e); 320/480/640/1000 px sem rolagem horizontal;
-  hi/ar/zh-CN com capturas; mutação de cada cenário novo anexada.
-- **Testes**: e2e. **Segurança**: não.
 
 ### Etapa E8 — rolagem do Changes e empilhamento do combobox (#150, #93, #94, #108)
 
@@ -95,6 +87,7 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
 - 2026-11-12 (E5): o clone vem raso; `git fetch --unshallow origin` antes de procurar commit antigo. Mutação em worktree em
   `$scratchpad/wt/*` com `node_modules` por link; `git worktree remove --force` ao fim. O e2e não tem filtro: roda os 39.
 - 2026-11-12 (E6): o clone é raso mas `b1dd21c` existe; base em worktree com `node_modules` por link e o `ui.mjs` novo (cai no Tour após imprimir o resto). A tela Conflitos não tem base anterior (é nova). Teto sem medida no `desempenho.tetos` reprova o `qa.mjs`: por isso `perfUi` separado.
+- 2026-11-12 (E7): o e2e não filtra por id; `language` muda por `app:saveSettings` + `page.reload()`. O `.gitignore` já cobre `validacao-out/`.
 
 ## 6. Encerramento
 
