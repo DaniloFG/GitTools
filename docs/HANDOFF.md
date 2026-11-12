@@ -21,7 +21,7 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 
 ## 2. Estado
 
-**A seguir:** `D1`
+**A seguir:** `ENC`
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -33,15 +33,16 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | fechada | `3f8edac` | 1357 testes verdes; `CLAUDE.md` em 199 linhas; só documentação |
 | B1 | #114 | Spike: branch apagada, restauração, pipeline | fechada (parcial) | ver git log | compare por SHA e `refs/pull/N/head` provados; DELETE não testável da sessão (403) |
 | B2 | #115 | Política de ciclo de vida das branches no guia | fechada | `4e222e5` | só documentação; `CLAUDE.md` em 199 linhas; typecheck e testes não rodados |
-| B3 | #116 | Limpeza no fim do plano e trava contra apagar branches | fechada | ver git log | 84 testes do gate-main (12 novos reprovam sem a trava); 1380 testes verdes |
-| D1 | #99 | Link não rastreado fora do repositório (descoberta) | a fazer | | |
+| B3 | #116 | Limpeza no fim do plano e trava contra apagar branches | fechada | ver git log | 84 testes do gate-main (14 novos reprovam sem a trava); 1380 testes verdes |
+| D1 | #99 | Link não rastreado fora do repositório (descoberta) | fechada | `5115fc1` | 9 testes novos reprovavam sem a correção; 96 arquivos, 1390 testes verdes |
 | ENC | #106, #113 | Encerramento: PRs, validações e issues | a fazer | | |
 
-### Última etapa fechada: `B3` (#116)
+### Última etapa fechada: `D1` (#99)
 
-- **Feito**: `gate-main.sh` bloqueia (exit 2, "GATE DE BRANCHES") apagar `develop`, `homolog` e `main` por `git push --delete/-d/:ref`, `git branch -d/-D`, `gh api -X DELETE .../git/refs/heads/<ref>` (com `%2F`) e GraphQL `deleteRef`; outras branches passam. `central` ganhou o passo 8 (só LISTA as mergeadas na `homolog`, com SHA, e pede ao dono); `pr` manda registrar o SHA no PR da `homolog`.
-- **security-review**: a skill não carregou (usa `origin/HEAD`, ausente no clone); revisão manual do diff: o hook só restringe, sem execução nova, variáveis entre aspas, padrões fixos. Limite aceito: heurística de texto (`git push origin ":$VAR"` e `git update-ref -d` não são vistos); a defesa real é o 403 do proxy.
-- **Não conferido**: `perf:bundle`/builds (só hook e documentação). **Para o dono**: apagar `spike/base` e `spike/work`; #117 segue `bloqueada`.
+- **Feito**: `resolveInsideParent` (`src/core/paths.ts`) confere só a pasta-pai; `untrackedDiff` e `conflictDetails` a usam e deixam de falhar com link para fora ou quebrado (diff `120000` e `working: null`, sem ler o alvo). `readFile`, `writeFile`, `saveConflictResolution` e `hasConflictMarkers` seguem com `resolveInsideReal`. A asserção antiga de `path-safety.test.ts` que exigia rejeitar o link era o bug e foi trocada.
+- **security-review**: revisão manual do diff (a skill depende de `origin/HEAD`, ausente no clone): o último componente só passa por `lstat` e `readFile` guardado por `isFile()`; pasta-link para fora segue recusada (testes tentam o ataque). Limite aceito: janela lstat→readFile em `conflictDetails` já existia.
+- **Descoberta**: #124 (`gate-main.sh`: `git push origin :heads/develop`, `git update-ref -d` e ref em variável escapam da trava de apagar branch), só registrada.
+- **Não conferido**: builds, `perf:bundle`, Windows (links exigem privilégio).
 
 ## 3. Base de medição
 
@@ -55,10 +56,6 @@ DOM (meta 20). Testes do plano 1: 1245 verdes (E13) mais os dos gates (111 nos t
 - **Orquestra**: topo. **Ler antes**: a issue da etapa (aceite = critérios dela), `scripts/validacao/` e `docs/PERFORMANCE.md` seção 7
 - **Testes**: unidade, tela, medição. **Segurança**: Q4 (hook e workflow): `security-review`. **Depende de**: R1; Q2 a Q4 dependem de Q1
 - Sem dependência nova em `package.json` (Playwright só no job, `npm i --no-save`). Determinismo: dados fixos, sem rede, sem `sleep` fixo.
-
-### Etapa `D1` — #99 (descoberta das etapas)
-
-- Skill `backlog` (C): se a #99 não tem os 4 campos, o `gt-planejador` a refina antes. Segurança de caminho: `security-review`.
 
 ### Etapa `ENC` — encerramento (skill `central`, "Encerramento do plano")
 
