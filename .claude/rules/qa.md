@@ -58,6 +58,14 @@ a tela igual. O motivo fica no corpo do PR, na linha `sem-e2e:`. Mudança visív
 - Teclado (#120) é base medida: 3 controles sem nome acessível e 5 sem foco visível são o que o app tem hoje, não
   a meta. Quando o número cai, o teto cai no mesmo commit, porque a catraca só gira para um lado.
 
+## O que o Windows cobre (#98)
+
+- O job `check` do `ci.yml` roda em ubuntu, windows e macos: `typecheck`, `npm test` (git real), `build` e
+  `build:extension`. O Tour é coberto ali só pelas unidades (`tests/tour*.test.ts`) e pelo bundle compilar.
+- Os cenários e2e e o `perf:bundle` rodam só no ubuntu (`qa.yml`, `validacao.yml`): nada da interface num Chromium é
+  provado no Windows. O Tour não tem código específico de plataforma (só CSS, teclado e foco), por isso a prova
+  vale pelo Chromium; custo de processo e de disco do Windows não é medido (`docs/PERFORMANCE.md`, limite da CPU 4×).
+
 ## Quem lê o veredito
 
 O QA é roteiro determinístico: o veredito é o relatório em `validacao-out/`. O `gt-validador` lê e relata; não
