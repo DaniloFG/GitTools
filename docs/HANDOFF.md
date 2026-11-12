@@ -16,7 +16,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E10` (ler `docs/ESBOCO-CONFLITOS.md`, seções 5 e 8, e a seção 5 daqui)
+**A seguir:** `E11` (#98, desenho do Tour: lista de passos aprovada pelo `gt-juiz`)
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
@@ -30,16 +30,15 @@ fechada está na mensagem do commit dela.
 | E7 | #96 esboço da tela Conflitos | fechada | ver commit | `docs/ESBOCO-CONFLITOS.md` (147 linhas), juiz APROVADO na 2ª rodada |
 | E8 | #96 tela Conflitos: lista, estado, rodapé | fechada | `9af47be` | pacote JS 689.842 → 693.527/700.000; 60 conflitos: 41 linhas montadas, 1.169 nós |
 | E9 | #96 editor embutido, banner informativo, F8, abas | fechada | `1fc81c2` | pacote JS 691.046/700.000; salvar+refresh 3 processos git; 320/480/640 sem rolagem horizontal |
-| E10 | #96 seção Conflitos nas configurações | a fazer | | |
+| E10 | #96 seção Conflitos nas configurações | fechada | `485aebb` | pacote JS 692.522/700.000; 1159 testes verdes |
 | E11 | #98 Tour: desenho e lista de passos | a fazer | | |
 | E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
 
-### Última etapa fechada: `E9` (#96, editor embutido)
+### Última etapa fechada: `E10` (#96, seção Conflitos)
 
-- `ConflictEditor` é painel (`EditorShell`) dentro de `ConflictsScreen`; ações por arquivo no cabeçalho, lote no rodapé; banner só abre a tela; `openConflict` abre a tela com o arquivo (`flow.focus`); F8 = próximo pendente; abas Lista/Editor < 640 px (em 320 px a tela rola, corpo min 320 px).
-- Verificado: typecheck, 1153 testes, builds, `perf:bundle`, `conflict-save.mjs` (3 processos git), roteiro 1000/640/480/320. code-review high: 4 achados corrigidos; sem superfície de segurança (nenhum IPC novo; skill `security-review` falhou por `origin/HEAD`, conferido por grep no diff).
-- **Não conferido**: `core.mjs --trace`, `ui.mjs 4×`, `capture.mjs`/`gifs.mjs` (só `node --check`), Esc/Alt+setas na tela. Sem teste de React.
-- **Limitações (retrabalho, não feito)**: trocar de arquivo/Cancelar descarta escolhas por bloco sem aviso; `modalOpen` não inclui mais o editor, então atalhos globais seguem ativos com ele aberto; abas sem `tabpanel`.
+- `conflictSummary` e `conflictStartup` em `Settings` (tipos em `shared/settings.ts`, reexportados por `conflictScreenPolicy.ts`); `ConflictsSection` (ícone ⚔, searchable) com os dois selects e `autoContinueConflicts` movido da Geral. Partida lê `settingsRef.current.conflictStartup`; `ConflictsScreen` fecha ao fim da operação com `shouldCloseAfterResolve` (marca em ref).
+- Verificado: typecheck, 1159 testes, builds, `perf:bundle` (692.522/700.000).
+- **Não conferido**: seção e fechamento automático na tela; traduções hi/ar/zh-CN sem revisão; sem teste de `SETTINGS_SECTIONS` (sections.tsx fora do tsconfig.node). Aviso ao trocar de arquivo com edição (limitação da E9) ficou de fora: retrabalho.
 - **Remover `docs/ESBOCO-CONFLITOS.md` no encerramento** (`git rm`), junto do HANDOFF.
 
 ## 3. Base de medição
@@ -51,7 +50,6 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 
 ### Etapas seguintes (detalhar quando destravadas)
 
-- **E10** (#96): seção 5 e 8 de `docs/ESBOCO-CONFLITOS.md`: seção Conflitos com `conflictSummary` e `conflictStartup`; liga `CONFLICT_STARTUP` (App.tsx) e `shouldCloseAfterResolve`. Incluir aviso ao trocar de arquivo com edição (limitação da E9) se couber.
 - **E11** (#98): lista final de recursos e ordem dos passos (juiz aprova); desenho do convite e do cartão.
 - **E12-E13** (#98): infraestrutura sob demanda (chunk separado, `data-tour`, convite); depois conteúdo nos seis idiomas
   e teste "todo alvo existe". Medir pacote da primeira carga e CPU 4×.
