@@ -1,8 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path, { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { resolveInside, resolveInsideParent, resolveInsideReal } from '../src/core/paths'
+import { linkOrSkip } from './helpers'
 
 describe('resolveInside', () => {
   it('resolve um caminho relativo para absoluto dentro da raiz', () => {
@@ -54,22 +55,22 @@ describe('resolveInsideReal (links em disco)', () => {
     await expect(resolveInsideReal(root, join(outside, 'fora.txt'))).rejects.toThrow()
   })
 
-  it('recusa pasta-link para fora com arquivo dentro (leitura e alvo que ainda não existe)', async () => {
+  it('recusa pasta-link para fora com arquivo dentro (leitura e alvo que ainda não existe)', async (ctx) => {
     const { root, outside } = sandbox()
-    symlinkSync(outside, join(root, 'link'), 'junction')
+    linkOrSkip(ctx, outside, join(root, 'link'), 'junction')
     await expect(resolveInsideReal(root, 'link/fora.txt')).rejects.toThrow()
     await expect(resolveInsideReal(root, 'link/novo.txt')).rejects.toThrow()
   })
 
-  it('recusa arquivo-link para fora, que o texto do caminho não denuncia', async () => {
+  it('recusa arquivo-link para fora, que o texto do caminho não denuncia', async (ctx) => {
     const { root, outside } = sandbox()
-    symlinkSync(join(outside, 'fora.txt'), join(root, 'atalho.txt'), 'file')
+    linkOrSkip(ctx, join(outside, 'fora.txt'), join(root, 'atalho.txt'), 'file')
     await expect(resolveInsideReal(root, 'atalho.txt')).rejects.toThrow()
   })
 
-  it('aceita pasta-link para dentro do repositório', async () => {
+  it('aceita pasta-link para dentro do repositório', async (ctx) => {
     const { root } = sandbox()
-    symlinkSync(join(root, 'src'), join(root, 'alias'), 'junction')
+    linkOrSkip(ctx, join(root, 'src'), join(root, 'alias'), 'junction')
     await expect(resolveInsideReal(root, 'alias/a.txt')).resolves.toBe(join(root, 'alias', 'a.txt'))
   })
 
@@ -100,26 +101,38 @@ describe('resolveInsideParent (último componente não é seguido)', () => {
     return { root, outside }
   }
 
-  it('aceita arquivo-link para fora e link quebrado, devolvendo o caminho do próprio link', async () => {
+  it('aceita arquivo-link para fora e link quebrado, devolvendo o caminho do próprio link', async (ctx) => {
     const { root, outside } = sandbox()
-    symlinkSync(join(outside, 'fora.txt'), join(root, 'atalho.txt'), 'file')
-    symlinkSync(join(outside, 'nao-existe.txt'), join(root, 'quebrado.txt'), 'file')
+    linkOrSkip(ctx, join(outside, 'fora.txt'), join(root, 'atalho.txt'), 'file')
+    linkOrSkip(ctx, join(outside, 'nao-existe.txt'), join(root, 'quebrado.txt'), 'file')
     await expect(resolveInsideParent(root, 'atalho.txt')).resolves.toBe(join(root, 'atalho.txt'))
     await expect(resolveInsideParent(root, 'quebrado.txt')).resolves.toBe(join(root, 'quebrado.txt'))
   })
 
-  it('recusa "../", caminho absoluto e pasta-link para fora (arquivo que existe ou não)', async () => {
+  // Link em loop (a -> b -> a) e link para si mesmo: o último componente não é seguido, então a chamada devolve o
+  // próprio caminho do link e termina, sem travar.
+  it('aceita link em loop e link para si mesmo no último componente, sem seguir o link', async (ctx) => {
+    const { root } = sandbox()
+    linkOrSkip(ctx, join(root, 'b.txt'), join(root, 'a.txt'), 'file')
+    linkOrSkip(ctx, join(root, 'a.txt'), join(root, 'b.txt'), 'file')
+    linkOrSkip(ctx, join(root, 'self.txt'), join(root, 'self.txt'), 'file')
+    await expect(resolveInsideParent(root, 'a.txt')).resolves.toBe(join(root, 'a.txt'))
+    await expect(resolveInsideParent(root, 'b.txt')).resolves.toBe(join(root, 'b.txt'))
+    await expect(resolveInsideParent(root, 'self.txt')).resolves.toBe(join(root, 'self.txt'))
+  })
+
+  it('recusa "../", caminho absoluto e pasta-link para fora (arquivo que existe ou não)', async (ctx) => {
     const { root, outside } = sandbox()
-    symlinkSync(outside, join(root, 'link'), 'junction')
+    linkOrSkip(ctx, outside, join(root, 'link'), 'junction')
     await expect(resolveInsideParent(root, '../fora/fora.txt')).rejects.toThrow()
     await expect(resolveInsideParent(root, join(outside, 'fora.txt'))).rejects.toThrow()
     await expect(resolveInsideParent(root, 'link/fora.txt')).rejects.toThrow()
     await expect(resolveInsideParent(root, 'link/novo.txt')).rejects.toThrow()
   })
 
-  it('aceita pasta-link para dentro do repositório e a própria raiz', async () => {
+  it('aceita pasta-link para dentro do repositório e a própria raiz', async (ctx) => {
     const { root } = sandbox()
-    symlinkSync(join(root, 'src'), join(root, 'alias'), 'junction')
+    linkOrSkip(ctx, join(root, 'src'), join(root, 'alias'), 'junction')
     await expect(resolveInsideParent(root, 'alias/a.txt')).resolves.toBe(join(root, 'alias', 'a.txt'))
     await expect(resolveInsideParent(root, '.')).resolves.toBe(root)
   })

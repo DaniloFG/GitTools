@@ -34,7 +34,7 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | B1 | #114 | Spike: branch apagada, restauração, pipeline | fechada (parcial) | ver git log | compare por SHA e `refs/pull/N/head` provados; DELETE não testável da sessão (403) |
 | B2 | #115 | Política de ciclo de vida das branches no guia | fechada | `4e222e5` | só documentação; `CLAUDE.md` em 199 linhas; typecheck e testes não rodados |
 | B3 | #116 | Limpeza no fim do plano e trava contra apagar branches | fechada | ver git log | 84 testes do gate-main (14 novos reprovam sem a trava); 1380 testes verdes |
-| D1 | #99 | Link não rastreado fora do repositório (descoberta) | fechada | `5115fc1` | 9 testes novos reprovavam sem a correção; 96 arquivos, 1390 testes verdes |
+| D1 | #99 | Link não rastreado fora do repositório (descoberta) | fechada | `5115fc1` | 9 testes novos reprovavam sem a correção; correção do juiz em `D1-fix`; 1393 testes verdes |
 | ENC | #106, #113 | Encerramento: PRs, validações e issues | a fazer | | |
 
 ### Última etapa fechada: `D1` (#99)
@@ -42,7 +42,8 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 - **Feito**: `resolveInsideParent` (`src/core/paths.ts`) confere só a pasta-pai; `untrackedDiff` e `conflictDetails` a usam e deixam de falhar com link para fora ou quebrado (diff `120000` e `working: null`, sem ler o alvo). `readFile`, `writeFile`, `saveConflictResolution` e `hasConflictMarkers` seguem com `resolveInsideReal`. A asserção antiga de `path-safety.test.ts` que exigia rejeitar o link era o bug e foi trocada.
 - **security-review**: revisão manual do diff (a skill depende de `origin/HEAD`, ausente no clone): o último componente só passa por `lstat` e `readFile` guardado por `isFile()`; pasta-link para fora segue recusada (testes tentam o ataque). Limite aceito: janela lstat→readFile em `conflictDetails` já existia.
 - **Descoberta**: #124 (`gate-main.sh`: `git push origin :heads/develop`, `git update-ref -d` e ref em variável escapam da trava de apagar branch), só registrada.
-- **Não conferido**: builds, `perf:bundle`, Windows (links exigem privilégio).
+- **D1-fix (juiz)**: testes de link passam por `linkOrSkip` (`tests/helpers.ts`), que pula com motivo só se o SO negar o link (EPERM/EACCES/ENOSYS); testes novos de link em loop e para si mesmo. Nota sem implementar: #125 (`readFile` em `conflictDetails` segue o link se o arquivo for trocado entre `lstat` e a leitura) e, de passagem, `resolveInsideParent` com pasta em loop rejeita com ELOOP cru, não com a mensagem de "fora" (recusa segura).
+- **Não conferido**: builds, `perf:bundle`, Windows (ramo de pulo do `linkOrSkip` nunca exercitado, ambiente é Linux).
 
 ## 3. Base de medição
 

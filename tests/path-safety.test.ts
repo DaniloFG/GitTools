@@ -1,9 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, type TestContext } from 'vitest'
 import { GitRepository } from '../src/core/repository'
-import { createRepo, lines } from './helpers'
+import { createRepo, lines, linkOrSkip } from './helpers'
 
 // Auditoria (issue #91): caminho que sai do repositório por "../", por caminho absoluto ou por link de pasta/arquivo.
 // Cada teste tenta o ataque. O conteúdo "SEGREDO FORA" nunca pode sair pela leitura nem ser alterado pela escrita.
@@ -52,78 +52,105 @@ describe('arquivos novos: contagem e diff recusam caminho fora do repositório',
   })
 
   // Link não rastreado não é seguido: o diff sintético é de link (120000), sem o conteúdo do alvo.
-  it('untrackedDiff de link não rastreado para fora devolve o diff de link, sem o conteúdo de fora', async () => {
+  it('untrackedDiff de link não rastreado para fora devolve o diff de link, sem o conteúdo de fora', async (ctx) => {
     const t = await createRepo()
     const o = outside()
-    symlinkSync(o.file, join(t.dir, 'atalho.txt'), 'file')
+    linkOrSkip(ctx, o.file, join(t.dir, 'atalho.txt'), 'file')
     const diff = (await untrackedDiff.call(t.repo, 'atalho.txt')) as { binary: boolean; headerLines: string[] }
     expect(diff).toMatchObject({ path: 'atalho.txt', changeType: 'added', binary: true })
     expect(diff.headerLines.join('\n')).toContain('120000')
     expect(JSON.stringify(diff)).not.toContain('SEGREDO FORA')
   })
 
-  it('untrackedDiff de link quebrado não rastreado devolve o diff de link', async () => {
+  it('untrackedDiff de link quebrado não rastreado devolve o diff de link', async (ctx) => {
     const t = await createRepo()
     const o = outside()
-    symlinkSync(join(o.dir, 'nao-existe.txt'), join(t.dir, 'quebrado.txt'), 'file')
+    linkOrSkip(ctx, join(o.dir, 'nao-existe.txt'), join(t.dir, 'quebrado.txt'), 'file')
     const diff = (await untrackedDiff.call(t.repo, 'quebrado.txt')) as { binary: boolean; headerLines: string[] }
     expect(diff).toMatchObject({ path: 'quebrado.txt', changeType: 'added', binary: true })
     expect(diff.headerLines.join('\n')).toContain('120000')
     expect(JSON.stringify(diff)).not.toContain('SEGREDO FORA')
   })
 
-  it('untrackedDiff recusa "pasta-link/arquivo" para fora, porque a pasta é que sai do repositório', async () => {
+  it('untrackedDiff recusa "pasta-link/arquivo" para fora, porque a pasta é que sai do repositório', async (ctx) => {
     const t = await createRepo()
     const o = outside()
-    symlinkSync(o.dir, join(t.dir, 'pasta-link'), 'junction')
+    linkOrSkip(ctx, o.dir, join(t.dir, 'pasta-link'), 'junction')
     await expect(untrackedDiff.call(t.repo, 'pasta-link/fora.txt')).rejects.toThrow()
+  })
+
+  // Link em loop (a -> b -> a) e link para si mesmo: o lstat não segue o link do próprio arquivo, então o diff
+  // sai como link (120000) sem travar nem ler nada de fora.
+  it('untrackedDiff de links em loop e de link para si mesmo devolve o diff de link, sem travar', async (ctx) => {
+    const t = await createRepo()
+    linkOrSkip(ctx, join(t.dir, 'b.txt'), join(t.dir, 'a.txt'), 'file')
+    linkOrSkip(ctx, join(t.dir, 'a.txt'), join(t.dir, 'b.txt'), 'file')
+    linkOrSkip(ctx, join(t.dir, 'self.txt'), join(t.dir, 'self.txt'), 'file')
+    for (const path of ['a.txt', 'b.txt', 'self.txt']) {
+      const diff = (await untrackedDiff.call(t.repo, path)) as { binary: boolean; headerLines: string[] }
+      expect(diff).toMatchObject({ path, changeType: 'added', binary: true })
+      expect(diff.headerLines.join('\n')).toContain('120000')
+    }
   })
 })
 
 describe('leitura, escrita e editor de conflitos pelo link', () => {
-  it('readFile não lê arquivo de fora por pasta-link e não segue arquivo-link para fora', async () => {
+  it('readFile não lê arquivo de fora por pasta-link e não segue arquivo-link para fora', async (ctx) => {
     const t = await createRepo()
     const o = outside()
-    symlinkSync(o.dir, join(t.dir, 'pasta-link'), 'junction')
-    symlinkSync(o.file, join(t.dir, 'arquivo-link.txt'), 'file')
+    linkOrSkip(ctx, o.dir, join(t.dir, 'pasta-link'), 'junction')
+    linkOrSkip(ctx, o.file, join(t.dir, 'arquivo-link.txt'), 'file')
     await expect(t.repo.readFile('pasta-link/fora.txt')).rejects.toThrow()
     await expect(t.repo.readFile('arquivo-link.txt')).rejects.toThrow()
   })
 
-  it('readFile aceita pasta-link que aponta para dentro do repositório', async () => {
+  it('readFile aceita pasta-link que aponta para dentro do repositório', async (ctx) => {
     const t = await createRepo()
     t.write('src/a.txt', 'dentro\n')
-    symlinkSync(join(t.dir, 'src'), join(t.dir, 'alias'), 'junction')
+    linkOrSkip(ctx, join(t.dir, 'src'), join(t.dir, 'alias'), 'junction')
     expect(await t.repo.readFile('alias/a.txt')).toMatchObject({ content: 'dentro\n', binary: false })
   })
 
-  it('conflictDetails recusa pasta-link para fora, sem devolver o conteúdo', async () => {
+  it('conflictDetails recusa pasta-link para fora, sem devolver o conteúdo', async (ctx) => {
     const t = await createRepo()
     const o = outside()
-    symlinkSync(o.dir, join(t.dir, 'pasta-link'), 'junction')
+    linkOrSkip(ctx, o.dir, join(t.dir, 'pasta-link'), 'junction')
     await expect(t.repo.conflictDetails('pasta-link/fora.txt')).rejects.toThrow()
   })
 
-  it('conflictDetails de arquivo-link para fora (não rastreado) devolve working null, sem o conteúdo de fora', async () => {
+  it('conflictDetails de arquivo-link para fora (não rastreado) devolve working null, sem o conteúdo de fora', async (ctx) => {
     const t = await createRepo()
     const o = outside()
-    symlinkSync(o.file, join(t.dir, 'arquivo-link.txt'), 'file')
+    linkOrSkip(ctx, o.file, join(t.dir, 'arquivo-link.txt'), 'file')
     const d = await t.repo.conflictDetails('arquivo-link.txt')
     expect(d.working).toBeNull()
     expect(JSON.stringify(d)).not.toContain('SEGREDO FORA')
   })
 
-  it('conflictDetails de link quebrado (não rastreado) devolve working null', async () => {
+  it('conflictDetails de link quebrado (não rastreado) devolve working null', async (ctx) => {
     const t = await createRepo()
     const o = outside()
-    symlinkSync(join(o.dir, 'nao-existe.txt'), join(t.dir, 'quebrado.txt'), 'file')
+    linkOrSkip(ctx, join(o.dir, 'nao-existe.txt'), join(t.dir, 'quebrado.txt'), 'file')
     const d = await t.repo.conflictDetails('quebrado.txt')
     expect(d.working).toBeNull()
   })
 
+  // Links em loop e link para si mesmo não rastreados: o conflictDetails não segue o link do arquivo, então
+  // `working` fica null e a chamada termina.
+  it('conflictDetails de links em loop e de link para si mesmo devolve working null, sem travar', async (ctx) => {
+    const t = await createRepo()
+    linkOrSkip(ctx, join(t.dir, 'b.txt'), join(t.dir, 'a.txt'), 'file')
+    linkOrSkip(ctx, join(t.dir, 'a.txt'), join(t.dir, 'b.txt'), 'file')
+    linkOrSkip(ctx, join(t.dir, 'self.txt'), join(t.dir, 'self.txt'), 'file')
+    for (const path of ['a.txt', 'b.txt', 'self.txt']) {
+      const d = await t.repo.conflictDetails(path)
+      expect(d.working).toBeNull()
+    }
+  })
+
   // Arquivo realmente em conflito: depois do cherry-pick, o arquivo vira link para fora (ou quebrado) no disco.
   // As três versões continuam no índice; só o arquivo de trabalho muda, e não pode trazer o conteúdo de fora.
-  async function conflitoComLink(apontaPara: (o: { dir: string; file: string }) => string) {
+  async function conflitoComLink(ctx: TestContext, apontaPara: (o: { dir: string; file: string }) => string) {
     const t = await createRepo()
     await t.commit('init', { 'f.txt': lines('a', 'b', 'c') })
     await t.git('checkout', '-q', '-b', 'feature')
@@ -133,12 +160,12 @@ describe('leitura, escrita e editor de conflitos pelo link', () => {
     await t.repo.cherryPickCommits('main', [c])
     const o = outside()
     unlinkSync(join(t.dir, 'f.txt'))
-    symlinkSync(apontaPara(o), join(t.dir, 'f.txt'), 'file')
+    linkOrSkip(ctx, apontaPara(o), join(t.dir, 'f.txt'), 'file')
     return t
   }
 
-  it('conflictDetails de arquivo em conflito que virou link para fora devolve working null, sem o segredo', async () => {
-    const t = await conflitoComLink((o) => o.file)
+  it('conflictDetails de arquivo em conflito que virou link para fora devolve working null, sem o segredo', async (ctx) => {
+    const t = await conflitoComLink(ctx, (o) => o.file)
     const d = await t.repo.conflictDetails('f.txt')
     expect(d.working).toBeNull()
     expect(d.ours).toContain('B main')
@@ -146,26 +173,26 @@ describe('leitura, escrita e editor de conflitos pelo link', () => {
     expect(JSON.stringify(d)).not.toContain('SEGREDO FORA')
   })
 
-  it('conflictDetails de arquivo em conflito que virou link quebrado devolve working null', async () => {
-    const t = await conflitoComLink((o) => join(o.dir, 'nao-existe.txt'))
+  it('conflictDetails de arquivo em conflito que virou link quebrado devolve working null', async (ctx) => {
+    const t = await conflitoComLink(ctx, (o) => join(o.dir, 'nao-existe.txt'))
     const d = await t.repo.conflictDetails('f.txt')
     expect(d.working).toBeNull()
     expect(d.ours).toContain('B main')
   })
 
-  it('writeFile não grava fora do repositório por pasta-link', async () => {
+  it('writeFile não grava fora do repositório por pasta-link', async (ctx) => {
     const t = await createRepo()
     const o = outside()
-    symlinkSync(o.dir, join(t.dir, 'pasta-link'), 'junction')
+    linkOrSkip(ctx, o.dir, join(t.dir, 'pasta-link'), 'junction')
     await expect(t.repo.writeFile('pasta-link/fora.txt', 'PWNED\n')).rejects.toThrow()
     expect(readFileSync(o.file, 'utf8')).toBe('SEGREDO FORA\nlinha 2\nlinha 3\n')
   })
 
-  it('saveConflictResolution não grava fora do repositório por pasta-link nem por arquivo-link', async () => {
+  it('saveConflictResolution não grava fora do repositório por pasta-link nem por arquivo-link', async (ctx) => {
     const t = await createRepo()
     const o = outside()
-    symlinkSync(o.dir, join(t.dir, 'pasta-link'), 'junction')
-    symlinkSync(o.file, join(t.dir, 'arquivo-link.txt'), 'file')
+    linkOrSkip(ctx, o.dir, join(t.dir, 'pasta-link'), 'junction')
+    linkOrSkip(ctx, o.file, join(t.dir, 'arquivo-link.txt'), 'file')
     await expect(t.repo.saveConflictResolution('pasta-link/fora.txt', 'PWNED\n')).rejects.toThrow()
     await expect(t.repo.saveConflictResolution('arquivo-link.txt', 'PWNED\n')).rejects.toThrow()
     expect(readFileSync(o.file, 'utf8')).toBe('SEGREDO FORA\nlinha 2\nlinha 3\n')
