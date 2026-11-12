@@ -16,14 +16,14 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E3`
+**A seguir:** `E4`
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
 | 0 | #91 segurança de caminhos e `tooLarge` | fechada | `7fffbe7` | 41 testes verdes (13 reprovavam antes) |
 | E1 | #93 lista de arquivos do Changes sem rolagem | fechada sem correção (não reproduzido) | ver commit | 4 cenários na tela rolam; #91 revisada: aprovada |
 | E2 | #94 combobox do Dashboard escondido | fechada | ver commit | 0/5 pontos clicáveis antes, 5/5 depois em 3 tamanhos de janela |
-| E3 | #97 menu principal em janela estreita | a fazer | | |
+| E3 | #97 menu principal em janela estreita | fechada | ver commit | roteiro 320/480/640: falhava em 320 e 480, passa nos 3 |
 | E4 | #92 fluxo de conflito: lista lenta e modal que fecha | a fazer | | |
 | E5 | #95 investigação: medir cherry-pick e `rerere` | a fazer | | |
 | E6 | #95 implementar os caminhos decididos (seção 5) | a fazer | | |
@@ -32,12 +32,12 @@ fechada está na mensagem do commit dela.
 | E11 | #98 Tour: desenho e lista de passos | a fazer | | |
 | E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
 
-### Última etapa fechada: `E2` (#94)
+### Última etapa fechada: `E3` (#97)
 
-- **Feito**: o popover "Everyone" (`PeoplePicker`, `Dashboards.tsx`) era coberto pelos cartões: `.dash-filters` tinha
-  `backdrop-filter` sem `z-index`. Agora `z-index: 20` e `popoverPlacement.ts` (sobe/alinha/limita altura, uma vez ao abrir).
-- **Não é combobox compartilhado**: não há componente genérico de select; o único outro combobox é o do terminal git.
-- **Não conferido**: VS Code, RTL (CSS lógico x matemática física), painel < 300 px (sem clamp horizontal), perf:bundle.
+- **Feito**: só CSS em `styles.css` (`@container toolbar (max-width: 640px)`): telas e ações quebram linha, sem
+  rolagem escondida; roteiro `scripts/readme-media/narrow-toolbar.mjs` (sai 1 se algo ficar fora da largura).
+- **Não conferido**: dock esquerda/direita/embaixo, itens ocultos pelo Aparência, alerta de conflito, VS Code,
+  `ui.mjs 4 moderate` (nós no DOM não mudam: nenhum nó novo), perf:bundle.
 
 ## 3. Base de medição
 
@@ -45,17 +45,6 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 `node scripts/perf/core.mjs moderate` e `--trace`; E3 e E12 usam `node scripts/perf/ui.mjs 4 moderate`.
 
 ## 4. Plano
-
-### Etapa `E3` — #97: menu principal acessível em qualquer largura
-
-- **Orquestra**: topo (desenho: rolagem, só ícone ou menu "mais")
-- **Arquivos prováveis**: barra de telas, `screenVisibility.ts`, CSS; alerta vermelho de conflito
-- **Ler antes**: `.claude/rules/interface.md`; `docs/PERFORMANCE.md` seção 7
-- **Aceite**: teste de tela em 320, 480 e 640 px reprova antes (item inacessível); tela ativa e alerta de conflito
-  sempre visíveis; painel à esquerda/direita/embaixo; `node scripts/perf/ui.mjs 4 moderate` sem piorar nós no DOM
-- **Testes**: unidade (lógica de visibilidade), tela, medição
-- **Segurança**: não
-- **Depende de**: nada
 
 ### Etapa `E4` — #92: resolver conflito sem lentidão nem modal que abre e fecha
 
