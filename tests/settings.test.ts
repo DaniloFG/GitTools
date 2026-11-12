@@ -46,6 +46,14 @@ describe('configurações de exibição', () => {
     expect(normalizeSettings({ statusLetters: 'não', diffFullFile: 'sim' })).toMatchObject({ statusLetters: true, diffFullFile: false })
   })
 
+  it('o diff quebra linhas longas por padrão e só deixa de quebrar se o usuário pedir `false`', () => {
+    expect(DEFAULT_SETTINGS.wrapLines).toBe(true)
+    expect(normalizeSettings({}).wrapLines).toBe(true)
+    expect(normalizeSettings({ wrapLines: false }).wrapLines).toBe(false)
+    expect(normalizeSettings({ wrapLines: true }).wrapLines).toBe(true)
+    expect(normalizeSettings({ wrapLines: 'não' }).wrapLines).toBe(true)
+  })
+
   it('o assistente de git no editor vem ligado e só desliga se o usuário pedir', () => {
     expect(DEFAULT_SETTINGS.inlineBlame).toBe(true)
     expect(normalizeSettings({}).inlineBlame).toBe(true)

@@ -301,6 +301,7 @@ export const ptBR = {
     inlineHelp: 'Linhas removidas e adicionadas uma embaixo da outra',
     split: 'Lado a lado',
     splitHelp: 'Versão anterior à esquerda e nova à direita',
+    wrapLines: 'Quebrar linhas longas',
     truncated: {
       message: 'Este diff é grande e foi cortado em {size}: o fim do arquivo não aparece.',
       showAll: 'Mostrar mesmo assim'
@@ -794,6 +795,10 @@ export const ptBR = {
       diffContentLabel: 'O diff mostra',
       diffContentChanges: 'Só o trecho alterado',
       diffContentFull: 'Arquivo inteiro',
+      wrapLines: 'Linhas longas no diff',
+      wrapLinesHelp: 'Escolha se as linhas longas quebram na linha de baixo ou ficam numa linha só, com barra de rolagem horizontal. O item "Quebrar linhas longas" do menu ⋯ do diff troca só enquanto aquele diff está aberto.',
+      wrapLinesOn: 'Quebrar',
+      wrapLinesOff: 'Não quebrar',
       inlineBlame: 'Assistente de git no editor',
       inlineBlameHelp: 'Ao editar um arquivo no editor do GitTools, um balão ao final da linha do cursor mostra quem a alterou, quando e o que o commit fez.',
       inlineBlameLabel: 'Mostrar autor, data e commit da linha do cursor',

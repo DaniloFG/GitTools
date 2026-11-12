@@ -14,7 +14,7 @@ import { ChangeRuler } from './ChangeRuler'
 import { VirtualList, type VirtualListHandle } from './VirtualList'
 import { diffViewGroups, ViewOptionsButton } from './ViewOptions'
 import { allowFullDiff } from '../diffLimit'
-import { BLOCK_ROWS, buildRows, changeBlocks, chunkRows, rowKeys, rowKind, type DiffRow } from '../diffBlocks'
+import { BLOCK_ROWS, buildRows, changeBlocks, chunkRows, longestCodeChars, rowKeys, rowKind, type DiffRow } from '../diffBlocks'
 import { marksFromRows, type RulerIndexRow } from '../changeRuler'
 
 /**
@@ -27,6 +27,18 @@ export function useDiffLayout(): [DiffLayout, (layout: DiffLayout) => void] {
   // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
   const layout = override && override.preferred === preferred ? override.layout : preferred
   return [layout, (next) => setOverride({ preferred, layout: next })]
+}
+
+/**
+ * Quebrar as linhas longas do código (padrão) ou deixá-las numa linha só, com rolagem horizontal. Mesmo molde de
+ * `useDiffLayout`: o padrão vem das configurações e o item do menu ⋯ troca só enquanto o diff está aberto.
+ */
+export function useWrapLines(): [boolean, (wrap: boolean) => void] {
+  const preferred = useContext(AppSettingsContext)?.settings.wrapLines ?? DEFAULT_SETTINGS.wrapLines
+  const [override, setOverride] = useState<{ preferred: boolean; wrap: boolean } | null>(null)
+  // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
+  const wrap = override && override.preferred === preferred ? override.wrap : preferred
+  return [wrap, (next) => setOverride({ preferred, wrap: next })]
 }
 
 /**
@@ -304,6 +316,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
   const selectable = !!selection && !!onSelectionChange && !file.binary
   const [layout, setLayout] = useDiffLayout()
   const [fullFile, setFullFile] = useFullFile()
+  const [wrapLines, setWrapLines] = useWrapLines()
   const dragMode = useRef<'add' | 'remove' | null>(null)
   const lastClicked = useRef<LineKey | null>(null)
   const root = useRef<HTMLDivElement>(null)
@@ -322,6 +335,8 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
   const pos = useMemo(() => new Map(all.map((k, i) => [k, i] as const)), [all])
   const hunkChanged = useMemo(() => file.hunks.map((h) => h.lines.reduce((n, l) => (l.kind !== 'context' ? n + 1 : n), 0)), [file])
   const digits = useMemo(() => lineNumberDigits(file.hunks), [file])
+  /** Largura do código sem quebra; com a quebra ligada nem é calculada (0 = variável CSS ausente, DOM de sempre). */
+  const codeCh = useMemo(() => (wrapLines ? 0 : longestCodeChars(file.hunks)), [file, wrapLines])
   /**
    * Régua: uma marca por linha alterada, em frações do diff inteiro, supondo linhas de mesma altura (18 px).
    * Com código que quebra linha (pre-wrap), a posição da marca fica aproximada: a régua não mede o DOM, de propósito.
@@ -334,7 +349,8 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
     })
     return marksFromRows(indexed, rows.length, 0)
   }, [file, rows])
-  const epoch = useMemo(() => ++diffEpoch, [file, layout])
+  // Quebrar ou não muda a altura de todo bloco: as alturas medidas do outro modo não valem.
+  const epoch = useMemo(() => ++diffEpoch, [file, layout, wrapLines])
   const keyOf = useCallback((i: number) => `${epoch}:${i}`, [epoch])
 
   // Contagens da seleção: O(tamanho da seleção), não O(alterações). Um hunk é o número antes do ":" da chave.
@@ -551,7 +567,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
         )}
         {((!file.binary && file.hunks.length > 0) || (panelActions && panelActions.length > 0)) && (
           <ViewOptionsButton
-            groups={!file.binary && file.hunks.length > 0 ? diffViewGroups({ layout, setLayout, fullFile, setFullFile }) : []}
+            groups={!file.binary && file.hunks.length > 0 ? diffViewGroups({ layout, setLayout, fullFile, setFullFile, wrapLines, setWrapLines }) : []}
             submenu={panelActions ? { label: t('diffExtra.options'), items: panelActions } : undefined}
           />
         )}
@@ -575,9 +591,9 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
           // data-rows: o roteiro de medição espera o diff inteiro montado como lista; o número é o de linhas da tabela.
           <VirtualList
             ref={listRef}
-            className="diff-body"
+            className={wrapLines ? 'diff-body' : 'diff-body diff-nowrap'}
             data-rows={rows.length}
-            style={{ '--ln-digits': digits } as React.CSSProperties}
+            style={wrapLines ? ({ '--ln-digits': digits } as React.CSSProperties) : ({ '--ln-digits': digits, '--code-ch': codeCh } as React.CSSProperties)}
             onContextMenu={onMenu}
             count={blocks.length}
             rowHeight={BLOCK_HEIGHT}

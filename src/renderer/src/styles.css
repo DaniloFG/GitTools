@@ -3214,6 +3214,11 @@ kbd.duplicate {
   border-radius: var(--radius);
   user-select: text;
 }
+/* Configuração "wrapLines" desligada: o resultado final segue numa linha só e rola na horizontal. */
+.merge-final.merge-nowrap {
+  white-space: pre;
+  overflow-x: auto;
+}
 
 /* -------------------------------------------------------- comparação */
 
@@ -5682,6 +5687,35 @@ button.blame-bubble:hover {
 }
 .diff-table .sign {
   font-weight: 700;
+}
+
+/* Sem quebra de linha (configuração "wrapLines" desligada, ver useWrapLines em DiffView): o código fica numa linha só
+   (altura fixa de 18px) e o .diff-body rola na horizontal. Com table-layout: fixed a largura não vem do conteúdo, então
+   o DiffView informa o tamanho da maior linha em --code-ch (caracteres) e todas as tabelas dos blocos usam a mesma
+   largura: soma das colunas fixas + o código. Sem medir o DOM e sem nós novos. */
+.diff-body.diff-nowrap {
+  overflow-x: auto;
+}
+.diff-nowrap .diff-table .code {
+  white-space: pre;
+  overflow-wrap: normal;
+  /* Linha além do teto de --code-ch é cortada na célula, em vez de vazar sobre a outra metade do lado a lado. */
+  overflow: hidden;
+}
+/* Unificado: sel 22 + dois números + sinal 14 + código (12 de padding das células + --code-ch). */
+.diff-nowrap .diff-table:not(.diff-split) {
+  min-width: 100%;
+  width: calc(22px + 2 * max(36px, calc(var(--ln-digits, 4) * 1ch + 12px)) + 14px + 12px + var(--code-ch, 0) * 1ch);
+}
+/* Lado a lado: cada metade (sel 22 + número 46 + código) recebe a mesma largura; 2px de folga para a borda da metade nova. */
+.diff-nowrap .diff-split {
+  min-width: 100%;
+  width: calc(2 * (22px + 46px + 12px + var(--code-ch, 0) * 1ch) + 2px);
+}
+/* Em idiomas da direita para a esquerda o contêiner rola a partir da direita e o código (sempre da esquerda para a
+   direita) ficaria cortado no início; o corpo do diff sem quebra volta a ser da esquerda para a direita. */
+[dir='rtl'] .diff-body.diff-nowrap {
+  direction: ltr;
 }
 
 /* Barras de rolagem dos diffs: finas, arredondadas e na cor do texto secundário. */

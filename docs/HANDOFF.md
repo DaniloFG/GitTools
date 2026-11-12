@@ -24,15 +24,15 @@ A `main` já tinha skills, hooks e `CLAUDE.md` atuais (conferido): nada foi traz
 
 ## 2. Estado
 
-**Última etapa fechada:** `2` — Seleção do diff lado a lado confinada ao lado de origem (#155): `data-side` nos `td.code` + `data-sel-side` na tabela, gravado no `mousedown` e removido no `mouseup`; CSS `user-select:none` no outro lado.
+**Última etapa fechada:** `3` — Quebra de linha opcional (#158): `wrapLines` (padrão `true`) em Settings e item no ⋯ do diff (só enquanto aberto); sem quebra o `.diff-body` ganha `diff-nowrap` e `--code-ch` (maior linha, teto 5000) e rola na horizontal; `.merge-final` do ConflictEditor segue a configuração.
 
-**A seguir:** `3` — Quebra de linha opcional nos editores (#158)
+**A seguir:** `4` — "Open in new window" abre a comparação do commit (#156)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | 1 | #157 | READMEs: History, depois Commit, depois Dashboards | fechada | ver `git log` | 1ª imagem History, 2ª Commit |
 | 2 | #155 | Seleção do diff lado a lado confinada ao lado de origem | fechada | ver `git log` | perf:bundle JS 1ª carga 695.532 → 695.747 (teto 700.000) |
-| 3 | #158 | Quebra de linha opcional nos editores (Settings + menu ⋯) | a fazer | | |
+| 3 | #158 | Quebra de linha opcional nos editores (Settings + menu ⋯) | fechada | ver `git log` | perf:bundle JS 1ª carga 695.747 → 697.685 webview / 697.119 Electron (teto 700.000; folga ~2.300) |
 | 4 | #156 | "Open in new window" do History abre a comparação do commit | a fazer | | |
 | 5 | #154 | ENCERRAMENTO | a fazer | | |
 
@@ -42,26 +42,6 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 `npm run perf:bundle` e nós no DOM do diff (skill `medir`); gravar aqui o número de partida na primeira que medir.
 
 ## 4. Plano
-
-### Etapa `3` — Quebra de linha opcional nos editores
-
-- **Orquestra**: topo
-- **Arquivos prováveis**: `src/shared/settings.ts` (:60, :92, :127; `diffLayout` é o modelo), `components/settings/EditorSection.tsx`
-  (:98-115), `components/ViewOptions.tsx` (:26-96, `diffViewGroups`), `DiffView.tsx` (:24-30 `useDiffLayout`,
-  :544-549, :85-92 medição de bloco), `styles.css` (:1145-1149 `pre-wrap`, :4958-5050, :3163, :3206), `CodeEditor.tsx`
-  (:186-196), `ConflictEditor.tsx`, `src/shared/i18n/messages/*.ts` (6 catálogos), `tests/settings.test.ts`,
-  `tests/viewMenu.test.ts`.
-- **Levantamento**: o diff hoje quebra (`pre-wrap`, linha de 18 px, blocos medidos); `CodeEditor` já usa `wrap="off"`;
-  `.merge-side` é `pre` e `.merge-final` é `pre-wrap`. Escopo: "editores de código" = DiffView, CodeEditor/FileEditor
-  e ConflictEditor; o `RebaseEditor` fica de fora (não é código). Decisão: configuração `wrapLines` (padrão fixo
-  `true`, o comportamento de hoje, para nada mudar a quem não mexe) em Settings; alternância temporária no ⋯ como o
-  lado a lado. O padrão pode ser revisto pelo `gt-juiz`.
-- **Restrições**: sem quebra, a altura da linha é fixa (18 px): a virtualização por janela tem de continuar certa
-  (princípio 1); barra horizontal sem custo por quadro; nós no DOM iguais.
-- **Aceite**: e2e que liga/desliga pelo ⋯ e confere a barra horizontal (`scrollWidth > clientWidth`) e a ausência
-  de quebra, reprovando sem a mudança; `settings.test.ts` com a normalização; typecheck verde nos 6 idiomas;
-  `perf:bundle` abaixo do teto.
-- **Testes**: unidade, tela, medição leve (bundle e nós no DOM). **Segurança**: não. **Depende de**: etapa 2.
 
 ### Etapa `4` — "Open in new window" abre a comparação do commit
 
@@ -92,6 +72,7 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 - Gate: `.claude/triagem.local` com `media <assunto>` e `.claude/issue.local` (fora do git) em cada sessão de etapa.
 
 - 2026-11-12: o arraste do Playwright não estende seleção em `td.code` do diff (também sem a mudança; caret cai fora do lugar, causa não achada). O cenário `diff-selecao-lado` aperta o mouse de verdade e estende a seleção pela API; não repetir a tentativa de `mouse.move` com o botão apertado.
+- 2026-11-12: etapa 3: CodeEditor/ConflictEditor (textarea) já eram `wrap=off`; só diff e `.merge-final` mudaram. `useWrapLines` é useState (vale só com o diff aberto, como o layout). Folga do bundle agora ~2.300 bytes: a etapa 4 não deve crescer a primeira carga. Não conferido: salto de rolagem ao alternar a quebra em diff grande; CJK conta 1 coluna em `--code-ch`.
 
 ## 6. Encerramento
 

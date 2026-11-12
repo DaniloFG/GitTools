@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { ConflictDetails } from '../../../shared/types'
+import { DEFAULT_SETTINGS } from '../../../shared/settings'
 import { buildResult, parseConflicts, resolveChunk, type ChunkResolution, type MergeChunk } from '../../../shared/conflicts'
 import { createConflictDrafts } from '../conflictDrafts'
-import { useAppActions, useBusy, useRepoData } from '../context'
+import { AppSettingsContext, useAppActions, useBusy, useRepoData } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { t, textDirection } from '../i18n'
@@ -86,6 +87,8 @@ export function ConflictEditor({ path, actions, onClose }: { path: string; actio
   const [details, setDetails] = useState<ConflictDetails | null>(null)
   const [resolutions, setResolutions] = useState<(ChunkResolution | undefined)[]>([])
   const [showFinal, setShowFinal] = useState(false)
+  // A pré-visualização do resultado final segue a configuração de quebra de linha do diff (os painéis são textarea sem quebra).
+  const wrapLines = useContext(AppSettingsContext)?.settings.wrapLines ?? DEFAULT_SETTINGS.wrapLines
   const [layout, setLayout] = useLayout<MergeLayout>('conflict.layout', parseMergeLayout)
   const [current, setCurrent] = useState(0)
   /** Trechos iguais (índice do chunk) que o usuário abriu — valem para os três painéis. */
@@ -552,7 +555,7 @@ export function ConflictEditor({ path, actions, onClose }: { path: string; actio
             {t('conflict.showFinal')}
           </label>
         </div>
-        {showFinal ? <pre className="merge-final">{result}</pre> : <div className={`merge-panes merge-${layout.mode}`}>{panes}</div>}
+        {showFinal ? <pre className={wrapLines ? 'merge-final' : 'merge-final merge-nowrap'}>{result}</pre> : <div className={`merge-panes merge-${layout.mode}`}>{panes}</div>}
       </div>
     </EditorShell>
   )

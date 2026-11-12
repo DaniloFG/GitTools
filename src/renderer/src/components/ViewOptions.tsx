@@ -75,14 +75,16 @@ export function FileViewOptions({ title }: { title?: string }) {
 }
 
 /**
- * Opções do diff: layout (cima e baixo / lado a lado) e arquivo inteiro. O estado vem do DiffView
- * (que já tem os hooks `useDiffLayout` e `useFullFile`), por isso aqui é só a montagem dos grupos.
+ * Opções do diff: layout (cima e baixo / lado a lado), arquivo inteiro e quebra de linhas longas. O estado vem do
+ * DiffView (que já tem os hooks `useDiffLayout`, `useFullFile` e `useWrapLines`), por isso aqui é só a montagem dos grupos.
  */
 export function diffViewGroups(state: {
   layout: 'inline' | 'split'
   setLayout(layout: 'inline' | 'split'): void
   fullFile: boolean
   setFullFile(full: boolean): void
+  wrapLines: boolean
+  setWrapLines(wrap: boolean): void
 }): ViewOptionGroup[] {
   return [
     {
@@ -93,7 +95,10 @@ export function diffViewGroups(state: {
       ]
     },
     {
-      options: [{ label: t('diffExtra.fullFile'), checked: state.fullFile, onSelect: () => state.setFullFile(!state.fullFile) }]
+      options: [
+        { label: t('diffExtra.fullFile'), checked: state.fullFile, onSelect: () => state.setFullFile(!state.fullFile) },
+        { label: t('diff.wrapLines'), checked: state.wrapLines, onSelect: () => state.setWrapLines(!state.wrapLines) }
+      ]
     }
   ]
 }
