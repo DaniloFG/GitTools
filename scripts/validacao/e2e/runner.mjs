@@ -288,7 +288,7 @@ export async function rodarE2e() {
     for (const cenario of carregados.cenarios) {
       const r = await executarCenario(ambiente, cenario, expect, vigia)
       resultados.push(r)
-      if (r.ok) console.log(`OK    ${r.tela} (${r.nos} nós no DOM, ${r.ms} ms)`)
+      if (r.ok) console.log(`OK    ${r.id} — ${r.tela} (${r.nos} nós no DOM, ${r.ms} ms)`)
       else {
         console.log(`FALHA ${r.id}: ${r.motivo}`)
         await capturar(app.page, r.id)

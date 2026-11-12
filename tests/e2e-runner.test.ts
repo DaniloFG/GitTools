@@ -151,19 +151,23 @@ describe('cenários do roteiro', () => {
     return { locator: (seletor: string) => localizar(seletor) }
   }
 
-  it('são sete, com ids únicos, e cada um passa na validação', async () => {
+  it('os sete de fumaça continuam lá e todos os cenários da pasta passam na validação, com ids únicos', async () => {
     const arquivos = readdirSync(PASTA_CENARIOS).filter((f) => f.endsWith('.mjs')).sort()
-    expect(arquivos.map((f) => f.replace(/\.mjs$/, ''))).toEqual(Object.keys(ESPERADO).sort())
+    const nomes = arquivos.map((f) => f.replace(/\.mjs$/, ''))
+    // Os de fumaça não podem sumir; os funcionais (Q2) vêm ao lado, cada um com o seu arquivo.
+    for (const fumaca of Object.keys(ESPERADO)) expect(nomes, `cenário de fumaça ${fumaca}`).toContain(fumaca)
+    expect(nomes.length - Object.keys(ESPERADO).length).toBeGreaterThanOrEqual(12)
     const vistos = new Set<string>()
     for (const arquivo of arquivos) {
       const modulo = await import(pathToFileURL(join(PASTA_CENARIOS, arquivo)).href)
-      expect(validarCenario(modulo.default, vistos)).toEqual([])
+      expect(validarCenario(modulo.default, vistos), arquivo).toEqual([])
       vistos.add(modulo.default.id)
     }
   })
 
   it('cada cenário clica a aba certa, espera o seletor e o mínimo de antes, e tem o orçamento padrão', async () => {
-    const arquivos = readdirSync(PASTA_CENARIOS).filter((f) => f.endsWith('.mjs')).sort()
+    // Só os de fumaça: os funcionais têm passos próprios, conferidos pelo ponta a ponta de verdade.
+    const arquivos = Object.keys(ESPERADO).map((id) => `${id}.mjs`).sort()
     for (const arquivo of arquivos) {
       const modulo = await import(pathToFileURL(join(PASTA_CENARIOS, arquivo)).href)
       const c = modulo.default

@@ -21,13 +21,13 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 
 ## 2. Estado
 
-**A seguir:** `Q2`
+**A seguir:** `Q3`
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | R1 | #92 a #98, #100 a #105, #112 | Publicar o plano 1 na develop e validar | fechada | `38a0479` | PR #118 mergeado; validação da develop VALIDADO (árvore `951ac51`, [run](https://github.com/DaniloFG/GitTools/actions/runs/43154515685)) |
 | Q1 | #107 | Runner determinístico de cenários e2e | fechada | `48b7a9a` | 7 cenários em ~3,7 s; 1303 testes verdes |
-| Q2 | #108 | Jornadas funcionais e regressões | a fazer | | |
+| Q2 | #108 | Jornadas funcionais e regressões | fechada | (ver git log) | 27 cenários (20 novos) em ~31 s; mutação reprova #93, #94 e #97; 1312 testes verdes |
 | Q3 | #109 | Responsividade, desempenho e teclado | a fazer | | |
 | Q4 | #110 | Esteira QA e gates de cobertura e merge | a fazer | | |
 | Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | a fazer | | |
@@ -37,18 +37,19 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | D1 | #99 | Link não rastreado fora do repositório (descoberta) | a fazer | | |
 | ENC | #106, #113 | Encerramento: PRs, validações e issues | a fazer | | |
 
-### Última etapa fechada: `Q1` (#107)
+### Última etapa fechada: `Q2` (#108)
 
-- **Feito**: `scripts/validacao/e2e/` com `runner.mjs`, lógica pura em `relatorio.mjs` (`.d.mts`), 7 cenários em
-  `cenarios/*.mjs` (`{ id, tela, area, orcamento, passos(app, expect) }`); `e2e.mjs` só chama o runner. Relatórios
-  `validacao-out/e2e.json`, `e2e.junit.xml`, `e2e-falha-<id>.png`; apaga os antigos ao começar; sem sleep nem retry.
-- **Medido**: `node scripts/validacao/pipeline.mjs --so e2e` → OK, 7 cenários; cenário forçado a falhar → saída 1 e
-  `<failure>` no JUnit; `npm test` 93 arquivos, 1303 testes; typecheck verde.
-- **Não conferido**: Windows/macOS. Orçamento `git` = processos inesperados, não o total (melhoria possível na Q3).
-  Saída 1 de "interface não compilada" (antes do runner) não limpa relatório velho.
-- R1 fechada: PR #118 em `38a0479`, validação da develop VALIDADO; R1-fix a fix5 já na história da branch.
-- **Armadilha (R1)**: em teste com git ou bash, nunca `spawnSync` (trava o worker do vitest no Windows): spawn assíncrono.
-- Q2 a Q4 devem criar cenários em `cenarios/*.mjs` (ids `[a-z0-9-]`, ordem por nome) e usar `expect.visivel/verdadeiro`.
+- **Feito**: 20 cenários em `scripts/validacao/e2e/cenarios/` (abrir, Changes listar/stage/descartar/commit, History diff,
+  branch criar/trocar/apagar, stash, conflito salvar/continuar/pular/abortar, regressões #93, #94, #97). Cada um confere o
+  resultado lendo o git. Runner: `app.repoNovo({wip,nome,preparar})` (repo próprio, limpo ao fim do cenário), `app.git(...)`
+  (execFile assíncrono), `app.aba(nome)`, `expect.igual/pagina/ate`; cenário com `escreve: true` ignora "altera o
+  repositório" (saída ≠ 0 do git continua reprovando); `gitTolerado` existe e ninguém usa.
+- **Medido**: `node scripts/validacao/e2e.mjs` 3× → ok (27 cenários, ~31 s); `npm test` 94 arquivos, 1312 testes; typecheck verde.
+  Mutação manual (reverter a CSS e rodar): #97 (tabs sem encolher), #94 (`z-index` do popover), #93 (`overflow` do
+  `.csection-body`) reprovam o cenário certo. #92 (conflito) NÃO mutado: não conferido.
+- **Não conferido**: Windows/macOS; extensão do VS Code; painel embaixo/direita e altura < 560 px na #93.
+- **Achado**: #119 (Dashboard a 320 px rola na horizontal).
+- Q3/Q4 criam cenários no mesmo formato; o e2e subiu de ~4 s para ~31 s (criar/limpar repos com `createDemoRepo`, que é síncrono).
 
 ## 3. Base de medição
 
@@ -60,7 +61,7 @@ DOM (meta 20). Testes do plano 1: 1245 verdes (E13) mais os dos gates (111 nos t
 ### Etapas `Q1` a `Q5` — QA embutido (issue-mãe #106)
 
 - **Orquestra**: topo. **Ler antes**: a issue da etapa (aceite = critérios dela), `scripts/validacao/` e `docs/PERFORMANCE.md` seção 7
-- **Q2 #108** jornadas e regressões das #92, #93, #94, #97; **Q3 #109** responsivo,
+- **Q3 #109** responsivo,
   desempenho e teclado; **Q4 #110** workflow `QA` em PR e push (develop, homolog, main), gate de cobertura e trava no
   `gate-main.sh`; **Q5 #111** `.claude/rules/qa.md`, skill `qa` e ajustes de `etapa`, `validar` e template de PR
 - **Testes**: unidade, tela, medição. **Segurança**: Q4 (hook e workflow): `security-review`. **Depende de**: R1; Q2 a Q4 dependem de Q1
