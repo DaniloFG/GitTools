@@ -16,7 +16,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E6`
+**A seguir:** `E7`
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
@@ -26,20 +26,22 @@ fechada está na mensagem do commit dela.
 | E3 | #97 menu principal em janela estreita | fechada | ver commit | roteiro 320/480/640: falhava em 320 e 480, passa nos 3 |
 | E4 | #92 fluxo de conflito: lista lenta e modal que fecha | fechada | `adfec47` | modal de 3 opções: aparecia, some; salvar+refresh 9 → 3 processos git |
 | E5 | #95 investigação: medir cherry-pick e `rerere` | fechada | `b544667` | 3 processos por parada (início 5); teto travado em teste; números na #95 |
-| E6 | #95 implementar os caminhos decididos (seção 5) | a fazer | | |
+| E6 | #95 implementar os caminhos decididos (seção 5) | fechada | `80caaea`, `4ed4c12` | `orderCommits` em empate de data corrigido; continuar automático + reaproveitar decisão; 1010 testes verdes, pacote 689.842/700.000 |
 | E7 | #96 esboço da tela Conflitos | a fazer | | |
 | E8-E10 | #96 implementação em incrementos | depende de E4, E6, E7 | | |
 | E11 | #98 Tour: desenho e lista de passos | a fazer | | |
 | E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
 
-### Última etapa fechada: `E5` (#95, investigação)
+### Última etapa fechada: `E6` (#95, implementação)
 
-- **Medido** (3 commits conflitantes, git real): início 5 processos; cada parada 3 (`status`, `cherry-pick --continue`,
-  `status`); última 2. Números postados na #95. Teste `tests/cherry-pick-sequence.test.ts` (3 paradas + teto de 3).
-- **`rerere`**: reescreve o arquivo sem marcadores mas deixa `UU` no índice; chave é o texto do trecho, não o contexto
-  (reaplica em silêncio em outro lugar). Só opcional, desligado por padrão, com resumo.
-- **Achado (E6)**: `orderCommits` (`--no-walk=sorted` + `reverse`) aplica ao contrário quando os commits têm a mesma data.
-- **Não conferido**: `perf:bundle` e `ui.mjs` (sem código de produto).
+- **`orderCommits`**: `--no-walk` ignora `--topo-order`; empate de `%ct` agora reordena por ancestralidade (grupo de 2 a 20;
+  pai direto sem processo, senão `merge-base --is-ancestor`). Sem empate: 1 `rev-list`, 3 processos (travado em teste).
+- **UI**: `conflictFlow.ts` (puro, 19 testes) + `OperationBanner`; setting `autoContinueConflicts` (default false) só em
+  Settings > Geral. Reaproveitar decisão: resumo com Aplicar/Ignorar, teto 200, nunca silencioso.
+- **Não conferido**: banner na tela (`run-gittools`) e `ui.mjs`; sem teste de componente. `code-review` e
+  `security-review` formais não rodaram (sem mudança de IPC; `merge-base` só recebe shas validados).
+- **Dívida**: checkbox no próprio banner exigiria `updateSettings` no contexto (App.tsx); decisão só é lembrada quando
+  o usuário resolve pelo banner, não pelo `ConflictEditor`.
 
 ## 3. Base de medição
 
@@ -50,8 +52,6 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 
 ### Etapas seguintes (detalhar quando destravadas)
 
-- **E6** (#95): implementar os caminhos escolhidos (continuar automático: 3 processos/parada, não piorar), orçamento por
-  parada testado, corrigir `orderCommits` em empate de data (`--topo-order`, com teste), `security-review`.
 - **E7** (#96): esboço da tela Conflitos (lista, operação, editor embutido, duas configurações) para o juiz aprovar.
 - **E8-E10** (#96): lista e estado da operação; editor embutido; seção "Conflitos" em Settings; banner informativo.
 - **E11** (#98): lista final de recursos e ordem dos passos (juiz aprova); desenho do convite e do cartão.
