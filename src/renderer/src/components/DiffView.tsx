@@ -16,6 +16,7 @@ import { diffViewGroups, ViewOptionsButton } from './ViewOptions'
 import { allowFullDiff } from '../diffLimit'
 import { BLOCK_ROWS, buildRows, changeBlocks, chunkRows, longestCodeChars, rowKeys, rowKind, type DiffRow } from '../diffBlocks'
 import { marksFromRows, type RulerIndexRow } from '../changeRuler'
+import { diffPathParts } from '../fileTree'
 
 /**
  * Escolha entre "cima e baixo" e "lado a lado": todo diff abre no modo padrão das configurações;
@@ -515,6 +516,10 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
     return <DiffBlock file={file} rows={rows} start={start} end={end} layout={layout} sig={sig} live={live} />
   }
 
+  // Caminho do cabeçalho em duas partes (diretório e nome): o diretório encolhe antes do nome (#160). O caminho antigo
+  // só entra na renomeação, como antes.
+  const pathParts = diffPathParts(file.path, file.changeType === 'renamed' ? (file.oldPath ?? undefined) : undefined)
+
   return (
     <div className="diff-file" ref={root}>
       <div className="diff-file-header">
@@ -529,9 +534,9 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
             title={t('diff.selectFile')}
           />
         )}
-        <span className="diff-path">
-          {file.changeType === 'renamed' && file.oldPath ? `${file.oldPath} → ` : ''}
-          {file.path}
+        <span className="diff-path" title={pathParts.title}>
+          <span className="diff-path-dir">{pathParts.prefix}</span>
+          <span className="diff-path-name">{pathParts.name}</span>
         </span>
         <span className={`tag tag-${file.changeType}`}>{t(TYPE_LABEL[file.changeType])}</span>
         <span className="diff-stats">

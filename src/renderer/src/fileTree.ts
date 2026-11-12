@@ -10,6 +10,17 @@ export function splitPath(path: string): { name: string; dir: string } {
   return slash < 0 ? { name: path, dir: '' } : { name: path.slice(slash + 1), dir: path.slice(0, slash) }
 }
 
+/**
+ * Caminho do arquivo no cabeçalho do diff, em duas partes: `prefix` é o que encolhe com reticências (o diretório com a
+ * barra final; numa renomeação, o `antigo → ` vem antes dele) e `name` é o último segmento, cortado só depois.
+ * `title` é o caminho completo, para a dica do mouse.
+ */
+export function diffPathParts(path: string, oldPath?: string): { prefix: string; name: string; title: string } {
+  const { name, dir } = splitPath(path)
+  const de = oldPath ? `${oldPath} → ` : ''
+  return { prefix: `${de}${dir ? `${dir}/` : ''}`, name, title: `${de}${path}` }
+}
+
 export interface TreeDir<T> {
   kind: 'dir'
   /** Nome mostrado; pastas com um único filho pasta são juntadas ("src/app/ui"). */
