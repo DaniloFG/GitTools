@@ -29,7 +29,7 @@ export function OperationBanner() {
         }`
 
   return (
-    <div className={`operation-banner ${conflicts.length ? 'has-conflicts' : ''}`}>
+    <div data-tour="conflicts" className={`operation-banner ${conflicts.length ? 'has-conflicts' : ''}`}>
       <button type="button" className="operation-title" title={t('conflictsScreen.open')} onClick={() => setConflictsScreen(true)}>
         <strong>{title}</strong>
         <span className="muted">

@@ -94,6 +94,13 @@ export function buildTourList(ctx: TourContext): { list: TourStep[]; hidden: Tou
   return { list, hidden }
 }
 
+/** Como estava a interface ao começar: tela do dock, Dashboards aberto e tela Conflitos aberta. */
+export interface TourInitial {
+  view: string | null
+  dashboards: boolean
+  conflicts: boolean
+}
+
 export interface TourState {
   list: TourStep[]
   index: number
@@ -105,14 +112,14 @@ export interface TourState {
   /** Passou do último passo. */
   done: boolean
   /** Como estava a interface antes de começar: a saída devolve isto. */
-  initial: { view: string | null; dashboards: boolean }
+  initial: TourInitial
 }
 
 /**
  * Começa no primeiro passo que ainda não foi visto. Se todos já foram vistos, recomeça do primeiro. Não olha o
  * DOM: quem chama confere o alvo com `settle` ao mostrar o passo.
  */
-export function startTour(ctx: TourContext, seen: readonly string[], initial: { view: string | null; dashboards: boolean }): TourState {
+export function startTour(ctx: TourContext, seen: readonly string[], initial: TourInitial): TourState {
   const { list, hidden } = buildTourList(ctx)
   const first = list.findIndex((s) => !seen.includes(s.id))
   return {
@@ -159,7 +166,7 @@ export function settle(state: TourState, exists: (step: TourStep) => boolean): T
 }
 
 /** O que restaurar ao sair (Sair, Esc ou fim do passeio): sempre os valores de antes de começar, em qualquer passo. */
-export function restoreTarget(state: TourState): { view: string | null; dashboards: boolean } {
+export function restoreTarget(state: TourState): TourInitial {
   return { ...state.initial }
 }
 

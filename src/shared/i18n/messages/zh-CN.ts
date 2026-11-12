@@ -1774,5 +1774,18 @@ export const zhCN: Messages = {
     urlMissing: '地址 {url} 不是此远程的推送目标。',
     invalidName: '远程仓库名称无效：请使用字母、数字、点、连字符或下划线。',
     invalidUrl: '请输入远程仓库 URL（不能以“-”开头）。'
+  },
+  tour: {
+    invite: {
+      title: '想快速了解一下界面吗？',
+      accept: '开始导览',
+      dismiss: '暂不'
+    },
+    button: '导览',
+    settings: {
+      title: '导览',
+      description: '快速浏览界面的主要部分，不会更改任何内容。',
+      start: '开始导览'
+    }
   }
 }

@@ -23,7 +23,7 @@ import { registerTourTexts, tourT } from '../src/renderer/src/tourText'
 const ALL_IDS = TOUR_STEPS.map((s) => s.id)
 const REPO: TourContext = { hasRepo: true, hiddenScreens: [] }
 const SEM_REPO: TourContext = { hasRepo: false, hiddenScreens: [] }
-const INICIAL = { view: 'history', dashboards: true }
+const INICIAL = { view: 'history', dashboards: true, conflicts: false }
 const sempre = () => true
 
 /** Avança até o fim do passeio, com o alvo de cada passo conferido por `exists`. */
@@ -210,6 +210,15 @@ describe('saída devolve a interface ao que era', () => {
     expect(restoreTarget(meio)).toEqual(INICIAL)
     const fim = percorrer(inicio, sempre)
     expect(restoreTarget(fim)).toEqual(INICIAL)
+  })
+
+  it('restoreTarget devolve também a tela Conflitos aberta na partida, em qualquer passo', () => {
+    const inicial = { view: 'files', dashboards: false, conflicts: true }
+    const inicio = startTour(REPO, [], inicial)
+    expect(restoreTarget(inicio).conflicts).toBe(true)
+    expect(restoreTarget(advance(inicio, 1, sempre)).conflicts).toBe(true)
+    expect(restoreTarget(percorrer(inicio, sempre))).toEqual(inicial)
+    expect(restoreTarget(startTour(REPO, [], INICIAL)).conflicts).toBe(false)
   })
 
   it('restoreTarget devolve uma cópia, não o objeto guardado', () => {

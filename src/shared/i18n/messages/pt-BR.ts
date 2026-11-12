@@ -1811,5 +1811,18 @@ export const ptBR = {
     urlMissing: 'A URL {url} não é um destino de push próprio deste remote.',
     invalidName: 'Nome de remote inválido: use letras, números, ponto, hífen ou sublinhado.',
     invalidUrl: 'Informe a URL do remote (ela não pode começar com "-").'
+  },
+  tour: {
+    invite: {
+      title: 'Quer um passeio pela interface?',
+      accept: 'Fazer o Tour',
+      dismiss: 'Agora não'
+    },
+    button: 'Tour',
+    settings: {
+      title: 'Tour',
+      description: 'Um passeio rápido que destaca as partes principais da interface, sem alterar nada.',
+      start: 'Fazer o Tour'
+    }
   }
 }

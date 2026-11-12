@@ -1810,5 +1810,18 @@ export const en: Messages = {
     urlMissing: 'The URL {url} is not a push destination of this remote.',
     invalidName: 'Invalid remote name: use letters, digits, dot, hyphen or underscore.',
     invalidUrl: 'Enter the remote URL (it cannot start with "-").'
+  },
+  tour: {
+    invite: {
+      title: 'Want a quick tour of the interface?',
+      accept: 'Take the Tour',
+      dismiss: 'Not now'
+    },
+    button: 'Tour',
+    settings: {
+      title: 'Tour',
+      description: 'A quick walkthrough that highlights the main parts of the interface, without changing anything.',
+      start: 'Take the Tour'
+    }
   }
 }

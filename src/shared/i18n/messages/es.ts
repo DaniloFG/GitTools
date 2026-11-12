@@ -1810,5 +1810,18 @@ export const es: Messages = {
     urlMissing: 'La URL {url} no es un destino de push de este remote.',
     invalidName: 'Nombre de remoto no válido: usa letras, números, punto, guion o guion bajo.',
     invalidUrl: 'Indica la URL del remoto (no puede empezar por "-").'
+  },
+  tour: {
+    invite: {
+      title: '¿Quieres un recorrido por la interfaz?',
+      accept: 'Hacer el tour',
+      dismiss: 'Ahora no'
+    },
+    button: 'Tour',
+    settings: {
+      title: 'Tour',
+      description: 'Un recorrido rápido que destaca las partes principales de la interfaz, sin cambiar nada.',
+      start: 'Hacer el tour'
+    }
   }
 }

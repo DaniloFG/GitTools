@@ -13,6 +13,7 @@ import { GeneralSection } from './GeneralSection'
 import { IdentitySection } from './IdentitySection'
 import { NotificationsSection } from './NotificationsSection'
 import { ShortcutsSection, duplicateShortcuts } from './ShortcutsSection'
+import { TourSection } from './TourSection'
 
 export interface SettingsSectionProps {
   draft: Settings
@@ -79,6 +80,14 @@ export const SETTINGS_SECTIONS: SettingsSectionDef[] = [
     title: 'settings.conflicts.title',
     description: 'settings.conflicts.description',
     component: ConflictsSection,
+    searchable: true
+  },
+  {
+    id: 'tour',
+    icon: '🧭',
+    title: 'tour.settings.title',
+    description: 'tour.settings.description',
+    component: TourSection,
     searchable: true
   },
   {

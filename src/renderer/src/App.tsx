@@ -29,7 +29,8 @@ import { CommitList } from './components/CommitList'
 import { ContextMenu, type MenuItem, type MenuState } from './components/ContextMenu'
 // Só tipos: a tela de diálogos é carregada sob demanda (ver lazyScreens.ts).
 import type { ConfirmRequest, DialogScope, DialogState } from './components/Dialogs'
-import { CherryPickStudio, CloneDialog, CompareView, ConflictsScreen, Dashboards, DialogHost, RebaseEditor, SettingsCenter, ShortcutsHelp } from './lazyScreens'
+import { CherryPickStudio, CloneDialog, CompareView, ConflictsScreen, Dashboards, DialogHost, RebaseEditor, SettingsCenter, ShortcutsHelp, Tour } from './lazyScreens'
+import type { TourProps } from './components/Tour'
 import { FilesPanes } from './components/FilesView'
 import { GitLogView } from './components/GitLogView'
 import { KeyboardShortcuts } from './components/KeyboardShortcuts'
@@ -49,17 +50,18 @@ import { errorMessage, shortSha } from './format'
 import { gitCalls, gitFor, gitInBackground, markChanged, OWN_CHANGE_WINDOW_MS, readCache, setActiveRoot } from './git'
 import { draftPaths } from './editorDrafts'
 import { getLocale, t, type MessageKey } from './i18n'
-import { resetLayout as clearLayout, useLayout } from './layout'
+import { resetLayout as clearLayout, readLayout, useLayout } from './layout'
 import { clearCurrentLayout } from './savedLayouts'
 import { historySignature, mergeData } from './stable'
 import { shouldOpenOnStartup } from './conflictScreenPolicy'
 import { createSingleFlight, SKIPPED } from './singleFlight'
 import { dropSession, getSession, isOwnEcho, peekSession, planFor, sessionState, trimSessions, type Wants } from './repoSession'
 import { canLoadMoreLog, checkedRefs, logLimitFor, nextLogPage, scopeKey, scopeLogOptions, scopeOfRefs, type HistoryScope } from './historyScope'
-import { REPO_VIEWS, viewAvailable, type ViewId } from './dock'
+import { REPO_VIEWS, SCREEN_IDS, viewAvailable, type ViewId } from './dock'
 import { forgetScreen, openScreen, readScreen, setScreenRoot } from './dockStore'
 import { parseChangesMode, type ChangesMode } from './changesMode'
 import { PaneSlot, WhenShown, useAnyShown } from './slots'
+import { parseHiddenScreens } from './screenVisibility'
 import {
   cycleIndex,
   normalizeRoot,
@@ -150,6 +152,9 @@ function isEcho(root: string): boolean {
   return echo
 }
 
+/** Sem repositório não há tela para abrir: o Tour do Welcome tem só os passos que ficam à vista (ver `TourProps`). */
+const noView = () => undefined
+
 /**
  * Nível do app: as abas dos repositórios abertos, configurações, avisos e os diálogos do próprio app.
  * Cada aba é um `RepoView` com `key` do repositório: ao trocar de aba, ele é remontado do zero, e nenhum estado
@@ -162,6 +167,8 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [cloneOpen, setCloneOpen] = useState(false)
+  /** O Tour está aberto (sem repositório, quem o desenha é o App; com repositório, o RepoView, que sabe trocar de tela). */
+  const [tourOpen, setTourOpen] = useState(false)
   const [systemLocales, setSystemLocales] = useState<readonly string[]>(navigator.languages)
   const [toasts, setToasts] = useState<Toast[]>([])
   const toastId = useRef(0)
@@ -205,6 +212,19 @@ export function App() {
   // (o App redesenha ao mudar `toasts`) e arrastaria junto o valor de ações de cada repositório (ver RepoView).
   const openSettings = useCallback((section?: string) => setSettingsOpen(section ?? 'general'), [])
   const openShortcuts = useCallback(() => setHelpOpen(true), [])
+  const closeTour = useCallback(() => setTourOpen(false), [])
+
+  // O botão da seção Tour nas Configurações pede o passeio por um evento (a seção não conhece o App): as
+  // Configurações fecham, sem salvar o rascunho, e o Tour abre.
+  useEffect(() => {
+    const onTour = () => {
+      setPreview(null)
+      setSettingsOpen(null)
+      setTourOpen(true)
+    }
+    window.addEventListener('gittools:tour', onTour)
+    return () => window.removeEventListener('gittools:tour', onTour)
+  }, [])
 
   // A Central de Configurações pede um aviso de exemplo para ver onde as notificações aparecem.
   useEffect(() => {
@@ -600,8 +620,14 @@ export function App() {
     </>
   )
 
+  /** Resposta ao convite do Tour: grava a escolha e, se aceito, começa o passeio sem esperar a gravação. */
+  const answerTourInvite = (accept: boolean) => {
+    if (accept) setTourOpen(true)
+    saveSettings({ ...settings, tourOffer: accept ? 'accepted' : 'dismissed' }).catch((error) => toast('error', errorMessage(error)))
+  }
+
   const activeRepo = opened.repos.find((r) => r.root === opened.active) ?? null
-  const appModalOpen = !!(settingsOpen || helpOpen || cloneOpen || dialog)
+  const appModalOpen = !!(settingsOpen || helpOpen || cloneOpen || dialog || tourOpen)
 
   if (!activeRepo) {
     // Sem repositório na tela, nenhuma chamada git deve ir para o último que saiu.
@@ -614,8 +640,16 @@ export function App() {
           onOpen={(path, create) => void openRepo(path, create)}
           onClone={() => setCloneOpen(true)}
           onSettings={() => setSettingsOpen('general')}
+          tourOffer={settings.tourOffer}
+          onTourInvite={answerTourInvite}
+          onTour={() => setTourOpen(true)}
         />
         {settingsDialogs}
+        {tourOpen && (
+          <Suspense fallback={null}>
+            <Tour hasRepo={false} hiddenScreens={[]} initial={{ view: null, dashboards: false, conflicts: false }} onOpenView={noView} onClose={closeTour} />
+          </Suspense>
+        )}
         <Suspense fallback={null}>
           {dialog && <DialogHost dialog={dialog.state} scope={dialog.scope} onDone={() => setDialog(null)} />}
         </Suspense>
@@ -653,6 +687,8 @@ export function App() {
           openShortcuts={openShortcuts}
           onSaveSettings={saveSettings}
           conflictsRequest={conflictsRequest}
+          tourOpen={tourOpen}
+          onTourClose={closeTour}
         />
         {crossBusy && (
           <div className="busy" role="status" aria-live="polite">
@@ -772,12 +808,15 @@ interface RepoViewProps {
   onSaveSettings(next: Settings): Promise<void>
   /** Contador de pedidos para abrir a tela Conflitos vindos do alerta da aba (ver `openConflictsFromTab`). */
   conflictsRequest: number
+  /** O Tour está aberto: este componente o desenha, porque só ele troca de tela e sabe a tela de partida. */
+  tourOpen: boolean
+  onTourClose(): void
 }
 
 /**
  * A tela de um repositório (uma aba). Todo o estado daqui é deste repositório, e a aba é remontada a cada troca.
  */
-function RepoView({ repo, several, workspace, settings, onSummary, notify, appModalOpen, openSettings, openShortcuts, onSaveSettings, conflictsRequest }: RepoViewProps) {
+function RepoView({ repo, several, workspace, settings, onSummary, notify, appModalOpen, openSettings, openShortcuts, onSaveSettings, conflictsRequest, tourOpen, onTourClose }: RepoViewProps) {
   // As chamadas do proxy `git` passam a ir para este repositório (ver git.ts).
   setActiveRoot(repo.root)
   // A tela aberta (menu do topo) é de cada aba: a aba ativa é a raiz deste repositório (ver dockStore.ts).
@@ -920,6 +959,26 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
     setConflictsOpen(false)
     openScreen(view, (v) => availableRef.current(v))
   }, [])
+
+  // Tour: abre a tela de um passo pelo mesmo caminho do clique na aba e, ao sair, devolve a tela e o Dashboards ao
+  // que eram na partida. O id vem de uma lista fixa; o que não for tela conhecida é ignorado.
+  const tourOpenView = useCallback(
+    (screen: string) => {
+      const id = SCREEN_IDS.find((s) => s === screen)
+      if (id) setView(id)
+    },
+    [setView]
+  )
+  const tourClose = useCallback<TourProps['onClose']>(
+    (restore) => {
+      // Primeiro a tela de partida (isso fecha Dashboards e Conflitos), depois a tela especial que estava aberta.
+      tourOpenView(restore.view ?? '')
+      if (restore.dashboards) setDashboards(true)
+      else if (restore.conflicts) setConflictsScreen(true)
+      onTourClose()
+    },
+    [setDashboards, setConflictsScreen, tourOpenView, onTourClose]
+  )
 
   const askConfirm = useCallback((request: Parameters<AppContextValue['confirm']>[0]) => new Promise<boolean>((resolve) => setDialog({ kind: 'confirm', ...request, resolve })), [])
 
@@ -1397,6 +1456,17 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       <PaneSlot id="gitlog">
         <GitLogViewPane locale={locale} />
       </PaneSlot>
+      {tourOpen && (
+        <Suspense fallback={null}>
+          <Tour
+            hasRepo
+            hiddenScreens={parseHiddenScreens(readLayout('pref.screens.hidden'))}
+            initial={{ view: readScreen(), dashboards: dashboardsOpen, conflicts: conflictsOpen }}
+            onOpenView={tourOpenView}
+            onClose={tourClose}
+          />
+        </Suspense>
+      )}
       {studio && (
         <Suspense fallback={null}>
           <CherryPickStudio request={studio} onClose={() => setStudio(null)} />
