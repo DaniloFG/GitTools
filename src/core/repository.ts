@@ -44,7 +44,7 @@ import { DIFF_MAX_BYTES } from '../shared/types'
 import { t } from '../shared/i18n'
 import { chunkArgs } from './chunk'
 import { GitError, runGit, type RunOptions, type RunResult } from './exec'
-import { resolveInside } from './paths'
+import { resolveInside, resolveInsideReal } from './paths'
 
 const DIFF_ARGS = [
   'diff',
@@ -582,8 +582,10 @@ export class GitRepository implements RepoApi {
    * Limite conhecido: uma edição que mantém o tamanho e a data exatos não é vista até a data mudar de novo.
    */
   private async untrackedStats(path: string): Promise<LineStats> {
+    // Sem `resolveInsideReal` de propósito: roda para cada arquivo novo de listas grandes. O `lstat` abaixo já ignora
+    // o link do próprio arquivo, e o git não lista o conteúdo de pasta-link como arquivo novo.
     try {
-      const full = join(this.root, path)
+      const full = resolveInside(this.root, path)
       const stat = await lstat(full)
       if (!stat.isFile() || stat.size > UNTRACKED_STATS_MAX_BYTES) return {}
       const cached = this.untrackedCache.get(path)
@@ -794,7 +796,7 @@ export class GitRepository implements RepoApi {
    * é lido só até o teto: não se carrega centenas de MB do disco para mostrar um trecho.
    */
   private async untrackedDiff(path: string, uncapped = false): Promise<FileDiff> {
-    const full = join(this.root, path)
+    const full = await resolveInsideReal(this.root, path)
     const stat = await lstat(full)
     const mode = stat.isSymbolicLink() ? '120000' : stat.mode & 0o111 ? '100755' : '100644'
     const header = [
@@ -1398,7 +1400,7 @@ export class GitRepository implements RepoApi {
 
   /** O arquivo ainda tem marcadores <<<<<<< no início de uma linha. Arquivo ausente conta como sem marcadores. */
   private async hasConflictMarkers(path: string): Promise<boolean> {
-    const text = await readFile(resolveInside(this.root, path), 'utf8').catch(() => '')
+    const text = await readFile(await resolveInsideReal(this.root, path), 'utf8').catch(() => '')
     return /^<{7}(?: |$)/m.test(text)
   }
 
@@ -1607,25 +1609,27 @@ export class GitRepository implements RepoApi {
   // ---------------------------------------------------- editor de conflitos
 
   async conflictDetails(path: string): Promise<ConflictDetails> {
-    // Antes de qualquer leitura: "../" e caminho absoluto são recusados, como nos demais métodos de arquivo.
-    const full = resolveInside(this.root, path)
+    // Antes de qualquer leitura: "../", caminho absoluto e link que leva para fora são recusados, como nos demais métodos de arquivo.
+    const full = await resolveInsideReal(this.root, path)
     const stage = async (n: number) => {
       const { stdout, exitCode } = await this.git(['show', `:${n}:${path}`], { okExitCodes: [0, 128] })
       return exitCode === 0 ? stdout : null
     }
     const [base, ours, theirs] = await Promise.all([stage(1), stage(2), stage(3)])
     // Arquivo de trabalho só é lido se for arquivo comum e couber no teto do editor (o mesmo de readFile).
-    // Acima do teto, ou se não for arquivo comum (pasta, link), o conteúdo fica de fora.
+    // Acima do teto, ou se não for arquivo comum (pasta, link), o conteúdo fica de fora. `tooLarge` separa o caso
+    // do teto: a tela oferece manter um lado ou abrir no editor, em vez de dizer que o arquivo não pôde ser lido.
     const info = await lstat(full).catch(() => null)
-    const buffer = info?.isFile() && info.size <= EDITABLE_MAX_BYTES ? await readFile(full).catch(() => null) : null
+    const tooLarge = info?.isFile() === true && info.size > EDITABLE_MAX_BYTES
+    const buffer = info?.isFile() === true && !tooLarge ? await readFile(full).catch(() => null) : null
     const working = buffer ? buffer.toString('utf8') : null
     const binary = !!buffer?.subarray(0, 8000).includes(0) || [base, ours, theirs].some((t) => t?.includes('\0'))
-    return { path, base, ours, theirs, working, binary }
+    return { path, base, ours, theirs, working, binary, tooLarge }
   }
 
   /** Grava o conteúdo resolvido de um arquivo em conflito e marca como resolvido. */
   async saveConflictResolution(path: string, content: string): Promise<void> {
-    const full = resolveInside(this.root, path)
+    const full = await resolveInsideReal(this.root, path)
     await writeFile(full, content, 'utf8')
     await this.git(['add', '--', path])
   }
@@ -1653,7 +1657,7 @@ export class GitRepository implements RepoApi {
   }
 
   async readFile(path: string): Promise<FileContent> {
-    const full = resolveInside(this.root, path)
+    const full = await resolveInsideReal(this.root, path)
     const info = await lstat(full)
     if (!info.isFile()) throw new Error(t('core.notAFile', { path }))
     if (info.size > EDITABLE_MAX_BYTES) return { path, content: null, binary: false, tooLarge: true, size: info.size }
@@ -1663,7 +1667,7 @@ export class GitRepository implements RepoApi {
   }
 
   async writeFile(path: string, content: string): Promise<void> {
-    const full = resolveInside(this.root, path)
+    const full = await resolveInsideReal(this.root, path)
     // Só reescreve arquivos que já existem: o editor embutido não cria arquivos nem segue atalhos para fora da pasta.
     const info = await lstat(full)
     if (!info.isFile()) throw new Error(t('core.notAFile', { path }))

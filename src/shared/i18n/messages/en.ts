@@ -601,6 +601,7 @@ export const en: Messages = {
     deletedByUs: 'The current branch deleted this file, but the incoming version changed it.',
     deletedByThem: 'The incoming version deleted this file, but the current branch changed it.',
     unreadable: 'The file could not be read.',
+    tooLarge: 'The file is too large for the editor: keep the current or the incoming version, or open it in the editor.',
     deleteFile: 'Delete the file',
     keepOurs: 'Keep the current version (HEAD)',
     keepTheirs: 'Keep the incoming version',

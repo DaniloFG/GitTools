@@ -602,6 +602,7 @@ export const ptBR = {
     deletedByUs: 'A branch atual removeu este arquivo, mas a versão que entra o alterou.',
     deletedByThem: 'A versão que entra removeu este arquivo, mas a branch atual o alterou.',
     unreadable: 'Não foi possível ler o arquivo.',
+    tooLarge: 'Arquivo grande demais para o editor: escolha manter a versão atual ou a que entra, ou abra o arquivo no editor.',
     deleteFile: 'Remover o arquivo',
     keepOurs: 'Manter a versão atual (HEAD)',
     keepTheirs: 'Manter a versão que entra',

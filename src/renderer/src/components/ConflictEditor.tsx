@@ -178,7 +178,9 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
         ? t('conflict.deletedByUs')
         : details.theirs === null
           ? t('conflict.deletedByThem')
-          : t('conflict.unreadable')
+          : details.tooLarge
+            ? t('conflict.tooLarge')
+            : t('conflict.unreadable')
     return (
       <Modal title={t('conflict.titleShort', { path })} onClose={onClose} size="medium">
         <p>{reason}</p>

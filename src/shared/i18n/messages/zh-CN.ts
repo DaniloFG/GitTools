@@ -573,6 +573,7 @@ export const zhCN: Messages = {
     deletedByUs: '当前分支删除了此文件，但传入的版本修改了它。',
     deletedByThem: '传入的版本删除了此文件，但当前分支修改了它。',
     unreadable: '无法读取该文件。',
+    tooLarge: '文件太大，编辑器无法处理：请保留当前版本或传入的版本，或在编辑器中打开该文件。',
     deleteFile: '删除文件',
     keepOurs: '保留当前版本（HEAD）',
     keepTheirs: '保留传入的版本',

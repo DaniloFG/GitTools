@@ -601,6 +601,7 @@ export const es: Messages = {
     deletedByUs: 'La rama actual eliminó este archivo, pero la versión entrante lo modificó.',
     deletedByThem: 'La versión entrante eliminó este archivo, pero la rama actual lo modificó.',
     unreadable: 'No se pudo leer el archivo.',
+    tooLarge: 'El archivo es demasiado grande para el editor: conserva la versión actual o la entrante, o ábrelo en el editor.',
     deleteFile: 'Eliminar el archivo',
     keepOurs: 'Conservar la versión actual (HEAD)',
     keepTheirs: 'Conservar la versión entrante',
