@@ -21,7 +21,7 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 
 ## 2. Estado
 
-**A seguir:** `B3`
+**A seguir:** `D1`
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -33,14 +33,15 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | fechada | `3f8edac` | 1357 testes verdes; `CLAUDE.md` em 199 linhas; só documentação |
 | B1 | #114 | Spike: branch apagada, restauração, pipeline | fechada (parcial) | ver git log | compare por SHA e `refs/pull/N/head` provados; DELETE não testável da sessão (403) |
 | B2 | #115 | Política de ciclo de vida das branches no guia | fechada | `4e222e5` | só documentação; `CLAUDE.md` em 199 linhas; typecheck e testes não rodados |
-| B3 | #116 | Limpeza no fim do plano e trava contra apagar branches | a fazer | | |
+| B3 | #116 | Limpeza no fim do plano e trava contra apagar branches | fechada | ver git log | 84 testes do gate-main (12 novos reprovam sem a trava); 1380 testes verdes |
 | D1 | #99 | Link não rastreado fora do repositório (descoberta) | a fazer | | |
 | ENC | #106, #113 | Encerramento: PRs, validações e issues | a fazer | | |
 
-### Última etapa fechada: `B2` (#115)
+### Última etapa fechada: `B3` (#116)
 
-- **Feito**: seção "Ciclo de vida das branches" em `.claude/rules/github.md` e `CONTRIBUTING.md`; bullet de `CLAUDE.md` aponta para ela. Diz: branch vive até o fim do plano; o Claude não apaga branches (403, é do dono); `delete_branch_on_merge` desligado; central lista as mergeadas na `homolog` e pede ao dono; leitura por SHA (`compare` e `refs/pull/N/head`); SHA da ponta no PR da `homolog`.
-- **Não conferido**: typecheck/testes (só documentação). **Para B3**: passo de limpeza em `central`/`pr` deve só LISTAR e pedir ao dono; `gate-main.sh` bloqueando apagar develop/homolog/main. **Para o dono**: apagar `spike/base` e `spike/work`.
+- **Feito**: `gate-main.sh` bloqueia (exit 2, "GATE DE BRANCHES") apagar `develop`, `homolog` e `main` por `git push --delete/-d/:ref`, `git branch -d/-D`, `gh api -X DELETE .../git/refs/heads/<ref>` (com `%2F`) e GraphQL `deleteRef`; outras branches passam. `central` ganhou o passo 8 (só LISTA as mergeadas na `homolog`, com SHA, e pede ao dono); `pr` manda registrar o SHA no PR da `homolog`.
+- **security-review**: a skill não carregou (usa `origin/HEAD`, ausente no clone); revisão manual do diff: o hook só restringe, sem execução nova, variáveis entre aspas, padrões fixos. Limite aceito: heurística de texto (`git push origin ":$VAR"` e `git update-ref -d` não são vistos); a defesa real é o 403 do proxy.
+- **Não conferido**: `perf:bundle`/builds (só hook e documentação). **Para o dono**: apagar `spike/base` e `spike/work`; #117 segue `bloqueada`.
 
 ## 3. Base de medição
 
@@ -54,13 +55,6 @@ DOM (meta 20). Testes do plano 1: 1245 verdes (E13) mais os dos gates (111 nos t
 - **Orquestra**: topo. **Ler antes**: a issue da etapa (aceite = critérios dela), `scripts/validacao/` e `docs/PERFORMANCE.md` seção 7
 - **Testes**: unidade, tela, medição. **Segurança**: Q4 (hook e workflow): `security-review`. **Depende de**: R1; Q2 a Q4 dependem de Q1
 - Sem dependência nova em `package.json` (Playwright só no job, `npm i --no-save`). Determinismo: dados fixos, sem rede, sem `sleep` fixo.
-
-### Etapa `B3` — ciclo de vida das branches (issue-mãe #113)
-
-- **Orquestra**: topo (B3), sonnet (B2, documentação). **Depende de**: B1 antes de B2 e B3
-- **B3 #116** passo de limpeza
-  em `central`/`pr` e `gate-main.sh` bloqueando apagar develop, homolog e main (`security-review`, testes com `gh` falso)
-- #117 (limpeza única das branches antigas) segue `bloqueada` até B1 e B3; entra aqui só se destravar.
 
 ### Etapa `D1` — #99 (descoberta das etapas)
 

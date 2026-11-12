@@ -10,6 +10,9 @@
 # QA (issue #110): merge de PR com base `develop` ou `homolog` só passa se o check-run `QA` da ponta (head sha)
 # tem conclusão `success`. Consulta que falha, resposta vazia, sha ilegível, check ausente, `failure`, `in_progress`
 # ou conclusão null bloqueiam. Na homolog o QA é consultado só depois da promoção.
+# Branches protegidas (issue #116, defesa em profundidade da regra "o Claude não apaga branches"): apagar `main`,
+# `develop` ou `homolog` bloqueia por `git push --delete`, `git push origin :ref`, `git branch -d/-D` e
+# `gh api -X DELETE .../git/refs/heads/<ref>`. O proxy já responde 403 ao DELETE; o hook barra antes, com a mensagem.
 # Limites conhecidos (heurística sobre texto, não um parser de shell): `git push` sem destino com a main
 # já checada fora, `gh pr edit --base main` e `gh api --input arquivo.json` não são inspecionados.
 entrada=$(cat)
@@ -176,6 +179,16 @@ verificar_pr_por_seletor() { # seletor repo
   fi
 }
 
+re_protegida='^(refs/heads/|origin/|refs/remotes/origin/)?(main|develop|homolog)$'
+
+bloquear_apagar() {
+  {
+    printf 'GATE DE BRANCHES: bloqueado. %s\n' "$1"
+    echo 'O Claude não apaga branches (develop, homolog e main nunca são apagadas); a limpeza é do dono (.claude/rules/github.md).'
+  } >&2
+  exit 2
+}
+
 re_destino_main='^\+?([^:]*:)?(refs/heads/)?main$'
 re_base_json='(^|[^[:alnum:]_])base(RefName)?:[[:space:]]*(refs/heads/)?main([^[:alnum:]_./-]|$)'
 
@@ -189,7 +202,32 @@ analisar_git() {
       *) break ;;
     esac
   done
+  if [ "${a[j]:-}" = branch ]; then
+    local apaga=0
+    for tok in "${a[@]:j+1}"; do
+      if [[ $tok == --delete || $tok =~ ^-[a-zA-Z]*[dD][a-zA-Z]*$ ]]; then apaga=1; fi
+    done
+    if [ "$apaga" = 1 ]; then
+      for tok in "${a[@]:j+1}"; do
+        if [[ $tok =~ $re_protegida ]]; then bloquear_apagar "git branch apagando a branch protegida $tok."; fi
+      done
+    fi
+    return 0
+  fi
   [ "${a[j]:-}" = push ] || return 0
+  local apaga_push=0
+  for tok in "${a[@]:j+1}"; do
+    if [[ $tok == --delete || $tok =~ ^-[a-zA-Z]*d[a-zA-Z]*$ ]]; then apaga_push=1; fi
+  done
+  for tok in "${a[@]:j+1}"; do
+    case "$tok" in
+      -*) ;;
+      *)
+        if [[ ${tok#+} =~ ^:(refs/heads/)?(main|develop|homolog)$ ]]; then bloquear_apagar "git push apagando a branch protegida (${tok#*:})."; fi
+        if [ "$apaga_push" = 1 ] && [[ $tok =~ $re_protegida ]]; then bloquear_apagar "git push --delete na branch protegida $tok."; fi
+        ;;
+    esac
+  done
   for tok in "${a[@]:j+1}"; do
     case "$tok" in
       --all|--mirror) bloquear "git push $tok pode atualizar a main." ;;
@@ -264,6 +302,13 @@ gh_api() { # endpoint metodo [campos...]
   # GraphQL não expõe a base na linha de comando: as mutações de merge são bloqueadas de saída.
   if [ "$ep" = graphql ] && [[ $SEG =~ mergePullRequest|enablePullRequestAutoMerge ]]; then
     bloquear "mutação GraphQL de merge de PR."
+  fi
+  if [ "$ep" = graphql ] && [[ $SEG =~ deleteRef ]]; then
+    bloquear_apagar "mutação GraphQL deleteRef (apagar branch)."
+  fi
+  # Apagar branch protegida pela API de refs (inclui o `/` codificado como %2F).
+  if [ "$metodo" = DELETE ] && [[ $ep =~ /git/refs/(heads(/|%2[Ff]))(main|develop|homolog)$ ]]; then
+    bloquear_apagar "gh api DELETE na branch protegida ${BASH_REMATCH[3]}."
   fi
   case "$metodo" in PUT|POST|PATCH) ;; *) return 0 ;; esac
   # (d) mudar a base para a main, por campo (-f base=main) ou por JSON ("base": "main").

@@ -146,7 +146,7 @@ Só nestes casos, que são as paradas legítimas:
 
 - **O plano acabou**: "A seguir" diz `ENCERRAMENTO`. O encerramento não pede a palavra do dono: abra a etapa
   `ENCERRAMENTO` como qualquer outra; o plano acaba quando ela fecha. Só é parada se `backlog` C não achar issue pronta
-  e A não tiver o que refinar (passo 9 do encerramento).
+  e A não tiver o que refinar (passo 10 do encerramento).
 - **Limite de uso**, para você ou para uma etapa.
 - **Plataforma indisponível**: `create_session` falhou ou não está disponível. Deixe pronta a mensagem de início da
   etapa para o dono colar.
@@ -176,8 +176,13 @@ promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esfor
 7. **Issues**: para cada sub-issue cujos critérios foram conferidos na evidência da etapa (e na do `gt-validador`),
    comente a evidência final, troque para `status:validada` e feche com `state_reason: completed`. A issue-mãe fecha
    por último, com a mesma regra.
-8. **Fim**: avise o dono em uma linha, com o `PR ABERTO <n> (aguarda dono)`. Você não faz merge na `main`.
-9. **Próximo plano**: com o encerramento feito, rode `backlog` C. Havendo backlog pronto, a triagem de tamanho decide
+8. **Limpeza das branches** (`.claude/rules/github.md`, "Ciclo de vida"): só LISTA e pede ao dono; nunca apaga (403, e o
+   `gate-main.sh` barra `develop`, `homolog` e `main`). `git fetch origin`; liste as branches de trabalho já na história
+   da `homolog` (`git branch -r --merged origin/homolog`, sem `develop`, `homolog`, `main`) com o SHA da ponta de cada
+   uma (registrado na descrição do PR da `homolog`). Ponha a lista e os SHAs no relatório e na issue-mãe, pedindo ao dono
+   que as apague. Branch com PR aberto ou fora da `homolog` não entra na lista.
+9. **Fim**: avise o dono em uma linha, com o `PR ABERTO <n> (aguarda dono)` e a lista do passo 8. Você não faz merge na `main`.
+10. **Próximo plano**: com o encerramento feito, rode `backlog` C. Havendo backlog pronto, a triagem de tamanho decide
    (Grande: `planejar` e nova central); sem backlog pronto, `backlog` A nas `precisa-refinamento` mais prioritárias.
 
 ## HANDOFF em formato antigo

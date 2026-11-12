@@ -217,6 +217,43 @@ describe('gate-main: git push no Bash', () => {
   })
 })
 
+describe('gate-main: não apaga develop, homolog nem main (issue #116)', () => {
+  it.each([
+    'git push origin --delete develop',
+    'git push origin -d homolog',
+    'git push --delete origin refs/heads/develop',
+    'git push origin :develop',
+    'git push origin :refs/heads/homolog',
+    'git branch -D develop',
+    'git branch -d homolog',
+    'git branch -dr origin/develop',
+    'git branch --delete main',
+    'gh api -X DELETE repos/o/r/git/refs/heads/develop',
+    'gh api --method DELETE repos/o/r/git/refs/heads%2Fhomolog',
+    'gh api -XDELETE repos/o/r/git/refs/heads/main',
+    'gh api graphql -f query=mutation{deleteRef(input:{refId:x}){clientMutationId}}',
+    'git push +:develop',
+  ])('bloqueia: %s', async (comando) => {
+    const r = await bash(comando)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('GATE DE BRANCHES')
+  })
+
+  it.each([
+    'git push origin --delete feature/x',
+    'git push origin :feature/x',
+    'git branch -D feature/x',
+    'git branch -a',
+    'git branch develop-copia',
+    'git push origin HEAD:develop',
+    'git push origin develop',
+    'gh api -X DELETE repos/o/r/git/refs/heads/feature/x',
+    'gh api repos/o/r/git/refs/heads/develop',
+  ])('passa: %s', async (comando) => {
+    expect((await bash(comando)).code).toBe(0)
+  })
+})
+
 describe('gate-main: gh no Bash', () => {
   it('gh pr merge: base main bloqueia; develop e homolog passam', async () => {
     expect((await bash('gh pr merge 3')).code).toBe(2)
