@@ -16,9 +16,8 @@ fechada está na mensagem do commit dela.
   - `npm run build:extension` antes de cada e2e que muda o produto.
   - Issue sem prova completa por critério não fecha: fica `status:em-revisao` com o que falta comentado.
   - Atualizar rótulo de issue SUBSTITUI todos: ler os rótulos antes e reenviar a lista completa.
-  - Testes de hook sem `spawnSync`.
+  - Testes de hook sem `spawnSync`; saída longa em arquivo fora do repositório, ler só o fim.
   - `security-review`/`code-review` quebram sem `origin/HEAD`: `git remote set-head origin <branch>` (a E1 resolve).
-  - Saída longa vai para arquivo fora do repositório; ler só o fim.
 - **Metas**: nenhuma de desempenho; catraca: `perf:bundle` JS da primeira carga ≤ 700.000 (hoje 695.255 Electron e
   696.098 webview), processos git e nós no DOM sem piora.
 
@@ -38,8 +37,7 @@ fechada está na mensagem do commit dela.
 | E8 | #150 (#93, #94, #108) | Rolagem do Changes e empilhamento do combobox | topo | a fazer | |
 | E9 | #151 (#97, #119, #140) | Barra estreita (direita/embaixo), Dashboard ≥ 1050, `.wip-open` | topo | a fazer | |
 
-Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede da E3; E6 destrava E7; E5 e E8 e E9
-juntas fecham a #108 (mutações de #92, #93, #94, #97).
+Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede da E3; E6 destrava E7; E5, E8 e E9 fecham a #108.
 
 ### Última etapa fechada
 
