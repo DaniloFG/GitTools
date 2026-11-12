@@ -145,7 +145,18 @@ describe('sessões por repositório', () => {
 })
 
 describe('aviso do observador é eco da própria alteração', () => {
-  const base: EchoInput = { ownChange: true, generation: 5, lastLoaded: 5, loadingGeneration: null, again: false }
+  const base: EchoInput = { external: false, ownChange: true, generation: 5, lastLoaded: 5, loadingGeneration: null, again: false }
+
+  it('mudança de fora (assinatura da .git diferente) nunca é eco, mesmo dentro da janela própria', () => {
+    expect(isOwnEcho({ ...base, external: true })).toBe(false)
+    expect(isOwnEcho({ ...base, external: true, lastLoaded: 5, loadingGeneration: null })).toBe(false)
+    expect(isOwnEcho({ ...base, external: true, lastLoaded: null, loadingGeneration: 5 })).toBe(false)
+    expect(isOwnEcho({ ...base, external: true, lastLoaded: 4, loadingGeneration: 4, again: true })).toBe(false)
+  })
+
+  it('sem mudança de fora, a decisão é a de antes', () => {
+    expect(isOwnEcho({ ...base, external: false })).toBe(true)
+  })
 
   it('sem alteração própria recente nunca é eco (ex.: commit no terminal)', () => {
     expect(isOwnEcho({ ...base, ownChange: false })).toBe(false)

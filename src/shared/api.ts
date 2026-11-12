@@ -349,6 +349,9 @@ export interface GitToolsBridge {
   invoke<M extends RepoMethod>(method: M, ...args: Parameters<RepoApi[M]>): ReturnType<RepoApi[M]>
   /** Chama um método de um repositório aberto específico (`root`), sem depender do ativo. */
   invokeOn<M extends RepoMethod>(root: string, method: M, ...args: Parameters<RepoApi[M]>): ReturnType<RepoApi[M]>
-  /** Avisa quando algo mudou num repositório; `root` é o repositório (ausente quando a janela ganhou foco). */
-  onRepositoryChanged(listener: (root?: string) => void): () => void
+  /**
+   * Avisa quando algo mudou num repositório; `root` é o repositório (ausente quando a janela ganhou foco).
+   * `external` é true quando a pasta .git mudou sem um comando desta interface (um commit feito fora do app).
+   */
+  onRepositoryChanged(listener: (root?: string, external?: boolean) => void): () => void
 }
