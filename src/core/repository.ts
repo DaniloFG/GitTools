@@ -1091,9 +1091,11 @@ export class GitRepository implements RepoApi {
    * no mesmo segundo) mantém a ordem recebida, e o filho podia ser aplicado antes do pai. Por isso o mesmo
    * `rev-list` já traz a data (`%ct`) e, só dentro de cada grupo de commits consecutivos com a mesma data, a
    * ordem é refeita pela ancestralidade. Sem empate, nenhum processo a mais.
-   * No grupo, o pai direto (já em `parents`) resolve de graça; só os pares sem ligação direta custam um
-   * `merge-base --is-ancestor`. Grupo com mais de MAX_TIED_GROUP commits não consulta o git (o custo cresceria
-   * com o quadrado do grupo) e mantém a ordem anterior. Nada percorre o histórico do repositório.
+   * Em grupo de qualquer tamanho, o pai direto (já em `parents`) ordena de graça, sem processo, em tempo linear
+   * (um rebase de 21+ commits grava tudo no mesmo segundo). Só os pares sem ligação direta (ex.: o commit do
+   * meio não foi selecionado) custam um `merge-base --is-ancestor`, e só em grupo de até MAX_TIED_GROUP
+   * commits: o número de pares cresce com o quadrado do grupo. Acima disso esses pares mantêm a ordem
+   * recebida. Nada percorre o histórico do repositório.
    */
   private async orderCommits(shas: string[]): Promise<{ ordered: string[]; parents: Map<string, string[]> }> {
     shas.forEach((s) => assertRef(s, 'commit'))
@@ -1121,44 +1123,63 @@ export class GitRepository implements RepoApi {
       (await this.git(['merge-base', '--is-ancestor', a, b], { okExitCodes: [0, 1] })).exitCode === 0
     // Ordena o grupo empatado: pais antes dos filhos; sem relação, mantém a ordem em que vieram.
     const sortTied = async (group: string[]): Promise<string[]> => {
-      // before[i][j]: group[i] é ancestral de group[j].
-      const before = group.map(() => group.map(() => false))
+      const n = group.length
+      const index = new Map(group.map((sha, i) => [sha, i] as const))
+      // Arestas pai -> filho. `before` (ancestral conhecido) só existe no grupo pequeno, onde as consultas acontecem.
+      const children: number[][] = group.map(() => [])
+      const indegree: number[] = group.map(() => 0)
+      const link = (from: number, to: number) => {
+        children[from].push(to)
+        indegree[to]++
+      }
       group.forEach((sha, j) => {
         for (const p of parents.get(sha) ?? []) {
-          const i = group.indexOf(p)
-          if (i >= 0) before[i][j] = true
+          const i = index.get(p)
+          if (i !== undefined) link(i, j)
         }
       })
-      const close = () => {
-        for (let k = 0; k < group.length; k++)
-          for (let i = 0; i < group.length; i++)
-            for (let j = 0; j < group.length; j++) if (before[i][k] && before[k][j]) before[i][j] = true
-      }
-      close()
-      for (let i = 0; i < group.length; i++) {
-        for (let j = i + 1; j < group.length; j++) {
-          if (before[i][j] || before[j][i]) continue
-          if (await isAncestor(group[i], group[j])) before[i][j] = true
-          else if (await isAncestor(group[j], group[i])) before[j][i] = true
-          else continue
-          close()
+      if (n <= MAX_TIED_GROUP) {
+        // before[i][j]: group[i] é ancestral de group[j] (fecho dos pais diretos; n <= 20, então o custo é desprezível).
+        const before = group.map(() => group.map(() => false))
+        children.forEach((js, i) => js.forEach((j) => (before[i][j] = true)))
+        const close = () => {
+          for (let k = 0; k < n; k++)
+            for (let i = 0; i < n; i++)
+              if (before[i][k]) for (let j = 0; j < n; j++) if (before[k][j]) before[i][j] = true
+        }
+        close()
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            if (before[i][j] || before[j][i]) continue
+            if (await isAncestor(group[i], group[j])) {
+              before[i][j] = true
+              link(i, j)
+            } else if (await isAncestor(group[j], group[i])) {
+              before[j][i] = true
+              link(j, i)
+            } else continue
+            close()
+          }
         }
       }
-      const rest = group.map((_, i) => i)
-      const out: string[] = []
-      while (rest.length) {
-        // O primeiro que não tem ancestral pendente; a relação é acíclica, o `max` é só uma guarda.
-        const k = Math.max(0, rest.findIndex((i) => !rest.some((j) => before[j][i])))
-        out.push(group[rest[k]])
-        rest.splice(k, 1)
+      // Kahn estável: a fila começa na ordem recebida e cada commit liberado entra no fim. O(n + arestas).
+      const queue: number[] = []
+      for (let i = 0; i < n; i++) if (indegree[i] === 0) queue.push(i)
+      for (let head = 0; head < queue.length; head++) {
+        for (const c of children[queue[head]]) if (--indegree[c] === 0) queue.push(c)
       }
-      return out
+      // A relação de ancestralidade é acíclica; se sobrar algum (entrada inesperada), segue na ordem recebida.
+      if (queue.length < n) {
+        const placed = new Set(queue)
+        for (let i = 0; i < n; i++) if (!placed.has(i)) queue.push(i)
+      }
+      return queue.map((i) => group[i])
     }
 
     for (let start = 0; start < ordered.length; ) {
       let end = start + 1
       while (end < ordered.length && dates[end] === dates[start]) end++
-      if (end - start > 1 && end - start <= MAX_TIED_GROUP) {
+      if (end - start > 1) {
         const sorted = await sortTied(ordered.slice(start, end))
         sorted.forEach((sha, i) => (ordered[start + i] = sha))
       }

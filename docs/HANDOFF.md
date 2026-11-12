@@ -34,7 +34,7 @@ fechada está na mensagem do commit dela.
 
 ### Última etapa fechada: `E6` (#95, implementação)
 
-- **`orderCommits`**: `--no-walk` ignora `--topo-order`; empate de `%ct` agora reordena por ancestralidade (grupo de 2 a 20;
+- **`orderCommits`**: `--no-walk` ignora `--topo-order`; empate de `%ct` reordena por pais diretos (Kahn, qualquer tamanho, 0 processo);
   pai direto sem processo, senão `merge-base --is-ancestor`). Sem empate: 1 `rev-list`, 3 processos (travado em teste).
 - **UI**: `conflictFlow.ts` (puro, 19 testes) + `OperationBanner`; setting `autoContinueConflicts` (default false) só em
   Settings > Geral. Reaproveitar decisão: resumo com Aplicar/Ignorar, teto 200, nunca silencioso.

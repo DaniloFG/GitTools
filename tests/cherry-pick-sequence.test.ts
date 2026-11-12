@@ -9,7 +9,8 @@ const LINES = (v: (i: number) => string) => Array.from({ length: 6 }, (_, i) => 
 /** `main` muda as linhas 0, 2 e 4; a `feature` tem três commits, cada um mudando uma delas: três paradas em sequência. */
 async function threeStops(): Promise<{ t: TestRepo; shas: string[] }> {
   const t = await createRepo()
-  // Datas de commit distintas: `orderCommits` ordena por data (`--no-walk=sorted`) e, em empate, segue a ordem recebida.
+  // Datas de commit distintas: `orderCommits` ordena por data (`--no-walk=sorted`) e só desempata pela ancestralidade
+  // quando as datas são iguais. Aqui a ordem vem da data; o empate tem o seu `describe` mais abaixo.
   let clock = 1_700_000_000
   const tick = () => (process.env.GIT_COMMITTER_DATE = `${++clock} +0000`)
   tick()
@@ -165,9 +166,16 @@ describe('ordem dos commits com a mesma data de committer', () => {
     expect(readFileSync(join(t.dir, 'y.txt'), 'utf8')).toBe('y\n')
   })
 
-  it('grupo empatado com mais de 20 commits não consulta a ancestralidade (teto de processos)', async () => {
+  it('grupo empatado com mais de 20 commits: ordena pelos pais diretos e não consulta merge-base (teto de processos)', async () => {
     const { t, shas } = await chain(21, true)
-    const commands = await recordGit(() => t.repo.cherryPickCommits('main', shas))
+    // Ordem embaralhada de forma fixa (posições ímpares e depois pares): a inversão da ordem recebida não a conserta.
+    const shuffled = [...shas.filter((_, i) => i % 2 === 1), ...shas.filter((_, i) => i % 2 === 0)]
+    let result: unknown
+    const commands = await recordGit(async () => {
+      result = await t.repo.cherryPickCommits('main', shuffled)
+    })
+    expect(result).toMatchObject({ ok: true, conflicts: [] })
+    expect(await subjects(t, 21)).toEqual(Array.from({ length: 21 }, (_, i) => `c${i + 1}`))
     expect(commands.filter((a) => a.includes('merge-base'))).toEqual([])
   })
 
