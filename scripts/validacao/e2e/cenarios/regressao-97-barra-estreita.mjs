@@ -1,8 +1,8 @@
 // #97: em janela estreita (320, 480 e 640 px) nenhum item da barra superior fica fora da tela (abas das telas,
-// inclusive Dashboards, menu ⚙ e botão do repositório), com o History e com o Dashboard abertos, e a página do
-// History não ganha rolagem horizontal. A rolagem horizontal do conteúdo do Dashboard a 320 px NÃO é conferida
-// aqui: não é a barra (fora do escopo da #97) e hoje ela existe (ver o relatório da Q2). Só leitura; o tamanho
-// original da janela volta no fim, mesmo se um passo falhar.
+// inclusive Dashboards, menu ⚙ e botão do repositório), com o History e com o Dashboard abertos, e a página não
+// ganha rolagem horizontal. #119: essa rolagem é conferida nas duas telas; no Dashboard, as ações do cabeçalho e os
+// botões dos filtros também entram na conta, porque o CSS os deixava estourar a janela a 320 px. Só leitura; o
+// tamanho original da janela volta no fim, mesmo se um passo falhar.
 const LARGURAS = [320, 480, 640]
 const ALTURA = 700
 
@@ -10,7 +10,10 @@ const ALTURA = 700
 function foraDaTela(conferirRolagem) {
   const vw = document.documentElement.clientWidth
   const fora = []
-  for (const el of document.querySelectorAll('.screen-tab, .toolbar .tb-menu, .toolbar .repo-button')) {
+  // #119: no Dashboard, as ações do cabeçalho e os botões dos filtros também não podem passar da janela. Fora do
+  // Dashboard não existem (ou ficam ocultos, com retângulo zerado, que não cai na conta), então não mudam a outra tela.
+  const seletor = '.screen-tab, .toolbar .tb-menu, .toolbar .repo-button, .dash-actions > *, .dash-filters .segmented button'
+  for (const el of document.querySelectorAll(seletor)) {
     const r = el.getBoundingClientRect()
     if (r.left < -1 || r.right > vw + 1) fora.push(`${el.textContent.trim() || el.className} [${Math.round(r.left)}..${Math.round(r.right)}] > ${vw}`)
   }
@@ -36,7 +39,7 @@ export default {
           // A barra se reorganiza ao medir a janela: espera duas leituras iguais seguidas (layout assentado) e confere a última.
           let anterior = ''
           const medida = await expect.ate(async () => {
-            const atual = await app.page.evaluate(foraDaTela, tela === 'History')
+            const atual = await app.page.evaluate(foraDaTela, true)
             const texto = JSON.stringify(atual)
             const assentou = texto === anterior
             anterior = texto

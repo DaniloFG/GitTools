@@ -283,6 +283,7 @@ export const en: Messages = {
     linesContext: 'From {path} in commit {sha} — "{subject}"',
     takeChecked: { one: 'Take {count} checked file to {target}…', other: 'Take {count} checked files to {target}…' },
     dragFile: 'Drag onto a branch to take this file there',
+    checkFile: 'Mark {path} to take',
     selectLinesHelp: 'Select lines and apply only those to another branch.',
     takeWholeFile: 'Take the whole file…'
   },

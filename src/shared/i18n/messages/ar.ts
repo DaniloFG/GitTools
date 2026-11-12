@@ -291,6 +291,7 @@ export const ar: Messages = {
     linesContext: 'من {path} في الإيداع {sha} — "{subject}"',
     takeChecked: { one: 'نقل الملف المحدد إلى {target}…', other: 'نقل الملفات المحددة ({count}) إلى {target}…' },
     dragFile: 'اسحب إلى فرع لنقل هذا الملف إليه',
+    checkFile: 'تحديد {path} للنقل',
     selectLinesHelp: 'حدّد أسطرًا وطبّقها وحدها على فرع آخر.',
     takeWholeFile: 'نقل الملف كاملًا…'
   },

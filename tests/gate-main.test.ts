@@ -10,6 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 // Issue #104: base homolog só aceita a branch de trabalho (nunca a develop), já na história da develop (compare
 // behind/identical) e com o rótulo `validada-develop`; qualquer consulta que falhe bloqueia.
 // Issue #110: merge com base develop ou homolog exige o check-run `QA` da ponta com conclusão `success`.
+// Issue #121: com vários check-runs `QA` no mesmo sha, decide o de maior `id` (o mais recente), não a ordem da lista.
 
 const script = fileURLToPath(new URL('../.claude/hooks/gate-main.sh', import.meta.url))
 
@@ -27,11 +28,15 @@ let ghLog = ''
 //   11 -> homolog, a consulta de origem/ponta/rótulos falha (a da base responde).
 //   20 -> develop, QA failure; 21 -> develop, check QA ausente; 23 -> develop, a consulta do check QA falha;
 //   22 -> homolog, compare behind, com rótulo, QA failure; 24 -> develop, QA in_progress (conclusion null).
+//   25..29 -> develop, com dois check-runs QA no mesmo sha (issue #121; ids e ordem na lista em cada caso):
+//   25 abc0025 cancelled (id 1) antes de success (id 2): passa; 26 abc0026 success (id 2) antes de failure (id 3): bloqueia;
+//   27 abc0027 failure (id 3) antes de success (id 2): bloqueia; 28 abc0028 success (id 2) e QA em andamento (id 3): bloqueia;
+//   29 abc0029 success (id 5) antes de cancelled (id 1): passa.
 // Por seletor (`pr view`): "ramo-verde" -> ponta abc0002 com rótulo; "ramo-sem-rotulo" -> ponta abc0007 sem rótulo;
 // "ramo-develop" -> origem develop; "ramo-nao-mergeado" -> ponta abc0005 (ahead) com rótulo;
 // "ramo-qa-vermelho" -> base develop, ponta abc0020 (QA failure); "ramo-develop-verde" -> base develop, ponta abc0001.
 // Check-runs (`*/commits/SHA/check-runs`): QA success para qualquer SHA, exceto os dedicados acima (abc0020 e
-// abc0022 failure; abc0021 lista vazia; abc0023 o gh falha; abc0024 conclusion null).
+// abc0022 failure; abc0021 lista vazia; abc0023 o gh falha; abc0024 conclusion null; abc0025..abc0029 dois QA, #121).
 // O gh falso devolve JSON e aplica o --jq com o jq de verdade, para o filtro do hook também ser testado.
 // Cada chamada fica no log.
 const ghFalso = `#!/usr/bin/env bash
@@ -66,6 +71,11 @@ if [ "$a1" = api ]; then
     */pulls/22) pr homolog fix/x abc0022 "$ok" ;;
     */pulls/23) pr develop fix/x abc0023 "$ok" ;;
     */pulls/24) pr develop fix/x abc0024 "$ok" ;;
+    */pulls/25) pr develop fix/x abc0025 "$ok" ;;
+    */pulls/26) pr develop fix/x abc0026 "$ok" ;;
+    */pulls/27) pr develop fix/x abc0027 "$ok" ;;
+    */pulls/28) pr develop fix/x abc0028 "$ok" ;;
+    */pulls/29) pr develop fix/x abc0029 "$ok" ;;
     */compare/develop...abc0002) cmp behind ;;
     */compare/develop...abc0004) cmp behind ;;
     */compare/develop...abc0005) cmp ahead ;;
@@ -79,6 +89,11 @@ if [ "$a1" = api ]; then
     */commits/abc0022/check-runs*) qa '{"name":"QA","conclusion":"failure"}' ;;
     */commits/abc0023/check-runs*) exit 1 ;;
     */commits/abc0024/check-runs*) qa '{"name":"QA","status":"in_progress","conclusion":null}' ;;
+    */commits/abc0025/check-runs*) qa '{"name":"QA","id":1,"conclusion":"cancelled"},{"name":"QA","id":2,"conclusion":"success"}' ;;
+    */commits/abc0026/check-runs*) qa '{"name":"QA","id":2,"conclusion":"success"},{"name":"QA","id":3,"conclusion":"failure"}' ;;
+    */commits/abc0027/check-runs*) qa '{"name":"QA","id":3,"conclusion":"failure"},{"name":"QA","id":2,"conclusion":"success"}' ;;
+    */commits/abc0028/check-runs*) qa '{"name":"QA","id":2,"conclusion":"success"},{"name":"QA","id":3,"status":"in_progress","conclusion":null}' ;;
+    */commits/abc0029/check-runs*) qa '{"name":"QA","id":5,"conclusion":"success"},{"name":"QA","id":1,"conclusion":"cancelled"}' ;;
     */commits/*/check-runs*) qa "$verde" ;;
   esac
 fi
@@ -233,6 +248,24 @@ describe('gate-main: não apaga develop, homolog nem main (issue #116)', () => {
     'gh api -XDELETE repos/o/r/git/refs/heads/main',
     'gh api graphql -f query=mutation{deleteRef(input:{refId:x}){clientMutationId}}',
     'git push +:develop',
+    // Issue #124: o refspec sem `refs/` e o `update-ref -d` escapavam; o destino em variável não é verificável.
+    'git push origin :heads/develop',
+    'git push origin :heads/homolog',
+    'git push origin :heads/main',
+    'git push origin +:heads/develop',
+    'git push origin --delete heads/develop',
+    'git update-ref -d refs/heads/develop',
+    'git update-ref --delete refs/heads/homolog',
+    'git update-ref -d refs/heads/main',
+    'git update-ref -d refs/remotes/origin/develop',
+    'git -C x update-ref -d refs/heads/develop',
+    'git push origin ":$VAR"',
+    'git push origin :$BRANCH',
+    // Issue #124 (revisão): aspas somem antes da análise, então `$B` chega como token; apagar com variável não se confere.
+    'git push origin --delete $BRANCH',
+    'git push origin -d "$B"',
+    'git push --delete origin $B',
+    'gh api -X DELETE repos/o/r/git/refs/heads/$B',
   ])('bloqueia: %s', async (comando) => {
     const r = await bash(comando)
     expect(r.code).toBe(2)
@@ -245,10 +278,19 @@ describe('gate-main: não apaga develop, homolog nem main (issue #116)', () => {
     'git branch -D feature/x',
     'git branch -a',
     'git branch develop-copia',
+    // Local `heads/develop` não é a branch protegida; `branch -D` continua fora do alcance da regra nova (#124).
+    'git branch -D heads/develop',
     'git push origin HEAD:develop',
     'git push origin develop',
     'gh api -X DELETE repos/o/r/git/refs/heads/feature/x',
     'gh api repos/o/r/git/refs/heads/develop',
+    'git update-ref -d refs/heads/feature/x',
+    'git update-ref refs/heads/develop HEAD',
+    'git update-ref -d refs/heads/develop-copia',
+    'git push origin :heads/feature/x',
+    'git push origin $BRANCH',
+    'git push origin HEAD:$BRANCH',
+    'git push --dry-run origin $BRANCH',
   ])('passa: %s', async (comando) => {
     expect((await bash(comando)).code).toBe(0)
   })
@@ -399,11 +441,25 @@ describe('gate-main: o check QA precisa estar verde na ponta do PR', () => {
   })
 
   it.each([
+    ['cancelado (id 1) antes de success (id 2): o mais novo passa', 25, 'abc0025'],
+    ['success (id 5) antes de cancelado (id 1): a ordem da lista não decide', 29, 'abc0029'],
+  ])('dois QA no mesmo sha, o mais novo success: passa pelos quatro caminhos (%s)', async (_nome, n, sha) => {
+    expect((await mcp('merge_pull_request', pr(n))).code).toBe(0)
+    expect((await bash(`gh pr merge ${n}`)).code).toBe(0)
+    expect((await bash(`gh api -X PUT repos/o/r/pulls/${n}/merge`)).code).toBe(0)
+    expect((await mcp('enable_pr_auto_merge', pr(n))).code).toBe(0)
+    expect(readFileSync(ghLog, 'utf8')).toContain(`repos/o/r/commits/${sha}/check-runs?check_name=QA`)
+  })
+
+  it.each([
     ['QA em failure (develop)', 20],
     ['check QA ausente (develop)', 21],
     ['QA sem conclusão, em andamento (develop)', 24],
     ['a consulta do check QA falha (develop)', 23],
     ['QA em failure (homolog, promoção já passa)', 22],
+    ['dois QA: success (id 2) listado antes do failure (id 3), o mais novo bloqueia', 26],
+    ['dois QA: failure (id 3) listado antes do success (id 2), o mais novo bloqueia', 27],
+    ['dois QA: success (id 2) e QA novo em andamento (id 3, conclusion null)', 28],
   ])('bloqueia com GATE DE QA em todos os caminhos: %s', async (_nome, n) => {
     const caminhos = [
       () => mcp('merge_pull_request', pr(n)),
