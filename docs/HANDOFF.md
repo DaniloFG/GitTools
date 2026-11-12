@@ -23,14 +23,14 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E4`
+**A seguir:** `E5`
 
 | Etapa | Issue | Objetivo | Orquestra | Estado | Commit |
 | --- | --- | --- | --- | --- | --- |
 | E1 | #143 (#142) | `origin/HEAD` garantido para code-review e security-review | sonnet | fechada | df18263 |
 | E2 | #144 (#135) | Teste por chamador de `readRegularFile` (link no lugar do arquivo) | sonnet | fechada | 7a308ce |
 | E3 | #145 (#134) | Corrida da pasta-mãe trocada por link: fechar ou documentar | topo | fechada (documentada) | f7ce096 |
-| E4 | #146 (#132) | Aviso externo logo após ação da interface (`isOwnEcho`) | topo | a fazer | |
+| E4 | #146 (#132) | Aviso externo logo após ação da interface (`isOwnEcho`) | topo | fechada | 4b9f8e5 |
 | E5 | #147 (#92, #95) | Provas de conflitos e cherry-pick | topo | a fazer | |
 | E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | a fazer | |
 | E7 | #149 (#96) | Conflitos: merge por Alterações, 320 px, hi/ar/zh-CN | topo | a fazer | |
@@ -41,26 +41,19 @@ Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede 
 
 ### Última etapa fechada
 
-**E3** (f7ce096): decisão de **documentar o limite** (sem mudança de produto): `.claude/rules/seguranca.md` ganhou o bloco
-"Limite conhecido (#134, #145)". Fechar custaria um `realpath` extra por arquivo em leitura em lote, e a troca exige
-adversário com escrita concorrente na árvore (fora do modelo). Sem código: `core.mjs`, testes e `security-review` não
-rodados (diff só de documentação); a #134 reabre se o modelo de ameaça mudar.
+**E4** (4b9f8e5): o backend manda `repo:changed { root, external }`; `external` vem de 5 `fs.stat` (HEAD, index,
+packed-refs, refs, refs/heads; `src/backend/gitSignature.ts`) contra a assinatura deixada pelo último comando próprio de
+escrita; `external` nunca é eco (`isOwnEcho`). Sem processo git novo. typecheck verde; `npm test` 1474; e2e 39 cenários com
+`changes-alteracao-externa-apos-acao` (reprova no produto anterior); `perf:bundle` 695.635 / 696.201. Mutação: testes de
+unidade, multiRepo e o e2e reprovam sem a mudança (cópias fora do repo). Não conferido: custo dos stats em ms.
+Limites aceitos: subpastas de refs e tags fora da assinatura; externo que cai dentro de um comando próprio de escrita é
+absorvido; ordem dos avisos (`announceSeq`) sem teste.
 
 ## 3. Base de medição
 
 Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
-
-### Etapa E4 — `isOwnEcho` (#146, #132)
-
-- **Orquestra**: topo.
-- **Arquivos prováveis**: `src/renderer/src/App.tsx` (136-153), `src/renderer/src/git.ts` (99), módulo `.ts` puro novo
-  para a decisão, `tests/`, cenário em `scripts/validacao/e2e/cenarios/`.
-- **Ler antes**: `.claude/rules/interface.md`, `.claude/rules/testes.md`, `docs/PERFORMANCE.md` (seção 7).
-- **Aceite**: e2e altera arquivo por fora < 1 s após salvar e a lista atualiza; processos git por ação própria iguais
-  à base; unidade reprova sem a correção (mutação).
-- **Testes**: unidade, e2e, medição. **Segurança**: não.
 
 ### Etapa E5 — provas de conflitos e cherry-pick (#147, #92, #95)
 
@@ -115,6 +108,10 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
   `CLAUDE.md`); próximas etapas: sem atribuição. Não reescrevi o histórico.
 - 2026-11-12 (E2): espião de teste vai em `open` (não em `lstat`, que `resolveInsideReal` também chama).
 - 2026-11-12 (E3): decisão (documentar) mantida; o `gt-juiz` reprovou o 1º texto por cobrir só leitura: faltavam a escrita (`writeFile`, `saveConflictResolution`), a exceção `hasConflictMarkers` e `untrackedStats`. Corrigido.
+
+- 2026-11-12 (E4): `createRepo().git` e `app.git` passam por `runGit` e o backend os conta como PRÓPRIOS; alteração
+  externa em teste/e2e usa `execFile('git', …)`. `.mjs` não é pego por typecheck/vitest: `node --check` (crase em
+  `String.raw` do harness quebrou o e2e). `comparablePath` (realpathSync) não entra no caminho do comando.
 
 ## 6. Encerramento
 
