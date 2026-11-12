@@ -63,7 +63,7 @@ portanto, no modelo que quer para as etapas; o contexto da central é pequeno, e
 
 > Você é a sessão da etapa `<etapa>` do trabalho "<trabalho>", na branch `<branch>`. Use a skill `etapa` (se ela não
 > estiver disponível, leia `.claude/skills/etapa/SKILL.md`) e siga-a. Faça só essa etapa. Sessão central:
-> `<seu id>`. Não abra sessão nem PR.
+> `<seu id>`. Issue da etapa: `#<N>` (coluna Issue do HANDOFF). Não abra sessão nem PR.
 
 Depois de abrir:
 
@@ -135,6 +135,23 @@ Só nestes casos, que são as paradas legítimas:
 
 Verificação vermelha, decisão de desenho e aviso que não bate não são paradas: são da escada (juiz, correção, issue de
 retrabalho, siga). Ao parar, uma mensagem curta: etapas fechadas (com commit), onde parou e o motivo.
+
+## Encerramento do plano
+
+Quando a etapa `ENCERRAMENTO` fecha e o remoto confere, execute a política de `.claude/rules/github.md` sem pedir a
+palavra do dono. Você não faz git nem PR: delega à sessão de PR.
+
+1. **HANDOFF**: confira em `origin/<branch>` que `docs/HANDOFF.md` saiu. A etapa ENCERRAMENTO faz o `git rm`; se ele
+   ainda estiver lá, a sessão de PR faz o `git rm` e o commit antes de abrir o PR.
+2. **Branch**: se a de trabalho não começa com `feature/`, `fix/`, `docs/`, `chore/` ou `refactor/`, a sessão de PR cria
+   `feature/<assunto>` (ou `fix/<assunto>`) a partir dela e empurra.
+3. **PRs, em ordem**: uma sessão da skill `pr` (modelo e esforço em "Quem pede" da skill) com a cadeia
+   `<origem> → develop` (merge após CI verde), `develop → homolog` (merge após CI verde) e `homolog → main` (só abre).
+   Ela avisa `PR FEITO` ou `PR ABERTO <n> (aguarda dono)`. `PR PARADO`: não avance; é caso de juiz (seção acima).
+4. **Issues**: depois dos merges, para cada sub-issue cujos critérios foram conferidos na evidência da etapa, comente a
+   evidência final, troque para `status:validada` e feche com `state_reason: completed`. A issue-mãe fecha por último,
+   com a mesma regra.
+5. **Fim**: avise o dono em uma linha, com o `PR ABERTO <n> (aguarda dono)`. Você não faz merge na `main`.
 
 ## HANDOFF em formato antigo
 

@@ -15,10 +15,10 @@ mensagem do commit dela.
 
 **A seguir:** `<etapa>` — ou `ENCERRAMENTO`, ou `PARADO: <motivo e o que o dono precisa decidir>`
 
-| Etapa | Objetivo | Estado | Commit | Número que importa |
-| --- | --- | --- | --- | --- |
-| 1 | … | fechada | `abc1234` | stage de 1 arquivo: 9 → 7 processos |
-| 2 | … | a fazer | | |
+| Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
+| --- | --- | --- | --- | --- | --- |
+| 1 | #N | … | fechada | `abc1234` | stage de 1 arquivo: 9 → 7 processos |
+| 2 | #N | … | a fazer | | |
 
 ### Última etapa fechada: `<etapa>`
 
@@ -65,4 +65,6 @@ Só com a palavra do dono de que o trabalho acabou.
 - [ ] Worktree usado removido, depois do último push (`git worktree remove <caminho>` e `git worktree prune`)
 - [ ] `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension` e `npm run perf:bundle` verdes
 - [ ] Resumo para o PR: o que mudou, antes e depois medidos, o que não foi conferido
-- [ ] PR para a `develop` só quando o dono pedir
+- [ ] Issues das etapas validadas (evidência comentada, `status:validada`, fechadas); issue-mãe fechada por último
+- [ ] PR `feature/*` → `develop` e `develop` → `homolog` abertos e mergeados pelo Claude com CI verde; PR `homolog` →
+  `main` aberto e deixado ao dono (`.claude/rules/github.md`)

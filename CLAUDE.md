@@ -76,16 +76,17 @@ recurso (skill, agente, modelo) cada parte pede.
   o `gt-juiz` e siga o veredito; (3) o juiz não resolve ou o item é grande: abra issue nova de retrabalho (título,
   contexto, o que foi tentado, aceite), registre no HANDOFF e **siga para a próxima etapa**.
 - **Paradas legítimas**: só limite de uso ou plataforma indisponível, com estado e "A seguir" no HANDOFF e mensagem de
-  continuação. Encerramento não pede a palavra do dono; PR só quando ele pedir.
+  continuação. Encerramento não pede a palavra do dono; PR e merge seguem **GitHub** (abaixo).
 - **REGRA ABSOLUTA: a triagem manda.** Pedido **Grande** nunca é implementado na sessão de entrada: ela roda `planejar`,
   grava `docs/HANDOFF.md` e abre a central. Código sem triagem é violação.
 - **Gate**: `.claude/hooks/gate-etapas.sh` (hook `PreToolUse`, `.claude/settings.json`) bloqueia o `gt-escritor` sem
   `docs/HANDOFF.md` ou sem a linha `pequena|media <assunto>` em `.claude/triagem.local` (fora do git). Não o contorne.
+- **GitHub**: nada sem issue (`#N`); todo trabalho vira PR. O Claude faz merge em `develop` e `homolog`, NUNCA em `main`
+  (regra sagrada; gate `.claude/hooks/gate-main.sh`). Política: `.claude/rules/github.md`.
 
 ## Recursos certos para cada pedido
 
-Antes de fazer à mão, veja se a lista de skills da sessão cobre o pedido. Skill citada aqui e ausente dela: faça à
-mão e diga isso.
+Antes de fazer à mão, veja se a skill citada existe na lista da sessão; se não existir, faça à mão e diga isso.
 
 | O pedido fala em… | Use |
 | --- | --- |
@@ -96,7 +97,7 @@ mão e diga isso.
 | IPC, execução do git, terminal, caminho de arquivo, webview, dependência, workflow | `security-review` e `.claude/rules/seguranca.md` |
 | Gráficos e dashboards (`src/renderer/src/analytics`) | `dataviz` |
 | Permissões, hooks, variáveis de ambiente | `update-config`; menos pedidos de permissão: `fewer-permission-prompts` |
-| Abrir, acompanhar ou fazer merge de PR | skill `pr`: sessão em Haiku, esforço `low` |
+| Abrir, acompanhar ou fazer merge de PR | skill `pr` (merge só até a `homolog`): sessão em Haiku, esforço `low` |
 | Repetir ou vigiar algo | `loop` |
 | Abre muitos agentes ou gasta crédito: `batch` (um PR por unidade, fora do fluxo de branches), `code-review` nos níveis `max` e `ultra` | Só com a palavra do dono: sugira e espere |
 
@@ -180,14 +181,13 @@ Regra que impede o pedido não se contorna em silêncio: explique o custo, propo
 - Lógica pura fica em módulo `.ts` sem React e ganha teste em `tests/`. Módulo novo de `src/renderer/src` usado por teste
   entra no `include` do `tsconfig.node.json`. Gerado (`fileIcons.generated.ts`, `npm run build:icons`) não se edita à mão.
 - **Git e branches**: cada alteração nasce de `develop` numa branch própria (`feature/`, `fix/`, `docs/`, `chore/`,
-  `refactor/`) e segue por PR `develop` → `homolog` → `main`; PR só quando o dono pedir. Ao fim do trabalho (depois
-  do merge), remova o worktree (`git worktree remove` e `git worktree prune`): nada acumula em `.claude/worktrees/`.
-  Nada de force push, reescrita de histórico ou `--no-verify` em branch compartilhada. A versão da extensão é
-  automática: não suba o patch à mão (`CONTRIBUTING.md` e `.claude/rules/publicacao.md`).
+  `refactor/`) e segue por PR `develop` → `homolog` → `main`; PR é obrigatório; merge na `main` é só do dono. Ao fim
+  do trabalho (depois do merge), remova o worktree (`git worktree remove` e `git worktree prune`): nada acumula em
+  `.claude/worktrees/`. Nada de force push, reescrita de histórico ou `--no-verify` em branch compartilhada. A versão
+  da extensão é automática: não suba o patch à mão (`CONTRIBUTING.md` e `.claude/rules/publicacao.md`).
 - Branch, commit e PR: sem Claude, IA, modelo ou ferramenta, nem `Co-Authored-By`, `Claude-Session` ou "Generated with".
-- **Este guia é código.** Mudou um comando, uma pasta, um orçamento ou um jeito de trabalhar: corrija o `CLAUDE.md` e
-  o `.claude/` no mesmo trabalho. Regra de uma área vai para `.claude/rules/`; procedimento, para uma skill; este
-  arquivo fica abaixo de 200 linhas (conferência: `/doctor prompt-audit`).
+- **Este guia é código.** Mudou comando, pasta, orçamento ou jeito de trabalhar: corrija o `CLAUDE.md` e o `.claude/`
+  juntos. Regra de área vai a `.claude/rules/`; procedimento, a skill; teto de 199 linhas (`/doctor prompt-audit`).
 
 ## Trabalho com o Claude em etapas
 

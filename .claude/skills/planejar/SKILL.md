@@ -49,6 +49,11 @@ Para cada etapa, decida também:
 - **Quais camadas de teste** ela exige: unidade, integração, tela, medição (`.claude/rules/testes.md`).
 - **Se toca em segurança** (arquivo listado em `.claude/rules/seguranca.md`): a etapa termina com `security-review`.
 
+Antes de escrever o HANDOFF, garanta as issues (`.claude/rules/github.md`, políticas 4 e 5): uma issue-mãe do trabalho e
+uma sub-issue por etapa (`issue_write` com `parent_issue_number`, ou `sub_issue_write`). Procure antes com
+`search_issues`, para não duplicar. Cada issue traz Escopo, Critérios de aceite (checklist), Considerações técnicas e
+Testes, copiados dos templates de `.github/ISSUE_TEMPLATE/`. A coluna `Issue` do HANDOFF recebe o número de cada uma.
+
 ## 4. Escrever o `docs/HANDOFF.md`
 
 Copie [modelo-handoff.md](modelo-handoff.md) e preencha. Regras do arquivo:

@@ -16,6 +16,8 @@ abre PR e não adianta a etapa seguinte.
 
 ## 1. Começar (nesta ordem)
 
+0. A issue da etapa (`#N`, na tabela do HANDOFF; a central a passa no início) vira `status:em-andamento`: troque o
+   rótulo `status:planejada` (`.claude/rules/github.md`, política 7).
 1. `git status -sb` e `git log --oneline -8`. O checkout pode vir em HEAD destacado ou com a branch local atrasada:
    `git fetch origin <branch>` e `git switch <branch>` (ou `git checkout -B <branch> origin/<branch>` se não houver
    commit local a preservar).
@@ -45,7 +47,7 @@ Para cada incremento (uma mudança coerente, que dá para verificar sozinha):
    só o fim (`npm test > <rascunho>/teste.log 2>&1; tail -15 <rascunho>/teste.log`). Mudança visível na tela: skill
    `run-gittools`. Caminho quente: skill `medir`, antes e depois.
 6. **Commit** só do que foi verificado, em português, com o porquê e os números (cada número com o comando que o
-   gerou; o que não foi conferido, dito como "não conferido"). `git push -u origin <branch>`.
+   gerou; o que não foi conferido, dito como "não conferido"). Cita `Refs #N` da issue da etapa. `git push -u origin <branch>`.
 
 Antes do último commit de código da etapa: `code-review` sobre o diff da etapa (nível `high` se ela toca em
 `src/core`, IPC, patches ou conflitos; `medium` no resto) e, se a etapa está marcada "Segurança: sim",
@@ -75,7 +77,8 @@ o que já está coerente e diga isso.
    - seção 4: apague o bloco da sua etapa; acrescente etapa nova se algo ficou para depois;
    - seção 5: uma linha por armadilha ou tentativa descartada que a próxima sessão não deve repetir;
    - passou de 150 linhas: corte detalhe, não informação de estado.
-3. Commit do HANDOFF e `git push`.
+3. Commit do HANDOFF e `git push`. Na issue da etapa, comente a evidência por critério (comando e resultado) e troque o
+   rótulo para `status:em-revisao`. Não feche a issue: o fechamento é da central, depois da validação.
 4. Avise a central com `send_message`, **uma linha**:
    `ETAPA FECHADA <etapa> | commit <sha> | próxima <etapa> | typecheck e testes <verdes ou o que falhou>`
    ou `PARADA <etapa> | <motivo>`.
@@ -86,5 +89,5 @@ o que já está coerente e diga isso.
 Existe quando o plano a prevê; não pede a palavra do dono (modo fábrica). Siga a lista da seção 6 do HANDOFF: corrija a
 documentação que o trabalho tornou falsa, `git rm docs/HANDOFF.md`, rode `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension` e
 `npm run perf:bundle`, e deixe na última mensagem o resumo para o PR (o que mudou, antes e depois medidos, o que
-não foi conferido). O PR para a `develop` só é aberto quando o dono pedir. Depois do último push, remova o worktree
-usado (`git worktree remove <caminho>` e `git worktree prune`).
+não foi conferido). Não abre PR: o encerramento do plano, na central, abre e faz o merge (`.claude/rules/github.md`).
+Depois do último push, remova o worktree usado (`git worktree remove <caminho>` e `git worktree prune`).

@@ -1,0 +1,59 @@
+name: Bug
+description: Comportamento errado no GitTools. Nada é corrigido sem issue.
+title: "Bug: "
+labels: ["bug", "status:planejada"]
+body:
+  - type: textarea
+    id: comportamento
+    attributes:
+      label: Comportamento observado
+      description: O que acontece hoje, com a versão e a interface (aplicativo ou extensão) em que foi visto.
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      description: Ação por ação, a partir de um repositório de teste. Sem dado pessoal nem caminho pessoal.
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamento esperado
+      description: O que deveria acontecer e por quê.
+    validations:
+      required: true
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Escopo
+      description: O que a correção toca e o que fica de fora.
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Critérios de aceite
+      description: Checklist. Inclua o teste que reproduz o bug e reprovaria sem a correção.
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: consideracoes
+    attributes:
+      label: Considerações técnicas
+      description: Causa provável, arquivos, segurança e desempenho envolvidos.
+    validations:
+      required: true
+  - type: textarea
+    id: testes
+    attributes:
+      label: Testes
+      description: Camada de teste (unidade, integração, tela ou medição) e o que cada uma prova.
+    validations:
+      required: true

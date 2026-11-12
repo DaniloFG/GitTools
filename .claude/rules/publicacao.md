@@ -19,7 +19,7 @@ paths:
 - **Fluxo de branches**: trabalho → `develop` → `homolog` → `main`, sempre por PR; promoções entram por merge
   commit, sem squash nem rebase (`CONTRIBUTING.md`). O check "Validar fluxo de branches" reprova origem errada e PR
   que contenha `docs/HANDOFF.md`.
-- **PR só quando o dono pedir.** A descrição segue `.github/pull_request_template.md` e, em mudança de desempenho,
+- **PR é obrigatório** (`.claude/rules/github.md`): o merge até a `homolog` é do Claude; na `main`, só do dono. A descrição segue `.github/pull_request_template.md` e, em mudança de desempenho,
   traz o antes e o depois medidos.
 - **Dependência** (`package.json`, `package-lock.json`): só muda quando a tarefa é essa, com motivo, tamanho no
   pacote e licença; `THIRD_PARTY_NOTICES.md` acompanha o que passa a ser distribuído.
