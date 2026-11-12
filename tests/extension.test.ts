@@ -310,6 +310,19 @@ describe('extensão do VS Code', () => {
     first.subscriptions.forEach((s) => s.dispose())
     second.subscriptions.forEach((s) => s.dispose())
   })
+
+  it('o convite do Tour grava pelo caminho da interface e volta do disco; valor fora da lista volta a pendente', async () => {
+    const { run } = await start()
+    await run('gittools.open')
+    const panel = fake.panels[0]
+    const settings = (await ask(panel, 'app:getSettings')).result as Record<string, unknown>
+    expect(settings.tourOffer).toBe('pending')
+    await ask(panel, 'app:saveSettings', { ...settings, tourOffer: 'accepted' })
+    // `app:getSettings` relê o arquivo (backend.loadSettings), não a memória: é a releitura que importa.
+    expect(((await ask(panel, 'app:getSettings')).result as Record<string, unknown>).tourOffer).toBe('accepted')
+    await ask(panel, 'app:saveSettings', { ...settings, tourOffer: 'xyz' })
+    expect(((await ask(panel, 'app:getSettings')).result as Record<string, unknown>).tourOffer).toBe('pending')
+  })
 })
 
 function createFake(): FakePanel {

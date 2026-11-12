@@ -83,6 +83,24 @@ describe('conflitos: resumo ao terminar e abertura na partida', () => {
   })
 })
 
+describe('convite do Tour na primeira abertura', () => {
+  it('vem pendente: o convite fica até o usuário responder', () => {
+    expect(DEFAULT_SETTINGS.tourOffer).toBe('pending')
+    expect(normalizeSettings({}).tourOffer).toBe('pending')
+  })
+
+  it('guarda as duas respostas: aceitar e dispensar', () => {
+    expect(normalizeSettings({ tourOffer: 'accepted' }).tourOffer).toBe('accepted')
+    expect(normalizeSettings({ tourOffer: 'dismissed' }).tourOffer).toBe('dismissed')
+  })
+
+  it('valor fora da lista (ou de outro tipo) volta a pendente', () => {
+    expect(normalizeSettings({ tourOffer: 'xyz' }).tourOffer).toBe('pending')
+    expect(normalizeSettings({ tourOffer: true }).tourOffer).toBe('pending')
+    expect(normalizeSettings({ tourOffer: null }).tourOffer).toBe('pending')
+  })
+})
+
 describe('detecção de vários repositórios', () => {
   // Vem desligada: abrir o app não varre pasta e subpastas por padrão (desempenho). Só `true` literal liga.
   it('vem desligada, e só liga se o usuário pedir `true`', () => {

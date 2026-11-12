@@ -16,6 +16,11 @@ export const DATE_FORMATS: readonly DateFormatSetting[] = ['iso', 'system', '24h
 export type ConflictSummarySetting = 'keep' | 'close'
 /** Ao abrir o app com conflito pendente: abrir a tela Conflitos direto, ou só mostrar o banner e o alerta. */
 export type ConflictStartupSetting = 'open' | 'bannerOnly'
+/**
+ * Convite do Tour na primeira abertura: 'pending' até o usuário responder. 'accepted' (fez o Tour) e 'dismissed'
+ * (dispensou) não voltam a convidar; quem já usa o app antes do Tour não recebe o convite depois.
+ */
+export type TourOfferSetting = 'pending' | 'accepted' | 'dismissed'
 
 export type ToastHorizontal = 'left' | 'center' | 'right'
 export type ToastVertical = 'top' | 'middle' | 'bottom'
@@ -78,11 +83,13 @@ export interface Settings {
   conflictSummary: ConflictSummarySetting
   /** Tela Conflitos na partida, com conflito pendente: abre sozinha, ou só o banner e o alerta. */
   conflictStartup: ConflictStartupSetting
+  /** Resposta ao convite do Tour (Welcome): ainda não respondido, aceito ou dispensado. */
+  tourOffer: TourOfferSetting
   /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
   shortcuts: Record<string, string>
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', dateFormat: 'iso', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, multiRepoDetection: false, autoContinueConflicts: false, conflictSummary: 'keep', conflictStartup: 'open', toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
+export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', dateFormat: 'iso', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, multiRepoDetection: false, autoContinueConflicts: false, conflictSummary: 'keep', conflictStartup: 'open', tourOffer: 'pending', toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
 
 export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6]
 export const DIVIDER_WIDTHS = [1, 2, 3, 4, 6, 8]
@@ -130,6 +137,8 @@ export function normalizeSettings(value: unknown): Settings {
     // Valor fora da lista (ou de outro tipo) cai no padrão, como em `diffLayout`.
     conflictSummary: raw.conflictSummary === 'close' ? 'close' : DEFAULT_SETTINGS.conflictSummary,
     conflictStartup: raw.conflictStartup === 'bannerOnly' ? 'bannerOnly' : DEFAULT_SETTINGS.conflictStartup,
+    // Mesmo critério de `conflictStartup`: só os dois valores conhecidos; o resto volta a "ainda não respondido".
+    tourOffer: raw.tourOffer === 'accepted' || raw.tourOffer === 'dismissed' ? raw.tourOffer : DEFAULT_SETTINGS.tourOffer,
     editor: typeof raw.editor === 'string' ? raw.editor.trim() : DEFAULT_SETTINGS.editor,
     toast: normalizeToast(raw.toast),
     shortcuts: shortcuts as Record<string, string>
