@@ -81,8 +81,8 @@ recurso (skill, agente, modelo) cada parte pede.
   grava `docs/HANDOFF.md` e abre a central. Código sem triagem é violação.
 - **Gate**: `.claude/hooks/gate-etapas.sh` (hook `PreToolUse`, `.claude/settings.json`) bloqueia o `gt-escritor` sem
   `docs/HANDOFF.md` ou sem a linha `pequena|media <assunto>` em `.claude/triagem.local` (fora do git). Não o contorne.
-- **GitHub**: nada sem issue (`#N`); todo trabalho vira PR. O Claude faz merge em `develop` e `homolog`, NUNCA em `main`
-  (regra sagrada; gate `.claude/hooks/gate-main.sh`). Política: `.claude/rules/github.md`.
+- **GitHub** (`.claude/rules/github.md`): todo pedido do dono vira issue ANTES de agir (gate `gate-issue.sh` + lembrete a
+  cada prompt); número em `.claude/issue.local`. Trabalho vira PR; merge só em `develop` e `homolog`, NUNCA em `main` (`gate-main.sh`).
 
 ## Recursos certos para cada pedido
 

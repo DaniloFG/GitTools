@@ -5,6 +5,14 @@ fonte do estado; o Project só espelha o que os rótulos dizem.
 
 ## Política
 
+0. **Todo pedido do dono vira issue ANTES de qualquer ação** (ajuste, correção, feature, o que for), estruturada com
+   os campos da política 5. Duas camadas o impõem: o hook `UserPromptSubmit` `.claude/hooks/lembrete-issue.sh` lembra
+   a cada prompt, e o gate `.claude/hooks/gate-issue.sh` bloqueia o `gt-escritor`, `Edit`, `Write` e `NotebookEdit` no
+   projeto enquanto não houver issue ativa. Como gravar o marcador: crie a issue (`mcp__github__issue_write`) e escreva
+   `#N` na **primeira linha** de `.claude/issue.local` (arquivo pessoal, fora do git; várias issues: `#N #M`). Sessão de
+   etapa não usa o marcador: vale o `#N` no `docs/HANDOFF.md`. Se o `gh` confirmar que a issue não existe ou está
+   fechada, o gate bloqueia; com o GitHub inacessível ele só avisa. Escrita fora do projeto (`/tmp`, scratchpad) e em
+   `.claude/issue.local` e `.claude/triagem.local` não exige issue. Pedido grande: issue-mãe + sub-issues (política 4).
 1. **Nada sem issue.** Feature, correção, refactor ou tarefa técnica só ganha código depois de ter issue. Se o pedido
    veio por conversa, crie a issue antes; commit e PR citam `#N`.
 2. **Ideia exploratória não é implementada.** Discussions está desligado e não há API nas sessões, então a proposta

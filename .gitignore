@@ -13,3 +13,4 @@ extension/THIRD_PARTY_NOTICES.md
 .claude/worktrees/
 CLAUDE.local.md
 .claude/triagem.local
+.claude/issue.local
