@@ -23,7 +23,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E8`
+**A seguir:** `E9`
 
 | Etapa | Issue | Objetivo | Orquestra | Estado | Commit |
 | --- | --- | --- | --- | --- | --- |
@@ -34,32 +34,24 @@ fechada está na mensagem do commit dela.
 | E5 | #147 (#92, #95) | Provas de conflitos e cherry-pick | topo | fechada | bf8dd18 |
 | E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | fechada | c627a0f |
 | E7 | #149 (#96) | Conflitos: merge por Alterações, 320 px, hi/ar/zh-CN | topo | fechada | 59eaddc |
-| E8 | #150 (#93, #94, #108) | Rolagem do Changes e empilhamento do combobox | topo | a fazer | |
+| E8 | #150 (#93, #94, #108) | Rolagem do Changes e empilhamento do combobox | topo | fechada | d8ef5fc |
 | E9 | #151 (#97, #119, #140) | Barra estreita (direita/embaixo), Dashboard ≥ 1050, `.wip-open` | topo | a fazer | |
 
 Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede da E3; E6 destrava E7; E5, E8 e E9 fecham a #108.
 
 ### Última etapa fechada
 
-**E7** (59eaddc): dois cenários e2e, sem mudança de produto. `conflito-merge-por-alteracoes` (merge real, resolve na
-tela, commit pela aba Changes: MERGE_HEAD some, dois pais) e `conflito-estreito-idiomas` (320/480/640/1000 px × en,
-hi, ar-rtl, zh-CN: sem rolagem horizontal, rodapé não cobre o editor). Mutações: `commit --only` em `repository.ts`
-reprova o 1º; `.conflict-editor{min-width:480px}` reprova o 2º (160 px fora a 320). e2e 41 cenários ok; gate-cobertura ok.
-Capturas em `validacao-out/conflitos-*.png` (ar-320 e hi-640 vistas). Não conferido: texto traduzido (revisão humana).
+**E8** (d8ef5fc): `regressao-93` roda as 4 variantes até o fim (falhas reunidas); runner aceita `E2E_SO=id1,id2`.
+Mutações: `.csection-body{overflow:visible}` reprova nas 4 posições; `.dash-filters` sem `z-index:20` reprova o 94
+(3 opções cobertas); `openUp=false` em `placePopover` reprova. O `z-index:30` do `.dash-popover` NÃO reprova (fica
+dentro do contexto de `.dash-filters`): o critério da #150 foi ajustado para a causa real. e2e 41 ok. Não conferido:
+extensão, barras fixas, confirmação do dono (#93).
 
 ## 3. Base de medição
 
 Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
-
-### Etapa E8 — rolagem do Changes e empilhamento do combobox (#150, #93, #94, #108)
-
-- **Orquestra**: topo.
-- **Arquivos prováveis**: cenários `regressao-93-changes-rolagem` e `regressao-94-dashboard-everyone`.
-- **Aceite**: variantes sem parar na primeira falha; `overflow` mutado reprova nas 3 posições; `z-index` do
-  `.dash-popover` removido reprova o cenário reforçado; pedido de confirmação do dono comentado na #93.
-- **Testes**: e2e. **Segurança**: não.
 
 ### Etapa E9 — barra estreita, Dashboard e `.wip-open` (#151, #97, #119, #140)
 
@@ -88,6 +80,7 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
   `$scratchpad/wt/*` com `node_modules` por link; `git worktree remove --force` ao fim. O e2e não tem filtro: roda os 39.
 - 2026-11-12 (E6): o clone é raso mas `b1dd21c` existe; base em worktree com `node_modules` por link e o `ui.mjs` novo (cai no Tour após imprimir o resto). A tela Conflitos não tem base anterior (é nova). Teto sem medida no `desempenho.tetos` reprova o `qa.mjs`: por isso `perfUi` separado.
 - 2026-11-12 (E7): o e2e não filtra por id; `language` muda por `app:saveSettings` + `page.reload()`. O `.gitignore` já cobre `validacao-out/`.
+- 2026-11-12 (E8): `node scripts/validacao/e2e.mjs` é a entrada (não `runner.mjs`); `E2E_SO` filtra. Mutação: edita, `build:extension`, roda, `git checkout -- arquivo`.
 
 ## 6. Encerramento
 
