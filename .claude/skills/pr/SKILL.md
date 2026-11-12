@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Abre, acompanha ou faz merge de PR do GitTools (feature para develop, develop para homolog, homolog para main). Merge só até a homolog, com CI verde; a main recebe PR aberto e nunca merge. Use para abrir ou acompanhar um PR, fazer merge em develop ou homolog, ou abrir o PR para main.
+description: Abre, acompanha ou faz merge de PR do GitTools (branch de trabalho para develop, a mesma branch para homolog, homolog para main; nunca develop para homolog). Merge só até a homolog, com CI verde; a main recebe PR aberto e nunca merge. Use para abrir ou acompanhar um PR, fazer merge em develop ou homolog, ou abrir o PR para main.
 ---
 
 # PR
@@ -31,8 +31,8 @@ Para cada PR, na ordem:
    Sem laço de espera, sem sleep.
 4. Quando o CI avisar:
    - **Verde** e o destino é `develop` ou `homolog`: `merge_pull_request` com `merge_method: "merge"` (merge commit, sem
-     squash nem rebase, `CONTRIBUTING.md`). Merge na `develop` ou na `homolog`: pare e valide antes do próximo PR da
-     cadeia (seção "Merge" e skill `validar`). Destino `main`: nunca merge; vá ao passo 5.
+     squash nem rebase, `CONTRIBUTING.md`). Merge na `develop` ou na `homolog`: pare e valide antes do próximo passo
+     (seção "Merge" e skill `validar`). Destino `main`: nunca merge; vá ao passo 5.
    - **Vermelho**: não corrija código nem afrouxe teste. Avise `PR PARADO <número> | <check e trecho do log>` e pare.
      A correção é da sessão de trabalho.
    - **Conflito**: idem, `PR PARADO`.
@@ -43,10 +43,11 @@ Para cada PR, na ordem:
 
 ## Merge
 
-- `develop` e `homolog`: merge sempre que o CI estiver verde (`.claude/rules/github.md`), sem depender de pedido.
-- **Validação antes de promover** (skill `validar`, issue #103): depois do merge na `develop`, valide a `develop` (agente
-  `gt-validador`) antes de abrir o PR `develop → homolog`; depois do merge na `homolog`, valide de novo. O gate recusa
-  o merge na `homolog` sem o check `Validação` verde na ponta do PR. Só com as duas verdes o PR `homolog → main` é
-  aberto. Vermelho: `PR PARADO <número> | <fase e trecho do log>`; a correção é da sessão de trabalho.
+- Destino `develop` e `homolog`: merge sempre que o CI estiver verde (`.claude/rules/github.md`), sem depender de pedido.
+- **Fluxo** (skill `validar`, issues #103 e #104): branch → `develop` e merge; valide a `develop` (agente `gt-validador`);
+  só então abra o PR da **mesma** branch → `homolog` (nunca `develop` → `homolog`), já sem `docs/HANDOFF.md`. O gate só
+  deixa o merge na `homolog` se a ponta do PR está na história da `develop`, o PR tem o rótulo `validada-develop` (posto
+  pela skill `validar`) e a origem não é a `develop`. Depois do merge, valide a `homolog`; só com as duas verdes o PR
+  `homolog → main` é aberto. Vermelho: `PR PARADO <número> | <fase e trecho do log>`; a correção é da sessão de trabalho.
 - `main`: **nunca** faz merge nem auto-merge, nem `merge_pull_request` nem `gh pr merge` com destino `main`. Quem faz é
   o dono ou o aprovador.

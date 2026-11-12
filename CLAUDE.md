@@ -97,7 +97,7 @@ Antes de fazer à mão, veja se a skill citada existe na lista da sessão; se n�
 | IPC, execução do git, terminal, caminho de arquivo, webview, dependência, workflow | `security-review` e `.claude/rules/seguranca.md` |
 | Gráficos e dashboards (`src/renderer/src/analytics`) | `dataviz` |
 | Permissões, hooks, variáveis de ambiente | `update-config`; menos pedidos de permissão: `fewer-permission-prompts` |
-| Abrir, acompanhar ou fazer merge de PR | skill `pr` (merge só até a `homolog`): Haiku, `low`. Depois de todo merge na `develop` e na `homolog`: `validar` (`gt-validador`, pipeline com integração e e2e) antes de promover; sem as duas verdes, nada de PR para `main` |
+| Abrir, acompanhar ou fazer merge de PR | skill `pr` (merge só até a `homolog`): Haiku, `low`. Depois de todo merge na `develop` e na `homolog`: `validar` (`gt-validador`, pipeline com integração e e2e) antes do passo seguinte; sem as duas verdes, nada de PR para `main` |
 | Repetir ou vigiar algo | `loop` |
 | Abre muitos agentes ou gasta crédito: `batch` (um PR por unidade, fora do fluxo de branches), `code-review` nos níveis `max` e `ultra` | Só com a palavra do dono: sugira e espere |
 
@@ -181,10 +181,10 @@ Regra que impede o pedido não se contorna em silêncio: explique o custo, propo
 - Lógica pura fica em módulo `.ts` sem React e ganha teste em `tests/`. Módulo novo de `src/renderer/src` usado por teste
   entra no `include` do `tsconfig.node.json`. Gerado (`fileIcons.generated.ts`, `npm run build:icons`) não se edita à mão.
 - **Git e branches**: cada alteração nasce de `develop` numa branch própria (`feature/`, `fix/`, `docs/`, `chore/`,
-  `refactor/`) e segue por PR `develop` → `homolog` → `main`; PR é obrigatório; merge na `main` é só do dono. Ao fim
-  do trabalho (depois do merge), remova o worktree (`git worktree remove` e `git worktree prune`): nada acumula em
-  `.claude/worktrees/`. Nada de force push, reescrita de histórico ou `--no-verify` em branch compartilhada. A versão
-  da extensão é automática: não suba o patch à mão (`CONTRIBUTING.md` e `.claude/rules/publicacao.md`).
+  `refactor/`) e segue por PR branch → `develop`, a mesma branch → `homolog` (nunca `develop` → `homolog`) e `homolog` →
+  `main`; PR é obrigatório; merge na `main` é só do dono. Ao fim, remova o worktree
+  (`git worktree remove` e `git worktree prune`). Nada de force push, reescrita de histórico ou `--no-verify` em branch
+  compartilhada. A versão da extensão é automática: não suba o patch à mão (`CONTRIBUTING.md`, `publicacao.md`).
 - Branch, commit e PR: sem Claude, IA, modelo ou ferramenta, nem `Co-Authored-By`, `Claude-Session` ou "Generated with".
 - **Este guia é código.** Mudou comando, pasta, orçamento ou jeito de trabalhar: corrija o `CLAUDE.md` e o `.claude/`
   juntos. Regra de área vai a `.claude/rules/`; procedimento, a skill; teto de 199 linhas (`/doctor prompt-audit`).

@@ -3,9 +3,9 @@
 
 ## Etapa do fluxo
 <!-- Marque a etapa que este PR representa. O check "Validar fluxo de branches" confere a mesma regra. -->
-- [ ] `feature/*` (ou `fix/`, `docs/`, `chore/`, `refactor/`) → `develop`
-- [ ] `develop` → `homolog` (promoção para homologação)
-- [ ] `homolog` → `main` (publicação em produção)
+- [ ] branch de trabalho → `develop`
+- [ ] branch de trabalho → `homolog` (já validada na develop; nunca develop → homolog)
+- [ ] `homolog` → `main` (validada na homolog; merge só do dono)
 
 ## Checklist
 - [ ] Testado localmente (`npm run typecheck` e `npm test`)

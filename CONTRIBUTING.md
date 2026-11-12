@@ -1,25 +1,27 @@
 # Como contribuir: fluxo de branches
 
-Toda mudança passa pelas quatro etapas, nesta ordem:
+Toda mudança segue três PRs, nesta ordem. A `develop` é o ambiente livre de integração (pode ter lixo, aceita qualquer branch de trabalho). A **mesma** branch de trabalho, já mergeada e validada na `develop`, vai por PR direto para a `homolog`; a `develop` nunca é promovida para a `homolog`. Cada ambiente tem a sua validação completa.
 
 ```
-feature/* ──PR──▶ develop ──PR──▶ homolog ──PR──▶ main
+branch de trabalho ──PR──▶ develop        (validação completa na develop)
+branch de trabalho ──PR──▶ homolog        (a mesma branch, já validada na develop; validação completa na homolog)
+homolog ──PR──▶ main                      (o Claude só abre o PR; o merge é do dono)
 ```
 
 | Branch | Para que serve | Recebe PR de | Aceita push direto? |
 |---|---|---|---|
 | `feature/`, `fix/`, `docs/`, `chore/`, `refactor/`, nascidas de `develop` | Trabalho do dia a dia | — | Sim, são as branches de trabalho |
-| `develop` | Integração das mudanças | branches de trabalho | Não, só por PR |
-| `homolog` | Validação antes de produzir | `develop` | Não, só por PR |
+| `develop` | Integração das mudanças, ambiente livre | qualquer branch de trabalho (até `ccr-*`, com `docs/HANDOFF.md`) | Não, só por PR |
+| `homolog` | Validação antes de produzir | a branch de trabalho, já validada na `develop` (nunca a `develop`); sem `docs/HANDOFF.md` | Não, só por PR |
 | `main` | Produção: sempre igual ao que foi validado na homolog | `homolog` | Não, só por PR |
 
 ## Regras
 
-- Nenhuma mudança chega à `main` sem passar pela `develop` e pela `homolog`. Não há atalho para correções urgentes: um `fix/` segue o mesmo caminho.
-- O check **Validar fluxo de branches** reprova o PR se a origem não for a permitida para o destino.
+- Nenhuma mudança chega à `main` sem passar pela `develop` e pela `homolog`, cada uma com a sua validação. Não há atalho para correções urgentes: um `fix/` segue o mesmo caminho.
+- O check **Validar fluxo de branches** reprova o PR se a origem não for a permitida para o destino (`develop → homolog` é recusado) e, para `homolog` e `main`, se a árvore tiver `docs/HANDOFF.md`.
 - Os checks de CI (typecheck, testes e build) precisam estar verdes antes do merge.
 - `develop`, `homolog` e `main` não aceitam force push nem podem ser apagadas.
-- Promoções (`develop → homolog` e `homolog → main`) entram por **merge commit**, sem squash nem rebase, para o histórico das três branches continuar ligado.
+- Os PRs para `homolog` e `main` entram por **merge commit**, sem squash nem rebase, para o histórico continuar ligado. Antes do PR para a `homolog`, a branch precisa estar mergeada e validada na `develop` (rótulo `validada-develop`; o hook `gate-main.sh` confere).
 - Não há aprovação obrigatória hoje (o repositório tem um mantenedor). Para exigir revisão, ajuste `APROVACOES` em `scripts/apply-branch-protection.sh`.
 
 ## Passo a passo
@@ -33,7 +35,7 @@ feature/* ──PR──▶ develop ──PR──▶ homolog ──PR──▶ 
    ```bash
    git push -u origin feature/nome-da-mudanca
    ```
-3. Depois do merge na `develop`, promover a mudança: PR `develop → homolog`, validação na homolog e, por fim, PR `homolog → main`.
+3. Depois do merge na `develop` e da validação lá, remover `docs/HANDOFF.md` (se existir) e abrir o PR da **mesma branch de trabalho** com base `homolog`. Validada a homolog, abrir o PR `homolog → main` (o merge é do dono).
 
 ## Proteção das branches
 

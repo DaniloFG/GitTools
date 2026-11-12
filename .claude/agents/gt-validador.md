@@ -25,13 +25,12 @@ corrige código.
 3. **Pipeline local** (sem workflow): num checkout limpo da ponta, nunca na árvore de trabalho do dono:
    `git worktree add --detach /tmp/validacao-<ref> origin/<ref>` (só nesse caso é permitido criar o worktree; remova
    com `git worktree remove --force` e `git worktree prune` ao fim), `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`, e
-   `node scripts/validacao/pipeline.mjs`. Na `homolog`, acrescente `--igual-a origin/develop` (confere que a árvore é
-   a da develop). Leia `validacao-out/relatorio.json` (`{commit, arvore, branch, quando, fases:[{nome,ok,ms}], ok}`) e,
+   `node scripts/validacao/pipeline.mjs` (o mesmo na `develop` e na `homolog`). Leia `validacao-out/relatorio.json` (`{commit, arvore, branch, quando, fases:[{nome,ok,ms}], ok}`) e,
    em falha, o fim de `validacao-out/<fase>.log`. Saída longa vai para arquivo; leia só o fim.
 4. **Confira**: o `commit` do relatório (ou o `head_sha` da execução) é o da ponta pedida. Não é: o resultado é de
    outro commit e vale como `REPROVADO commit | validou <outro> em vez de <ponta>`.
 
-Na `homolog`, a validação inclui a fase `homolog-igual-develop`: a árvore da homolog tem de ser idêntica à da develop.
+Na `homolog` roda o mesmo pipeline completo: a `homolog` tem a sua própria validação, sem comparar com a `develop`.
 
 ## Como responder
 

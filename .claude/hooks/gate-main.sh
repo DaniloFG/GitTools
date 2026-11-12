@@ -3,8 +3,10 @@
 # Só `develop` e `homolog`. Hook PreToolUse: lê o JSON do hook no stdin (tool_name e tool_input).
 #   exit 2 + mensagem no stderr = bloqueia; exit 0 = libera.
 # Falha fechada: se não der para confirmar a base de um PR (gh falhou, resposta vazia, número ilegível), bloqueia.
-# Promoção (issue #103): merge de PR com base `homolog` só passa se a ponta do PR tem check-run `Validação*` com
-# conclusão `success`; sem o check, check vermelho ou consulta que falhou, bloqueia (skill `validar`).
+# Promoção (issues #103 e #104): a homolog recebe a branch de trabalho, nunca a develop. Merge de PR com base
+# `homolog` só passa se (a) a origem do PR não é a `develop`, (b) a ponta do PR já está na história da `develop`
+# (compare develop...SHA = behind ou identical) e (c) o PR tem o rótulo `validada-develop` (skill `validar`).
+# Consulta que falhou ou resposta ilegível em qualquer item bloqueia.
 # Limites conhecidos (heurística sobre texto, não um parser de shell): `git push` sem destino com a main
 # já checada fora, `gh pr edit --base main` e `gh api --input arquivo.json` não são inspecionados.
 entrada=$(cat)
@@ -38,30 +40,37 @@ nome_valido() { [[ $1 =~ ^[A-Za-z0-9._{}-]+$ ]]; }
 bloquear_validacao() {
   {
     printf 'GATE DE PROMOÇÃO: bloqueado. %s\n' "$1"
-    echo 'A develop precisa estar validada: rode a skill validar (gt-validador) e só então faça o merge na homolog.'
+    echo 'A homolog recebe a branch de trabalho, já mergeada e validada na develop (skill validar), nunca a própria develop.'
   } >&2
   exit 2
 }
 
-# O PR tem a homolog como base: exige check-run `Validação*` com sucesso na ponta (head sha). Qualquer dúvida bloqueia.
-exigir_validacao() { # dono repo sha
-  local ok
-  if ! nome_valido "$1" || ! nome_valido "$2" || ! [[ $3 =~ ^[0-9a-fA-F]{7,64}$ ]]; then
-    bloquear_validacao "não foi possível confirmar a validação (dono, repositório ou commit da ponta do PR inválido)."
+# O PR tem a homolog como base. Exige, nesta ordem: origem diferente da develop, ponta já na história da develop e
+# rótulo `validada-develop`. Qualquer dúvida bloqueia. Argumentos: dono repo origem sha tem_rotulo(true|false)
+exigir_promocao() {
+  local status
+  if ! nome_valido "$1" || ! nome_valido "$2" || ! [[ $3 =~ ^[A-Za-z0-9._/-]+$ ]] \
+    || ! [[ $4 =~ ^[0-9a-fA-F]{7,64}$ ]] || ! [[ $5 =~ ^(true|false)$ ]]; then
+    bloquear_validacao "não foi possível confirmar a promoção (dono, repositório, origem, commit da ponta ou rótulo do PR inválido)."
   fi
-  if ! ok=$(gh_cmd api "repos/$1/$2/commits/$3/check-runs?per_page=100" \
-    --jq '[.check_runs[]? | select((.name | startswith("Validação")) and .conclusion == "success")] | length' 2>/dev/null) \
-    || ! [[ $ok =~ ^[0-9]+$ ]]; then
-    bloquear_validacao "não foi possível consultar os check-runs do commit ${3:0:12}; na dúvida, bloqueia."
+  if [ "$3" = develop ]; then
+    bloquear_validacao "a homolog recebe a branch de trabalho, nunca a develop (origem do PR: develop)."
   fi
-  if [ "$ok" -lt 1 ]; then
-    bloquear_validacao "o commit ${3:0:12} da ponta do PR não tem o check 'Validação' com sucesso."
+  if ! status=$(gh_cmd api "repos/$1/$2/compare/develop...$4" --jq .status 2>/dev/null) || [ -z "$status" ]; then
+    bloquear_validacao "não foi possível comparar o commit ${4:0:12} com a develop; na dúvida, bloqueia."
+  fi
+  case "$status" in
+    behind|identical) ;;
+    *) bloquear_validacao "a branch precisa estar mergeada e validada na develop: o commit ${4:0:12} não está na história da develop (compare: $status)." ;;
+  esac
+  if [ "$5" != true ]; then
+    bloquear_validacao "a branch precisa estar mergeada e validada na develop (rótulo validada-develop, skill validar): o PR não tem o rótulo."
   fi
 }
 
 # Confere a base de um PR pela API. Qualquer dúvida bloqueia.
 verificar_pr() { # dono repo numero
-  local base sha
+  local base dados ref sha rotulo
   if ! nome_valido "$1" || ! nome_valido "$2" || ! [[ $3 =~ ^[0-9]+$ ]]; then
     bloquear "não foi possível confirmar a base do PR (dono, repositório ou número ausente ou inválido)."
   fi
@@ -72,16 +81,20 @@ verificar_pr() { # dono repo numero
     bloquear "o PR #$3 tem a main como base."
   fi
   if [ "$base" = homolog ]; then
-    if ! sha=$(gh_cmd api "repos/$1/$2/pulls/$3" --jq .head.sha 2>/dev/null) || [ -z "$sha" ]; then
-      bloquear_validacao "não foi possível obter a ponta do PR #$3 (o gh falhou ou veio vazio); na dúvida, bloqueia."
+    # Uma consulta só para origem, ponta e rótulo (campos separados por tab; nome de branch não tem tab nem espaço).
+    if ! dados=$(gh_cmd api "repos/$1/$2/pulls/$3" \
+      --jq '[.head.ref, .head.sha, (((.labels // []) | map(.name) | index("validada-develop")) != null)] | @tsv' 2>/dev/null) \
+      || [ -z "$dados" ]; then
+      bloquear_validacao "não foi possível obter origem, ponta e rótulos do PR #$3 (o gh falhou ou veio vazio); na dúvida, bloqueia."
     fi
-    exigir_validacao "$1" "$2" "$sha"
+    IFS=$'\t' read -r ref sha rotulo <<<"$dados"
+    exigir_promocao "$1" "$2" "$ref" "$sha" "$rotulo"
   fi
 }
 
 # Mesma checagem quando não há número (ramo ou PR do ramo atual) ou o -R não é "dono/repo".
 verificar_pr_por_seletor() { # seletor repo
-  local base sha args=(pr view)
+  local base dados ref sha rotulo args=(pr view)
   [ -n "$1" ] && args+=("$1")
   [ -n "$2" ] && args+=(-R "$2")
   if ! base=$(gh_cmd "${args[@]}" --json baseRefName --jq .baseRefName 2>/dev/null) || [ -z "$base" ]; then
@@ -91,15 +104,18 @@ verificar_pr_por_seletor() { # seletor repo
     bloquear "o PR tem a main como base."
   fi
   if [ "$base" = homolog ]; then
-    if ! sha=$(gh_cmd "${args[@]}" --json headRefOid --jq .headRefOid 2>/dev/null) || [ -z "$sha" ]; then
-      bloquear_validacao "não foi possível obter a ponta do PR (o gh falhou ou veio vazio); na dúvida, bloqueia."
+    if ! dados=$(gh_cmd "${args[@]}" --json headRefName,headRefOid,labels \
+      --jq '[.headRefName, .headRefOid, (((.labels // []) | map(.name) | index("validada-develop")) != null)] | @tsv' 2>/dev/null) \
+      || [ -z "$dados" ]; then
+      bloquear_validacao "não foi possível obter origem, ponta e rótulos do PR (o gh falhou ou veio vazio); na dúvida, bloqueia."
     fi
+    IFS=$'\t' read -r ref sha rotulo <<<"$dados"
     if [ -z "$2" ]; then
-      exigir_validacao '{owner}' '{repo}' "$sha"
+      exigir_promocao '{owner}' '{repo}' "$ref" "$sha" "$rotulo"
     elif [[ $2 =~ ^([^/]+)/([^/]+)$ ]]; then
-      exigir_validacao "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "$sha"
+      exigir_promocao "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "$ref" "$sha" "$rotulo"
     else
-      bloquear_validacao "não foi possível confirmar a validação (repositório '$2' fora do formato dono/repo)."
+      bloquear_validacao "não foi possível confirmar a promoção (repositório '$2' fora do formato dono/repo)."
     fi
   fi
 }

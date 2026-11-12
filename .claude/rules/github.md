@@ -43,10 +43,12 @@ fonte do estado; o Project só espelha o que os rótulos dizem.
 
 ## Fluxo de PR (regra sagrada)
 
-- Branch de trabalho (`feature/`, `fix/`, `docs/`, `chore/` ou `refactor/`) → `develop`: PR e merge pelo Claude, depois
-  do CI verde.
-- `develop` → `homolog`: PR e merge pelo Claude, depois do CI verde.
-- `homolog` → `main`: o Claude pode **abrir** o PR com o checklist do template. Ele **nunca** faz merge, auto-merge,
+- Branch de trabalho → `develop`: PR e merge pelo Claude, depois do CI verde. A `develop` é o ambiente livre e aceita
+  qualquer branch (`ccr-*`, com `docs/HANDOFF.md`, mistura de outros agentes). Merge feito: validação completa na `develop`.
+- A **mesma** branch de trabalho → `homolog`: PR e merge pelo Claude, depois do CI verde, da branch já mergeada na
+  `develop`, da validação VALIDADO e do último commit `git rm docs/HANDOFF.md`. A `develop` **nunca** é promovida para a
+  `homolog` (pode ter mistura): a `homolog` leva só o que a branch fez. Merge feito: a mesma validação completa na `homolog`.
+- `homolog` → `main`: o Claude pode **abrir** o PR com o checklist do template e as duas evidências. Ele **nunca** faz merge, auto-merge,
   push direto nem `gh pr merge` ou `merge_pull_request` na `main`. Quem faz o merge é o dono ou o aprovador. O Claude
   para aí e segue o resto do trabalho.
 - O hook `.claude/hooks/gate-main.sh` bloqueia o que passa disso. Não o contorne.
@@ -59,18 +61,18 @@ fonte do estado; o Project só espelha o que os rótulos dizem.
 - **Obrigatório depois de todo merge na `develop` e de novo na `homolog`** (issue #103): `node scripts/validacao/pipeline.mjs`
   (typecheck, `npm test` com git real, builds, `perf:bundle` e ponta a ponta na interface real), pelo workflow
   `validacao.yml` ou local. Quem roda é o agente `gt-validador`, pela skill `validar`; unidade verde não basta.
-- Verde na `develop`: evidência (commit, árvore, fases, tempos, link) nas issues do PR e `status:validada`; só então o
-  PR para a `homolog`. Na `homolog` o pipeline também exige a árvore idêntica à da `develop`. Só com as duas verdes o
-  PR `homolog → main` é aberto, com as duas evidências, e fica ao dono.
+- Verde na `develop`: evidência (commit, árvore, fases, tempos, link) nas issues do PR e `status:validada`; a skill
+  `validar` põe o rótulo `validada-develop` no PR da `homolog`. Na `homolog` roda o mesmo pipeline completo, com a sua
+  própria validação. Só com as duas verdes o PR `homolog → main` é aberto, com as duas evidências, e fica ao dono.
 - Vermelho: issue de correção (`bug`, ligada à mãe), conserto antes de qualquer outro merge, sem promover.
-- O `gate-main.sh` recusa o merge de PR com base `homolog` cuja ponta não tenha o check-run `Validação*` com sucesso.
+- O `gate-main.sh` só deixa o merge na `homolog` se a ponta do PR está na história da `develop`, o PR tem o rótulo
+  `validada-develop` e a origem não é a `develop`.
 
 ## Branch do PR
 
-- O check `branch-flow.yml` só aceita origem `feature/*`, `fix/*`, `docs/*`, `chore/*` ou `refactor/*` para `develop`,
-  e reprova `docs/HANDOFF.md` na árvore do PR.
-- Branch de trabalho com outro nome (ex.: `ccr-*`): no encerramento, `git rm docs/HANDOFF.md` e commit. Depois crie
-  `feature/<assunto>` (ou `fix/<assunto>`) a partir dela, empurre com `git push -u origin` e abra o PR dessa.
+- A `develop` aceita qualquer branch de trabalho (inclusive `ccr-*` e com `docs/HANDOFF.md`); a `homolog` aceita qualquer
+  uma, menos `develop` e `main`. O check `branch-flow.yml` barra `docs/HANDOFF.md` na `homolog` e na `main`.
+- Não é preciso renomear a branch. O HANDOFF só sai antes do PR para a `homolog`: `git rm docs/HANDOFF.md` e commit.
 
 ## Tamanho
 

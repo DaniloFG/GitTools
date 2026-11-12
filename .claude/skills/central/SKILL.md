@@ -141,21 +141,23 @@ retrabalho, siga). Ao parar, uma mensagem curta: etapas fechadas (com commit), o
 Quando a etapa `ENCERRAMENTO` fecha e o remoto confere, execute a política de `.claude/rules/github.md` sem pedir a
 palavra do dono. Você não faz git nem PR: delega à sessão de PR.
 
-1. **HANDOFF**: confira em `origin/<branch>` que `docs/HANDOFF.md` saiu. A etapa ENCERRAMENTO faz o `git rm`; se ele
-   ainda estiver lá, a sessão de PR faz o `git rm` e o commit antes de abrir o PR.
-2. **Branch**: se a de trabalho não começa com `feature/`, `fix/`, `docs/`, `chore/` ou `refactor/`, a sessão de PR cria
-   `feature/<assunto>` (ou `fix/<assunto>`) a partir dela e empurra.
-3. **PRs, em ordem**: uma sessão da skill `pr` (modelo e esforço em "Quem pede" da skill) com a cadeia
-   `<origem> → develop` (merge após CI verde), `develop → homolog` (merge após CI verde) e `homolog → main` (só abre).
-   Ela avisa `PR FEITO` ou `PR ABERTO <n> (aguarda dono)`. `PR PARADO`: não avance; é caso de juiz (seção acima).
-   **A cadeia tem validação entre os PRs** (skill `validar`): a sessão de PR para depois do merge na `develop`; você
-   chama o `gt-validador` para a `develop` e, só com `VALIDADO`, pede o PR `develop → homolog`; depois do merge na
-   `homolog`, valida de novo a `homolog`; só com as duas verdes pede o `homolog → main`. `REPROVADO`: issue de correção
-   (`bug`, ligada à mãe), conserto antes de qualquer outro merge e nenhuma promoção.
-4. **Issues**: depois dos merges e das validações, para cada sub-issue cujos critérios foram conferidos na evidência da
-   etapa (e na do `gt-validador`), comente a evidência final, troque para `status:validada` e feche com
-   `state_reason: completed`. A issue-mãe fecha por último, com a mesma regra.
-5. **Fim**: avise o dono em uma linha, com o `PR ABERTO <n> (aguarda dono)`. Você não faz merge na `main`.
+A branch de trabalho é a **mesma** nos dois primeiros PRs, qualquer nome serve (`ccr-*` inclusive); a `develop` nunca é
+promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esforço em "Quem pede" da skill); ela avisa
+`PR FEITO`, `PR ABERTO <n> (aguarda dono)` ou `PR PARADO` (não avance; é caso de juiz, seção acima). Em ordem:
+
+1. **Branch → `develop`**: PR e merge após CI verde (com ou sem `docs/HANDOFF.md`).
+2. **Validar a `develop`** (skill `validar`): chame o `gt-validador`. `REPROVADO`: issue de correção (`bug`, ligada à
+   mãe), conserto antes de qualquer outro merge e nenhuma promoção.
+3. **HANDOFF**: a `homolog` e a `main` barram `docs/HANDOFF.md`. Confira em `origin/<branch>` que ele saiu: a etapa
+   ENCERRAMENTO faz o `git rm`; se ainda estiver lá, a sessão de PR faz o `git rm` e o commit, último da branch.
+4. **Branch → `homolog`**: PR da mesma branch; com o `VALIDADO` da `develop` e o comentário de evidência, a skill
+   `validar` põe o rótulo `validada-develop` (o gate exige). Merge após CI verde.
+5. **Validar a `homolog`**: mesma validação completa, com o `gt-validador`.
+6. **`homolog → main`**: só com as duas verdes, a sessão de PR **abre** o PR com as duas evidências e o deixa ao dono.
+7. **Issues**: para cada sub-issue cujos critérios foram conferidos na evidência da etapa (e na do `gt-validador`),
+   comente a evidência final, troque para `status:validada` e feche com `state_reason: completed`. A issue-mãe fecha
+   por último, com a mesma regra.
+8. **Fim**: avise o dono em uma linha, com o `PR ABERTO <n> (aguarda dono)`. Você não faz merge na `main`.
 
 ## HANDOFF em formato antigo
 

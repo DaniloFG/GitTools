@@ -1,7 +1,8 @@
 name: Validação
 
-# Mesma validação na develop e na homolog: typecheck, testes, builds, tamanho do pacote e ponta a ponta na
-# interface de verdade (scripts/validacao/pipeline.mjs). Na homolog confere ainda que a árvore é a da develop.
+# O mesmo pipeline em cada ambiente: typecheck, testes, builds, tamanho do pacote e ponta a ponta na interface de
+# verdade (scripts/validacao/pipeline.mjs). A homolog recebe só a branch de trabalho (nunca a develop) e por isso
+# não é comparada com a develop: cada ambiente é validado por inteiro.
 on:
   push:
     branches: [develop, homolog]
@@ -41,13 +42,7 @@ jobs:
           echo "PLAYWRIGHT_MODULE=$GITHUB_WORKSPACE/node_modules/playwright" >> "$GITHUB_ENV"
           echo "CHROMIUM=$(node -e "console.log(require('playwright').chromium.executablePath())")" >> "$GITHUB_ENV"
       - name: Validar
-        if: github.ref_name != 'homolog'
         run: node scripts/validacao/pipeline.mjs
-      - name: Validar (e conferir que a árvore é a da develop)
-        if: github.ref_name == 'homolog'
-        run: |
-          git fetch --depth=1 origin develop:refs/remotes/origin/develop
-          node scripts/validacao/pipeline.mjs --igual-a origin/develop
       - name: Guardar o relatório e os logs
         if: always()
         uses: actions/upload-artifact@v4

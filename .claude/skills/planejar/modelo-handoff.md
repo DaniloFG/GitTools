@@ -66,5 +66,5 @@ Só com a palavra do dono de que o trabalho acabou.
 - [ ] `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension` e `npm run perf:bundle` verdes
 - [ ] Resumo para o PR: o que mudou, antes e depois medidos, o que não foi conferido
 - [ ] Issues das etapas validadas (evidência comentada, `status:validada`, fechadas); issue-mãe fechada por último
-- [ ] PR `feature/*` → `develop` e `develop` → `homolog` abertos e mergeados pelo Claude com CI verde; PR `homolog` →
-  `main` aberto e deixado ao dono (`.claude/rules/github.md`)
+- [ ] PR branch → `develop` mergeado e validado; `git rm docs/HANDOFF.md` em commit; PR da mesma branch → `homolog`
+  (rótulo `validada-develop`) mergeado e validado; PR `homolog` → `main` aberto e deixado ao dono (`.claude/rules/github.md`)
