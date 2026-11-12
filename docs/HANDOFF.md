@@ -23,7 +23,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E8` — Conflitos (#96)
+**A seguir:** `E9` — Cherry-pick de vários commits (#95)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -34,7 +34,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E5 | #97 | Prova: itens ocultos pelo menu Aparência (#56) | feita | 4c0a34f | mutação isScreenShown reprova; e2e 32 ok |
 | E6 | #109 | 5 execuções iguais do e2e-desempenho após a recalibração | feita | (ver git log) | 5/5 ok; quadro 31,6-44,9 ms; carga a frio 587-675 ms; tetos intactos |
 | E7 | #98 | Tour: cenário e2e, foco e Esc, zero git, CPU 4× | feita | (ver git log) | e2e 33 ok, zero git; bug de foco achado e corrigido; pacote 695.255 |
-| E8 | #96 | Conflitos: itens não conferidos (1500 conflitos, Esc, medições) | a fazer | | |
+| E8 | #96 | Conflitos: itens não conferidos (1500 conflitos, Esc, medições) | feita | 15c13e4 | e2e 37 ok; 1500 conflitos: 41 linhas, 3880 nós, 0 git; Esc corrigido; escolhas preservadas |
 | E9 | #95 | Cherry-pick: entregas pendentes, tamanho a decidir pelo refinamento | a fazer | | |
 | E10 | #120 | Acessibilidade: 3 controles sem nome, 5 sem foco visível | a fazer | | |
 | E11 | #125 | readFile: janela TOCTOU em conflictDetails | a fazer | | |
@@ -42,13 +42,13 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: E7 (#98)
+### Última etapa fechada: E8 (#96)
 
-- **Feito**: cenário `tour.mjs` (abre pelo evento de Configurações, foco no cartão, Tab preso, destaque e cartão dentro
-  da janela em todos os passos, setas, Esc, foco devolvido). Achou bug real: a tela aberta por um passo roubava o foco e
-  setas/Esc morriam (parou em 14 de 18); corrigido com `focusin` em `Tour.tsx`. O cenário reprovava antes da correção.
-  e2e 33 ok com zero processos git; typecheck, 1398 testes e gate de cobertura verdes; `perf:bundle` 695.255 (era 695.821).
-- **Não conferido**: Tour ABERTO com CPU 4× (`ui.mjs` não cobre o Tour; só o e2e, 889 ms); Windows.
+- **Feito**: 4 cenários e2e (`conflito-escala`, `-configuracoes`, `-editor-esc`, `-escolhas-preservadas`); bug real: Esc
+  no editor embutido não fechava nada (corrigido em `ConflictsScreen.tsx`, cenário reprovava antes); escolhas por trecho
+  agora sobrevivem à troca de arquivo (`conflictDrafts.ts`, teto 50, mutação reprova). typecheck, 1408 testes, build, `perf:bundle` verdes.
+- **Não conferido**: `ui.mjs 4` com a tela Conflitos aberta (o roteiro não a abre); `core.mjs` não tem `--trace`; merge
+  concluído pelo commit de Alterações; 320 px; hi/ar/zh-CN sem revisão humana. #96 fica `em-revisao` com isso dito.
 
 ## 3. Base de medição
 
@@ -59,12 +59,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
-
-### Etapa E8 — Conflitos (#96)
-
-- **Orquestra**: topo. **Aceite**: `core.mjs --trace` e `ui.mjs 4 moderate` com a tela; teste de tela para 1500
-  conflitos; `Esc` no editor; fechamento automático; a limitação "trocar de arquivo descarta escolhas sem aviso"
-  decidida (aviso ou issue). Traduções hi/ar/zh-CN: registrar "sem revisão humana". **Depende de**: E7.
 
 ### Etapa E9 — Cherry-pick de vários commits (#95)
 
@@ -111,6 +105,7 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 - E6: `build:extension` antes do `qa.mjs` (o dist não segue o código); 5 execuções levam ~1 min cada.
 
 - E7: `ui.mjs 4 moderate` não abre o Tour; medir o Tour aberto exigiria roteiro novo (candidato a issue `descoberta`).
+- E8: o runner e2e não filtra por id (suíte inteira ~80 s); `ui.mjs` não abre Conflitos; aviso do watcher logo após ação da própria interface é descartado por 1 s (`isOwnEcho`, App.tsx): issue descoberta.
 
 ## 6. Encerramento
 
