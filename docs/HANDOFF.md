@@ -16,7 +16,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E5`
+**A seguir:** `E6`
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
@@ -25,20 +25,21 @@ fechada está na mensagem do commit dela.
 | E2 | #94 combobox do Dashboard escondido | fechada | ver commit | 0/5 pontos clicáveis antes, 5/5 depois em 3 tamanhos de janela |
 | E3 | #97 menu principal em janela estreita | fechada | ver commit | roteiro 320/480/640: falhava em 320 e 480, passa nos 3 |
 | E4 | #92 fluxo de conflito: lista lenta e modal que fecha | fechada | `adfec47` | modal de 3 opções: aparecia, some; salvar+refresh 9 → 3 processos git |
-| E5 | #95 investigação: medir cherry-pick e `rerere` | a fazer | | |
+| E5 | #95 investigação: medir cherry-pick e `rerere` | fechada | `b544667` | 3 processos por parada (início 5); teto travado em teste; números na #95 |
 | E6 | #95 implementar os caminhos decididos (seção 5) | a fazer | | |
 | E7 | #96 esboço da tela Conflitos | a fazer | | |
 | E8-E10 | #96 implementação em incrementos | depende de E4, E6, E7 | | |
 | E11 | #98 Tour: desenho e lista de passos | a fazer | | |
 | E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
 
-### Última etapa fechada: `E4` (#92)
+### Última etapa fechada: `E5` (#95, investigação)
 
-- **Causa**: o efeito de `conflictDetails` em `ConflictEditor.tsx` dependia de `onClose`/`toast` (identidade nova a
-  cada render): relia os detalhes após salvar e, com o arquivo resolvido, mostrava a modal de três opções.
-- **Feito**: efeito só pelo caminho, manipuladores por ref, cancelamento; roteiro `scripts/readme-media/conflict-save.mjs`.
-- **Não conferido**: pular, abortar, continuar e nosso/deles na tela; muitos arquivos; lentidão da lista (não
-  reproduzida: a lista esvazia ao fim do salvar); `ui.mjs`, perf:bundle.
+- **Medido** (3 commits conflitantes, git real): início 5 processos; cada parada 3 (`status`, `cherry-pick --continue`,
+  `status`); última 2. Números postados na #95. Teste `tests/cherry-pick-sequence.test.ts` (3 paradas + teto de 3).
+- **`rerere`**: reescreve o arquivo sem marcadores mas deixa `UU` no índice; chave é o texto do trecho, não o contexto
+  (reaplica em silêncio em outro lugar). Só opcional, desligado por padrão, com resumo.
+- **Achado (E6)**: `orderCommits` (`--no-walk=sorted` + `reverse`) aplica ao contrário quando os commits têm a mesma data.
+- **Não conferido**: `perf:bundle` e `ui.mjs` (sem código de produto).
 
 ## 3. Base de medição
 
@@ -47,20 +48,10 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 
 ## 4. Plano
 
-### Etapa `E5` — #95: investigação com números (sem código de produto)
-
-- **Orquestra**: topo
-- **Arquivos prováveis**: só `scripts/perf/` se faltar roteiro; teste de integração do sequencer
-- **Ler antes**: issue #95; `src/core/repository.ts` (`cherryPickCommits`, `continueOperation`)
-- **Aceite**: números de processos/tempo por parada e teste do `rerere` postados na #95; teste de integração de
-  cherry-pick com 2+ conflitos em sequência passa. Termina com os números postados; a escolha dos caminhos sai do juiz (seção 5).
-- **Testes**: integração, medição
-- **Segurança**: sim
-- **Depende de**: nada (E4 fechada)
-
 ### Etapas seguintes (detalhar quando destravadas)
 
-- **E6** (#95): implementar os caminhos escolhidos, orçamento de processos por parada testado, `security-review`.
+- **E6** (#95): implementar os caminhos escolhidos (continuar automático: 3 processos/parada, não piorar), orçamento por
+  parada testado, corrigir `orderCommits` em empate de data (`--topo-order`, com teste), `security-review`.
 - **E7** (#96): esboço da tela Conflitos (lista, operação, editor embutido, duas configurações) para o juiz aprovar.
 - **E8-E10** (#96): lista e estado da operação; editor embutido; seção "Conflitos" em Settings; banner informativo.
 - **E11** (#98): lista final de recursos e ordem dos passos (juiz aprova); desenho do convite e do cartão.
@@ -81,6 +72,9 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 - **E11**: cobertura = tudo que o usuário usa, exceto Settings (só passada rápida), como na issue #98.
 - **#93**: reprodução em `scripts/readme-media/lib.mjs` com `layout: { dock }` exige `changes.unstaged` ativo (clicar a aba); `placeMissing` põe `commit.message` no grupo. Reabrir só com passos do dono. #99: retrabalho de link em `untrackedDiff`/`conflictDetails` (fora do plano; pode entrar antes de E4/E5).
 - **Tela do Dashboard**: roteiro de repro em scratchpad usa `launch` + `.dashboards-tab` + `.dash-people > button`; `elementFromPoint` prova cobertura. `.dash-filters` z 20 empata com `.modal-backdrop`; o modal vence pela ordem do DOM (conferido).
+- **E5**: `onGitCommand` (`e.exitCode === undefined`) conta processos iniciados; testes com datas de commit distintas
+  usam `process.env.GIT_COMMITTER_DATE` (o `runGit` herda `process.env`). `rerere` com `reset --hard` na `main` errada
+  muda o conflito: use uma tag do ponto de partida.
 - Instalar dependências em contêiner novo: `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`.
 
 ## 6. Encerramento
