@@ -6,7 +6,9 @@ da branch inteira, de commits escolhidos, de **arquivos específicos** ou até d
 
 [![Apoie no GitHub Sponsors](https://img.shields.io/badge/Apoiar-GitHub%20Sponsors-db61a2?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/DaniloFG)
 
-![Dashboards: visão geral com indicadores, série temporal, contribuições, calendário de atividade e arquivos mais alterados](docs/screenshots/dashboards-visao-geral.png)
+![Histórico com grafo, arquivos do commit e diff lado a lado](docs/screenshots/historico.png)
+
+![Commit: detalhes, arquivos e seleção de linhas para cherry-pick](docs/screenshots/linhas-do-commit.png)
 
 ## Por que o GitTools?
 
@@ -40,6 +42,8 @@ governança e auditoria — sem exportar nada, sem BI, sem sair do repositório.
 gráficos distintos e **todo gráfico muda de forma com um clique** (área, linhas, barras, rosca, treemap, mapa de calor,
 radar, dispersão, funil, medidor, calendário…) ou vira tabela.
 
+![Dashboards: visão geral com indicadores, série temporal, contribuições, calendário de atividade e arquivos mais alterados](docs/screenshots/dashboards-visao-geral.png)
+
 | Dashboard | O que mostra |
 | --------- | ------------ |
 | **Visão geral** | Indicadores com variação sobre o período anterior, commits ao longo do tempo, quem mais contribui, calendário de atividade, arquivos mais alterados, dia × hora, pastas e tipos de commit. |
@@ -67,8 +71,6 @@ radar, dispersão, funil, medidor, calendário…) ou vira tabela.
 
 Os números vêm direto do histórico local, lidos com um único `git log --numstat` (respeita o `.mailmap`),
 e nada sai do seu computador.
-
-![Histórico com grafo de branches](docs/screenshots/historico.png)
 
 ## O que dá para fazer
 

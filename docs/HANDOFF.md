@@ -24,11 +24,13 @@ A `main` já tinha skills, hooks e `CLAUDE.md` atuais (conferido): nada foi traz
 
 ## 2. Estado
 
-**A seguir:** `1` — README: History e Commit primeiro
+**Última etapa fechada:** `1` — READMEs: History, Commit, depois Dashboards (só documentação; `extension/media/readme/commit.png` é cópia de `linhas-do-commit.png`).
+
+**A seguir:** `2` — Seleção confinada ao lado (diff lado a lado)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
-| 1 | #157 | READMEs: History, depois Commit, depois Dashboards | a fazer | | |
+| 1 | #157 | READMEs: History, depois Commit, depois Dashboards | fechada | ver `git log` | 1ª imagem History, 2ª Commit |
 | 2 | #155 | Seleção do diff lado a lado confinada ao lado de origem | a fazer | | |
 | 3 | #158 | Quebra de linha opcional nos editores (Settings + menu ⋯) | a fazer | | |
 | 4 | #156 | "Open in new window" do History abre a comparação do commit | a fazer | | |
@@ -40,19 +42,6 @@ Não conferida ainda. Etapas 2 e 3 tocam `DiffView.tsx` (caminho quente): cada u
 `npm run perf:bundle` e nós no DOM do diff (skill `medir`); gravar aqui o número de partida na primeira que medir.
 
 ## 4. Plano
-
-### Etapa `1` — READMEs com History e Commit nas primeiras imagens
-
-- **Orquestra**: sonnet
-- **Arquivos prováveis**: `README.md` (linha 9 hoje é Dashboards; `historico.png` está na linha 71 e 133),
-  `extension/README.md` (linha 19 é Dashboards), eventualmente `scripts/readme-media/capture.mjs` e
-  `extension/media/readme/` se faltar o print "Commit" (existem `historico.png`, `linhas-do-commit.png`,
-  `diff-janela.png`; o `gt-leitor` decide qual é o "Commit"; não gerar imagem sem necessidade).
-- **Ler antes**: `README.md` 1–75; `extension/README.md` 1–30; `scripts/readme-media/` só se faltar imagem.
-- **Aceite**: `grep -n '!\[' README.md extension/README.md | head -4` → a 1ª imagem é History, a 2ª Commit, e os
-  Dashboards vêm depois; links de imagem existem (`ls`).
-- **Testes**: nenhum (documentação); conferir links com `grep`/`ls`.
-- **Segurança**: não. **Depende de**: nada.
 
 ### Etapa `2` — Seleção confinada ao lado (diff lado a lado)
 
