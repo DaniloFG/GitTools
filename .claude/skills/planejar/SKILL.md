@@ -6,6 +6,9 @@ argument-hint: "[nome do trabalho]"
 
 # Planejar um trabalho em etapas
 
+> **Modo fábrica (CLAUDE.md prevalece)**: o "pode seguir" do dono já está dado e é permanente. Não existe mais PARADO
+> nem "avise o dono" por decisão: use a escada do CLAUDE.md (decidir; `gt-juiz`; issue de retrabalho e seguir).
+
 Trabalho: $ARGUMENTS
 
 O plano existe para que cada etapa rode numa sessão nova, de contexto limpo, sabendo só o que está escrito no
@@ -15,8 +18,8 @@ repositório. O que não estiver no `docs/HANDOFF.md` não existe para a sessão
 
 - Confirme a branch: é a de trabalho (`feature/*`, `fix/*`, `docs/*`, `chore/*`, `refactor/*`, nascida de `develop`), nunca `develop`, `homolog` ou `main`.
 - Se já existe `docs/HANDOFF.md`, você está **retomando**: leia-o, atualize o estado (passo 5) e não refaça o plano.
-- Diga o pedido de volta ao dono em duas linhas e resolva agora o que só ele decide (escopo, o que fica de fora,
-  metas). Pergunta que você consegue responder lendo o código não é pergunta para o dono.
+- Diga o pedido de volta ao dono em duas linhas e decida você mesmo o escopo, o que fica de fora e as metas, registrando
+  cada decisão no HANDOFF. O dono não é consultado para planejar.
 
 ## 2. Levantar, barato
 
@@ -60,7 +63,7 @@ Commit só com o HANDOFF e envie: `git push -u origin <branch>`.
 
 ## 5. Ao retomar ou ao parar no meio
 
-Sessão que vai terminar com trabalho por fazer (contexto no fim, bloqueio, decisão do dono) fecha o que está coerente
+Sessão que vai terminar com trabalho por fazer (contexto no fim, bloqueio, limite de uso) fecha o que está coerente
 e verificado, commita, e deixa no HANDOFF: o que ficou pronto (commit), o que ficou pela metade e em que estado, e o
 "A seguir". Sem HANDOFF ainda? Crie um com as seções 1, 2 e 4, mesmo que o plano tenha uma etapa só.
 
@@ -72,11 +75,11 @@ Mostre na conversa, sem repetir o arquivo:
 2. o que ficou de fora e as decisões que você tomou sozinho;
 3. quantas sessões o trabalho abre (uma central e uma por etapa).
 
-Peça o "pode seguir" — abrir sessões gasta o limite de uso do dono, e é ele quem autoriza. Se o pedido original já
-mandou seguir sem perguntar, siga. Com a autorização:
+Não peça o "pode seguir": ele já está dado (modo fábrica). Abra a central direto:
 
 - **Há `create_session`**: abra a sessão central como a skill `central` descreve em "Como a central é aberta", diga
   ao dono o id dela e pare.
-- **Não há**: entregue ao dono a mensagem pronta para colar numa sessão nova (está na mesma seção da skill `central`).
+- **`create_session` falhou ou não está disponível** (parada legítima): entregue ao dono a mensagem pronta para colar
+  numa sessão nova (está na mesma seção da skill `central`), com o estado no HANDOFF.
 
 Esta sessão não executa etapa: o contexto dela já está cheio do levantamento.

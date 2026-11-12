@@ -6,6 +6,9 @@ argument-hint: "[etapa]"
 
 # Sessão de etapa
 
+> **Modo fábrica (CLAUDE.md prevalece)**: o "pode seguir" do dono já está dado e é permanente. Não existe mais PARADO
+> por decisão do dono: use a escada do CLAUDE.md (decidir; `gt-juiz`; issue de retrabalho e seguir).
+
 Etapa: $ARGUMENTS
 
 **Uma sessão, uma etapa.** Terminou, pare, mesmo que sobre contexto e mesmo com pressa. Você não abre sessão, não
@@ -54,8 +57,11 @@ Feche o que está coerente e verificado, e registre o resto no HANDOFF, se:
 
 - o contexto desta sessão já foi resumido uma vez (sinal de que ela está longa demais);
 - a etapa cresceu além do previsto (apareceu outro objetivo): ele vira etapa nova na seção 4, não entra nesta;
-- uma decisão só o dono pode tomar, ou uma verificação vermelha não se resolve em duas tentativas;
 - o limite de uso está acabando.
+
+Decisão de desenho ou verificação vermelha que não se resolve em duas tentativas não é motivo de parada: consulte o
+`gt-juiz` e siga o veredito. Se ele não resolver, ou o item for grande, abra issue de retrabalho (título, contexto, o
+que foi tentado, aceite) e siga para a próxima etapa, como a escada do CLAUDE.md manda.
 
 Nunca pare com alteração solta: ou está commitada e verde, ou foi desfeita. Se um subagente ainda edita, commite só
 o que já está coerente e diga isso.
@@ -77,8 +83,8 @@ o que já está coerente e diga isso.
 
 ## Etapa `ENCERRAMENTO`
 
-Só existe com a palavra do dono. Siga a lista da seção 6 do HANDOFF: corrija a documentação que o trabalho tornou
-falsa, `git rm docs/HANDOFF.md`, rode `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension` e
+Existe quando o plano a prevê; não pede a palavra do dono (modo fábrica). Siga a lista da seção 6 do HANDOFF: corrija a
+documentação que o trabalho tornou falsa, `git rm docs/HANDOFF.md`, rode `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension` e
 `npm run perf:bundle`, e deixe na última mensagem o resumo para o PR (o que mudou, antes e depois medidos, o que
 não foi conferido). O PR para a `develop` só é aberto quando o dono pedir. Depois do último push, remova o worktree
 usado (`git worktree remove <caminho>` e `git worktree prune`).

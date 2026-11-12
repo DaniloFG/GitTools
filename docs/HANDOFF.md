@@ -8,7 +8,7 @@ fechada está na mensagem do commit dela.
 
 - **Pedido**: "Iniciar implementação das issues do repo. Vc tem autonomia completa sobre tudo do repo" e consulta ao
   `gt-juiz` nas dúvidas. Depois: tudo segue rigorosamente as etapas (regra absoluta e gate em `CLAUDE.md`).
-- **Fora do escopo**: PR (só quando o dono pedir); `rerere` e "reaproveitar decisão" ligados por padrão (decisão do dono).
+- **Fora do escopo**: PR (só quando o dono pedir). `rerere` nunca ligado por padrão (ver seção 5).
 - **Regras deste trabalho**: uma issue (ou parte dela) por etapa, em ordem de risco; todas as etapas na branch acima
   (a designada pela plataforma vale no lugar de `feature/*`), uma de cada vez; frases por `t()` nos seis catálogos.
 - **Metas**: sem regressão em processos git, nós no DOM, pacote (`npm run perf:bundle`, teto 700.000 bytes). A #98
@@ -26,10 +26,10 @@ fechada está na mensagem do commit dela.
 | E3 | #97 menu principal em janela estreita | a fazer | | |
 | E4 | #92 fluxo de conflito: lista lenta e modal que fecha | a fazer | | |
 | E5 | #95 investigação: medir cherry-pick e `rerere` | a fazer | | |
-| E6 | #95 implementar os caminhos que o dono escolher | PARADO (decisão do dono) | | |
-| E7 | #96 esboço da tela Conflitos | PARADO (esboço com o dono) | | |
+| E6 | #95 implementar os caminhos decididos (seção 5) | a fazer | | |
+| E7 | #96 esboço da tela Conflitos | a fazer | | |
 | E8-E10 | #96 implementação em incrementos | depende de E4, E6, E7 | | |
-| E11 | #98 Tour: desenho e lista de passos | PARADO (lista de recursos) | | |
+| E11 | #98 Tour: desenho e lista de passos | a fazer | | |
 | E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
 
 ### Última etapa fechada: `0` (#91)
@@ -100,7 +100,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 - **Arquivos prováveis**: só `scripts/perf/` se faltar roteiro; teste de integração do sequencer
 - **Ler antes**: issue #95; `src/core/repository.ts` (`cherryPickCommits`, `continueOperation`)
 - **Aceite**: números de processos/tempo por parada e teste do `rerere` postados na #95; teste de integração de
-  cherry-pick com 2+ conflitos em sequência passa. Termina em PARADO com a pergunta ao dono (quais caminhos, padrão).
+  cherry-pick com 2+ conflitos em sequência passa. Termina com os números postados; a escolha dos caminhos sai do juiz (seção 5).
 - **Testes**: integração, medição
 - **Segurança**: sim
 - **Depende de**: E4
@@ -108,9 +108,9 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 ### Etapas seguintes (detalhar quando destravadas)
 
 - **E6** (#95): implementar os caminhos escolhidos, orçamento de processos por parada testado, `security-review`.
-- **E7** (#96): esboço da tela Conflitos (lista, operação, editor embutido, duas configurações) para o dono aprovar.
+- **E7** (#96): esboço da tela Conflitos (lista, operação, editor embutido, duas configurações) para o juiz aprovar.
 - **E8-E10** (#96): lista e estado da operação; editor embutido; seção "Conflitos" em Settings; banner informativo.
-- **E11** (#98): lista final de recursos e ordem dos passos (dono aprova); desenho do convite e do cartão.
+- **E11** (#98): lista final de recursos e ordem dos passos (juiz aprova); desenho do convite e do cartão.
 - **E12-E13** (#98): infraestrutura sob demanda (chunk separado, `data-tour`, convite); depois conteúdo nos seis idiomas
   e teste "todo alvo existe". Medir pacote da primeira carga e CPU 4×.
 
@@ -119,14 +119,20 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 - Decidido sem o dono: ordem por risco (segurança, bugs de tela, conflitos, Tour). #98 por último: depende do menu
   estreito (#97) e da tela de Conflitos (#96).
 - `.claude/triagem.local` é pessoal e fora do git; em sessão nova, o gate libera pelo `docs/HANDOFF.md`.
-- `CLAUDE.md` está com 200 linhas (o limite é "abaixo de 200"): quem editar o guia remove uma linha.
+- `CLAUDE.md` tem 199 linhas, no teto (abaixo de 200): quem editar o guia corta outra linha.
+- **Modo fábrica** (o dono mandou decidir sem ele, em definitivo): nada para por decisão do dono. Dúvida vai ao
+  `gt-juiz`; o que ele não resolve vira issue de retrabalho, e a próxima etapa segue.
+- **E6**: entram "continuar automático" e "reaproveitar decisão", com resumo antes de confirmar (nunca silencioso).
+  `rerere` só opcional, desligado por padrão, e só se a investigação (E5) provar segurança.
+- **E7**: a tela segue a descrição da issue #96; o `gt-juiz` aprova o esboço.
+- **E11**: cobertura = tudo que o usuário usa, exceto Settings (só passada rápida), como na issue #98.
 - Instalar dependências em contêiner novo: `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`.
 
 ## 6. Encerramento
 
-Só com a palavra do dono de que o trabalho acabou.
+Sem palavra do dono (modo fábrica): o plano acaba quando a etapa de encerramento fecha. PR só quando o dono pedir.
 
-- [ ] Todas as etapas fechadas; pendências viraram etapa, issue ou foram aceitas pelo dono
+- [ ] Todas as etapas fechadas; pendências viraram etapa ou issue de retrabalho
 - [ ] Documentação que o trabalho tornou falsa foi corrigida (`docs/PERFORMANCE.md`, README, `CLAUDE.md`, `.claude/`)
 - [ ] `git rm docs/HANDOFF.md`
 - [ ] Worktree usado removido, depois do último push
