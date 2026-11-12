@@ -24,9 +24,9 @@ A `main` já tinha skills, hooks e `CLAUDE.md` atuais (conferido): nada foi traz
 
 ## 2. Estado
 
-**Última etapa fechada:** `4` — "Open in new window" do History (#156): a causa era o arquivo renomeado (o diff de commit filtrava só pelo caminho novo e o git o devolvia como adição inteira). `DiffSource.oldPath` entra no pathspec (staged/commit/range); `isDiffWindowRequest` valida o canal `app:openDiffWindow`; e2e `history-renomeacao-diff` reprova sem a correção.
+**Última etapa fechada:** `5` — Commit diff e divisor (#160): reproduzido só o item 2 (arrastar o divisor até o fim deixava o painel com 80px, só cabeçalhos). `MIN_HEIGHT` do dock 80 → 140 (`Dock.tsx`); cenário e2e `diff-altura-divisor` reprova sem a mudança. Itens 1 (faixa curta, resto vazio) e 3 ('Open in Changes' cortado) NÃO reproduziram em 1440x900 e 700x900 (inline e lado a lado, diff de 3000 linhas, divisor arrastado, dock empilhado); não conferido abaixo de 700px.
 
-**A seguir:** `5` — Commit diff: altura do painel e divisor (#160)
+**A seguir:** `6` — ENCERRAMENTO
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -34,7 +34,7 @@ A `main` já tinha skills, hooks e `CLAUDE.md` atuais (conferido): nada foi traz
 | 2 | #155 | Seleção do diff lado a lado confinada ao lado de origem | fechada | ver `git log` | perf:bundle JS 1ª carga 695.532 → 695.747 (teto 700.000) |
 | 3 | #158 | Quebra de linha opcional nos editores (Settings + menu ⋯) | fechada | ver `git log` | perf:bundle JS 1ª carga 695.747 → 697.685 webview / 697.119 Electron (teto 700.000; folga ~2.300) |
 | 4 | #156 | "Open in new window" do History abre a comparação do commit | fechada | ver `git log` | perf:bundle JS 1ª carga Electron 697.119 → 697.198 (teto 700.000; folga ~2.800) |
-| 5 | #160 | Commit diff: linhas ocupam a altura do painel e não somem após arrastar o divisor | a fazer | | |
+| 5 | #160 | Commit diff: linhas ocupam a altura do painel e não somem após arrastar o divisor | fechada (item 2; 1 e 3 não reproduzidos) | ver `git log` | perf:bundle JS 1ª carga Electron 697.198 → 697.199 (folga ~2.800) |
 | 6 | #154 | ENCERRAMENTO | a fazer | | |
 
 ## 3. Base de medição
@@ -43,18 +43,6 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 `npm run perf:bundle` e nós no DOM do diff (skill `medir`); gravar aqui o número de partida na primeira que medir.
 
 ## 4. Plano
-
-### Etapa `5` — Commit diff: altura do painel e divisor (#160)
-
-- **Orquestra**: topo
-- **Arquivos prováveis**: `DiffView.tsx` (`VirtualList`), `CommitDetails.tsx`, `styles.css`, o divisor do painel.
-- **Levantamento**: não feito (issue nova do dono). Sintoma: as linhas não ocupam a altura do painel e somem depois de
-  arrastar o divisor; hipótese (não conferida): altura da janela de virtualização não recalculada ao redimensionar.
-  Mesmo componente das etapas 2 e 3 (fechadas): ler o que elas mudaram. Primeiro passo: reproduzir
-  (skill `run-gittools`) e escrever o e2e que reprova sem a correção.
-- **Aceite**: e2e que arrasta o divisor e confere linhas visíveis preenchendo a altura; nós no DOM não crescem;
-  `perf:bundle` abaixo do teto (folga de ~2.300 bytes hoje).
-- **Testes**: tela (e unidade se houver lógica de janela). **Segurança**: não. **Depende de**: nada.
 
 ### Etapa `6` — ENCERRAMENTO
 
@@ -75,6 +63,7 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 - 2026-11-12: etapa 3: CodeEditor/ConflictEditor (textarea) já eram `wrap=off`; só diff e `.merge-final` mudaram. `useWrapLines` é useState (vale só com o diff aberto, como o layout). Folga do bundle agora ~2.300 bytes: a etapa 4 não deve crescer a primeira carga. Não conferido: salto de rolagem ao alternar a quebra em diff grande; CJK conta 1 coluna em `--code-ch`.
 - 2026-11-12: etapa 4: o clique no History enviava o request certo (sha, path); o defeito só aparece em arquivo RENOMEADO (git aplica o pathspec antes do `-M`). Compare, staged (ChangesView/CommitDetails wip) e histórico de arquivo (FilesView, `FileHistoryEntry` sem `oldPath`) seguem sem `oldPath`: issues issue #161. `useFullFile` em `DiffWindow.tsx:56` roda antes do provider de settings (a janela ignora `diffFullFile`): issue #162.
 - 2026-11-12: etapa 4: os commits `d50e18e` e o do HANDOFF dela têm trailer `Co-Authored-By`/`Claude-Session` (contra o `CLAUDE.md`); histórico publicado não foi reescrito. Commits novos saem sem trailer. O canal `app:openDiffWindow` limita cada texto a 4096 caracteres (UTF-16).
+- 2026-11-12: etapa 5: o e2e que arrasta o divisor tem de devolver o layout (duplo clique no `.dock-divider`): o arranjo fica gravado e quebra os cenários seguintes (timeouts em click). Itens 1 e 3 do #160 seguem abertos na issue (não reproduzidos): não fechar a #160 na validação sem reavaliar; testar abaixo de 700px e `STACK_WIDTH` 760 (`dock.ts`).
 
 ## 6. Encerramento
 
