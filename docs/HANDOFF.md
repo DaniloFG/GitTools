@@ -1,0 +1,135 @@
+# HANDOFF — Issues #92 a #98
+
+Memória do trabalho entre sessões. Existe só na branch `ccr-8306091c-r5tduy`: o check "Validar fluxo de branches"
+reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Teto: 150 linhas; o detalhe de etapa
+fechada está na mensagem do commit dela.
+
+## 1. Pedido e regras do dono
+
+- **Pedido**: "Iniciar implementação das issues do repo. Vc tem autonomia completa sobre tudo do repo" e consulta ao
+  `gt-juiz` nas dúvidas. Depois: tudo segue rigorosamente as etapas (regra absoluta e gate em `CLAUDE.md`).
+- **Fora do escopo**: PR (só quando o dono pedir); `rerere` e "reaproveitar decisão" ligados por padrão (decisão do dono).
+- **Regras deste trabalho**: uma issue (ou parte dela) por etapa, em ordem de risco; todas as etapas na branch acima
+  (a designada pela plataforma vale no lugar de `feature/*`), uma de cada vez; frases por `t()` nos seis catálogos.
+- **Metas**: sem regressão em processos git, nós no DOM, pacote (`npm run perf:bundle`, teto 700.000 bytes). A #98
+  não pode somar bytes à primeira carga além do convite.
+
+## 2. Estado
+
+**A seguir:** `E1`
+
+| Etapa | Objetivo | Estado | Commit | Número que importa |
+| --- | --- | --- | --- | --- |
+| 0 | #91 segurança de caminhos e `tooLarge` | fechada | `7fffbe7` | 41 testes verdes (13 reprovavam antes) |
+| E1 | #93 lista de arquivos do Changes sem rolagem | a fazer | | |
+| E2 | #94 combobox do Dashboard escondido | a fazer | | |
+| E3 | #97 menu principal em janela estreita | a fazer | | |
+| E4 | #92 fluxo de conflito: lista lenta e modal que fecha | a fazer | | |
+| E5 | #95 investigação: medir cherry-pick e `rerere` | a fazer | | |
+| E6 | #95 implementar os caminhos que o dono escolher | PARADO (decisão do dono) | | |
+| E7 | #96 esboço da tela Conflitos | PARADO (esboço com o dono) | | |
+| E8-E10 | #96 implementação em incrementos | depende de E4, E6, E7 | | |
+| E11 | #98 Tour: desenho e lista de passos | PARADO (lista de recursos) | | |
+| E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
+
+### Última etapa fechada: `0` (#91)
+
+- **Feito**: `untrackedStats`/`untrackedDiff` com `resolveInside`; `resolveInsideReal` (realpath) em leitura e escrita
+  de arquivo único; `conflictDetails` devolve `tooLarge` e a tela mostra `conflict.tooLarge` nos seis idiomas.
+- **Medido**: `npx vitest run tests/paths.test.ts tests/conflicts-scale.test.ts tests/path-safety.test.ts` → 41
+  passam; `npm run typecheck` verde.
+- **Não conferido**: ramo `tooLarge` na tela (sem teste de tela); Windows (junction); custo de `lstat`+`realpath`;
+  `npm test` inteiro; `security-review` formal.
+- **Ficou para depois**: item de segurança da #91 fica aberto na issue até fechá-la com o resumo
+  após `security-review` do diff `7fffbe7` (tarefa 0 da E1).
+
+## 3. Base de medição
+
+Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e do cherry-pick) com
+`node scripts/perf/core.mjs moderate` e `--trace`; E3 e E12 usam `node scripts/perf/ui.mjs 4 moderate`.
+
+## 4. Plano
+
+### Etapa `E1` — #93: lista de arquivos do Changes com barra de rolagem em qualquer quantidade
+
+- **Orquestra**: sonnet
+- **Arquivos prováveis**: componente Changes e CSS em `src/renderer/src/`; `tests/web/`
+- **Ler antes**: `.claude/rules/interface.md`, `.claude/rules/testes.md`, skill `run-gittools`
+- **Aceite**: teste de tela reprova antes (poucos arquivos, painel à esquerda, depois crescer); `npm run typecheck` e
+  `npm test` verdes; nós no DOM iguais. Tarefa 0: `security-review` do diff `7fffbe7` e comentário de fechamento na #91.
+- **Testes**: tela
+- **Segurança**: tarefa 0 apenas
+- **Depende de**: nada
+
+### Etapa `E2` — #94: lista do combobox "Everyone" acima do layout, completa e clicável
+
+- **Orquestra**: sonnet
+- **Arquivos prováveis**: combobox compartilhado, `src/renderer/src/analytics`, CSS
+- **Ler antes**: `.claude/rules/interface.md`; skill `dataviz` só para o Dashboard
+- **Aceite**: teste de tela reprova antes (lista coberta/cortada), incluindo perto da borda e janela pequena; outros
+  usos do combobox conferidos
+- **Testes**: tela
+- **Segurança**: não
+- **Depende de**: nada
+
+### Etapa `E3` — #97: menu principal acessível em qualquer largura
+
+- **Orquestra**: topo (desenho: rolagem, só ícone ou menu "mais")
+- **Arquivos prováveis**: barra de telas, `screenVisibility.ts`, CSS; alerta vermelho de conflito
+- **Ler antes**: `.claude/rules/interface.md`; `docs/PERFORMANCE.md` seção 7
+- **Aceite**: teste de tela em 320, 480 e 640 px reprova antes (item inacessível); tela ativa e alerta de conflito
+  sempre visíveis; painel à esquerda/direita/embaixo; `node scripts/perf/ui.mjs 4 moderate` sem piorar nós no DOM
+- **Testes**: unidade (lógica de visibilidade), tela, medição
+- **Segurança**: não
+- **Depende de**: nada
+
+### Etapa `E4` — #92: resolver conflito sem lentidão nem modal que abre e fecha
+
+- **Orquestra**: topo
+- **Arquivos prováveis**: `ConflictEditor.tsx`, `OperationBanner.tsx`, `bulkConflicts.ts`, atualização (`refresh`)
+- **Ler antes**: issue #92; `tests/conflicts-scale.test.ts` (só o início)
+- **Aceite**: fluxo completo na tela (`run-gittools`: nosso, deles, à mão, salvar, voltar, continuar, pular,
+  abortar); arquivo resolvido sai da lista ao salvar; nenhuma modal sozinha; processos git do fluxo antes/depois
+- **Testes**: tela, integração, medição
+- **Segurança**: não
+- **Depende de**: nada (E1-E3 não bloqueiam)
+
+### Etapa `E5` — #95: investigação com números (sem código de produto)
+
+- **Orquestra**: topo
+- **Arquivos prováveis**: só `scripts/perf/` se faltar roteiro; teste de integração do sequencer
+- **Ler antes**: issue #95; `src/core/repository.ts` (`cherryPickCommits`, `continueOperation`)
+- **Aceite**: números de processos/tempo por parada e teste do `rerere` postados na #95; teste de integração de
+  cherry-pick com 2+ conflitos em sequência passa. Termina em PARADO com a pergunta ao dono (quais caminhos, padrão).
+- **Testes**: integração, medição
+- **Segurança**: sim
+- **Depende de**: E4
+
+### Etapas seguintes (detalhar quando destravadas)
+
+- **E6** (#95): implementar os caminhos escolhidos, orçamento de processos por parada testado, `security-review`.
+- **E7** (#96): esboço da tela Conflitos (lista, operação, editor embutido, duas configurações) para o dono aprovar.
+- **E8-E10** (#96): lista e estado da operação; editor embutido; seção "Conflitos" em Settings; banner informativo.
+- **E11** (#98): lista final de recursos e ordem dos passos (dono aprova); desenho do convite e do cartão.
+- **E12-E13** (#98): infraestrutura sob demanda (chunk separado, `data-tour`, convite); depois conteúdo nos seis idiomas
+  e teste "todo alvo existe". Medir pacote da primeira carga e CPU 4×.
+
+## 5. Decisões e armadilhas
+
+- Decidido sem o dono: ordem por risco (segurança, bugs de tela, conflitos, Tour). #98 por último: depende do menu
+  estreito (#97) e da tela de Conflitos (#96).
+- `.claude/triagem.local` é pessoal e fora do git; em sessão nova, o gate libera pelo `docs/HANDOFF.md`.
+- `CLAUDE.md` está com 200 linhas (o limite é "abaixo de 200"): quem editar o guia remove uma linha.
+- Instalar dependências em contêiner novo: `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`.
+
+## 6. Encerramento
+
+Só com a palavra do dono de que o trabalho acabou.
+
+- [ ] Todas as etapas fechadas; pendências viraram etapa, issue ou foram aceitas pelo dono
+- [ ] Documentação que o trabalho tornou falsa foi corrigida (`docs/PERFORMANCE.md`, README, `CLAUDE.md`, `.claude/`)
+- [ ] `git rm docs/HANDOFF.md`
+- [ ] Worktree usado removido, depois do último push
+- [ ] `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension` e `npm run perf:bundle` verdes
+- [ ] Resumo para o PR: o que mudou, antes e depois medidos, o que não foi conferido
+- [ ] PR para a `develop` só quando o dono pedir
