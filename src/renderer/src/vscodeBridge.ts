@@ -44,7 +44,7 @@ export function installVsCodeBridge(): boolean {
   let nextId = 0
   const pending = new Map<number, { resolve(value: unknown): void; reject(error: Error): void }>()
   const commandListeners = new Set<(entry: GitCommandEntry) => void>()
-  const changeListeners = new Set<(root?: string) => void>()
+  const changeListeners = new Set<(root?: string, external?: boolean) => void>()
 
   window.addEventListener('message', (event: MessageEvent<HostToWebview>) => {
     const message = event.data
@@ -58,9 +58,9 @@ export function installVsCodeBridge(): boolean {
     } else if (message.type === 'event') {
       if (message.channel === 'git:command') commandListeners.forEach((l) => l(message.payload as GitCommandEntry))
       else {
-        // O aviso do watcher traz `{ root }`; quem não traz (ou ganhou foco) avisa sem repositório.
-        const root = (message.payload as { root?: string } | undefined)?.root
-        changeListeners.forEach((l) => l(root))
+        // O aviso do watcher traz `{ root, external }`; quem não traz (ou ganhou foco) avisa sem repositório.
+        const payload = message.payload as { root?: string; external?: unknown } | undefined
+        changeListeners.forEach((l) => l(payload?.root, payload?.external === true))
       }
     }
   })

@@ -22,6 +22,11 @@
       "msCargaFrio": 5000
     }
   },
+  "perfUi": {
+    "comentario": "Tetos do scripts/perf/ui.mjs para Tour e Conflitos (E6 do Plano 4), medidos com CPU 4x, cenario moderate, 1500 arquivos em conflito: Tour +15 nos, 0 git, 16,0 ms/quadro; Conflitos 10 git (recarga inteira), 41 linhas, 4484 nos, 16,2 ms/quadro. Nao entra no qa.mjs.",
+    "tour": { "gitAbrir": 0, "nosAdicionais": 60, "msPorQuadro": 40 },
+    "conflitos": { "gitRecarga": 12, "linhasMontadas": 60, "nosDom": 5000, "msPorQuadroRolagem": 90 }
+  },
   "teclado": {
     "tetos": {
       "semNomeAcessivel": 0,

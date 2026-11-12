@@ -4724,7 +4724,12 @@ tr.nav-flash > td {
   gap: 8px;
 }
 .wip-title {
-  flex: none;
+  /* Encolhe com reticências em painel estreito: se fosse `flex: none`, o botão "Abrir" saía da janela (#140). */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
 }
 .wip-row.clean .wip-title {

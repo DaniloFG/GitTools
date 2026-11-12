@@ -8,7 +8,7 @@
 
 import { existsSync, watch, type FSWatcher } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { REPO_METHODS, type AppInfo, type DiffWindowRequest, type EditorInfo, type RecentRepo, type RepoMethod } from '../shared/api'
 import type { AnalyticsOptions, CherryPickOptions, CrossApply, FileDiff, GitCommandEntry, GitConfigScope, GitIdentity, OpenRepositories, OperationResult, RepoInfo } from '../shared/types'
 import { encodeDiffs } from '../shared/diffWire'
@@ -22,6 +22,28 @@ import { comparablePath, resolveInside } from '../core/paths'
 import { GitRepository } from '../core/repository'
 import { runTerminalCommand } from '../core/terminal'
 import { mapLimited } from './mapLimited'
+import { isExternal, isReadOnlyCommand, readSignature } from './gitSignature'
+
+/** Observação da pasta .git de um repositório aberto (ver gitSignature.ts para a assinatura). */
+interface WatchEntry {
+  watcher: FSWatcher
+  timer: NodeJS.Timeout | null
+  /** Pasta .git, resolvida ao observar. */
+  gitDir: string
+  /** Assinatura da .git logo após o último comando próprio que terminou; `null` até a primeira leitura. */
+  ownSig: string | null
+  /** Leitura da assinatura em andamento (ver `refreshOwnSignature`). */
+  sigPending: Promise<void> | null
+  /** Chegou comando próprio enquanto a leitura em andamento corria: a leitura precisa de uma rodada a mais. */
+  sigAgain: boolean
+  /**
+   * Comandos próprios de escrita ainda em andamento (ids do `onGitCommand`). Enquanto há algum, a assinatura própria é
+   * a de antes dele: a diferença é nossa, e o aviso não é externo (ver `announceChange`).
+   */
+  writing: Set<number>
+  /** Número do último aviso iniciado: um aviso que termina depois de um mais novo não emite (sai fora de ordem). */
+  announceSeq: number
+}
 
 /** O que cada ambiente (Electron, VS Code) precisa fornecer. */
 export interface BackendHost {
@@ -34,8 +56,8 @@ export interface BackendHost {
   /** Versões mostradas em Configurações → Sobre. */
   versions(): Pick<AppInfo, 'host' | 'version' | 'vscode' | 'electron' | 'chrome' | 'node' | 'platform'>
   /**
-   * Avisa a interface (todas as janelas): "git:command", ou "repo:changed" com `{ root }` do repositório
-   * que mudou.
+   * Avisa a interface (todas as janelas): "git:command", ou "repo:changed" com `{ root, external }` do repositório
+   * que mudou. `external` é true quando a pasta .git mudou sem um comando próprio (ver `announceChange`).
    */
   emit(channel: 'git:command' | 'repo:changed', payload?: unknown): void
   /** Pergunta uma pasta ao usuário; null se cancelar. */
@@ -82,7 +104,7 @@ export class Backend {
   private readonly comparableKeys = new Map<string, string>()
   /** Root do repositório ativo (o que a interface mostra), ou null. */
   activeRoot: string | null = null
-  private readonly watchers = new Map<string, { watcher: FSWatcher; timer: NodeJS.Timeout | null }>()
+  private readonly watchers = new Map<string, WatchEntry>()
   private readonly gitLog: GitCommandEntry[] = []
   private readonly allowed = new Set<string>(REPO_METHODS)
   private stopLog: () => void
@@ -101,6 +123,9 @@ export class Backend {
         this.gitLog.push(entry)
         if (this.gitLog.length > GIT_LOG_LIMIT) this.gitLog.splice(0, this.gitLog.length - GIT_LOG_LIMIT)
       }
+      // Comando nosso de escrita, ao começar e ao terminar (ver `trackOwnWrite`). Leitura não entra: uma alteração de
+      // fora que chegasse logo antes dela seria absorvida e sairia como não externa.
+      if (!isReadOnlyCommand(entry.args)) this.trackOwnWrite(entry)
       this.host.emit('git:command', entry)
     })
   }
@@ -293,7 +318,11 @@ export class Backend {
       watcher.on('error', () => {
         if (this.watchers.get(root)?.watcher === watcher) this.unwatch(root)
       })
-      this.watchers.set(root, { watcher, timer: null })
+      const entry: WatchEntry = { watcher, timer: null, gitDir, ownSig: null, sigPending: null, sigAgain: false, writing: new Set(), announceSeq: 0 }
+      this.watchers.set(root, entry)
+      // Assinatura inicial: a própria .git, sem comando nosso. Comandos que terminarem enquanto ela é lida entram
+      // na rodada seguinte (ver `refreshOwnSignature`).
+      this.refreshOwnSignature(entry)
     } catch {
       // Sem observação: a interface ainda atualiza ao ganhar foco e após cada operação.
     }
@@ -307,8 +336,73 @@ export class Backend {
     if (entry.timer) clearTimeout(entry.timer)
     entry.timer = setTimeout(() => {
       entry.timer = null
-      this.host.emit('repo:changed', { root })
+      void this.announceChange(root, entry)
     }, 250)
+  }
+
+  /**
+   * Avisa a interface de uma mudança na .git. `external` diz se a pasta .git está diferente do que deixou o último
+   * comando próprio (sem processo git: só stat). Não atualiza a assinatura própria: só comando nosso faz isso.
+   */
+  private async announceChange(root: string, entry: WatchEntry): Promise<void> {
+    const seq = ++entry.announceSeq
+    // Um comando nosso que acabou de terminar ainda pode estar contando a assinatura: espera, senão ele pareceria externo.
+    if (entry.sigPending) await entry.sigPending
+    const now = await readSignature(entry.gitDir)
+    // Um aviso mais novo começou depois deste: ele lê a assinatura mais tarde e é o que vale. Este não emite, para
+    // a interface não receber dois avisos fora de ordem.
+    if (seq !== entry.announceSeq) return
+    // Fechado (ou deixado de observar) enquanto esperava: não há o que avisar.
+    if (this.watchers.get(root) !== entry) return
+    // Comando próprio de escrita ainda rodando (um commit que demora, com hook): a mudança é dele, não de fora. Quando
+    // ele terminar, a assinatura própria passa a incluí-la (ver `trackOwnWrite`).
+    const external = entry.writing.size === 0 && isExternal(entry.ownSig, now)
+    this.host.emit('repo:changed', { root, external })
+  }
+
+  /**
+   * Recalcula a assinatura própria de um repositório observado. Rodadas que chegam enquanto outra corre não se
+   * acumulam: basta mais uma depois dela (`sigAgain`), porque a leitura em andamento pode ter sido tirada antes do
+   * comando terminar.
+   */
+  private refreshOwnSignature(entry: WatchEntry): void {
+    if (entry.sigPending) {
+      entry.sigAgain = true
+      return
+    }
+    const run = async () => {
+      do {
+        entry.sigAgain = false
+        entry.ownSig = await readSignature(entry.gitDir)
+      } while (entry.sigAgain)
+      // Sem `await` entre a última conferência e esta linha: quem chegar agora já vê a leitura encerrada.
+      entry.sigPending = null
+    }
+    entry.sigPending = run()
+  }
+
+  /**
+   * Comando próprio de escrita começou ou terminou em `command.cwd`. Ao começar, ele entra no conjunto `writing` do
+   * repositório observado; ao terminar, sai dele e a assinatura própria é recalculada (a mudança agora é nossa).
+   */
+  private trackOwnWrite(command: GitCommandEntry): void {
+    const starting = command.durationMs === undefined
+    for (const root of this.rootsContaining(command.cwd)) {
+      const entry = this.watchers.get(root)!
+      if (starting) entry.writing.add(command.id)
+      else {
+        entry.writing.delete(command.id)
+        this.refreshOwnSignature(entry)
+      }
+    }
+  }
+
+  /**
+   * Raízes observadas que contêm `cwd` (a própria raiz ou uma pasta dentro dela). Comparação crua: o cwd dos comandos
+   * é o mesmo `repo.root` que chaveia os observadores, então não precisa de disco no caminho do comando.
+   */
+  private rootsContaining(cwd: string): string[] {
+    return [...this.watchers.keys()].filter((root) => cwd === root || cwd.startsWith(root + sep))
   }
 
   /** Para de observar um repositório (e o aviso pendente, se houver). */
