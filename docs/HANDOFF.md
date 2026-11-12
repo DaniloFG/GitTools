@@ -49,6 +49,8 @@ R1-fix2: no Windows (Git Bash) o caminho chega como `C:\...` e o `/tmp` do teste
 R1-fix3: o `mkdir ENOENT` em `Backend.saveRecent` era gravação em segundo plano depois do `rmSync` do teste. Agora `saveRecent` entra em fila,
 `Backend.idle()` e `Controller.whenIdle()` esperam as gravações e o `afterEach` de `tests/extension.test.ts` as espera. O `onTaskUpdate`
 timeout do Windows (npm test ~6 min; a develop levou ~5 min) NÃO foi provado localmente (sem Windows): reconferir o CI.
+R1-fix4: o timeout `onTaskUpdate` no Windows vinha de 3 workers em 4 vCPUs (372 s de relógio, 1022 s somados, contra ~307 s da develop). `vitest.config.ts`
+usa metade dos núcleos no Windows (`maxWorkers`). Não provado localmente (sem Windows; no Linux com escala `win` 92 arquivos verdes): reconferir o CI.
 
 ## 3. Base de medição
 
