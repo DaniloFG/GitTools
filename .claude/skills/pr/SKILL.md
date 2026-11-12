@@ -49,5 +49,7 @@ Para cada PR, na ordem:
   deixa o merge na `homolog` se a ponta do PR está na história da `develop`, o PR tem o rótulo `validada-develop` (posto
   pela skill `validar`) e a origem não é a `develop`. Depois do merge, valide a `homolog`; só com as duas verdes o PR
   `homolog → main` é aberto. Vermelho: `PR PARADO <número> | <fase e trecho do log>`; a correção é da sessão de trabalho.
+- **Branches**: depois do merge a branch fica; não tente apagá-la nem a `develop`, `homolog` ou `main` (403 e
+  `gate-main.sh`). No PR da `homolog`, registre na descrição o SHA da ponta da branch, para a limpeza do dono.
 - `main`: **nunca** faz merge nem auto-merge, nem `merge_pull_request` nem `gh pr merge` com destino `main`. Quem faz é
   o dono ou o aprovador.

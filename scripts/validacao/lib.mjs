@@ -18,7 +18,11 @@ export const FASES = [
   { nome: 'build', comando: ['npm', 'run', 'build'] },
   { nome: 'build-extension', comando: ['npm', 'run', 'build:extension'] },
   { nome: 'perf-bundle', comando: ['npm', 'run', 'perf:bundle'] },
-  { nome: 'e2e', comando: ['node', 'scripts/validacao/e2e.mjs'] }
+  { nome: 'e2e', comando: ['node', 'scripts/validacao/e2e.mjs'] },
+  // QA não funcional na interface real (scripts/validacao/qa.mjs), com os tetos de orcamentos.json.
+  { nome: 'e2e-responsivo', comando: ['node', 'scripts/validacao/qa.mjs', 'responsivo'] },
+  { nome: 'e2e-desempenho', comando: ['node', 'scripts/validacao/qa.mjs', 'desempenho'] },
+  { nome: 'e2e-teclado', comando: ['node', 'scripts/validacao/qa.mjs', 'teclado'] }
 ]
 
 /**
@@ -139,17 +143,27 @@ function subcomando(args) {
 /**
  * Processos git que a navegação só de leitura não devia ter: os que terminaram com erro e os que alteram o
  * repositório. `stash list`, `branch --list` e `tag --list` são leitura e passam.
+ *
+ * Cenário que escreve de propósito (commit, stage, branch...) passa `escreve: true`: o motivo "altera o repositório"
+ * deixa de valer, mas "saiu com código ≠ 0" continua valendo, porque um comando de escrita que falha é um defeito.
+ * `tolerado` é o último recurso para uma saída ≠ 0 legítima e inevitável: as chamadas cujo texto (`git <args>`)
+ * casa com alguma expressão ficam fora da conta, por qualquer motivo. Cada uso pede um comentário no cenário.
  * @param {{ args: string[], exitCode?: number }[]} log entradas de `app:gitLog`
+ * @param {{ escreve?: boolean, tolerado?: RegExp[] }} [regras]
  */
-export function gitInesperado(log) {
+export function gitInesperado(log, { escreve = false, tolerado = [] } = {}) {
   const leitura = (args) => ['stash', 'branch', 'tag'].includes(subcomando(args)) && args.some((a) => a === 'list' || a === '--list' || a === '-l')
   const motivo = (e) => {
     if (e.exitCode !== undefined && e.exitCode !== 0) return `saiu com ${e.exitCode}`
-    if (ESCRITA.has(subcomando(e.args)) && !leitura(e.args)) return 'altera o repositório'
+    if (!escreve && ESCRITA.has(subcomando(e.args)) && !leitura(e.args)) return 'altera o repositório'
     return null
   }
+  // Expressão com a flag g ou y guarda posição entre chamadas: cada teste começa do zero.
+  const permitido = (texto) => tolerado.some((re) => ((re.lastIndex = 0), re.test(texto)))
   return log.flatMap((e) => {
+    const texto = `git ${e.args.join(' ')}`
+    if (permitido(texto)) return []
     const porque = motivo(e)
-    return porque ? [`git ${e.args.join(' ').slice(0, 100)} (${porque})`] : []
+    return porque ? [`${texto.slice(0, 104)} (${porque})`] : []
   })
 }

@@ -44,7 +44,7 @@ import { DIFF_MAX_BYTES } from '../shared/types'
 import { t } from '../shared/i18n'
 import { chunkArgs } from './chunk'
 import { GitError, runGit, type RunOptions, type RunResult } from './exec'
-import { resolveInside, resolveInsideReal } from './paths'
+import { resolveInside, resolveInsideParent, resolveInsideReal } from './paths'
 
 const DIFF_ARGS = [
   'diff',
@@ -796,7 +796,9 @@ export class GitRepository implements RepoApi {
    * é lido só até o teto: não se carrega centenas de MB do disco para mostrar um trecho.
    */
   private async untrackedDiff(path: string, uncapped = false): Promise<FileDiff> {
-    const full = await resolveInsideReal(this.root, path)
+    // `resolveInsideParent` e não `resolveInsideReal`: o `lstat` abaixo não segue o link do próprio arquivo, então
+    // um link não rastreado para fora ou quebrado precisa chegar ao diff de link (120000), não à recusa.
+    const full = await resolveInsideParent(this.root, path)
     const stat = await lstat(full)
     const mode = stat.isSymbolicLink() ? '120000' : stat.mode & 0o111 ? '100755' : '100644'
     const header = [
@@ -1692,8 +1694,9 @@ export class GitRepository implements RepoApi {
   // ---------------------------------------------------- editor de conflitos
 
   async conflictDetails(path: string): Promise<ConflictDetails> {
-    // Antes de qualquer leitura: "../", caminho absoluto e link que leva para fora são recusados, como nos demais métodos de arquivo.
-    const full = await resolveInsideReal(this.root, path)
+    // Antes de qualquer leitura: "../", caminho absoluto e pasta-link para fora são recusados, como nos demais métodos
+    // de arquivo. O link do próprio arquivo não é seguido: ele não é arquivo comum, então `working` fica null (abaixo).
+    const full = await resolveInsideParent(this.root, path)
     const stage = async (n: number) => {
       const { stdout, exitCode } = await this.git(['show', `:${n}:${path}`], { okExitCodes: [0, 128] })
       return exitCode === 0 ? stdout : null

@@ -37,6 +37,18 @@ homolog ──PR──▶ main                      (o Claude só abre o PR; o m
    ```
 3. Depois do merge na `develop` e da validação lá, remover `docs/HANDOFF.md` (se existir) e abrir o PR da **mesma branch de trabalho** com base `homolog`. Validada a homolog, abrir o PR `homolog → main` (o merge é do dono).
 
+## Ciclo de vida das branches
+
+A branch de trabalho nasce de `develop` e vai por PR para `develop`. Depois, a **mesma** branch vai por PR para `homolog`;
+por isso ela fica de pé até o fim do plano, e não se apaga logo após o merge na `develop`.
+
+- O Claude não apaga branches: apagar é do dono. `delete_branch_on_merge` fica desligado, porque apagar a branch no merge
+  tiraria a base do PR para a `homolog`.
+- Ao fim do plano, a central lista as branches já mergeadas na `homolog` e pede ao dono que as apague. `develop`, `homolog`
+  e `main` nunca são apagadas.
+- Antes de pedir a limpeza, registre o SHA da ponta da branch na descrição do PR para a `homolog`. Com o SHA, a
+  verificação segue funcionando mesmo sem a branch (compare por SHA e `refs/pull/N/head`).
+
 ## Proteção das branches
 
 As regras ficam em rulesets do GitHub e são aplicadas por `scripts/apply-branch-protection.sh` (idempotente; pode ser rodado de novo sempre que as regras mudarem):

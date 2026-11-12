@@ -58,6 +58,12 @@ Antes do último commit de código da etapa: `code-review` sobre o diff da etapa
 `src/core`, IPC, patches ou conflitos; `medium` no resto) e, se a etapa está marcada "Segurança: sim",
 `security-review`. Achado confirmado volta ao subagente; achado recusado, com o motivo no commit.
 
+Feature ou correção que muda o que aparece na tela só fecha com um cenário de ponta a ponta que reprovaria sem a
+mudança (skill `qa`, `.claude/rules/qa.md`), ou com `sem-e2e` justificado: a justificativa vai no commit e no
+HANDOFF, e quem abre o PR (central ou skill `pr`) põe o rótulo e a linha `sem-e2e:` no corpo. Confira o check `QA`
+verde: `node scripts/validacao/gate-cobertura.mjs` e `node scripts/validacao/pipeline.mjs` (é o que o `qa.yml`
+roda). A regra é a mesma de sempre: mudança de comportamento chega com teste; o cenário é a camada da tela.
+
 ## 3. Quando fechar antes do fim
 
 Feche o que está coerente e verificado, e registre o resto no HANDOFF, se:

@@ -40,4 +40,10 @@ export function montarRelatorio(dados: Omit<Relatorio, 'ok'>): Relatorio
 export function formatarRelatorio(relatorio: Relatorio): string
 
 export function classificarErros(erros: string[]): { reais: string[]; naoEncontrados: number; ok: boolean }
-export function gitInesperado(log: { args: string[]; exitCode?: number }[]): string[]
+export interface RegrasGit {
+  /** O cenário altera o repositório de propósito: só "saiu com código ≠ 0" reprova. */
+  escreve?: boolean
+  /** Chamadas (`git <args>`) fora da conta, por qualquer motivo. */
+  tolerado?: RegExp[]
+}
+export function gitInesperado(log: { args: string[]; exitCode?: number }[], regras?: RegrasGit): string[]

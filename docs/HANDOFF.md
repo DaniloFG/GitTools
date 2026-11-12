@@ -21,39 +21,29 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 
 ## 2. Estado
 
-**A seguir:** `R1`
+**A seguir:** `ENC`
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
-| R1 | #92 a #98, #100 a #105, #112 | Publicar o plano 1 na develop e validar | a fazer | | |
-| Q1 | #107 | Runner determinístico de cenários e2e | a fazer | | |
-| Q2 | #108 | Jornadas funcionais e regressões | a fazer | | |
-| Q3 | #109 | Responsividade, desempenho e teclado | a fazer | | |
-| Q4 | #110 | Esteira QA e gates de cobertura e merge | a fazer | | |
-| Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | a fazer | | |
-| B1 | #114 | Spike: branch apagada, restauração, pipeline | a fazer | | |
-| B2 | #115 | Política de ciclo de vida das branches no guia | a fazer | | |
-| B3 | #116 | Limpeza no fim do plano e trava contra apagar branches | a fazer | | |
-| D1 | #99 | Link não rastreado fora do repositório (descoberta) | a fazer | | |
+| R1 | #92 a #98, #100 a #105, #112 | Publicar o plano 1 na develop e validar | fechada | `38a0479` | PR #118 mergeado; validação da develop VALIDADO (árvore `951ac51`, [run](https://github.com/DaniloFG/GitTools/actions/runs/43154515685)) |
+| Q1 | #107 | Runner determinístico de cenários e2e | fechada | `48b7a9a` | 7 cenários em ~3,7 s; 1303 testes verdes |
+| Q2 | #108 | Jornadas funcionais e regressões | fechada | `cb8e437` | 27 cenários (20 novos) em ~31 s; mutação reprova #93, #94 e #97; 1312 testes verdes |
+| Q3 | #109 | Responsividade, desempenho e teclado | fechada | `1d56c8f` | 3 fases em ~10 s cada; 1322 testes verdes; teclado: 3 sem nome e 5 sem foco (#120) |
+| Q4 | #110 | Esteira QA e gates de cobertura e merge | fechada | `25d1b2a` | 1357 testes verdes; gate-main 61 (9 reprovam com o hook antigo); gate-cobertura 23 |
+| Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | fechada | `3f8edac` | 1357 testes verdes; `CLAUDE.md` em 199 linhas; só documentação |
+| B1 | #114 | Spike: branch apagada, restauração, pipeline | fechada (parcial) | ver git log | compare por SHA e `refs/pull/N/head` provados; DELETE não testável da sessão (403) |
+| B2 | #115 | Política de ciclo de vida das branches no guia | fechada | `4e222e5` | só documentação; `CLAUDE.md` em 199 linhas; typecheck e testes não rodados |
+| B3 | #116 | Limpeza no fim do plano e trava contra apagar branches | fechada | ver git log | 84 testes do gate-main (14 novos reprovam sem a trava); 1380 testes verdes |
+| D1 | #99 | Link não rastreado fora do repositório (descoberta) | fechada | `5115fc1` | 9 testes novos reprovavam sem a correção; correção do juiz em `D1-fix`; 1393 testes verdes |
 | ENC | #106, #113 | Encerramento: PRs, validações e issues | a fazer | | |
 
-### Última etapa fechada
+### Última etapa fechada: `D1` (#99)
 
-Plano 1 (issues #92 a #98, #100 a #105, #112) fechado em `6e36d23` e `1b48108`: telas Conflitos e Tour prontas,
-fluxo de PR, gates, backlog e autosave. **Sem PR e sem validação em ambiente ainda**: é o que R1 faz.
-
-R1-fix: o PR #118 ficou vermelho no macOS (`gate-issue.test.ts`, caminho `/tmp/../<projeto>`): o `realpath` BSD não tem `-m`.
-O `gate-issue.sh` agora normaliza em bash puro (`normalizar`), com teste que simula o `realpath` sem `-m`. Windows: reconferir o CI.
-R1-fix2: no Windows (Git Bash) o caminho chega como `C:\...` e o `/tmp` do teste não existia; o hook converte `C:\x` em `/c/x`
-(`para_posix`) e o teste monta o `..` a partir do tmp real. Reconferir o CI.
-R1-fix3: o `mkdir ENOENT` em `Backend.saveRecent` era gravação em segundo plano depois do `rmSync` do teste. Agora `saveRecent` entra em fila,
-`Backend.idle()` e `Controller.whenIdle()` esperam as gravações e o `afterEach` de `tests/extension.test.ts` as espera. O `onTaskUpdate`
-timeout do Windows (npm test ~6 min; a develop levou ~5 min) NÃO foi provado localmente (sem Windows): reconferir o CI.
-R1-fix4: o timeout `onTaskUpdate` no Windows vinha de 3 workers em 4 vCPUs (372 s de relógio, 1022 s somados, contra ~307 s da develop). `vitest.config.ts`
-usava metade dos núcleos (`maxWorkers`): PIOROU (npm test 435 s e 476 s), revertido em R1-fix5.
-R1-fix5: o log do Windows (job 130962380847) mostra gate-main 34,7 s, autosave 78,7 s e gate-issue 12,7 s por causa de `spawnSync` (git e bash) que prende o laço
-de eventos do worker >60 s. Os três arquivos agora usam spawn assíncrono (`executar`), sem mudar asserção; no Linux 1286 testes verdes. Não provado no Windows: reconferir o CI.
-**A tentar** se o CI Windows ainda falhar: cortar processos por teste (bash e git) nesses três arquivos, com contagem antes e depois.
+- **Feito**: `resolveInsideParent` (`src/core/paths.ts`) confere só a pasta-pai; `untrackedDiff` e `conflictDetails` a usam e deixam de falhar com link para fora ou quebrado (diff `120000` e `working: null`, sem ler o alvo). `readFile`, `writeFile`, `saveConflictResolution` e `hasConflictMarkers` seguem com `resolveInsideReal`. A asserção antiga de `path-safety.test.ts` que exigia rejeitar o link era o bug e foi trocada.
+- **security-review**: revisão manual do diff (a skill depende de `origin/HEAD`, ausente no clone): o último componente só passa por `lstat` e `readFile` guardado por `isFile()`; pasta-link para fora segue recusada (testes tentam o ataque). Limite aceito: janela lstat→readFile em `conflictDetails` já existia.
+- **Descoberta**: #124 (`gate-main.sh`: `git push origin :heads/develop`, `git update-ref -d` e ref em variável escapam da trava de apagar branch), só registrada.
+- **D1-fix (juiz)**: testes de link passam por `linkOrSkip` (`tests/helpers.ts`), que pula com motivo só se o SO negar o link (EPERM/EACCES/ENOSYS); testes novos de link em loop e para si mesmo. Nota sem implementar: #125 (`readFile` em `conflictDetails` segue o link se o arquivo for trocado entre `lstat` e a leitura) e, de passagem, `resolveInsideParent` com pasta em loop rejeita com ELOOP cru, não com a mensagem de "fora" (recusa segura).
+- **Não conferido**: builds, `perf:bundle`, Windows (ramo de pulo do `linkOrSkip` nunca exercitado, ambiente é Linux).
 
 ## 3. Base de medição
 
@@ -62,39 +52,11 @@ DOM (meta 20). Testes do plano 1: 1245 verdes (E13) mais os dos gates (111 nos t
 
 ## 4. Plano
 
-### Etapa `R1` — publicar o plano 1: PR da branch para a develop e validação
-
-- **Orquestra**: a central, com a skill `pr` (sessão em Haiku, `low`) e a skill `validar` (`gt-validador`)
-- **Ler antes**: `.claude/rules/github.md` (Fluxo de PR, Pipeline de validação), `.claude/skills/central/SKILL.md` (Encerramento)
-- **Aceite**: PR `ccr-8306091c-r5tduy → develop` (descrição pelo template, `Refs` das issues) mergeado com CI verde;
-  workflow `Validação (develop)` e o `gt-validador` com VALIDADO; evidência comentada em #92 a #98 e #100 a #105 e
-  #112; cada issue só fecha se os critérios dela foram conferidos (senão `status:em-revisao` e issue de correção)
-- **Testes**: o pipeline existente (typecheck, `npm test`, builds, `perf:bundle`, e2e das 7 telas)
-- **Segurança**: não. **Depende de**: nada
-- Vermelho: issue `bug` ligada à mãe, conserto na branch, novo merge e revalidação; não siga para a `homolog`.
-  O workflow nunca rodou no Actions: se ele próprio falhar, corrija-o (issue #103 reaberta se preciso).
-- Aqui NÃO se promove para a `homolog`: isso é o ENC, depois do QA novo.
-
 ### Etapas `Q1` a `Q5` — QA embutido (issue-mãe #106)
 
 - **Orquestra**: topo. **Ler antes**: a issue da etapa (aceite = critérios dela), `scripts/validacao/` e `docs/PERFORMANCE.md` seção 7
-- **Q1 #107** runner e relatório; **Q2 #108** jornadas e regressões das #92, #93, #94, #97; **Q3 #109** responsivo,
-  desempenho e teclado; **Q4 #110** workflow `QA` em PR e push (develop, homolog, main), gate de cobertura e trava no
-  `gate-main.sh`; **Q5 #111** `.claude/rules/qa.md`, skill `qa` e ajustes de `etapa`, `validar` e template de PR
 - **Testes**: unidade, tela, medição. **Segurança**: Q4 (hook e workflow): `security-review`. **Depende de**: R1; Q2 a Q4 dependem de Q1
 - Sem dependência nova em `package.json` (Playwright só no job, `npm i --no-save`). Determinismo: dados fixos, sem rede, sem `sleep` fixo.
-
-### Etapas `B1` a `B3` — ciclo de vida das branches (issue-mãe #113)
-
-- **Orquestra**: topo (B1 e B3), sonnet (B2, documentação). **Depende de**: B1 antes de B2 e B3
-- **B1 #114** spike com UMA pergunta e prazo curto, em branches descartáveis `spike/*`; resultado comentado na #113
-- **B2 #115** seção "Ciclo de vida das branches" em `github.md` e `CONTRIBUTING.md`; **B3 #116** passo de limpeza
-  em `central`/`pr` e `gate-main.sh` bloqueando apagar develop, homolog e main (`security-review`, testes com `gh` falso)
-- #117 (limpeza única das branches antigas) segue `bloqueada` até B1 e B3; entra aqui só se destravar.
-
-### Etapa `D1` — #99 (descoberta das etapas)
-
-- Skill `backlog` (C): se a #99 não tem os 4 campos, o `gt-planejador` a refina antes. Segurança de caminho: `security-review`.
 
 ### Etapa `ENC` — encerramento (skill `central`, "Encerramento do plano")
 

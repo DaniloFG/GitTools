@@ -7,6 +7,12 @@
 # `homolog` só passa se (a) a origem do PR não é a `develop`, (b) a ponta do PR já está na história da `develop`
 # (compare develop...SHA = behind ou identical) e (c) o PR tem o rótulo `validada-develop` (skill `validar`).
 # Consulta que falhou ou resposta ilegível em qualquer item bloqueia.
+# QA (issue #110): merge de PR com base `develop` ou `homolog` só passa se o check-run `QA` da ponta (head sha)
+# tem conclusão `success`. Consulta que falha, resposta vazia, sha ilegível, check ausente, `failure`, `in_progress`
+# ou conclusão null bloqueiam. Na homolog o QA é consultado só depois da promoção.
+# Branches protegidas (issue #116, defesa em profundidade da regra "o Claude não apaga branches"): apagar `main`,
+# `develop` ou `homolog` bloqueia por `git push --delete`, `git push origin :ref`, `git branch -d/-D` e
+# `gh api -X DELETE .../git/refs/heads/<ref>`. O proxy já responde 403 ao DELETE; o hook barra antes, com a mensagem.
 # Limites conhecidos (heurística sobre texto, não um parser de shell): `git push` sem destino com a main
 # já checada fora, `gh pr edit --base main` e `gh api --input arquivo.json` não são inspecionados.
 entrada=$(cat)
@@ -45,6 +51,15 @@ bloquear_validacao() {
   exit 2
 }
 
+# Bloqueio da regra de QA (issue #110): o check-run `QA` da ponta do PR precisa estar verde antes do merge.
+bloquear_qa() {
+  {
+    printf 'GATE DE QA: bloqueado. %s\n' "$1"
+    echo 'O job `QA` do workflow precisa estar verde na ponta do PR antes do merge.'
+  } >&2
+  exit 2
+}
+
 # O PR tem a homolog como base. Exige, nesta ordem: origem diferente da develop, ponta já na história da develop e
 # rótulo `validada-develop`. Qualquer dúvida bloqueia. Argumentos: dono repo origem sha tem_rotulo(true|false)
 exigir_promocao() {
@@ -68,6 +83,25 @@ exigir_promocao() {
   fi
 }
 
+# Exige o check-run `QA` da ponta com conclusão `success` (issue #110). Falha fechada: consulta que falha, resposta
+# vazia, sha ilegível, check ausente, `failure`, `in_progress` ou conclusão null bloqueiam. Argumentos: dono repo sha
+exigir_qa() {
+  local conclusao
+  if ! nome_valido "$1" || ! nome_valido "$2" || ! [[ $3 =~ ^[0-9a-fA-F]{7,64}$ ]]; then
+    bloquear_qa "não foi possível confirmar o check QA (dono, repositório ou commit da ponta inválido)."
+  fi
+  # O jq devolve a conclusão do primeiro check chamado QA; sem check ou sem conclusão, sai vazio.
+  if ! conclusao=$(gh_cmd api "repos/$1/$2/commits/$3/check-runs?check_name=QA&filter=latest" \
+    --jq '[.check_runs[] | select(.name=="QA") | .conclusion] | first // ""' 2>/dev/null); then
+    bloquear_qa "não foi possível consultar o check QA do commit ${3:0:12} (o gh falhou); na dúvida, bloqueia."
+  fi
+  case "$conclusao" in
+    success) ;;
+    '') bloquear_qa "o check QA do commit ${3:0:12} está ausente, sem conclusão ou em andamento." ;;
+    *) bloquear_qa "o check QA do commit ${3:0:12} não passou (conclusão: $conclusao)." ;;
+  esac
+}
+
 # Confere a base de um PR pela API. Qualquer dúvida bloqueia.
 verificar_pr() { # dono repo numero
   local base dados ref sha rotulo
@@ -89,12 +123,21 @@ verificar_pr() { # dono repo numero
     fi
     IFS=$'\t' read -r ref sha rotulo <<<"$dados"
     exigir_promocao "$1" "$2" "$ref" "$sha" "$rotulo"
+    # Depois da promoção: o QA só é consultado para um PR que já passou nela.
+    exigir_qa "$1" "$2" "$sha"
+  fi
+  if [ "$base" = develop ]; then
+    # A base veio sem a ponta: uma consulta a mais, só para o sha do QA.
+    if ! sha=$(gh_cmd api "repos/$1/$2/pulls/$3" --jq .head.sha 2>/dev/null) || [ -z "$sha" ]; then
+      bloquear_qa "não foi possível obter a ponta do PR #$3 (o gh falhou ou veio vazio); na dúvida, bloqueia."
+    fi
+    exigir_qa "$1" "$2" "$sha"
   fi
 }
 
 # Mesma checagem quando não há número (ramo ou PR do ramo atual) ou o -R não é "dono/repo".
 verificar_pr_por_seletor() { # seletor repo
-  local base dados ref sha rotulo args=(pr view)
+  local base dados ref sha rotulo dono_r repo_r args=(pr view)
   [ -n "$1" ] && args+=("$1")
   [ -n "$2" ] && args+=(-R "$2")
   if ! base=$(gh_cmd "${args[@]}" --json baseRefName --jq .baseRefName 2>/dev/null) || [ -z "$base" ]; then
@@ -112,12 +155,38 @@ verificar_pr_por_seletor() { # seletor repo
     IFS=$'\t' read -r ref sha rotulo <<<"$dados"
     if [ -z "$2" ]; then
       exigir_promocao '{owner}' '{repo}' "$ref" "$sha" "$rotulo"
+      exigir_qa '{owner}' '{repo}' "$sha"
     elif [[ $2 =~ ^([^/]+)/([^/]+)$ ]]; then
-      exigir_promocao "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "$ref" "$sha" "$rotulo"
+      dono_r=${BASH_REMATCH[1]} repo_r=${BASH_REMATCH[2]}  # copiado antes: as checagens seguintes sobrescrevem BASH_REMATCH
+      exigir_promocao "$dono_r" "$repo_r" "$ref" "$sha" "$rotulo"
+      exigir_qa "$dono_r" "$repo_r" "$sha"
     else
       bloquear_validacao "não foi possível confirmar a promoção (repositório '$2' fora do formato dono/repo)."
     fi
+  elif [ "$base" = develop ]; then
+    # Sem a ponta na consulta de base: pede o headRefOid. Mesma forma de dono/repo que a homolog usa acima.
+    if [ -z "$2" ]; then
+      dono_r='{owner}' repo_r='{repo}'
+    elif [[ $2 =~ ^([^/]+)/([^/]+)$ ]]; then
+      dono_r=${BASH_REMATCH[1]} repo_r=${BASH_REMATCH[2]}
+    else
+      bloquear_qa "não foi possível confirmar o check QA (repositório '$2' fora do formato dono/repo)."
+    fi
+    if ! sha=$(gh_cmd "${args[@]}" --json headRefOid --jq .headRefOid 2>/dev/null) || [ -z "$sha" ]; then
+      bloquear_qa "não foi possível obter a ponta do PR (o gh falhou ou veio vazio); na dúvida, bloqueia."
+    fi
+    exigir_qa "$dono_r" "$repo_r" "$sha"
   fi
+}
+
+re_protegida='^(refs/heads/|origin/|refs/remotes/origin/)?(main|develop|homolog)$'
+
+bloquear_apagar() {
+  {
+    printf 'GATE DE BRANCHES: bloqueado. %s\n' "$1"
+    echo 'O Claude não apaga branches (develop, homolog e main nunca são apagadas); a limpeza é do dono (.claude/rules/github.md).'
+  } >&2
+  exit 2
 }
 
 re_destino_main='^\+?([^:]*:)?(refs/heads/)?main$'
@@ -133,7 +202,32 @@ analisar_git() {
       *) break ;;
     esac
   done
+  if [ "${a[j]:-}" = branch ]; then
+    local apaga=0
+    for tok in "${a[@]:j+1}"; do
+      if [[ $tok == --delete || $tok =~ ^-[a-zA-Z]*[dD][a-zA-Z]*$ ]]; then apaga=1; fi
+    done
+    if [ "$apaga" = 1 ]; then
+      for tok in "${a[@]:j+1}"; do
+        if [[ $tok =~ $re_protegida ]]; then bloquear_apagar "git branch apagando a branch protegida $tok."; fi
+      done
+    fi
+    return 0
+  fi
   [ "${a[j]:-}" = push ] || return 0
+  local apaga_push=0
+  for tok in "${a[@]:j+1}"; do
+    if [[ $tok == --delete || $tok =~ ^-[a-zA-Z]*d[a-zA-Z]*$ ]]; then apaga_push=1; fi
+  done
+  for tok in "${a[@]:j+1}"; do
+    case "$tok" in
+      -*) ;;
+      *)
+        if [[ ${tok#+} =~ ^:(refs/heads/)?(main|develop|homolog)$ ]]; then bloquear_apagar "git push apagando a branch protegida (${tok#*:})."; fi
+        if [ "$apaga_push" = 1 ] && [[ $tok =~ $re_protegida ]]; then bloquear_apagar "git push --delete na branch protegida $tok."; fi
+        ;;
+    esac
+  done
   for tok in "${a[@]:j+1}"; do
     case "$tok" in
       --all|--mirror) bloquear "git push $tok pode atualizar a main." ;;
@@ -208,6 +302,13 @@ gh_api() { # endpoint metodo [campos...]
   # GraphQL não expõe a base na linha de comando: as mutações de merge são bloqueadas de saída.
   if [ "$ep" = graphql ] && [[ $SEG =~ mergePullRequest|enablePullRequestAutoMerge ]]; then
     bloquear "mutação GraphQL de merge de PR."
+  fi
+  if [ "$ep" = graphql ] && [[ $SEG =~ deleteRef ]]; then
+    bloquear_apagar "mutação GraphQL deleteRef (apagar branch)."
+  fi
+  # Apagar branch protegida pela API de refs (inclui o `/` codificado como %2F).
+  if [ "$metodo" = DELETE ] && [[ $ep =~ /git/refs/(heads(/|%2[Ff]))(main|develop|homolog)$ ]]; then
+    bloquear_apagar "gh api DELETE na branch protegida ${BASH_REMATCH[3]}."
   fi
   case "$metodo" in PUT|POST|PATCH) ;; *) return 0 ;; esac
   # (d) mudar a base para a main, por campo (-f base=main) ou por JSON ("base": "main").

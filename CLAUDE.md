@@ -93,6 +93,7 @@ Antes de fazer à mão, veja se a skill citada existe na lista da sessão; se n�
 | Trabalho grande, fase, plano, "continue de onde parou" | `planejar`; depois `central` e `etapa` |
 | Rodar, abrir, ver na tela, ponta a ponta, "confere se funciona" | `run-gittools` (a receita que `/run` e `/verify` procuram aqui) |
 | Lento, travando, otimizar, regressão, orçamento | `medir` |
+| Cenário de ponta a ponta, check `QA`, `sem-e2e`, tela nova no topo | skill `qa` (`.claude/rules/qa.md`) |
 | Revisar diff ou PR; fim de etapa | `code-review` (bugs; nível `medium`, ou `high` em `src/core`, IPC, patches e conflitos), depois `simplify` (reuso e limpeza) |
 | IPC, execução do git, terminal, caminho de arquivo, webview, dependência, workflow | `security-review` e `.claude/rules/seguranca.md` |
 | Gráficos e dashboards (`src/renderer/src/analytics`) | `dataviz` |
@@ -167,8 +168,7 @@ tarefa. Se você não consegue escrever os itens 2 a 5, ainda não entendeu a ta
    orçamentos. Em mudança de desempenho, o número é a prova: os dois vão no commit e na descrição do PR.
 4. **Tamanho do pacote.** `npm run perf:bundle`, depois dos dois builds: o CI reprova acima dos tetos do roteiro
    (700.000 bytes de JavaScript na primeira carga). Subir um teto, só com o motivo no commit.
-5. **Teste, tela e verde.** O teste novo reprovaria sem a mudança; o que mudou na tela foi visto na tela; `npm run
-   typecheck` e `npm test` verdes, rodados depois da última alteração de código.
+5. **Teste, tela e verde.** Mudança visível: cenário e2e (skill `qa`); `npm run typecheck` e `npm test` verdes após a última alteração.
 6. **Diga a verdade na entrega**: o que mudou, o que foi verificado (comando e resultado), antes e depois se mediu, e o
    que não foi conferido. Número só com a saída do comando que o gerou; medido fica separado de hipótese.
 
@@ -182,9 +182,9 @@ Regra que impede o pedido não se contorna em silêncio: explique o custo, propo
   entra no `include` do `tsconfig.node.json`. Gerado (`fileIcons.generated.ts`, `npm run build:icons`) não se edita à mão.
 - **Git e branches**: cada alteração nasce de `develop` numa branch própria (`feature/`, `fix/`, `docs/`, `chore/`,
   `refactor/`) e segue por PR branch → `develop`, a mesma branch → `homolog` (nunca `develop` → `homolog`) e `homolog` →
-  `main`; PR é obrigatório; merge na `main` é só do dono. Ao fim, remova o worktree
-  (`git worktree remove` e `git worktree prune`). Nada de force push, reescrita de histórico ou `--no-verify` em branch
-  compartilhada. A versão da extensão é automática: não suba o patch à mão (`CONTRIBUTING.md`, `publicacao.md`).
+  `main`; PR é obrigatório; merge na `main` é só do dono. O Claude não apaga branches (ver `.claude/rules/github.md`,
+  "Ciclo de vida das branches"). Ao fim, remova o worktree (`git worktree remove` e `git worktree prune`). Nada de
+  force push, reescrita de histórico ou `--no-verify` em branch compartilhada. Versão automática: não suba o patch à mão (`publicacao.md`).
 - Branch, commit e PR: sem Claude, IA, modelo ou ferramenta, nem `Co-Authored-By`, `Claude-Session` ou "Generated with".
 - **Este guia é código.** Mudou comando, pasta, orçamento ou jeito de trabalhar: corrija o `CLAUDE.md` e o `.claude/`
   juntos. Regra de área vai a `.claude/rules/`; procedimento, a skill; teto de 199 linhas (`/doctor prompt-audit`).

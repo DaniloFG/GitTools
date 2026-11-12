@@ -129,15 +129,18 @@ describe('parseArgs', () => {
 })
 
 describe('fasesDoPlano', () => {
-  it('roda as seis fases na ordem pedida', () => {
-    expect(fasesDoPlano({ so: null, igualA: null }).map((f) => f.nome)).toEqual(['typecheck', 'test', 'build', 'build-extension', 'perf-bundle', 'e2e'])
+  it('roda as nove fases na ordem pedida', () => {
+    expect(fasesDoPlano({ so: null, igualA: null }).map((f) => f.nome)).toEqual(['typecheck', 'test', 'build', 'build-extension', 'perf-bundle', 'e2e', 'e2e-responsivo', 'e2e-desempenho', 'e2e-teclado'])
     expect(FASES.find((f) => f.nome === 'e2e')?.comando).toEqual(['node', 'scripts/validacao/e2e.mjs'])
+    for (const fase of ['responsivo', 'desempenho', 'teclado']) {
+      expect(FASES.find((f) => f.nome === `e2e-${fase}`)?.comando).toEqual(['node', 'scripts/validacao/qa.mjs', fase])
+    }
   })
 
   it('com --igual-a a conferência de árvore vem primeiro', () => {
     const nomes = fasesDoPlano({ so: null, igualA: 'origin/develop' }).map((f) => f.nome)
     expect(nomes[0]).toBe(FASE_IGUAL)
-    expect(nomes).toHaveLength(7)
+    expect(nomes).toHaveLength(10)
   })
 
   it('--so reduz a uma fase', () => {
