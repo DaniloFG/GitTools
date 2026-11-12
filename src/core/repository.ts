@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { access, lstat, mkdir, open, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import type { LogOptions, RepoApi } from '../shared/api'
 import type {
@@ -44,7 +44,7 @@ import { DIFF_MAX_BYTES } from '../shared/types'
 import { t } from '../shared/i18n'
 import { chunkArgs } from './chunk'
 import { GitError, runGit, type RunOptions, type RunResult } from './exec'
-import { resolveInside, resolveInsideParent, resolveInsideReal } from './paths'
+import { openRegularFile, readRegularFile, resolveInside, resolveInsideParent, resolveInsideReal } from './paths'
 
 const DIFF_ARGS = [
   'diff',
@@ -426,7 +426,7 @@ async function exists(path: string | undefined): Promise<boolean> {
 
 /** Lê só os primeiros `bytes` bytes do arquivo (o descritor é fechado mesmo se a leitura falhar). */
 async function readFileHead(full: string, bytes: number): Promise<Buffer> {
-  const handle = await open(full, 'r')
+  const handle = await openRegularFile(full)
   try {
     const buffer = Buffer.alloc(bytes)
     const { bytesRead } = await handle.read(buffer, 0, bytes, 0)
@@ -595,7 +595,7 @@ export class GitRepository implements RepoApi {
       if (!stat.isFile() || stat.size > UNTRACKED_STATS_MAX_BYTES) return {}
       const cached = this.untrackedCache.get(path)
       if (cached && cached.size === stat.size && cached.mtimeMs === stat.mtimeMs) return cached.stats
-      const stats = countNewLines(await readFile(full))
+      const stats = countNewLines(await readRegularFile(full))
       this.untrackedCache.set(path, { size: stat.size, mtimeMs: stat.mtimeMs, stats })
       return stats
     } catch {
@@ -828,7 +828,7 @@ export class GitRepository implements RepoApi {
       return file
     }
     const capped = !uncapped && stat.size > DIFF_MAX_BYTES
-    let buffer = capped ? await readFileHead(full, DIFF_MAX_BYTES) : await readFile(full)
+    let buffer = capped ? await readFileHead(full, DIFF_MAX_BYTES) : await readRegularFile(full)
     if (buffer.subarray(0, 8000).includes(0)) {
       file.binary = true
       return file
@@ -1742,7 +1742,7 @@ export class GitRepository implements RepoApi {
     // do teto: a tela oferece manter um lado ou abrir no editor, em vez de dizer que o arquivo não pôde ser lido.
     const info = await lstat(full).catch(() => null)
     const tooLarge = info?.isFile() === true && info.size > EDITABLE_MAX_BYTES
-    const buffer = info?.isFile() === true && !tooLarge ? await readFile(full).catch(() => null) : null
+    const buffer = info?.isFile() === true && !tooLarge ? await readRegularFile(full).catch(() => null) : null
     const working = buffer ? buffer.toString('utf8') : null
     const binary = !!buffer?.subarray(0, 8000).includes(0) || [base, ours, theirs].some((t) => t?.includes('\0'))
     return { path, base, ours, theirs, working, binary, tooLarge }
@@ -1782,7 +1782,7 @@ export class GitRepository implements RepoApi {
     const info = await lstat(full)
     if (!info.isFile()) throw new Error(t('core.notAFile', { path }))
     if (info.size > EDITABLE_MAX_BYTES) return { path, content: null, binary: false, tooLarge: true, size: info.size }
-    const buffer = await readFile(full)
+    const buffer = await readRegularFile(full)
     if (buffer.subarray(0, 8000).includes(0)) return { path, content: null, binary: true, tooLarge: false, size: info.size }
     return { path, content: buffer.toString('utf8'), binary: false, tooLarge: false, size: info.size }
   }
