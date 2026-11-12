@@ -21,7 +21,7 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 
 ## 2. Estado
 
-**A seguir:** `Q5`
+**A seguir:** `B1`
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -30,23 +30,21 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 | Q2 | #108 | Jornadas funcionais e regressões | fechada | `cb8e437` | 27 cenários (20 novos) em ~31 s; mutação reprova #93, #94 e #97; 1312 testes verdes |
 | Q3 | #109 | Responsividade, desempenho e teclado | fechada | `1d56c8f` | 3 fases em ~10 s cada; 1322 testes verdes; teclado: 3 sem nome e 5 sem foco (#120) |
 | Q4 | #110 | Esteira QA e gates de cobertura e merge | fechada | `25d1b2a` | 1357 testes verdes; gate-main 61 (9 reprovam com o hook antigo); gate-cobertura 23 |
-| Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | a fazer | | |
+| Q5 | #111 | Regra qa, skill qa e fechamento do fluxo | fechada | `3f8edac` | 1357 testes verdes; `CLAUDE.md` em 199 linhas; só documentação |
 | B1 | #114 | Spike: branch apagada, restauração, pipeline | a fazer | | |
 | B2 | #115 | Política de ciclo de vida das branches no guia | a fazer | | |
 | B3 | #116 | Limpeza no fim do plano e trava contra apagar branches | a fazer | | |
 | D1 | #99 | Link não rastreado fora do repositório (descoberta) | a fazer | | |
 | ENC | #106, #113 | Encerramento: PRs, validações e issues | a fazer | | |
 
-### Última etapa fechada: `Q4` (#110)
+### Última etapa fechada: `Q5` (#111)
 
-- **Feito**: `.github/workflows/qa.yml` (job `QA`, PR e push em develop/homolog/main, `contents: read`, artefato do relatório);
-  `scripts/validacao/gate-cobertura.mjs` (+ `cobertura.mjs`): tela sem cenário e PR em `components/` sem cenário reprovam,
-  exceção `sem-e2e` (rótulo + linha `sem-e2e: <motivo>` no corpo); `gate-main.sh` exige check-run `QA` success na ponta
-  para merge em develop/homolog (falha de consulta bloqueia). `github.md` lista o `QA`.
-- **security-review** (manual sobre o diff): sem segredo, sem `pull_request_target`, corpo do PR nunca vai a shell, git sem shell.
-- **Não conferido**: execução do `qa.yml` no Actions e seu tempo (meta < 15 min); `git diff` real do PR; teste de sha ilegível.
-- **Limite**: o gate lê `screenVisibility.ts` e os cenários da árvore do PR, não da base. Dono (#101): exigir `QA` na proteção de branch.
+- **Feito**: `.claude/rules/qa.md` e skill `qa` (cenário, prova de reprovação, execução, relatório); `etapa`, `validar`,
+  `gt-validador` e template de PR exigem cenário e2e (ou `sem-e2e`) e o check `QA` verde; `testes.md` e `github.md` citam o QA.
+- **Não conferido**: execução real do `qa.yml` no Actions e seu tempo; `code-review` e `security-review` não rodaram (só documentação).
+- **Descoberta**: #121 (`gate-main.sh` pega o primeiro check `QA` do sha; push e PR duplicados podem esconder um vermelho). Não implementada.
 - **Atenção ENC**: `validacao.yml` e `qa.yml` rodam o mesmo pipeline em push na develop/homolog (custo dobrado); a ENC avalia.
+- **Limite**: o gate de cobertura só olha `components/`; exigir `QA` na proteção de branch é do dono (#101).
 
 ## 3. Base de medição
 
@@ -58,7 +56,6 @@ DOM (meta 20). Testes do plano 1: 1245 verdes (E13) mais os dos gates (111 nos t
 ### Etapas `Q1` a `Q5` — QA embutido (issue-mãe #106)
 
 - **Orquestra**: topo. **Ler antes**: a issue da etapa (aceite = critérios dela), `scripts/validacao/` e `docs/PERFORMANCE.md` seção 7
-- **Q5 #111** `.claude/rules/qa.md`, skill `qa` e ajustes de `etapa`, `validar` e template de PR
 - **Testes**: unidade, tela, medição. **Segurança**: Q4 (hook e workflow): `security-review`. **Depende de**: R1; Q2 a Q4 dependem de Q1
 - Sem dependência nova em `package.json` (Playwright só no job, `npm i --no-save`). Determinismo: dados fixos, sem rede, sem `sleep` fixo.
 
