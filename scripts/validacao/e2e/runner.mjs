@@ -285,7 +285,10 @@ export async function rodarE2e() {
     await app.page.route('**/favicon.ico', (rota) => rota.fulfill({ status: 204 }))
     const expect = criarExpect(app.page)
     const ambiente = criarAmbiente(app)
+    // E2E_SO=id1,id2 roda só esses cenários (mutações e depuração); sem a variável, todos.
+    const so = process.env.E2E_SO ? new Set(process.env.E2E_SO.split(',')) : null
     for (const cenario of carregados.cenarios) {
+      if (so && !so.has(cenario.id)) continue
       const r = await executarCenario(ambiente, cenario, expect, vigia)
       resultados.push(r)
       if (r.ok) console.log(`OK    ${r.id} — ${r.tela} (${r.nos} nós no DOM, ${r.ms} ms)`)

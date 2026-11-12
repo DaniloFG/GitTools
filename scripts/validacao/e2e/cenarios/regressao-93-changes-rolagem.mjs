@@ -157,7 +157,19 @@ export default {
     const original = app.page.viewportSize()
     expect.verdadeiro(original !== null, 'a janela deveria ter tamanho')
     try {
-      for (const v of VARIANTES) await rodarVariante(app, expect, v, original)
+      // Cada variante roda até o fim mesmo que outra tenha falhado: a mutação do overflow precisa aparecer
+      // reprovando em todas as posições, e não só na primeira que o loop alcança.
+      const falhas = []
+      for (const v of VARIANTES) {
+        try {
+          await rodarVariante(app, expect, v, original)
+          console.log(`${v.nome}: ok`)
+        } catch (erro) {
+          falhas.push(`[${v.nome}] ${String(erro?.message ?? erro)}`)
+          console.log(`${v.nome}: FALHOU`)
+        }
+      }
+      expect.igual(falhas, [], 'variantes reprovadas')
     } finally {
       // O arranjo e a janela são do navegador, não do cenário: sem isto os seguintes abririam com a lista num lugar só.
       await app.page.setViewportSize(original).catch(() => undefined)
