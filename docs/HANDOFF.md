@@ -16,7 +16,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E12` (#98, infraestrutura do Tour, conforme `docs/DESENHO-TOUR.md`, seção 8)
+**A seguir:** `E13` (#98, revisão dos textos, testes de conteúdo, tela e medições; seção 9 do `docs/DESENHO-TOUR.md`)
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
@@ -32,12 +32,14 @@ fechada está na mensagem do commit dela.
 | E9 | #96 editor embutido, banner informativo, F8, abas | fechada | `1fc81c2` | pacote JS 691.046/700.000; salvar+refresh 3 processos git; 320/480/640 sem rolagem horizontal |
 | E10 | #96 seção Conflitos nas configurações | fechada | `485aebb` | pacote JS 692.522/700.000; 1159 testes verdes |
 | E11 | #98 Tour: desenho e lista de passos | fechada | ver commit | `docs/DESENHO-TOUR.md` (150 linhas), 20 passos; juiz: 1ª rodada reprovou, 2ª só pediu fim de decisões abertas, aplicado |
-| E12-E13 | #98 Tour: infraestrutura (com textos dos 6 idiomas) e revisão/medições | a fazer | | |
+| E12 | #98 Tour: infraestrutura (com textos dos 6 idiomas) | fechada | ver commit | pacote JS 692.522 → 695.821/700.000; 1196 testes verdes |
+| E13 | #98 Tour: revisão, testes de conteúdo e medições | a fazer | | |
 
-### Última etapa fechada: `E11` (#98, desenho do Tour)
+### Última etapa fechada: `E12` (#98, infraestrutura do Tour)
 
-- `docs/DESENHO-TOUR.md` (só documentação): 20 passos, 3 sem repositório; convite no Welcome com `tourOffer` (`pending|accepted|dismissed`) só sem repositório recente; botão Tour no Welcome e seção `tour` nas configurações; passos 12-19 trocam de tela (volta ao estado inicial ao sair); passo 20 só mostra a aba; textos em `messages/tour/<idioma>.ts` (chunks `tour-<idioma>`), E12 leva os 6 idiomas.
-- Verificado: só `wc -l`/grep no documento; sem código, sem typecheck novo. **Não conferido**: custo em bytes do convite (hipótese ~3 KB de 7.478 de folga), `tourOffer` na extensão (critério de aceite da E12).
+- `src/renderer/src/tour.ts` (puro), `tourText.ts` (`loadTourTexts`/`tourT`), `components/Tour.tsx` + `tour.css` (chunk), `TourSection.tsx`, textos em `messages/tour/<idioma>.ts`, 7 chaves `tour.*` nos catálogos comuns, `tourOffer` em settings; convite no Welcome (`useRecentRepos` expõe `loaded`).
+- Verificado: typecheck, `npm test` (1196), `perf:bundle` 695.821 (webview) / 695.255 (Electron) de 700.000. **Não conferido**: nada visto na tela (320/480/640, RTL, claro/escuro, foco), nós no DOM, CPU 4×, processos git, `placeCard` sem teste (mover para `tour.ts`).
+- Limites aceitos: o passo `conflicts` quase sempre é pulado (cartão final lista); a faixa do rodapé pode cobrir alvo embaixo; pt-BR dos textos usa os nomes do doc (History, Changes), não os do app (Histórico, Alterações): E13 revisa; `opener` do foco é capturado na montagem do chunk.
 - **Remover `docs/DESENHO-TOUR.md` no encerramento** (`git rm`), junto do HANDOFF e do `ESBOCO-CONFLITOS.md`.
 
 ## 3. Base de medição
@@ -49,7 +51,6 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 
 ### Etapas seguintes (detalhar quando destravadas)
 
-- **E12** (#98): `docs/DESENHO-TOUR.md` seção 8 (módulo puro, `data-tour`, chunk, convite, `tourOffer` + extensão, seção, 6 idiomas). Medir pacote cedo.
 - **E13** (#98): revisão dos textos, testes "todo passo tem 6 idiomas" e "todo alvo existe", `run-gittools`, medições (seção 9).
 
 ## 5. Decisões e armadilhas
@@ -71,6 +72,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
   muda o conflito: use uma tag do ponto de partida.
 - **E8**: o `RepoView` é remontado por aba (`key`), por isso `conflictsStartupSeen` é módulo e o provedor fica no `AppProviders`. `.app > .dock-hidden` foi copiado para `styles.css` (a regra original só carrega com o chunk dos Dashboards). Esc da tela: `onKeyDown` no `<section>`, nunca `window` (regra da interface). Filtro "Decididas" só tem decisões lembradas de paradas anteriores.
 - **E9**: `conflict-save.mjs` roda de verdade (`node scripts/readme-media/conflict-save.mjs`) após `build:extension`; para viewport estreito o `.conflicts-row` só é clicável na aba Lista. `/skill security-review` falha sem `origin/HEAD`. A branch remota recebe commits de processo (#104/#105): `git fetch` e rebase antes de push.
+- **E12**: botão da seção Tour usa o evento `gittools:tour` na window (App ouve). Tour com repositório é desenhado no `RepoView` (troca de tela); sem repositório, no `App`.
 - Instalar dependências em contêiner novo: `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`.
 
 ## 6. Encerramento
