@@ -74,6 +74,7 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 - 2026-11-12: o arraste do Playwright não estende seleção em `td.code` do diff (também sem a mudança; caret cai fora do lugar, causa não achada). O cenário `diff-selecao-lado` aperta o mouse de verdade e estende a seleção pela API; não repetir a tentativa de `mouse.move` com o botão apertado.
 - 2026-11-12: etapa 3: CodeEditor/ConflictEditor (textarea) já eram `wrap=off`; só diff e `.merge-final` mudaram. `useWrapLines` é useState (vale só com o diff aberto, como o layout). Folga do bundle agora ~2.300 bytes: a etapa 4 não deve crescer a primeira carga. Não conferido: salto de rolagem ao alternar a quebra em diff grande; CJK conta 1 coluna em `--code-ch`.
 - 2026-11-12: etapa 4: o clique no History enviava o request certo (sha, path); o defeito só aparece em arquivo RENOMEADO (git aplica o pathspec antes do `-M`). Compare, staged (ChangesView/CommitDetails wip) e histórico de arquivo (FilesView, `FileHistoryEntry` sem `oldPath`) seguem sem `oldPath`: issues issue #161. `useFullFile` em `DiffWindow.tsx:56` roda antes do provider de settings (a janela ignora `diffFullFile`): issue #162.
+- 2026-11-12: etapa 4: os commits `d50e18e` e o do HANDOFF dela têm trailer `Co-Authored-By`/`Claude-Session` (contra o `CLAUDE.md`); histórico publicado não foi reescrito. Commits novos saem sem trailer. O canal `app:openDiffWindow` limita cada texto a 4096 caracteres (UTF-16).
 
 ## 6. Encerramento
 

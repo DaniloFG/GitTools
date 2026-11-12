@@ -79,19 +79,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+/** Teto de cada texto do pedido (caminhos, título, raiz, sha, refs): o pedido vai na URL da janela, então não cresce sem limite. */
+const DIFF_WINDOW_TEXT_MAX = 4096
+
+function isText(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= DIFF_WINDOW_TEXT_MAX
+}
+
 /**
  * Confere o pedido de `app:openDiffWindow` antes de ele chegar ao processo principal: a interface é nossa, mas o
- * canal não confia nela. Confere só o formato (kind conhecido, tipos dos campos); o caminho nunca toca o disco aqui.
+ * canal não confia nela. Confere o formato (kind conhecido, tipos dos campos e tamanho dos textos); o caminho nunca
+ * toca o disco aqui.
  */
 export function isDiffWindowRequest(request: unknown): request is DiffWindowRequest {
   if (!isRecord(request)) return false
   const { path, title, root, source } = request
-  if (typeof path !== 'string' || !isRecord(source)) return false
-  if (title !== undefined && typeof title !== 'string') return false
-  if (root !== undefined && typeof root !== 'string') return false
+  if (!isText(path) || !isRecord(source)) return false
+  if (title !== undefined && !isText(title)) return false
+  if (root !== undefined && !isText(root)) return false
   const { kind, sha, from, to, oldPath, path: caminho, fullFile, uncapped } = source
-  if (oldPath !== undefined && typeof oldPath !== 'string') return false
-  if (caminho !== undefined && typeof caminho !== 'string') return false
+  if (oldPath !== undefined && !isText(oldPath)) return false
+  if (caminho !== undefined && !isText(caminho)) return false
   if (fullFile !== undefined && typeof fullFile !== 'boolean') return false
   if (uncapped !== undefined && typeof uncapped !== 'boolean') return false
   switch (kind) {
@@ -99,9 +107,9 @@ export function isDiffWindowRequest(request: unknown): request is DiffWindowRequ
     case 'staged':
       return true
     case 'commit':
-      return typeof sha === 'string'
+      return isText(sha)
     case 'range':
-      return typeof from === 'string' && typeof to === 'string'
+      return isText(from) && isText(to)
     default:
       return false
   }

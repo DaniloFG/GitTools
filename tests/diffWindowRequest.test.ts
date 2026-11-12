@@ -37,4 +37,15 @@ describe('app:openDiffWindow: formato do pedido', () => {
     ]
     for (const pedido of invalidos) expect(isDiffWindowRequest(pedido)).toBe(false)
   })
+
+  // O pedido vai na URL da janela: cada texto tem teto de 4096 caracteres; no limite é aceito, um a mais, recusado.
+  it('limita cada texto do pedido a 4096 caracteres', () => {
+    const texto = (n: number) => 'x'.repeat(n)
+    expect(isDiffWindowRequest({ source: { kind: 'unstaged' }, path: texto(4096) })).toBe(true)
+    expect(isDiffWindowRequest({ source: { kind: 'unstaged' }, path: texto(4097) })).toBe(false)
+    expect(isDiffWindowRequest({ source: { kind: 'commit', sha: texto(4096) }, path: 'a.txt' })).toBe(true)
+    expect(isDiffWindowRequest({ source: { kind: 'commit', sha: texto(4097) }, path: 'a.txt' })).toBe(false)
+    expect(isDiffWindowRequest({ source: { kind: 'unstaged' }, path: 'a.txt', title: texto(4096) })).toBe(true)
+    expect(isDiffWindowRequest({ source: { kind: 'unstaged' }, path: 'a.txt', title: texto(100_000) })).toBe(false)
+  })
 })
