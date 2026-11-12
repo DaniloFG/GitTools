@@ -16,7 +16,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E13` (#98, revisão dos textos, testes de conteúdo, tela e medições; seção 9 do `docs/DESENHO-TOUR.md`)
+**A seguir:** `ENCERRAMENTO` (seção 6)
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
@@ -33,13 +33,12 @@ fechada está na mensagem do commit dela.
 | E10 | #96 seção Conflitos nas configurações | fechada | `485aebb` | pacote JS 692.522/700.000; 1159 testes verdes |
 | E11 | #98 Tour: desenho e lista de passos | fechada | ver commit | `docs/DESENHO-TOUR.md` (150 linhas), 20 passos; juiz: 1ª rodada reprovou, 2ª só pediu fim de decisões abertas, aplicado |
 | E12 | #98 Tour: infraestrutura (com textos dos 6 idiomas) | fechada | ver commit | pacote JS 692.522 → 695.821/700.000; 1196 testes verdes |
-| E13 | #98 Tour: revisão, testes de conteúdo e medições | a fazer | | |
+| E13 | #98 Tour: revisão, testes de conteúdo e medições | fechada | `4e931f5` | Tour aberto +15 nós (meta 20); pacote JS 695.821/700.000; 1245 testes verdes |
 
-### Última etapa fechada: `E12` (#98, infraestrutura do Tour)
+### Última etapa fechada: `E13` (#98, revisão e verificação do Tour)
 
-- `src/renderer/src/tour.ts` (puro), `tourText.ts` (`loadTourTexts`/`tourT`), `components/Tour.tsx` + `tour.css` (chunk), `TourSection.tsx`, textos em `messages/tour/<idioma>.ts`, 7 chaves `tour.*` nos catálogos comuns, `tourOffer` em settings; convite no Welcome (`useRecentRepos` expõe `loaded`).
-- Verificado: typecheck, `npm test` (1196), `perf:bundle` 695.821 (webview) / 695.255 (Electron) de 700.000. **Não conferido**: nada visto na tela (320/480/640, RTL, claro/escuro, foco), nós no DOM, CPU 4×, processos git, `placeCard` sem teste (mover para `tour.ts`).
-- Limites aceitos: o passo `conflicts` quase sempre é pulado (cartão final lista); a faixa do rodapé pode cobrir alvo embaixo; pt-BR dos textos usa os nomes do doc (History, Changes), não os do app (Histórico, Alterações): E13 revisa; `opener` do foco é capturado na montagem do chunk.
+- `placeCard` movido para `tour.ts` (6 testes); `tests/tourContent.test.ts` (6 idiomas, alvos `data-tour` existem); pt-BR do passo `screens` com os nomes do app; roteiro `scripts/readme-media/tour.mjs` (1280/640/480/320, claro/escuro, pt-BR e árabe, 0 erros de console, cartão dentro da janela).
+- Medido: +15 nós com o Tour aberto; pacote JS 695.821 (webview) / 695.255 (Electron). **Não conferido**: CPU 4× com o Tour aberto, processos git durante o passeio, foco/Esc/RTL visual (só limites geométricos), passo `conflicts` com conflito real.
 - **Remover `docs/DESENHO-TOUR.md` no encerramento** (`git rm`), junto do HANDOFF e do `ESBOCO-CONFLITOS.md`.
 
 ## 3. Base de medição
@@ -51,7 +50,6 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 
 ### Etapas seguintes (detalhar quando destravadas)
 
-- **E13** (#98): revisão dos textos, testes "todo passo tem 6 idiomas" e "todo alvo existe", `run-gittools`, medições (seção 9).
 
 ## 5. Decisões e armadilhas
 
@@ -73,6 +71,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 - **E8**: o `RepoView` é remontado por aba (`key`), por isso `conflictsStartupSeen` é módulo e o provedor fica no `AppProviders`. `.app > .dock-hidden` foi copiado para `styles.css` (a regra original só carrega com o chunk dos Dashboards). Esc da tela: `onKeyDown` no `<section>`, nunca `window` (regra da interface). Filtro "Decididas" só tem decisões lembradas de paradas anteriores.
 - **E9**: `conflict-save.mjs` roda de verdade (`node scripts/readme-media/conflict-save.mjs`) após `build:extension`; para viewport estreito o `.conflicts-row` só é clicável na aba Lista. `/skill security-review` falha sem `origin/HEAD`. A branch remota recebe commits de processo (#104/#105): `git fetch` e rebase antes de push.
 - **E12**: botão da seção Tour usa o evento `gittools:tour` na window (App ouve). Tour com repositório é desenhado no `RepoView` (troca de tela); sem repositório, no `App`.
+- **E13**: `ui.mjs` não percorre o Tour; os nós restantes (+16) após fechar são sprite de ícones e `<link>` do chunk das telas abertas, não do Tour.
 - Instalar dependências em contêiner novo: `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`.
 
 ## 6. Encerramento
