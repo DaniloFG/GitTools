@@ -86,3 +86,18 @@ export async function resolveInsideReal(root: string, relative: string): Promise
   if (!isWithin(caseKey(real), caseKey(realRoot))) throw new Error(t('main.outsideRepository'))
   return full
 }
+
+/**
+ * Como `resolveInsideReal`, mas confere só a pasta que contém o alvo, não o próprio alvo. Serve a quem usa
+ * `lstat` no último componente: esse método nunca segue o link do arquivo, então um arquivo-link para fora (ou
+ * quebrado) é tratado como o próprio link, sem ler o destino. A pasta, essa sim, é seguida pelo sistema
+ * (`pasta-link/fora.txt` sairia do repositório), por isso ela continua presa à raiz. Raiz (`.`) não tem pasta
+ * pai dentro do repositório: devolve direto.
+ */
+export async function resolveInsideParent(root: string, relative: string): Promise<string> {
+  const full = resolveInside(root, relative)
+  if (full === path.resolve(root)) return full
+  const [realRoot, real] = await Promise.all([realRootOf(root), realExisting(path.dirname(full))])
+  if (!isWithin(caseKey(real), caseKey(realRoot))) throw new Error(t('main.outsideRepository'))
+  return full
+}

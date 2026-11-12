@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os'
 import path, { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { resolveInside, resolveInsideReal } from '../src/core/paths'
+import { resolveInside, resolveInsideParent, resolveInsideReal } from '../src/core/paths'
 
 describe('resolveInside', () => {
   it('resolve um caminho relativo para absoluto dentro da raiz', () => {
@@ -76,5 +76,51 @@ describe('resolveInsideReal (links em disco)', () => {
   it('aceita alvo inexistente dentro do repositório (para escrita de arquivo novo)', async () => {
     const { root } = sandbox()
     await expect(resolveInsideReal(root, 'src/novo/x.txt')).resolves.toBe(join(root, 'src', 'novo', 'x.txt'))
+  })
+})
+
+// `resolveInsideParent` não segue o último componente: arquivo-link (para fora ou quebrado) é aceito, porque o
+// chamador só o inspeciona (lstat). A pasta que o contém continua presa dentro do repositório.
+describe('resolveInsideParent (último componente não é seguido)', () => {
+  const dirs: string[] = []
+  afterEach(() => {
+    while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  })
+
+  /** Um repositório (raiz) com src/a.txt e uma pasta irmã, fora dele, com um arquivo "secreto". */
+  function sandbox() {
+    const base = mkdtempSync(join(tmpdir(), 'gittools-parent-'))
+    dirs.push(base)
+    const root = join(base, 'repo')
+    const outside = join(base, 'fora')
+    mkdirSync(join(root, 'src'), { recursive: true })
+    mkdirSync(outside)
+    writeFileSync(join(root, 'src', 'a.txt'), 'dentro\n')
+    writeFileSync(join(outside, 'fora.txt'), 'SEGREDO FORA\n')
+    return { root, outside }
+  }
+
+  it('aceita arquivo-link para fora e link quebrado, devolvendo o caminho do próprio link', async () => {
+    const { root, outside } = sandbox()
+    symlinkSync(join(outside, 'fora.txt'), join(root, 'atalho.txt'), 'file')
+    symlinkSync(join(outside, 'nao-existe.txt'), join(root, 'quebrado.txt'), 'file')
+    await expect(resolveInsideParent(root, 'atalho.txt')).resolves.toBe(join(root, 'atalho.txt'))
+    await expect(resolveInsideParent(root, 'quebrado.txt')).resolves.toBe(join(root, 'quebrado.txt'))
+  })
+
+  it('recusa "../", caminho absoluto e pasta-link para fora (arquivo que existe ou não)', async () => {
+    const { root, outside } = sandbox()
+    symlinkSync(outside, join(root, 'link'), 'junction')
+    await expect(resolveInsideParent(root, '../fora/fora.txt')).rejects.toThrow()
+    await expect(resolveInsideParent(root, join(outside, 'fora.txt'))).rejects.toThrow()
+    await expect(resolveInsideParent(root, 'link/fora.txt')).rejects.toThrow()
+    await expect(resolveInsideParent(root, 'link/novo.txt')).rejects.toThrow()
+  })
+
+  it('aceita pasta-link para dentro do repositório e a própria raiz', async () => {
+    const { root } = sandbox()
+    symlinkSync(join(root, 'src'), join(root, 'alias'), 'junction')
+    await expect(resolveInsideParent(root, 'alias/a.txt')).resolves.toBe(join(root, 'alias', 'a.txt'))
+    await expect(resolveInsideParent(root, '.')).resolves.toBe(root)
   })
 })
