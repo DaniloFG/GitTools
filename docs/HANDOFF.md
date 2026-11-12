@@ -83,16 +83,9 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
   aparece em imagem estática: o e2e reproduz com `window.getSelection()`. #158: linhas longas quebram nos dois layouts.
 - **Privacidade**: prints do dono mostram nomes de repositórios e pessoas e o repositório é público: nenhuma imagem
   nem nome vai para commit, HANDOFF ou issue.
-- 2026-11-12: ordem 1 → 2(#160) → 3(#155) → 4(#158) → 5(#156) pelo levantamento (2 e 3 tocam `DiffView.tsx`; 4 tem causa incerta).
+- 2026-11-12: ordem 1 → 2(#155) → 3(#158) → 4(#156) pelo levantamento; #160 entrou depois como etapa 5.
 - 2026-11-12: `RebaseEditor` fora do escopo do #158 (não é editor de código); padrão da quebra = `true`.
 - 2026-11-12: etapa 4 começa por reprodução; se não reproduzir, o `gt-juiz` decide (não inventar correção).
-- 2026-11-12 (dono, via sessão pai): #160 entra como etapa 2. Em #155 o sintoma não aparece em imagem estática: o e2e
-  reproduz com `window.getSelection()`. #158: linhas longas quebram no lado a lado e no unificado.
-- **Privacidade**: prints do dono mostram nomes de repositórios e pessoas e o repositório é público: nenhuma imagem
-  nem nome vai para commit, HANDOFF ou issue.
-- 2026-11-12 (dono, via sessão pai): #160 entra como etapa 5 (as 1–3 já estavam fechadas). Em #155 o sintoma não
-  aparece em imagem estática: o e2e reproduz com `window.getSelection()`. #158: linhas longas quebram no lado a lado e no unificado.
-- **Privacidade**: prints do dono mostram nomes de repositórios e pessoas e o repositório é público: nenhuma imagem
   nem nome vai para commit, HANDOFF ou issue.
 - Gate: `.claude/triagem.local` com `media <assunto>` e `.claude/issue.local` (fora do git) em cada sessão de etapa.
 
