@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, realpathSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { afterEach, describe, expect, it, vi, type TestContext } from 'vitest'
@@ -253,7 +253,9 @@ describe('cada chamador de readRegularFile recusa o arquivo trocado por link ent
     const o = outside()
     const full = join(t.dir, nome)
     writeFileSync(full, 'antes\n')
-    swap.path = full
+    // macOS: tmpdir() fica em /var, que é link para /private/var. O produto abre o caminho resolvido por realpath,
+    // então o espião tem de comparar com esse caminho; senão a troca nunca acontece e o teste lê 'antes'.
+    swap.path = realpathSync.native(full)
     swap.run = () => {
       unlinkSync(full)
       linkOrSkip(ctx, o.file, full, 'file')
