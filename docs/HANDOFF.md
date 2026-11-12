@@ -28,7 +28,7 @@ fechada está na mensagem do commit dela.
 | Etapa | Issue | Objetivo | Orquestra | Estado | Commit |
 | --- | --- | --- | --- | --- | --- |
 | E1 | #143 (#142) | `origin/HEAD` garantido para code-review e security-review | sonnet | fechada | df18263 |
-| E2 | #144 (#135) | Teste por chamador de `readRegularFile` (link no lugar do arquivo) | sonnet | a fazer | |
+| E2 | #144 (#135) | Teste por chamador de `readRegularFile` (link no lugar do arquivo) | sonnet | fechada | 7a308ce |
 | E3 | #145 (#134) | Corrida da pasta-mãe trocada por link: fechar ou documentar | topo | a fazer | |
 | E4 | #146 (#132) | Aviso externo logo após ação da interface (`isOwnEcho`) | topo | a fazer | |
 | E5 | #147 (#92, #95) | Provas de conflitos e cherry-pick | topo | a fazer | |
@@ -41,24 +41,15 @@ Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede 
 
 ### Última etapa fechada
 
-E1 (`df18263`): hook `SessionStart` `.claude/hooks/origin-head.sh` aponta `origin/HEAD` para develop/homolog/main sem rede;
-`tests/origin-head.test.ts` 8/8; typecheck e `npm test` (1447) verdes. Skill `security-review` completa não rodada.
+**E2** (`7a308ce`): 4 testes em `tests/path-safety.test.ts` (espião de `open` troca o arquivo por link antes da abertura).
+Mutação por chamador reprova só o teste dele; typecheck verde, 1451 testes verdes. Sem mudança de produto;
+`security-review` não rodado (diff só de teste).
 
 ## 3. Base de medição
 
 Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
-
-### Etapa E2 — um teste por chamador de `readRegularFile` (#144, #135)
-
-- **Orquestra**: sonnet
-- **Arquivos prováveis**: `tests/path-safety.test.ts` ou `tests/repository.test.ts` (só testes).
-- **Ler antes**: `src/core/paths.ts` (`readRegularFile`), `src/core/repository.ts` (`conflictDetails`, `readFile`,
-  `untrackedDiff`), os 3 casos da E11 do Plano 2 em `tests/path-safety.test.ts`.
-- **Aceite**: `npx vitest run tests/path-safety.test.ts` verde; mutação por chamador (voltar à leitura antiga) reprova
-  o teste dele, anexada ao commit. Ler por `readFile(handle)` (espião de `repository.test.ts`).
-- **Testes**: integração com git real. **Segurança**: sim (`security-review`).
 
 ### Etapa E3 — corrida da pasta-mãe (#145, #134)
 
@@ -131,6 +122,7 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
 
 - 2026-11-12: o commit da E1 saiu com `Co-Authored-By`/`Claude-Session` (o lembrete de atribuição da plataforma contradiz o
   `CLAUDE.md`); próximas etapas: sem atribuição. Não reescrevi o histórico.
+- 2026-11-12 (E2): espião de teste vai em `open` (não em `lstat`, que `resolveInsideReal` também chama).
 
 ## 6. Encerramento
 
