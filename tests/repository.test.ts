@@ -638,4 +638,25 @@ describe('commitDetails e diff de commit: iguais ao caminho anterior', () => {
     const [mergeFile] = await t.repo.diff({ kind: 'commit', sha: merge })
     expect(mergeFile.path).toBe('feat.txt')
   })
+
+  it('diff de commit com caminho e oldPath acha a renomeação com uma linha mudada', async () => {
+    const t = await createRepo()
+    await t.commit('base', { 'a.txt': BASE, 'c.txt': 'c\n' })
+    await t.git('mv', 'a.txt', 'b.txt')
+    t.write('b.txt', lines('a', 'b', 'c', 'd', 'E', 'f', 'g', 'h', 'i', 'j'))
+    await t.git('add', '-A')
+    await t.git('commit', '-q', '-m', 'renomeia com mudança')
+    const sha = (await t.git('rev-parse', 'HEAD')).trim()
+
+    // Com o caminho antigo no pathspec, o git acha a renomeação e a comparação sai como R, +1 −1.
+    const [renamed] = await t.repo.diff({ kind: 'commit', sha, path: 'b.txt', oldPath: 'a.txt' })
+    expect(renamed).toMatchObject({ changeType: 'renamed', oldPath: 'a.txt', newPath: 'b.txt', path: 'b.txt', additions: 1, deletions: 1 })
+
+    // Sem -M (unstaged) o oldPath fica de fora: se entrasse, o c.txt alterado na pasta de trabalho apareceria aqui.
+    t.write('b.txt', lines('a', 'b', 'c', 'd', 'E', 'f', 'g', 'h', 'i', 'K'))
+    t.write('c.txt', 'c2\n')
+    const semOldPath = await t.repo.diff({ kind: 'unstaged', path: 'b.txt' })
+    expect(semOldPath.map((f) => f.path)).toEqual(['b.txt'])
+    expect(await t.repo.diff({ kind: 'unstaged', path: 'b.txt', oldPath: 'c.txt' })).toEqual(semOldPath)
+  })
 })
