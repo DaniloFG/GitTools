@@ -442,6 +442,11 @@ export class GitRepository implements RepoApi {
   private gitDirPath: Promise<string> | null = null
   /** Caminhos de MERGE_HEAD, rebase-merge etc.: não mudam enquanto o repositório está aberto. */
   private operationPaths: Promise<string[]> | null = null
+  /**
+   * Quantos commits o último cherry-pick de vários commits recebeu. O git só guarda os que faltam
+   * (`sequencer/todo`), então o total vem daqui; sem ele (app reaberto no meio) o banner não mostra "N de M".
+   */
+  private cherryTotal = 0
   /** O HEAD já foi visto existindo: os próximos logs dispensam o rev-parse de verificação. */
   private headBorn = false
 
@@ -895,14 +900,39 @@ export class GitRepository implements RepoApi {
         total: await readNumber(join(rebaseApply, 'last'))
       }
     }
-    if (hasCherry) return { kind: 'cherry-pick', head: await readHead(cherry) }
+    if (hasCherry) {
+      const progress = hasSequencer ? await this.cherryProgress(sequencer) : {}
+      return { kind: 'cherry-pick', head: await readHead(cherry), ...progress }
+    }
     if (hasRevert) return { kind: 'revert', head: await readHead(revert) }
     if (hasMerge) return { kind: 'merge', head: await readHead(merge) }
     if (hasSequencer) {
       const todo = await readFile(sequencer, 'utf8')
-      return { kind: /^\s*revert\b/.test(todo) ? 'revert' : 'cherry-pick' }
+      if (/^\s*revert\b/.test(todo)) return { kind: 'revert' }
+      return { kind: 'cherry-pick', ...(await this.cherryProgress(sequencer)) }
     }
+    this.cherryTotal = 0
     return { kind: 'none' }
+  }
+
+  /** `sequencer/todo` é desta sequência (e não de uma anterior ainda aberta): mesmos commits, na mesma ordem. */
+  private async isSequenceOf(ordered: string[]): Promise<boolean> {
+    const sequencer = (await this.resolveOperationPaths())[5]
+    const todo = await readFile(sequencer, 'utf8').catch(() => '')
+    const picks = todo.split('\n').filter((l) => /^\s*pick\b/.test(l)).map((l) => l.trim().split(/\s+/)[1] ?? '')
+    return picks.length === ordered.length && picks.every((short, i) => short !== '' && ordered[i].startsWith(short))
+  }
+
+  /**
+   * Passo "N de M" do cherry-pick em sequência, sem processo git: `sequencer/todo` lista o commit parado e os que
+   * faltam. Só vale se o total conhecido cobre o que falta (senão a lista é de outra operação).
+   */
+  private async cherryProgress(todoPath: string): Promise<{ step?: number; total?: number }> {
+    const todo = await readFile(todoPath, 'utf8').catch(() => '')
+    const remaining = todo.split('\n').filter((l) => /^\s*pick\b/.test(l)).length
+    const total = this.cherryTotal
+    if (remaining === 0 || total < remaining || total < 2) return {}
+    return { step: total - remaining + 1, total }
   }
 
   // ------------------------------------------------------- área de trabalho
@@ -1202,9 +1232,14 @@ export class GitRepository implements RepoApi {
     try {
       // Os commits vão pela entrada padrão (`--stdin`), na ordem em que o cherry-pick os aplica: sem limite de tamanho.
       await this.git([...args, '--stdin'], { input: ordered.map((s) => `${s}\n`).join('') })
+      this.cherryTotal = 0
       return { ok: true, message: t('core.commitsApplied', { count: ordered.length, target }), conflicts: [] }
     } catch (error) {
-      return this.conflictResult(error)
+      const result = await this.conflictResult(error)
+      // O total só vale depois que o git aceitou a sequência e parou nela: uma recusa (já há operação em andamento)
+      // não pode trocar o total da que está em curso.
+      if (result.conflicts.length > 0 && !options.noCommit && (await this.isSequenceOf(ordered))) this.cherryTotal = ordered.length
+      return result
     }
   }
 

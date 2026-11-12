@@ -277,7 +277,7 @@ export function ConflictsScreen({ locale }: { locale: string }) {
     kind === 'none'
       ? t('conflictsScreen.title')
       : `${t('conflictsScreen.title')} · ${t(OPERATION_LABEL[kind])}${
-          kind === 'rebase' && operation.step ? ` · ${t('conflictsScreen.step', { step: operation.step, total: operation.total ?? 0 })}` : ''
+          (kind === 'rebase' || kind === 'cherry-pick') && operation.step ? ` · ${t('conflictsScreen.step', { step: operation.step, total: operation.total ?? 0 })}` : ''
         }`
 
   const empty = rows.length === 0
