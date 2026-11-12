@@ -15,3 +15,5 @@ CLAUDE.local.md
 .claude/triagem.local
 .claude/issue.local
 validacao-out/
+.claude/autosave.stamp
+.claude/autosave.log

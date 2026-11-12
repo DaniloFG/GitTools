@@ -123,6 +123,23 @@ decide é você:
 
 O juiz nunca escreve código.
 
+## Limite de uso
+
+Antes de abrir cada etapa, `get_session` (a sua) e leia `external_metadata.rate_limit_info.status`. Se não for
+`allowed`, ou se o reset (`resetsAt`, epoch) estiver perto demais para a etapa caber:
+
+1. Se o HANDOFF em `origin/<branch>` está em dia, grave nele `PARADO: limite de uso` com onde parou (não abra etapa).
+2. Agende a retomada com `send_later` para alguns minutos depois de `resetsAt`, com a mensagem "Retomar o trabalho
+   `<trabalho>` pelo HANDOFF", e pare.
+
+O trabalho pendente não se perde: `.claude/hooks/autosave.sh` (hooks `Stop`, `SubagentStop`, `PreCompact`,
+`SessionEnd` e `PostToolUse` limitado) commita com `wip:` e envia a branch sem gastar tokens.
+
+**Gatilho vigia**: um `create_trigger` periódico da central, criado pelo orquestrador ao abrir o trabalho, que a
+reacorda. Ao acordar: se a etapa ativa falhou ou parou (`get_session`) e o limite voltou (`status: allowed`),
+`unarchive_session` ou `send_message` à etapa e retome pelo HANDOFF e pelo último commit `wip:`. Etapa em
+`working` ou limite ainda fechado: não faça nada. Apague o gatilho (`delete_trigger`) quando o plano acabar.
+
 ## Quando parar
 
 Só nestes casos, que são as paradas legítimas:

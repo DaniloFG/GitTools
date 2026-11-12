@@ -30,6 +30,10 @@ abre PR e não adianta a etapa seguinte.
 5. Diga em três linhas o que vai fazer e como vai saber que deu certo. Se o "Aceite" da etapa não for conferível,
    corrija-o no HANDOFF antes de começar.
 
+Retomando depois de um limite de uso: leia o último commit `wip:` (`git log --grep '^wip:' -1 --format=%B`) e o
+HANDOFF, e continue de onde parou. O `wip:` é salvamento do `.claude/hooks/autosave.sh`, nunca entrega: o commit
+final da etapa é verde e normal.
+
 ## 2. Executar em incrementos
 
 Para cada incremento (uma mudança coerente, que dá para verificar sozinha):

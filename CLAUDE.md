@@ -65,8 +65,7 @@ recurso (skill, agente, modelo) cada parte pede.
 
 - Na dúvida entre dois tamanhos, o maior. Média que cresce vira Grande: feche o incremento e rode `planejar`.
 - **Pedido novo no meio não entra no que está em curso.** Feche ou registre o atual e faça a triagem do novo.
-- **Toda sessão termina de um de dois jeitos**: entregue e verificado, ou com o estado escrito no `docs/HANDOFF.md`
-  para outra continuar. Trabalho pela metade só na conversa não existe.
+- **Toda sessão termina entregue e verificada, ou com o estado no `docs/HANDOFF.md`**; pela metade só na conversa não existe.
 
 ## Modo fábrica, juiz e a regra absoluta das etapas
 
@@ -76,7 +75,8 @@ recurso (skill, agente, modelo) cada parte pede.
   o `gt-juiz` e siga o veredito; (3) o juiz não resolve ou o item é grande: rótulo `precisa-refinamento` e
   `gt-planejador` (skill `backlog`), nunca devolve ao dono, registre no HANDOFF e **siga para a próxima etapa**.
   Achado de passagem vira issue `descoberta`, nunca refatoração no meio. Plano acabado: puxe o backlog pronto (`backlog`).
-- **Paradas legítimas**: só limite de uso ou plataforma indisponível, com estado e "A seguir" no HANDOFF.
+- **Paradas legítimas**: só limite de uso ou plataforma indisponível, com estado e "A seguir" no HANDOFF. O
+  `.claude/hooks/autosave.sh` salva o pendente (`wip:`) e a central agenda a retomada (skill `central`).
 - **REGRA ABSOLUTA: a triagem manda.** Pedido **Grande** nunca é implementado na sessão de entrada: ela roda `planejar`,
   grava `docs/HANDOFF.md` e abre a central. Código sem triagem é violação.
 - **Gate**: `.claude/hooks/gate-etapas.sh` (hook `PreToolUse`, `.claude/settings.json`) bloqueia o `gt-escritor` sem
