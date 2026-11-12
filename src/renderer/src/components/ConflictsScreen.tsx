@@ -180,8 +180,20 @@ export function ConflictsScreen({ locale }: { locale: string }) {
         return
       }
       if (e.key !== 'Escape') return
-      if (target?.closest('.conflict-editor')) return
       if (document.querySelector('.modal-backdrop, .context-menu')) return
+      if (target?.closest('.conflict-editor')) {
+        // Esc no editor fecha só o editor e devolve o foco à linha do arquivo (ou à tela, se a linha saiu da janela da
+        // lista). Num campo de texto o Esc fica com o campo: fechar descartaria o que foi digitado.
+        if (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
+        e.preventDefault()
+        const path = selected
+        setChosen(null)
+        requestAnimationFrame(() => {
+          const row = [...(rootRef.current?.querySelectorAll<HTMLElement>('.conflicts-row') ?? [])].find((el) => el.title === path)
+          ;(row ?? rootRef.current)?.focus({ preventScroll: true })
+        })
+        return
+      }
       setConflictsScreen(false)
     },
     [rows, shown, selected, select, setConflictsScreen]

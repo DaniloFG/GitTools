@@ -45,7 +45,9 @@ export default {
     await app.page.locator('.conflict-editor .merge-editor').waitFor()
 
     // Foco dentro do editor: o Esc vindo de lá fecha só o editor, não a tela.
-    await app.page.locator('.conflict-editor .merge-toolbar button').first().focus()
+    // Botão habilitado da barra do editor: o "anterior" fica desabilitado no primeiro conflito e não recebe foco.
+    await app.page.locator('.conflict-editor .merge-toolbar button:not([disabled])').first().focus()
+    expect.verdadeiro(await app.page.evaluate(() => !!document.activeElement?.closest('.conflict-editor')), 'o foco deveria estar dentro do editor antes do Esc')
     await app.page.keyboard.press('Escape')
     await expect.pagina(() => !document.querySelector('.conflict-editor'), null, 'editor fechado pelo Esc')
     expect.igual(await app.page.locator('.conflicts-screen').count(), 1, 'tela continua aberta depois do Esc no editor')

@@ -36,12 +36,14 @@ async function conflitoNovo(app, nome) {
   })
 }
 
-/** Resolve todos os arquivos pela tela ("Use current" no cabeçalho do editor) e espera Continue habilitado. */
+/** Resolve todos os arquivos pela tela e espera Continue habilitado. */
 async function resolverTodos(app, expect) {
   for (let restam = ARQUIVOS; restam > 0; restam--) {
     await app.page.locator('.conflicts-row').first().click()
     await app.page.locator('.conflict-editor .merge-editor').waitFor()
-    await app.page.locator('.conflict-file-actions button', { hasText: /^Use current$/ }).click()
+    // "Use incoming" (o lado que está sendo aplicado): o resultado difere de HEAD, então o Continue cria um commit. Com
+    // "Use current" o resultado seria igual a HEAD, o cherry-pick ficaria vazio e o `--continue` sairia com erro.
+    await app.page.locator('.conflict-file-actions button', { hasText: /^Use incoming$/ }).click()
     // Sem o arquivo resolvido, o total também cai: o contador é "Pending: N of N".
     await expect.pagina((n) => document.querySelector('.conflicts-counts')?.textContent === `Pending: ${n} of ${n}`, restam - 1, `contador com ${restam - 1} pendentes`)
   }

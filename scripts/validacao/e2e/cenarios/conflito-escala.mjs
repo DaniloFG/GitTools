@@ -11,8 +11,9 @@ export default {
   id: 'conflito-escala',
   tela: 'Conflitos',
   area: 'conflitos',
-  // Medido com a execução do próprio cenário (ver o relatório de E8): teto de nós com folga de ~25%.
-  orcamento: { ms: 60000, nos: 100000, erros: 0, git: 0 },
+  // Medido em duas execuções do e2e (E8): 3880 nós no DOM da página inteira, 5395 ms de passos (com a preparação dos
+  // 1500 arquivos). Teto de nós com folga de ~25% (3880 × 1,25 = 4850); tempo com folga larga, para não virar ruído.
+  orcamento: { ms: 15000, nos: 4850, erros: 0, git: 0 },
   async passos(app, expect) {
     await app.repoNovo({
       wip: false,
@@ -51,7 +52,7 @@ export default {
     const antes = await ids()
     await app.page.locator('button.operation-title').click()
     await app.page.locator('.conflicts-screen').waitFor()
-    await expect.pagina(() => document.querySelector('.conflicts-counts')?.textContent === 'Pending: 1500 of 1500', null, 'contador da tela com 1500 pendentes')
+    await expect.pagina(() => document.querySelector('.conflicts-counts')?.textContent === 'Pending: 1,500 of 1,500', null, 'contador da tela com 1500 pendentes')
     // Espera a abertura assentar: duas leituras iguais do log, todos os processos terminados.
     let ultimo = -1
     await expect.ate(async () => {
