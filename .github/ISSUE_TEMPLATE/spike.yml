@@ -1,0 +1,47 @@
+name: Spike
+description: Investigação com prazo curto para formar o conceito de uma issue que não está pronta para implementar. Nada é feito sem issue.
+title: "Spike: "
+labels: ["spike", "status:planejada"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Uma pergunta só. O spike entrega uma resposta ou decisão, não código de produção. Ligue-o à issue-mãe (`.claude/rules/github.md`).
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Escopo
+      description: A pergunta a responder (uma só) e o que fica de fora.
+    validations:
+      required: true
+  - type: input
+    id: prazo
+    attributes:
+      label: Prazo máximo
+      description: Tempo limite da investigação. Estourou, registre o que se sabe e feche com a melhor decisão disponível.
+      placeholder: "ex.: 1 sessão"
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Critérios de aceite
+      description: A decisão ou resposta esperada, em checklist. Cada item precisa ser conferível (comentário na issue-mãe com a resposta, medição, protótipo descartado).
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: consideracoes
+    attributes:
+      label: Considerações técnicas
+      description: O que já se sabe, hipóteses a testar, arquivos prováveis, riscos de desempenho e segurança.
+    validations:
+      required: true
+  - type: textarea
+    id: testes
+    attributes:
+      label: Testes
+      description: Como a resposta será provada (medição, protótipo, leitura do código) e que testes a issue-mãe ganha depois dela.
+    validations:
+      required: true

@@ -243,6 +243,8 @@ export interface ConflictDetails {
   /** Conteúdo atual do arquivo na pasta, com os marcadores de conflito. */
   working: string | null
   binary: boolean
+  /** Arquivo da pasta acima do teto do editor (2 MB): `working` vem null, e a tela diz que o motivo é o tamanho. */
+  tooLarge: boolean
 }
 
 // ------------------------------------------------------------ comparação

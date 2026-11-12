@@ -130,6 +130,11 @@
   border-radius: 12px;
   background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
   backdrop-filter: blur(6px);
+  /* Issue #94: o backdrop-filter já cria contexto de empilhamento, mas com z-index auto os cartões (que vêm depois
+     na árvore) cobriam o popover de pessoas. z 20 põe a barra acima de .dash-scroll e dos cartões, e abaixo do
+     menu de contexto (30). */
+  position: relative;
+  z-index: 20;
 }
 .dash-filters .segmented button {
   padding: 3px 10px;
@@ -206,6 +211,15 @@
   border-radius: 12px;
   background: var(--bg-elevated);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+/* Posição decidida por popoverPlacement.ts (o componente põe estas classes): sobe, ou alinha pela borda direita. */
+.dash-popover.up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+.dash-popover.end {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
 }
 .dash-popover ul {
   flex: 1;

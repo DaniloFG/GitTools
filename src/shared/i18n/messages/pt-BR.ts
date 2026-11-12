@@ -479,19 +479,22 @@ export const ptBR = {
     abortFilesMessage: 'Voltar os arquivos em conflito para a versão do último commit?',
     abortMessage: 'Desfazer a operação e voltar ao estado de antes de começar?',
     conflictsHelp: {
-      one: '{count} arquivo em conflito. Escolha uma versão ou edite e marque como resolvido.',
-      other: '{count} arquivos em conflito. Para cada um, escolha uma versão ou edite e marque como resolvido.'
+      one: '{count} arquivo em conflito. Clique nesta faixa para resolvê-lo na tela Conflitos.',
+      other: '{count} arquivos em conflito. Clique nesta faixa para resolvê-los na tela Conflitos.'
     },
     noConflicts: 'Sem conflitos pendentes. Continue para concluir.',
-    sideBySide: 'Resolver lado a lado',
-    sideBySideHelp: 'Comparar a versão atual com a que entra e escolher bloco a bloco',
     useOursHelp: 'Mantém a versão da branch atual (HEAD)',
     useTheirsHelp: 'Mantém a versão que está sendo aplicada',
     resolved: 'Resolvido',
     resolvedHelp: 'Já editei o arquivo e removi os marcadores <<<<<<< >>>>>>>',
     continue: 'Continuar',
     skip: 'Pular este commit',
-    showChanges: 'Ver alterações'
+    showChanges: 'Ver alterações',
+    reuseBoth: 'Você já escolheu «nosso» para {ours} arquivo(s) e «deles» para {theirs} em commits anteriores: {files}',
+    reuseOurs: 'Você já escolheu «nosso» para {count} arquivo(s) em commits anteriores: {files}',
+    reuseTheirs: 'Você já escolheu «deles» para {count} arquivo(s) em commits anteriores: {files}',
+    reuseApply: 'Aplicar',
+    reuseIgnore: 'Ignorar'
   },
   studio: {
     name: 'Cherry-pick Studio',
@@ -559,8 +562,6 @@ export const ptBR = {
     includesIntermediate: '(inclui os commits intermediários)'
   },
   conflictBulk: {
-    title: 'Resolver todos',
-    resolveAllLabel: 'Resolver todos:',
     keepOurs: 'Manter todos locais (ours)',
     keepOursHelp: 'Mantém a versão da branch atual (HEAD) em todos os arquivos em conflito',
     takeTheirs: 'Aceitar todos os recebidos (theirs)',
@@ -586,13 +587,45 @@ export const ptBR = {
     },
     done: { one: '1 arquivo resolvido.', other: '{count} arquivos resolvidos.' },
     partial: 'Resolvidos: {resolved}. Não resolvidos: {failed} ({list}).',
-    filterLabel: 'Filtrar arquivos em conflito',
-    filterPlaceholder: 'Filtrar arquivos…',
-    showing: 'Mostrando {shown} de {count}',
     noMatch: 'Nenhum arquivo corresponde ao filtro.',
     notConflicted: 'Não está em conflito',
     hasMarkers: 'Ainda tem marcadores de conflito',
     stillConflicted: 'Continua em conflito'
+  },
+  conflictsScreen: {
+    title: 'Conflitos',
+    open: 'Abrir a tela Conflitos',
+    step: 'passo {step} de {total}',
+    counts: 'Pendentes: {pending} de {total}',
+    filterKind: 'Filtrar por tipo de conflito',
+    kindAll: 'Todos os tipos',
+    filterSituation: 'Filtrar por situação',
+    situationAll: 'Todas as situações',
+    situationPending: 'Pendentes',
+    situationDecided: 'Decididas',
+    searchLabel: 'Buscar arquivo por nome',
+    searchPlaceholder: 'Buscar por nome…',
+    listLabel: 'Arquivos em conflito',
+    tabsLabel: 'Visão dos conflitos',
+    tabList: 'Lista',
+    tabEditor: 'Editor',
+    fileActions: 'Ações do arquivo selecionado',
+    empty: 'Nenhum arquivo em conflito.',
+    sideOurs: 'Nosso',
+    sideTheirs: 'Deles',
+    remembered: 'Você já escolheu este lado em um commit anterior: {side}',
+    help: 'Selecione um arquivo para resolver lado a lado',
+    helpDetail: 'Clique num arquivo para abri-lo no painel do editor e resolvê-lo ali. F8 vai para o próximo arquivo pendente. A ação para todos os arquivos fica na barra abaixo.',
+    mergeFooter: 'Em merge, depois de resolver os conflitos, faça o commit em Alterações.',
+    kinds: {
+      bothModified: 'Ambos modificaram',
+      bothAdded: 'Ambos adicionaram',
+      bothDeleted: 'Ambos removeram',
+      addedByUs: 'Adicionado por nós',
+      addedByThem: 'Adicionado por eles',
+      deletedByUs: 'Removido por nós',
+      deletedByThem: 'Removido por eles'
+    }
   },
   conflict: {
     titleShort: 'Conflito em {path}',
@@ -602,6 +635,7 @@ export const ptBR = {
     deletedByUs: 'A branch atual removeu este arquivo, mas a versão que entra o alterou.',
     deletedByThem: 'A versão que entra removeu este arquivo, mas a branch atual o alterou.',
     unreadable: 'Não foi possível ler o arquivo.',
+    tooLarge: 'Arquivo grande demais para o editor: escolha manter a versão atual ou a que entra, ou abra o arquivo no editor.',
     deleteFile: 'Remover o arquivo',
     keepOurs: 'Manter a versão atual (HEAD)',
     keepTheirs: 'Manter a versão que entra',
@@ -791,6 +825,8 @@ export const ptBR = {
       detected: 'Detectado: {language}',
       multiRepo: 'Detectar vários repositórios no workspace',
       multiRepoHelp: 'Ao abrir o GitTools no VS Code, abre cada repositório (.git) encontrado no workspace na sua própria aba e acompanha os repositórios novos que aparecerem.',
+      autoContinue: 'Continuar automaticamente após resolver os conflitos',
+      autoContinueHelp: 'Em cherry-pick, revert ou rebase, ao resolver o último arquivo em conflito de uma parada, o GitTools continua sozinho para a próxima. Não vale para merge.',
     },
     appearance: {
       title: 'Aparência',
@@ -850,6 +886,18 @@ export const ptBR = {
       reset: 'Restaurar padrão',
       show: 'Mostrar exemplo'
     },
+    conflicts: {
+      title: 'Conflitos',
+      description: 'Como a tela Conflitos se comporta ao terminar uma operação e ao abrir o app.',
+      summary: 'Ao terminar a operação',
+      summaryHelp: 'Quando a operação terminar, a tela fecha e volta à tela anterior.',
+      summaryKeep: 'Manter o resumo até eu fechar',
+      summaryClose: 'Fechar sozinha',
+      startup: 'Ao abrir o app com conflito pendente',
+      startupHelp: 'Vale na primeira leitura de cada repositório na sessão, quando ele já tem conflito.',
+      startupOpen: 'Abrir a tela direto, mantendo banner e alerta',
+      startupBanner: 'Só banner e alerta (a tela abre ao clicar)'
+    },
     about: {
       title: 'Sobre',
       description: 'Versões e informações do sistema.',
@@ -907,7 +955,8 @@ export const ptBR = {
       multiSelect: 'Selecionar vários commits ou arquivos',
       lineRange: 'Selecionar um intervalo de linhas no diff',
       commit: 'Confirmar o commit',
-      close: 'Fechar diálogo ou menu'
+      close: 'Fechar diálogo ou menu',
+      nextConflictFile: 'Próximo arquivo em conflito pendente (tela Conflitos)'
     },
     helpTitle: 'Atalhos de teclado',
     helpFooter: 'Os atalhos podem ser alterados em Configurações → Atalhos de teclado.',
@@ -1762,5 +1811,18 @@ export const ptBR = {
     urlMissing: 'A URL {url} não é um destino de push próprio deste remote.',
     invalidName: 'Nome de remote inválido: use letras, números, ponto, hífen ou sublinhado.',
     invalidUrl: 'Informe a URL do remote (ela não pode começar com "-").'
+  },
+  tour: {
+    invite: {
+      title: 'Quer um passeio pela interface?',
+      accept: 'Fazer o Tour',
+      dismiss: 'Agora não'
+    },
+    button: 'Tour',
+    settings: {
+      title: 'Tour',
+      description: 'Um passeio rápido que destaca as partes principais da interface, sem alterar nada.',
+      start: 'Fazer o Tour'
+    }
   }
 }

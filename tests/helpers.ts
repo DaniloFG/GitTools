@@ -1,8 +1,8 @@
 import { setLocale } from '../src/shared/i18n'
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { afterEach } from 'vitest'
+import { afterEach, type TestContext } from 'vitest'
 import { onGitCommand, runGit } from '../src/core/exec'
 import { GitRepository } from '../src/core/repository'
 
@@ -62,3 +62,19 @@ export async function createRepo(): Promise<TestRepo> {
 }
 
 export const lines = (...items: string[]) => items.map((l) => `${l}\n`).join('')
+
+/**
+ * Cria um link simbólico ou pula o teste, se o sistema negar a criação. No Windows, criar link exige privilégio (ou
+ * o modo de desenvolvedor), e a negativa vem como EPERM; EACCES e ENOSYS também são negativas do sistema. Qualquer
+ * outro erro é falha de verdade e sobe. Não pula por plataforma: Linux e macOS criam o link e rodam o teste.
+ */
+export function linkOrSkip(ctx: TestContext, target: string, path: string, type: 'file' | 'dir' | 'junction'): void {
+  try {
+    symlinkSync(target, path, type)
+  } catch (error) {
+    const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined
+    // `ctx.skip` lança a exceção que encerra o teste como pulado: por isso o `throw` abaixo não é alcançado nesse caso.
+    if (code === 'EPERM' || code === 'EACCES' || code === 'ENOSYS') ctx.skip('sem permissão para criar link simbólico')
+    throw error
+  }
+}

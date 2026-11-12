@@ -1,0 +1,104 @@
+/* Tour guiado (Tour.tsx): carregado junto do pedaço do Tour, fora da primeira carga. Cores só do tema. */
+
+/* Segura a roda e os cliques: nada do app por baixo recebe evento enquanto o Tour está aberto. */
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+/* O destaque é um só elemento fixo; a sombra enorme dele escurece o resto da janela. Só `transform` muda de lugar. */
+.tour-spot {
+  position: fixed;
+  left: 0;
+  top: 0;
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 9999px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+.tour-spot[hidden] {
+  display: none;
+}
+
+.tour-card {
+  position: fixed;
+  width: min(320px, calc(100vw - 16px));
+  box-sizing: border-box;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  animation: tour-in 0.15s ease-out;
+}
+.tour-card:focus {
+  outline: none;
+}
+/* Cartão final (sem alvo): no meio da janela. `translate` não disputa com a posição escrita pelo código. */
+.tour-card[data-centered] {
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+}
+.tour-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tour-body {
+  max-height: 40vh;
+  overflow: auto;
+}
+.tour-body p {
+  margin: 0;
+}
+.tour-body p + p,
+.tour-list-title {
+  margin-top: 8px;
+}
+.tour-list {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tour-spacer {
+  flex: 1;
+}
+
+/* Janela estreita (#97): faixa no rodapé, sempre dentro da janela (o código não escreve a posição nesse caso). */
+@media (max-width: 640px) {
+  .tour-card:not([data-centered]) {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    top: auto;
+    width: auto;
+  }
+}
+
+@keyframes tour-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-card {
+    animation: none;
+  }
+}

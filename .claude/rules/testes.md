@@ -19,8 +19,10 @@ reprová-la, e as de cima quando o que mudou é o que o usuário vê ou o que cu
 | Tela de verdade | A interface compilada num Chromium, ligada ao `Backend` real | `launch` e `newApp` em `scripts/readme-media/` (skill `run-gittools`) | roteiro escrito para a mudança |
 | Desempenho | Orçamentos de `docs/PERFORMANCE.md`, seção 7 | `scripts/perf/` (skill `medir`) | `core.mjs`, `ui.mjs`, `perf:bundle` |
 
-Não há suíte fixa de tela com asserções: a conferência na tela é um roteiro curto, escrito para a mudança, fora do
-repositório. Conferência que se repete em mais de um trabalho é candidata a virar roteiro versionado; proponha ao dono.
+A conferência na tela tem duas formas. O roteiro curto, escrito para a mudança e fora do repositório, serve para ver
+agora. Os cenários versionados em `scripts/validacao/e2e/cenarios/` são a suíte ponta a ponta que o check `QA` roda em
+PR e em push (`.claude/rules/qa.md`, skill `qa`). Conferência que se repete em mais de um trabalho é candidata a
+cenário versionado; proponha ao dono.
 
 ## Como escrever
 

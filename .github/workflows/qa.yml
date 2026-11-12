@@ -1,0 +1,66 @@
+# Check obrigatório `QA`: o job se chama QA (nome estável; o gate local gate-main.sh e a proteção de branch o consultam
+# por esse nome). Roda em PR e em push para develop, homolog e main. Passos: o gate de cobertura de cenários
+# (scripts/validacao/gate-cobertura.mjs: tela sem cenário e PR que mexe em components sem cenário reprovam) e o
+# pipeline de validação (scripts/validacao/pipeline.mjs, o mesmo do validacao.yml). Tempo-alvo: menos de 15 minutos;
+# monitore quando passar disso. Exigir este check na proteção de branch é do dono (#101): este arquivo só o produz.
+#
+# Segurança: só `contents: read`, sem segredo e sem `pull_request_target`. Código de PR de fork roda sem segredo e com
+# token só de leitura, como no ci.yml.
+name: QA
+
+on:
+  pull_request:
+    branches: [develop, homolog, main]
+    # labeled/edited: pôr o rótulo sem-e2e ou a justificativa no corpo precisa reavaliar o gate de cobertura.
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
+  push:
+    branches: [develop, homolog, main]
+
+permissions:
+  contents: read
+
+# Em PR, um commit novo cancela a execução do anterior (só o último importa). Em push nunca: cada commit precisa do
+# seu próprio veredito, senão o relatório de um commit some por causa do seguinte.
+concurrency:
+  group: qa-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  qa:
+    name: QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: git config --global user.name ci && git config --global user.email ci@example.com
+      - name: Gate de cobertura
+        run: node scripts/validacao/gate-cobertura.mjs
+      # Playwright só para o ponta a ponta: fica fora do package.json (o projeto não tem dependência de execução nova).
+      - name: Instalar Playwright e Chromium
+        run: |
+          npm i --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+      # O harness (scripts/readme-media/harness.mjs) lê estas duas variáveis.
+      - name: Apontar o harness para o Playwright e o Chromium
+        run: |
+          echo "PLAYWRIGHT_MODULE=$GITHUB_WORKSPACE/node_modules/playwright" >> "$GITHUB_ENV"
+          echo "CHROMIUM=$(node -e "console.log(require('playwright').chromium.executablePath())")" >> "$GITHUB_ENV"
+      - name: Validar
+        run: node scripts/validacao/pipeline.mjs
+      - name: Guardar o relatório e os logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-${{ github.event_name }}-${{ github.run_id }}
+          path: validacao-out/
+          retention-days: 14

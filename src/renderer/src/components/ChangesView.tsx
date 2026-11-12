@@ -73,7 +73,7 @@ const entryHasHistory = (e: Entry) => (e.staged ? e.staged.index !== 'A' : !e.un
 export function ChangesView() {
   // Só o status é lido dos dados; as funções vêm da fatia de ações (estável), então a tela não redesenha a cada operação.
   const { data } = useRepoData()
-  const { run, refresh, confirm, toast, openConflict, openFileView, openInEditor, openDiffWindow, showMenu } = useAppActions()
+  const { run, refresh, confirm, toast, openConflict, setConflictsScreen, openFileView, openInEditor, openDiffWindow, showMenu } = useAppActions()
   const { settings } = useAppSettings()
   /** Rótulo e ação do item "abrir no editor" dos menus de arquivo (#82). */
   const editor = editorKind(settings.editor, insideVsCode())
@@ -327,6 +327,9 @@ export function ChangesView() {
       body: (
         <>
           <p className="section-hint">{t('changes.conflictedHint')}</p>
+          <button type="button" className="section-link" onClick={() => setConflictsScreen(true)}>
+            {t('conflictsScreen.open')}
+          </button>
           <FileRows area="unstaged" files={status.conflicted} active={active} onActivate={(f) => openConflict(f.path)} onMenu={(ev, f) => fileMenu(ev, f.path, fileHasHistory(f))} />
         </>
       )

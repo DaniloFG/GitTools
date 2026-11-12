@@ -93,8 +93,11 @@ async function openConflictEditor(app) {
   await conflicted(app)
   await screenTab(app, app.t.changes).click()
   await app.page.waitForTimeout(800)
-  await app.page.getByRole('button', { name: tx(app).resolve }).first().click()
-  await app.page.waitForSelector('.modal')
+  // E9: o editor é um painel da tela Conflitos (a faixa abre a tela; a linha escolhe o arquivo), não mais um diálogo.
+  if (!(await app.page.locator('.conflicts-screen').count())) await app.page.locator('button.operation-title').click()
+  await app.page.waitForSelector('.conflicts-screen')
+  await app.page.locator('.conflicts-row').first().click()
+  await app.page.waitForSelector('.conflict-editor .merge-editor')
   await app.page.waitForTimeout(800)
 }
 
@@ -105,7 +108,9 @@ shot('editor-de-conflitos', async (app, dir) => {
 
 shot('editor-de-conflitos-classico', async (app, dir) => {
   await openConflictEditor(app)
-  await app.page.locator('.modal button', { hasText: tx(app).classic }).click()
+  // A visão (Clássica/Colunas) está no menu "⋯" do painel; o menu é desenhado fora do painel (.context-menu).
+  await app.page.locator('.conflict-editor .view-options-btn').click()
+  await app.page.locator('.context-menu button', { hasText: tx(app).classic }).first().click()
   await app.page.waitForTimeout(700)
   await snap(app, dir, 'editor-de-conflitos-classico')
 }, { wip: false })

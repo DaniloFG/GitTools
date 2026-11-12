@@ -55,13 +55,17 @@ async function ask(panel: FakePanel, channel: string, ...args: unknown[]) {
 }
 
 beforeEach(() => fake.reset())
-afterEach(() => {
+const started: { dispose(): void; whenIdle?: () => Promise<void> }[][] = []
+afterEach(async () => {
+  // Gravações em segundo plano (recentes, workspace) terminam antes de a pasta temporária sumir.
+  for (const subs of started.splice(0)) await Promise.all(subs.map((x) => x.whenIdle?.()))
   while (dirs.length) rmSync(dirs.pop()!, { recursive: true, force: true })
 })
 
 async function start(options: { root?: string; workspaceState?: Memento } = {}) {
   const { context, subscriptions } = extensionContext(options)
   activate(context as never)
+  started.push(subscriptions)
   // Cada janela usa os próprios comandos (a última ativação substitui os registros em `fake.commands`).
   const handlers = new Map(fake.commands)
   return { context, subscriptions, run: (id: string, ...args: unknown[]) => handlers.get(id)!(...args) }
@@ -309,6 +313,19 @@ describe('extensão do VS Code', () => {
     expect(open.repos.map((r) => r.root)).toEqual([c.repo.root])
     first.subscriptions.forEach((s) => s.dispose())
     second.subscriptions.forEach((s) => s.dispose())
+  })
+
+  it('o convite do Tour grava pelo caminho da interface e volta do disco; valor fora da lista volta a pendente', async () => {
+    const { run } = await start()
+    await run('gittools.open')
+    const panel = fake.panels[0]
+    const settings = (await ask(panel, 'app:getSettings')).result as Record<string, unknown>
+    expect(settings.tourOffer).toBe('pending')
+    await ask(panel, 'app:saveSettings', { ...settings, tourOffer: 'accepted' })
+    // `app:getSettings` relê o arquivo (backend.loadSettings), não a memória: é a releitura que importa.
+    expect(((await ask(panel, 'app:getSettings')).result as Record<string, unknown>).tourOffer).toBe('accepted')
+    await ask(panel, 'app:saveSettings', { ...settings, tourOffer: 'xyz' })
+    expect(((await ask(panel, 'app:getSettings')).result as Record<string, unknown>).tourOffer).toBe('pending')
   })
 })
 

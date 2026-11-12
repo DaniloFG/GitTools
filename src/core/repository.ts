@@ -44,7 +44,7 @@ import { DIFF_MAX_BYTES } from '../shared/types'
 import { t } from '../shared/i18n'
 import { chunkArgs } from './chunk'
 import { GitError, runGit, type RunOptions, type RunResult } from './exec'
-import { resolveInside } from './paths'
+import { resolveInside, resolveInsideParent, resolveInsideReal } from './paths'
 
 const DIFF_ARGS = [
   'diff',
@@ -582,8 +582,10 @@ export class GitRepository implements RepoApi {
    * Limite conhecido: uma edição que mantém o tamanho e a data exatos não é vista até a data mudar de novo.
    */
   private async untrackedStats(path: string): Promise<LineStats> {
+    // Sem `resolveInsideReal` de propósito: roda para cada arquivo novo de listas grandes. O `lstat` abaixo já ignora
+    // o link do próprio arquivo, e o git não lista o conteúdo de pasta-link como arquivo novo.
     try {
-      const full = join(this.root, path)
+      const full = resolveInside(this.root, path)
       const stat = await lstat(full)
       if (!stat.isFile() || stat.size > UNTRACKED_STATS_MAX_BYTES) return {}
       const cached = this.untrackedCache.get(path)
@@ -794,7 +796,9 @@ export class GitRepository implements RepoApi {
    * é lido só até o teto: não se carrega centenas de MB do disco para mostrar um trecho.
    */
   private async untrackedDiff(path: string, uncapped = false): Promise<FileDiff> {
-    const full = join(this.root, path)
+    // `resolveInsideParent` e não `resolveInsideReal`: o `lstat` abaixo não segue o link do próprio arquivo, então
+    // um link não rastreado para fora ou quebrado precisa chegar ao diff de link (120000), não à recusa.
+    const full = await resolveInsideParent(this.root, path)
     const stat = await lstat(full)
     const mode = stat.isSymbolicLink() ? '120000' : stat.mode & 0o111 ? '100755' : '100644'
     const header = [
@@ -1084,22 +1088,105 @@ export class GitRepository implements RepoApi {
   /**
    * Ordena commits do mais antigo para o mais novo e informa se há merges entre eles.
    * Os shas seguem pela entrada padrão (`--stdin`): uma lista grande não cabe na linha de comando.
+   *
+   * `--no-walk=sorted` ordena só pela data de committer e ignora `--topo-order`: com datas iguais (commits criados
+   * no mesmo segundo) mantém a ordem recebida, e o filho podia ser aplicado antes do pai. Por isso o mesmo
+   * `rev-list` já traz a data (`%ct`) e, só dentro de cada grupo de commits consecutivos com a mesma data, a
+   * ordem é refeita pela ancestralidade. Sem empate, nenhum processo a mais.
+   * Em grupo de qualquer tamanho, o pai direto (já em `parents`) ordena de graça, sem processo, em tempo linear
+   * (um rebase de 21+ commits grava tudo no mesmo segundo). Só os pares sem ligação direta (ex.: o commit do
+   * meio não foi selecionado) custam um `merge-base --is-ancestor`, e só em grupo de até MAX_TIED_GROUP
+   * commits: o número de pares cresce com o quadrado do grupo. Acima disso esses pares mantêm a ordem
+   * recebida. Nada percorre o histórico do repositório.
    */
   private async orderCommits(shas: string[]): Promise<{ ordered: string[]; parents: Map<string, string[]> }> {
     shas.forEach((s) => assertRef(s, 'commit'))
-    const { stdout } = await this.git(['rev-list', '--no-walk=sorted', '--parents', '--stdin', '--'], {
+    const { stdout } = await this.git(['rev-list', '--no-walk=sorted', '--parents', '--stdin', '--format=%ct', '--'], {
       input: shas.map((s) => `${s}\n`).join('')
     })
+    // Saída: "commit <sha> <pais...>" seguida de uma linha com a data, para cada commit.
     const parents = new Map<string, string[]>()
-    const ordered = stdout
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => {
-        const [sha, ...ps] = line.split(' ')
+    const ordered: string[] = []
+    const dates: string[] = []
+    for (const line of stdout.split('\n')) {
+      if (line.startsWith('commit ')) {
+        const [sha, ...ps] = line.slice('commit '.length).split(' ')
         parents.set(sha, ps)
-        return sha
+        ordered.push(sha)
+      } else if (line) {
+        dates.push(line)
+      }
+    }
+    ordered.reverse()
+    dates.reverse()
+
+    const MAX_TIED_GROUP = 20
+    const isAncestor = async (a: string, b: string) =>
+      (await this.git(['merge-base', '--is-ancestor', a, b], { okExitCodes: [0, 1] })).exitCode === 0
+    // Ordena o grupo empatado: pais antes dos filhos; sem relação, mantém a ordem em que vieram.
+    const sortTied = async (group: string[]): Promise<string[]> => {
+      const n = group.length
+      const index = new Map(group.map((sha, i) => [sha, i] as const))
+      // Arestas pai -> filho. `before` (ancestral conhecido) só existe no grupo pequeno, onde as consultas acontecem.
+      const children: number[][] = group.map(() => [])
+      const indegree: number[] = group.map(() => 0)
+      const link = (from: number, to: number) => {
+        children[from].push(to)
+        indegree[to]++
+      }
+      group.forEach((sha, j) => {
+        for (const p of parents.get(sha) ?? []) {
+          const i = index.get(p)
+          if (i !== undefined) link(i, j)
+        }
       })
-      .reverse()
+      if (n <= MAX_TIED_GROUP) {
+        // before[i][j]: group[i] é ancestral de group[j] (fecho dos pais diretos; n <= 20, então o custo é desprezível).
+        const before = group.map(() => group.map(() => false))
+        children.forEach((js, i) => js.forEach((j) => (before[i][j] = true)))
+        const close = () => {
+          for (let k = 0; k < n; k++)
+            for (let i = 0; i < n; i++)
+              if (before[i][k]) for (let j = 0; j < n; j++) if (before[k][j]) before[i][j] = true
+        }
+        close()
+        for (let i = 0; i < n; i++) {
+          for (let j = i + 1; j < n; j++) {
+            if (before[i][j] || before[j][i]) continue
+            if (await isAncestor(group[i], group[j])) {
+              before[i][j] = true
+              link(i, j)
+            } else if (await isAncestor(group[j], group[i])) {
+              before[j][i] = true
+              link(j, i)
+            } else continue
+            close()
+          }
+        }
+      }
+      // Kahn estável: a fila começa na ordem recebida e cada commit liberado entra no fim. O(n + arestas).
+      const queue: number[] = []
+      for (let i = 0; i < n; i++) if (indegree[i] === 0) queue.push(i)
+      for (let head = 0; head < queue.length; head++) {
+        for (const c of children[queue[head]]) if (--indegree[c] === 0) queue.push(c)
+      }
+      // A relação de ancestralidade é acíclica; se sobrar algum (entrada inesperada), segue na ordem recebida.
+      if (queue.length < n) {
+        const placed = new Set(queue)
+        for (let i = 0; i < n; i++) if (!placed.has(i)) queue.push(i)
+      }
+      return queue.map((i) => group[i])
+    }
+
+    for (let start = 0; start < ordered.length; ) {
+      let end = start + 1
+      while (end < ordered.length && dates[end] === dates[start]) end++
+      if (end - start > 1) {
+        const sorted = await sortTied(ordered.slice(start, end))
+        sorted.forEach((sha, i) => (ordered[start + i] = sha))
+      }
+      start = end
+    }
     return { ordered, parents }
   }
 
@@ -1398,7 +1485,7 @@ export class GitRepository implements RepoApi {
 
   /** O arquivo ainda tem marcadores <<<<<<< no início de uma linha. Arquivo ausente conta como sem marcadores. */
   private async hasConflictMarkers(path: string): Promise<boolean> {
-    const text = await readFile(resolveInside(this.root, path), 'utf8').catch(() => '')
+    const text = await readFile(await resolveInsideReal(this.root, path), 'utf8').catch(() => '')
     return /^<{7}(?: |$)/m.test(text)
   }
 
@@ -1607,25 +1694,28 @@ export class GitRepository implements RepoApi {
   // ---------------------------------------------------- editor de conflitos
 
   async conflictDetails(path: string): Promise<ConflictDetails> {
-    // Antes de qualquer leitura: "../" e caminho absoluto são recusados, como nos demais métodos de arquivo.
-    const full = resolveInside(this.root, path)
+    // Antes de qualquer leitura: "../", caminho absoluto e pasta-link para fora são recusados, como nos demais métodos
+    // de arquivo. O link do próprio arquivo não é seguido: ele não é arquivo comum, então `working` fica null (abaixo).
+    const full = await resolveInsideParent(this.root, path)
     const stage = async (n: number) => {
       const { stdout, exitCode } = await this.git(['show', `:${n}:${path}`], { okExitCodes: [0, 128] })
       return exitCode === 0 ? stdout : null
     }
     const [base, ours, theirs] = await Promise.all([stage(1), stage(2), stage(3)])
     // Arquivo de trabalho só é lido se for arquivo comum e couber no teto do editor (o mesmo de readFile).
-    // Acima do teto, ou se não for arquivo comum (pasta, link), o conteúdo fica de fora.
+    // Acima do teto, ou se não for arquivo comum (pasta, link), o conteúdo fica de fora. `tooLarge` separa o caso
+    // do teto: a tela oferece manter um lado ou abrir no editor, em vez de dizer que o arquivo não pôde ser lido.
     const info = await lstat(full).catch(() => null)
-    const buffer = info?.isFile() && info.size <= EDITABLE_MAX_BYTES ? await readFile(full).catch(() => null) : null
+    const tooLarge = info?.isFile() === true && info.size > EDITABLE_MAX_BYTES
+    const buffer = info?.isFile() === true && !tooLarge ? await readFile(full).catch(() => null) : null
     const working = buffer ? buffer.toString('utf8') : null
     const binary = !!buffer?.subarray(0, 8000).includes(0) || [base, ours, theirs].some((t) => t?.includes('\0'))
-    return { path, base, ours, theirs, working, binary }
+    return { path, base, ours, theirs, working, binary, tooLarge }
   }
 
   /** Grava o conteúdo resolvido de um arquivo em conflito e marca como resolvido. */
   async saveConflictResolution(path: string, content: string): Promise<void> {
-    const full = resolveInside(this.root, path)
+    const full = await resolveInsideReal(this.root, path)
     await writeFile(full, content, 'utf8')
     await this.git(['add', '--', path])
   }
@@ -1653,7 +1743,7 @@ export class GitRepository implements RepoApi {
   }
 
   async readFile(path: string): Promise<FileContent> {
-    const full = resolveInside(this.root, path)
+    const full = await resolveInsideReal(this.root, path)
     const info = await lstat(full)
     if (!info.isFile()) throw new Error(t('core.notAFile', { path }))
     if (info.size > EDITABLE_MAX_BYTES) return { path, content: null, binary: false, tooLarge: true, size: info.size }
@@ -1663,7 +1753,7 @@ export class GitRepository implements RepoApi {
   }
 
   async writeFile(path: string, content: string): Promise<void> {
-    const full = resolveInside(this.root, path)
+    const full = await resolveInsideReal(this.root, path)
     // Só reescreve arquivos que já existem: o editor embutido não cria arquivos nem segue atalhos para fora da pasta.
     const info = await lstat(full)
     if (!info.isFile()) throw new Error(t('core.notAFile', { path }))

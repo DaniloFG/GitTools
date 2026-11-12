@@ -481,19 +481,22 @@ export const hi: Messages = {
     abortFilesMessage: 'टकराव वाली फ़ाइलों को पिछले commit के संस्करण पर लौटाएँ?',
     abortMessage: 'ऑपरेशन पलटकर शुरू होने से पहले की स्थिति पर लौटें?',
     conflictsHelp: {
-      one: '{count} फ़ाइल में टकराव है। एक संस्करण चुनें या संपादित करके हल के रूप में चिह्नित करें।',
-      other: '{count} फ़ाइलों में टकराव है। हर एक के लिए संस्करण चुनें या संपादित करके हल के रूप में चिह्नित करें।'
+      one: '{count} फ़ाइल में टकराव है। इसे हल करने के लिए इस पट्टी पर क्लिक करें; यह «टकराव» स्क्रीन खोलती है।',
+      other: '{count} फ़ाइलों में टकराव है। उन्हें हल करने के लिए इस पट्टी पर क्लिक करें; यह «टकराव» स्क्रीन खोलती है।'
     },
     noConflicts: 'कोई टकराव बाकी नहीं। पूरा करने के लिए जारी रखें।',
-    sideBySide: 'साथ-साथ हल करें',
-    sideBySideHelp: 'मौजूदा संस्करण की आने वाले से तुलना करें और ब्लॉक-दर-ब्लॉक चुनें',
     useOursHelp: 'मौजूदा branch (HEAD) का संस्करण रखता है',
     useTheirsHelp: 'लागू किए जा रहे संस्करण को रखता है',
     resolved: 'हल हो गया',
     resolvedHelp: 'मैंने फ़ाइल संपादित कर दी है और <<<<<<< >>>>>>> चिह्न हटा दिए हैं',
     continue: 'जारी रखें',
     skip: 'यह commit छोड़ें',
-    showChanges: 'बदलाव देखें'
+    showChanges: 'बदलाव देखें',
+    reuseBoth: 'पिछले कमिट में आप {ours} फ़ाइल के लिए «हमारा» और {theirs} के लिए «उनका» चुन चुके हैं: {files}',
+    reuseOurs: 'पिछले कमिट में आप {count} फ़ाइल के लिए «हमारा» चुन चुके हैं: {files}',
+    reuseTheirs: 'पिछले कमिट में आप {count} फ़ाइल के लिए «उनका» चुन चुके हैं: {files}',
+    reuseApply: 'लागू करें',
+    reuseIgnore: 'अनदेखा करें'
   },
   studio: {
     name: 'Cherry-pick Studio',
@@ -561,8 +564,6 @@ export const hi: Messages = {
     includesIntermediate: '(बीच के commits भी शामिल हैं)'
   },
   conflictBulk: {
-    title: 'सभी को हल करें',
-    resolveAllLabel: 'सभी हल करें:',
     keepOurs: 'सभी स्थानीय रखें (ours)',
     keepOursHelp: 'सभी टकराव वाली फ़ाइलों में वर्तमान शाखा का संस्करण (HEAD) रखता है',
     takeTheirs: 'सभी आने वाले स्वीकार करें (theirs)',
@@ -588,13 +589,45 @@ export const hi: Messages = {
     },
     done: { one: '1 फ़ाइल हल हुई।', other: '{count} फ़ाइलें हल हुईं।' },
     partial: 'हल हुईं: {resolved}। नहीं हुईं: {failed} ({list})।',
-    filterLabel: 'टकराव वाली फ़ाइलें फ़िल्टर करें',
-    filterPlaceholder: 'फ़ाइलें फ़िल्टर करें…',
-    showing: '{count} में से {shown} दिख रही हैं',
     noMatch: 'फ़िल्टर से कोई फ़ाइल नहीं मिली।',
     notConflicted: 'टकराव में नहीं है',
     hasMarkers: 'अब भी टकराव के चिह्न हैं',
     stillConflicted: 'अब भी टकराव में है'
+  },
+  conflictsScreen: {
+    title: 'टकराव',
+    open: 'टकराव स्क्रीन खोलें',
+    step: 'चरण {step} / {total}',
+    counts: 'बाकी: {total} में से {pending}',
+    filterKind: 'टकराव के प्रकार से फ़िल्टर करें',
+    kindAll: 'सभी प्रकार',
+    filterSituation: 'स्थिति से फ़िल्टर करें',
+    situationAll: 'सभी स्थितियाँ',
+    situationPending: 'बाकी',
+    situationDecided: 'तय',
+    searchLabel: 'नाम से फ़ाइल खोजें',
+    searchPlaceholder: 'नाम से खोजें…',
+    listLabel: 'टकराव वाली फ़ाइलें',
+    tabsLabel: 'टकराव दृश्य',
+    tabList: 'सूची',
+    tabEditor: 'एडिटर',
+    fileActions: 'चुनी गई फ़ाइल की कार्रवाइयाँ',
+    empty: 'टकराव वाली कोई फ़ाइल नहीं।',
+    sideOurs: 'हमारा',
+    sideTheirs: 'उनका',
+    remembered: 'आप पिछले कमिट में यह पक्ष चुन चुके हैं: {side}',
+    help: 'अगल-बगल हल करने के लिए कोई फ़ाइल चुनें',
+    helpDetail: 'किसी फ़ाइल पर क्लिक करें; वह एडिटर पैनल में खुलेगी और वहीं हल की जा सकती है। F8 दबाने पर अगली लंबित फ़ाइल पर जाते हैं। सभी फ़ाइलों के लिए कार्रवाई नीचे की पट्टी में है।',
+    mergeFooter: 'merge में, टकराव हल करने के बाद बदलाव (Changes) में जाकर commit करें।',
+    kinds: {
+      bothModified: 'दोनों ने बदला',
+      bothAdded: 'दोनों ने जोड़ा',
+      bothDeleted: 'दोनों ने हटाया',
+      addedByUs: 'हमने जोड़ा',
+      addedByThem: 'उन्होंने जोड़ा',
+      deletedByUs: 'हमने हटाया',
+      deletedByThem: 'उन्होंने हटाया'
+    }
   },
   conflict: {
     titleShort: '{path} में टकराव',
@@ -604,6 +637,7 @@ export const hi: Messages = {
     deletedByUs: 'मौजूदा branch ने यह फ़ाइल हटा दी, लेकिन आने वाले संस्करण ने इसे बदला।',
     deletedByThem: 'आने वाले संस्करण ने यह फ़ाइल हटा दी, लेकिन मौजूदा branch ने इसे बदला।',
     unreadable: 'फ़ाइल पढ़ी नहीं जा सकी।',
+    tooLarge: 'फ़ाइल संपादक के लिए बहुत बड़ी है: मौजूदा या आने वाला संस्करण रखें, या फ़ाइल को संपादक में खोलें।',
     deleteFile: 'फ़ाइल हटाएँ',
     keepOurs: 'मौजूदा संस्करण (HEAD) रखें',
     keepTheirs: 'आने वाला संस्करण रखें',
@@ -793,6 +827,8 @@ export const hi: Messages = {
       detected: 'पहचानी गई: {language}',
       multiRepo: 'वर्कस्पेस में कई रिपॉज़िटरी का पता लगाएँ',
       multiRepoHelp: 'VS Code में GitTools खोलने पर, वर्कस्पेस में मिले हर रिपॉज़िटरी (.git) को उसके अपने टैब में खोला जाता है और नए रिपॉज़िटरी पर नज़र रखी जाती है।',
+      autoContinue: 'कॉन्फ़्लिक्ट सुलझाने के बाद अपने-आप जारी रखें',
+      autoContinueHelp: 'cherry-pick, revert या rebase में, किसी चरण की आख़िरी कॉन्फ़्लिक्ट वाली फ़ाइल सुलझाते ही GitTools अपने-आप अगले चरण पर बढ़ जाता है। merge पर लागू नहीं होता।',
     },
     appearance: {
       title: 'रूप-रंग',
@@ -852,6 +888,18 @@ export const hi: Messages = {
       reset: 'डिफ़ॉल्ट बहाल करें',
       show: 'उदाहरण दिखाएँ'
     },
+    conflicts: {
+      title: 'कॉन्फ़्लिक्ट',
+      description: 'कोई ऑपरेशन खत्म होने पर और ऐप खुलने पर कॉन्फ़्लिक्ट स्क्रीन कैसा बर्ताव करती है।',
+      summary: 'ऑपरेशन खत्म होने पर',
+      summaryHelp: 'ऑपरेशन खत्म होते ही स्क्रीन बंद हो जाती है और पिछली स्क्रीन पर लौट आती है।',
+      summaryKeep: 'मैं बंद करूँ तब तक सारांश रखें',
+      summaryClose: 'अपने-आप बंद करें',
+      startup: 'ऐप खुलने पर लंबित कॉन्फ़्लिक्ट हो तो',
+      startupHelp: 'सत्र में हर रिपॉज़िटरी की पहली लोडिंग पर लागू होता है, जब उसमें पहले से कॉन्फ़्लिक्ट हो।',
+      startupOpen: 'स्क्रीन सीधे खोलें, बैनर और अलर्ट के साथ',
+      startupBanner: 'केवल बैनर और अलर्ट (क्लिक करने पर स्क्रीन खुलती है)'
+    },
     about: {
       title: 'जानकारी',
       description: 'संस्करण और सिस्टम की जानकारी।',
@@ -909,7 +957,8 @@ export const hi: Messages = {
       multiSelect: 'कई commits या फ़ाइलें चुनें',
       lineRange: 'Diff में लाइनों की एक श्रेणी चुनें',
       commit: 'Commit की पुष्टि करें',
-      close: 'डायलॉग या मेनू बंद करें'
+      close: 'डायलॉग या मेनू बंद करें',
+      nextConflictFile: 'अगली लंबित टकराव वाली फ़ाइल («टकराव» स्क्रीन)'
     },
     helpTitle: 'कीबोर्ड शॉर्टकट',
     helpFooter: 'शॉर्टकट सेटिंग्स → कीबोर्ड शॉर्टकट में बदले जा सकते हैं।',
@@ -1763,5 +1812,18 @@ export const hi: Messages = {
     urlMissing: 'URL {url} इस रिमोट का पुश गंतव्य नहीं है।',
     invalidName: 'Remote का नाम अमान्य है: अक्षर, अंक, बिंदु, हाइफ़न या अंडरस्कोर इस्तेमाल करें।',
     invalidUrl: 'Remote का URL दें (यह "-" से शुरू नहीं हो सकता)।'
+  },
+  tour: {
+    invite: {
+      title: 'क्या आप इंटरफ़ेस का एक छोटा टूर करना चाहेंगे?',
+      accept: 'टूर शुरू करें',
+      dismiss: 'अभी नहीं'
+    },
+    button: 'टूर',
+    settings: {
+      title: 'टूर',
+      description: 'इंटरफ़ेस के मुख्य हिस्सों को दिखाने वाला एक छोटा टूर, बिना कुछ बदले।',
+      start: 'टूर शुरू करें'
+    }
   }
 }

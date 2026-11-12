@@ -56,16 +56,17 @@ scene('conflict-resolution', { wip: false }, async (app) => {
   await page.waitForSelector('.modal')
   await wait(app, 900)
   await clickSlow(page, page.locator('.modal button', { hasText: /Cherry-pick every commit/ }), 400)
-  // O conflito leva a tela de Alterações para a frente.
-  await page.getByRole('button', { name: /Resolve side by side/i }).first().waitFor()
+  // O conflito acende a faixa da operação; clicar nela abre a tela Conflitos (E9: o editor é um painel dela, sem modal).
+  await page.locator('button.operation-title').waitFor()
   await wait(app, 1200)
-  await clickSlow(page, page.getByRole('button', { name: /Resolve side by side/i }).first(), 900)
-  await page.waitForSelector('.modal')
+  if (!(await page.locator('.conflicts-screen').count())) await clickSlow(page, page.locator('button.operation-title'), 900)
+  await clickSlow(page, page.locator('.conflicts-row').first(), 900)
+  await page.waitForSelector('.conflict-editor .merge-editor')
   await wait(app, 1100)
   // Escolhe, no bloco, manter as duas versões e depois salva.
-  await clickSlow(page, page.locator('.modal button', { hasText: /Keep both|Both/ }).first(), 1000)
+  await clickSlow(page, page.locator('.conflict-editor button', { hasText: /Keep both|Both/ }).first(), 1000)
   await wait(app, 600)
-  await clickSlow(page, page.locator('.modal button.primary'), 900)
+  await clickSlow(page, page.locator('.conflict-editor-foot button.primary'), 900)
   await wait(app, 500)
   await clickSlow(page, page.getByRole('button', { name: 'Continue', exact: true }), 400)
   await wait(app, 2500)
