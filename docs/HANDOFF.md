@@ -44,14 +44,12 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ### Última etapa fechada: nenhuma
 
-- **Feito**: planejamento (issues ligadas à mãe #131, branch criada). Refinamento dos corpos sem os 4 campos pedido
-  ao `gt-planejador`; a central grava os corpos refinados nas issues antes de abrir a etapa de cada uma.
-- **Não conferido**: tudo; nenhuma etapa executada.
+- **Feito**: planejamento (issues ligadas à mãe #131, corpos refinados comentados nas issues). **Não conferido**: tudo.
 
 ## 3. Base de medição
 
-Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `cf02905`, ambas VALIDADAS (pipeline
-com e2e verde). E6 mede por `node scripts/validacao/qa.mjs desempenho`.
+Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `cf02905` (VALIDADAS). E6 mede por
+`node scripts/validacao/qa.mjs desempenho`.
 
 ## 4. Plano
 
@@ -74,33 +72,28 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 - **Aceite**: os três dizem o mesmo fluxo (branch → develop com a remoção, validar develop, só então homolog);
   `gate-main.sh` não é afrouxado; teto de 199 linhas do `CLAUDE.md` mantido.
 - **Testes**: leitura cruzada dos três textos. **Depende de**: nada.
-
 ### Etapa E3 — prova da regressão #92 e processos git (#92, #108)
 
-- **Orquestra**: topo. **Arquivos prováveis**: `scripts/validacao/e2e/cenarios/conflito-resolver-salvar*`, runner.
+- **Orquestra**: topo. **Arquivos**: `scripts/validacao/e2e/cenarios/conflito-resolver-salvar*`, runner.
 - **Aceite**: reverter a correção da #92 (modal de três opções / arquivo que permanece na lista) faz o cenário
   reprovar (saída colada na issue); `--trace` antes e depois do número de processos de "salvar + atualizar";
   fluxo com poucos e muitos arquivos e nosso/deles/à mão cobertos ou o que não couber fica "não conferido".
 - **Testes**: tela e medição. **Depende de**: E1 (QA confiável).
-
 ### Etapa E4 — provas de #93 e #94
 
 - **Orquestra**: topo. **Aceite**: `regressao-93` cobre painel à direita e embaixo e janela abaixo de 560 px de altura
   (extensão do VS Code: "não conferível aqui", registrado); #94 lista onde o combobox compartilhado aparece, cenário
   cobre o outro uso e a posição junto à borda; mutação de cada um reprova.
 - **Testes**: tela. **Depende de**: E3.
-
 ### Etapa E5 — itens ocultos no menu Aparência (#97)
 
 - **Orquestra**: topo. **Aceite**: cenário `regressao-97` com itens ocultos pelo usuário (#56) sem item fora da tela
   nem rolagem horizontal; mutação reprova. **Testes**: tela. **Depende de**: E4.
-
 ### Etapa E6 — flakiness do e2e-desempenho (#109)
 
 - **Orquestra**: topo. **Aceite**: `node scripts/validacao/qa.mjs desempenho` 5 vezes seguidas, todas ok, saídas
   registradas na issue; teto só muda com motivo e `tests/orcamentos.test.ts` verde. Flaky: investigue a causa antes de
   subir teto. **Testes**: medição. **Depende de**: nada.
-
 ### Etapa E7 — Tour (#98)
 
 - **Orquestra**: topo. **Aceite**: cenário e2e do Tour em `scripts/validacao/e2e/cenarios/`; zero processos git durante
@@ -119,22 +112,18 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
   (continuar automático com progresso, reaproveitar decisão, `rerere` opcional, orçamento de 3 processos por parada,
   progresso "commit N de M" no cherry-pick). Refinado: Média; `orderCommits` e auto-continue/reaproveitar já existem;
   `rerere` NÃO entra (sub-issue opcional, baixa). **Depende de**: E8.
-
 ### Etapa E10 — Acessibilidade (#120)
 
 - **Orquestra**: topo. **Aceite**: 0 controles sem nome acessível e 0 focáveis sem foco visível; o teto em
   `orcamentos.json` desce junto (catraca); cenário de teclado verde. **Testes**: tela. **Depende de**: E6.
-
 ### Etapa E11 — TOCTOU em readFile (#125)
 
 - **Orquestra**: topo. **Segurança**: sim. **Aceite**: arquivo trocado por link entre `lstat` e leitura não é
   seguido (abrir com `O_NOFOLLOW`/conferir `fstat` do descritor); teste que reprova sem a correção. **Depende de**: nada.
-
 ### Etapa E12 — escapes da trava de branch no gate-main (#124)
 
 - **Orquestra**: topo. **Segurança**: sim. **Aceite**: `git push origin :heads/develop`, `git update-ref -d` e ref em
   variável são barrados; testes sem `spawnSync`; o gate não bloqueia comandos legítimos. **Depende de**: E1.
-
 ### Etapa E13 — Dashboard a 320 px (#119)
 
 - **Orquestra**: topo. **Aceite**: o do refinamento (scrollWidth ≤ 320 com a janela a 320 px); cenário no
@@ -155,9 +144,6 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 
 ## 6. Encerramento
 
-- [ ] Todas as etapas fechadas; pendências viraram etapa, issue ou foram aceitas
-- [ ] Documentação tornada falsa corrigida (`CLAUDE.md`, `.claude/`, `docs/PERFORMANCE.md`)
-- [ ] `git rm docs/HANDOFF.md` e PR para a `develop` ANTES do PR da homolog
-- [ ] `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension`, `npm run perf:bundle` verdes
-- [ ] PR branch → `develop` mergeado e validado; PR da mesma branch → `homolog` (`validada-develop`) mergeado e validado
-- [ ] PR `homolog → main` aberto e deixado ao dono; issues validadas fechadas, a mãe #131 por último
+- [ ] Etapas fechadas; `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension`, `perf:bundle` verdes
+- [ ] Docs tornadas falsas corrigidas; `git rm docs/HANDOFF.md` e PR para a `develop` ANTES do PR da homolog
+- [ ] develop e homolog mergeadas e validadas; PR `homolog → main` aberto e deixado ao dono; issues fechadas, #131 por último
