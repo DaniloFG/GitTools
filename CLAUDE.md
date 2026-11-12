@@ -68,14 +68,15 @@ recurso (skill, agente, modelo) cada parte pede.
 - **Toda sessão termina de um de dois jeitos**: entregue e verificado, ou com o estado escrito no `docs/HANDOFF.md`
   para outra continuar. Trabalho pela metade só na conversa não existe.
 
-## Autonomia e consulta ao juiz
+## Autonomia, juiz e a regra absoluta das etapas
 
-- Quando o dono dá autonomia sobre o repositório (ex.: "implemente as issues"), a sessão decide e age sozinha dentro
-  das regras deste guia: triagem, branch, código por subagente, testes, commit e push na branch designada. Pergunta
-  ao dono só o que é dele (escopo, prioridade entre issues, subir teto de orçamento); PR só quando ele pedir.
-- **Dúvida de desenho, verificação que diverge ou diff arriscado: consulte o `gt-juiz`** antes de seguir ou de
-  perguntar ao dono. Ele só dá o veredito; quem decide e executa é a sessão. Registre a decisão no commit ou HANDOFF.
-- Issues do GitHub entram em ordem de risco (segurança, bug, funcionalidade nova); uma issue, um incremento commitado.
+- Com autonomia do dono, a sessão decide e age sozinha dentro deste guia; pergunta só o que é dele (escopo,
+  prioridade, teto). **Dúvida de desenho, verificação que diverge ou diff arriscado: consulte o `gt-juiz`** antes de
+  perguntar; ele só dá o veredito. Issues entram por risco (segurança, bug, funcionalidade); PR só se pedirem.
+- **REGRA ABSOLUTA: a triagem manda e autonomia não a dispensa.** Pedido **Grande** nunca é implementado na sessão de
+  entrada: ela roda `planejar`, grava `docs/HANDOFF.md` e espera o "pode seguir". Código sem triagem é violação.
+- **Gate**: `.claude/hooks/gate-etapas.sh` (hook `PreToolUse`, `.claude/settings.json`) bloqueia o `gt-escritor` sem
+  `docs/HANDOFF.md` ou sem a linha `pequena|media <assunto>` em `.claude/triagem.local` (fora do git). Não o contorne.
 
 ## Recursos certos para cada pedido
 
@@ -95,14 +96,13 @@ mão e diga isso.
 | Repetir ou vigiar algo | `loop` |
 | Abre muitos agentes ou gasta crédito: `batch` (um PR por unidade, fora do fluxo de branches), `code-review` nos níveis `max` e `ultra` | Só com a palavra do dono: sugira e espere |
 
-Comandos que só o dono digita; sugira em uma linha: `/clear` ao mudar de assunto; `/context` e `/compact <o que
-manter>` em sessão longa; `/plan` antes de mudança grande; `/effort` e `/model` para subir ou baixar o raciocínio;
-`/btw`, `/rewind`; `/usage` para ver o limite de uso.
+Comandos só do dono (sugira em uma linha): `/clear` ao mudar de assunto; `/context`, `/compact <o que manter>` em
+sessão longa; `/plan` antes de mudança grande; `/effort`, `/model`, `/btw`, `/rewind`; `/usage` para o limite.
 
 ## Modelos e delegação
 
-O dono pede, por este arquivo, que o código seja lido e escrito por subagentes baratos e que o modelo caro só pense:
-é assim que o limite de uso rende. Isto vale como pedido explícito para usar a ferramenta `Agent`.
+O dono pede, por este arquivo, que subagentes baratos leiam e escrevam o código e o modelo caro só pense (pedido
+explícito para usar `Agent`).
 
 | Papel | Modelo | Faz | Não faz |
 | --- | --- | --- | --- |
@@ -137,7 +137,7 @@ tarefa. Se você não consegue escrever os itens 2 a 5, ainda não entendeu a ta
   testes não diminuem nem afrouxam; tipos não ganham `any`, `@ts-ignore` nem `as unknown as`.
 - **Quem toca, melhora, dentro do escopo.** Trecho alterado que quebra regra deste guia sai corrigido se couber na
   tarefa e tiver teste. Não cabe: vira registro (HANDOFF, descrição do PR), nunca refatoração de passagem.
-- **Incrementos curtos**: uma mudança coerente, verificada e commitada. Duas reprovações pelo mesmo motivo: reveja.
+- **Incrementos curtos**, verificados e commitados. Duas reprovações pelo mesmo motivo: reveja.
 
 ## Segurança
 
@@ -152,10 +152,8 @@ tarefa. Se você não consegue escrever os itens 2 a 5, ainda não entendeu a ta
 
 - **Leia por trecho**: `Grep` antes de `Read`, `offset` e `limit` em arquivo grande, documento por seção. Saída longa
   (testes, builds, medições) vai para arquivo fora do repositório, e você lê só o fim (`tail`, `grep`).
-- **Uma sessão, um assunto.** A sessão não limpa a própria conversa (`/clear` é do dono): quando ficar longa ou o
-  contexto for resumido, feche o que está coerente, escreva o estado no repositório (commit, HANDOFF) e pare.
-- **Cada chamada da janela principal relê a conversa inteira**; retomar conversa longa após pausa custa caro (medido:
-  uma chamada gastou 20% da janela de 5h). Junte comandos, delegue e leve o que continua à sessão nova.
+- **Uma sessão, um assunto.** Conversa longa ou resumida: feche o coerente, escreva o estado (commit, HANDOFF) e pare.
+- **Cada chamada relê a conversa inteira** (medido: uma gastou 20% da janela de 5h): junte comandos e delegue.
 
 ## Antes de dar a alteração por pronta
 
@@ -171,34 +169,32 @@ tarefa. Se você não consegue escrever os itens 2 a 5, ainda não entendeu a ta
 6. **Diga a verdade na entrega**: o que mudou, o que foi verificado (comando e resultado), antes e depois se mediu, e o
    que não foi conferido. Número só com a saída do comando que o gerou; medido fica separado de hipótese.
 
-Se uma regra impedir o que foi pedido, não a contorne em silêncio: explique o custo, proponha a alternativa e registre
-a exceção num comentário no ponto do código.
+Regra que impede o pedido não se contorna em silêncio: explique o custo, proponha a alternativa, comente a exceção.
 
 ## Convenções do projeto
 
 - **Idioma**: comentários e mensagens de commit em português, explicando o porquê. Frase visível passa por `t()` e
   entra nos seis catálogos de `src/shared/i18n/messages/` (o typecheck reprova catálogo incompleto).
 - Lógica pura fica em módulo `.ts` sem React e ganha teste em `tests/`. Um módulo novo de `src/renderer/src` usado
-  por teste entra na lista `include` do `tsconfig.node.json`.
-- Arquivos gerados não são editados à mão (`fileIcons.generated.ts` vem de `npm run build:icons`).
+  por teste entra na lista `include` do `tsconfig.node.json`. Arquivo gerado (`fileIcons.generated.ts`, de `npm run
+  build:icons`) não se edita à mão.
 - **Git e branches**: cada alteração nasce de `develop` numa branch própria (`feature/`, `fix/`, `docs/`, `chore/`,
   `refactor/`) e segue por PR `develop` → `homolog` → `main`; PR só quando o dono pedir. Ao fim do trabalho (depois
   do merge), remova o worktree (`git worktree remove` e `git worktree prune`): nada acumula em `.claude/worktrees/`.
   Nada de force push, reescrita de histórico ou `--no-verify` em branch compartilhada. A versão da extensão é
   automática: não suba o patch à mão (`CONTRIBUTING.md` e `.claude/rules/publicacao.md`).
-- Nome de branch, mensagem de commit e PR não citam Claude, IA, modelo nem ferramenta de autoria, nem levam
-  `Co-Authored-By`, `Claude-Session` ou "Generated with".
+- Branch, commit e PR não citam Claude, IA, modelo nem ferramenta, nem levam `Co-Authored-By`, `Claude-Session` ou
+  "Generated with".
 - **Este guia é código.** Mudou um comando, uma pasta, um orçamento ou um jeito de trabalhar: corrija o `CLAUDE.md` e
-  o `.claude/` no mesmo trabalho. Regra de uma área só vai para `.claude/rules/`; procedimento, para uma skill; este
-  arquivo fica abaixo de 200 linhas. Depois de mexer, o dono pode conferir com `/doctor prompt-audit`.
+  o `.claude/` no mesmo trabalho. Regra de uma área vai para `.claude/rules/`; procedimento, para uma skill; este
+  arquivo fica abaixo de 200 linhas (conferência: `/doctor prompt-audit`).
 
 ## Trabalho com o Claude em etapas
 
 Trabalho que não cabe numa conversa vira **etapas**, uma sessão cada. Skills: `planejar`, `central`, `etapa`.
-
 - **Cadeia**: o dono pede; a sessão de entrada planeja e, com o "pode seguir" dele, abre a sessão central; a central
   abre uma sessão por etapa e confere cada uma no remoto; a etapa delega o código aos subagentes. Nenhuma etapa abre a
   seguinte: a plataforma recusa sessões na profundidade 8, e com a central abrindo todas a cadeia não cresce.
-- **Uma sessão, uma etapa.** Terminou, troca, mesmo com pressa. Nunca duas sessões de etapa na mesma branch.
+- **Uma sessão, uma etapa**, mesmo com pressa; nunca duas na mesma branch.
 - **`docs/HANDOFF.md` é a única memória entre etapas**: só na branch de trabalho (o check "Validar fluxo de
   branches" reprova o PR que o contenha), com teto de 150 linhas, removido com `git rm` no encerramento.
