@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTree, flattenTree, parseFileViewMode, splitPath } from '../src/renderer/src/fileTree'
+import { buildTree, diffPathParts, flattenTree, parseFileViewMode, splitPath } from '../src/renderer/src/fileTree'
 import type { TreeDir, TreeNode, TreeRow } from '../src/renderer/src/fileTree'
 
 const files = ['README.md', 'src/app/ui/a.tsx', 'src/app/ui/b.tsx', 'src/core/x.ts', 'src/main.ts', 'docs/guide/setup/one.md']
@@ -169,5 +169,42 @@ describe('buildTree e flattenTree são iguais à implementação anterior', () =
     for (const set of sets) {
       for (const depth of [0, 2]) expect(flattenTree(next, set, depth)).toEqual(refFlattenTree(ref, set, depth))
     }
+  })
+
+  // Cabeçalho do diff (#160): o diretório encolhe com reticências e o nome do arquivo fica inteiro enquanto couber.
+  describe('diffPathParts', () => {
+    it('separa o diretório (com a barra final) do nome do arquivo', () => {
+      expect(diffPathParts('pacotes/interface/componentes/painel.ts')).toEqual({
+        prefix: 'pacotes/interface/componentes/',
+        name: 'painel.ts',
+        title: 'pacotes/interface/componentes/painel.ts'
+      })
+    })
+
+    it('sem pasta: nenhum prefixo, o nome é o caminho inteiro', () => {
+      expect(diffPathParts('README.md')).toEqual({ prefix: '', name: 'README.md', title: 'README.md' })
+    })
+
+    it('nome com ponto e pasta com ponto: o corte é na última barra', () => {
+      expect(diffPathParts('v1.2/src/.config/a.b.ts')).toEqual({ prefix: 'v1.2/src/.config/', name: 'a.b.ts', title: 'v1.2/src/.config/a.b.ts' })
+      expect(diffPathParts('.env')).toEqual({ prefix: '', name: '.env', title: '.env' })
+    })
+
+    it('renomeação: o caminho antigo entra antes do diretório, e o título leva "antigo → novo"', () => {
+      expect(diffPathParts('novo/dir/arq.ts', 'antigo/arq.ts')).toEqual({
+        prefix: 'antigo/arq.ts → novo/dir/',
+        name: 'arq.ts',
+        title: 'antigo/arq.ts → novo/dir/arq.ts'
+      })
+    })
+
+    it('renomeação entre arquivos sem pasta', () => {
+      expect(diffPathParts('b.ts', 'a.ts')).toEqual({ prefix: 'a.ts → ', name: 'b.ts', title: 'a.ts → b.ts' })
+    })
+
+    it('oldPath ausente ou vazio não aparece: só renomeação mostra o caminho antigo', () => {
+      expect(diffPathParts('src/a.ts', undefined)).toEqual({ prefix: 'src/', name: 'a.ts', title: 'src/a.ts' })
+      expect(diffPathParts('src/a.ts', '')).toEqual({ prefix: 'src/', name: 'a.ts', title: 'src/a.ts' })
+    })
   })
 })
