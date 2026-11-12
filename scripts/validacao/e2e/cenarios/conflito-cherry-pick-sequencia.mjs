@@ -3,8 +3,15 @@
 // - Com "Continuar automaticamente" ligado, resolver a parada abre a seguinte sem clicar em Continue.
 // - O resultado é o do fluxo manual: três commits na ordem, árvore limpa, sem operação aberta e o arquivo com as
 //   escolhas feitas (os dois lados em cada trecho).
-import { access, readFile } from 'node:fs/promises'
+// - Prova de resultado exato: o mesmo cherry-pick refeito À MÃO (git puro, num worktree à parte, com o arquivo de cada
+//   parada igual ao que o aplicativo gravou) dá o mesmo `HEAD^{tree}` e a mesma lista de assuntos.
+import { execFile } from 'node:child_process'
+import { access, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { promisify } from 'node:util'
+
+const execFileAsync = promisify(execFile)
 
 const LINHAS = (v) => Array.from({ length: 6 }, (_, i) => v(i)).join('\n') + '\n'
 const TRECHOS = [0, 2, 4]
@@ -76,6 +83,8 @@ export default {
       const arquivo = await readFile(join(dir, 'f.txt'), 'utf8')
       expect.verdadeiro(!/^(<<<<<<<|=======|>>>>>>>)/m.test(arquivo), 'o arquivo não deveria ter marcadores')
       for (const n of TRECHOS) expect.verdadeiro(arquivo.includes(`main ${n}`) && arquivo.includes(`feature ${n}`), `os dois lados do trecho ${n}`)
+      const arvoreApp = (await app.git('rev-parse', 'HEAD^{tree}')).trim()
+      expect.igual(await arvoreDoFluxoManual(app, shas), arvoreApp, '`HEAD^{tree}` do fluxo manual igual ao do aplicativo')
     } finally {
       await app.backend.invoke('app:saveSettings', [original])
     }
@@ -88,4 +97,31 @@ async function escreverCommit(app, assunto, texto) {
   await writeFile(join(dir, 'f.txt'), texto)
   await app.git('add', 'f.txt')
   await app.git('commit', '-q', '-m', assunto)
+}
+
+/**
+ * Refaz o cherry-pick sem o aplicativo: worktree no `main` de antes, `git cherry-pick` de cada commit, o arquivo de cada
+ * parada é o que o aplicativo gravou no commit correspondente (HEAD~2, HEAD~1, HEAD). Devolve o `HEAD^{tree}` do fim.
+ */
+async function arvoreDoFluxoManual(app, shas) {
+  const base = (await app.git('rev-parse', 'HEAD~3')).trim()
+  const gravados = []
+  for (let k = shas.length - 1; k >= 0; k--) gravados.push((await app.git('show', `HEAD~${k}:f.txt`)))
+  const dirRepo = (await app.git('rev-parse', '--show-toplevel')).trim()
+  const tmp = await mkdtemp(join(tmpdir(), 'manual-cherry-'))
+  const wt = join(tmp, 'wt')
+  const g = (...args) => execFileAsync('git', ['-C', wt, '-c', 'core.editor=true', ...args], { encoding: 'utf8' }).then((r) => r.stdout.trim(), (e) => { if (e.code === 1) return ''; throw e })
+  try {
+    await execFileAsync('git', ['-C', dirRepo, 'worktree', 'add', '--detach', wt, base])
+    await g('cherry-pick', ...shas)
+    for (const i of shas.keys()) {
+      await writeFile(join(wt, 'f.txt'), gravados[i])
+      await g('add', 'f.txt')
+      await g('cherry-pick', '--continue')
+    }
+    return await g('rev-parse', 'HEAD^{tree}')
+  } finally {
+    await execFileAsync('git', ['-C', dirRepo, 'worktree', 'remove', '--force', wt]).catch(() => {})
+    await rm(tmp, { recursive: true, force: true })
+  }
 }

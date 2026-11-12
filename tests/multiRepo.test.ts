@@ -1,6 +1,8 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { execFile } from 'node:child_process'
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative, sep } from 'node:path'
+import { promisify } from 'node:util'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Backend, type BackendHost } from '../src/backend/backend'
 import { changeKeys } from '../src/core/diff'
@@ -54,6 +56,13 @@ function fakeHost(data = newDataDir(), overrides: Partial<BackendHost> = {}) {
 const watcherCount = (b: Backend) => (b as unknown as { watchers: Map<string, unknown> }).watchers.size
 
 const openRepo = (backend: Backend, path: string) => backend.invoke('app:openRepository', [path])
+
+/**
+ * git rodado por fora do GitTools (como um terminal do usuário). Não passa por `runGit` de propósito: `runGit` avisa o
+ * Backend de cada comando, e um comando visto pelo Backend conta como próprio (ver gitSignature.ts).
+ */
+const execFileAsync = promisify(execFile)
+const gitOutside = (cwd: string, ...args: string[]) => execFileAsync('git', args, { cwd })
 
 const openList = async (backend: Backend) => (await backend.invoke('app:openRepositories', [])) as OpenRepositories
 
@@ -339,6 +348,77 @@ describe('vários repositórios abertos', () => {
     await a.git('add', '-A')
     await new Promise((resolve) => setTimeout(resolve, 600))
     expect(events.some((e) => e.channel === 'repo:changed' && (e.payload as { root: string }).root === a.repo.root)).toBe(false)
+  })
+
+  it('commit feito por fora logo após uma ação própria sai como externo (não se perde no eco)', async () => {
+    const a = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    const { backend, events } = fakeHost()
+    await openRepo(backend, a.dir)
+
+    a.write('proprio.txt', 'x\n')
+    await backend.invoke('repo:invoke', ['stageFiles', [['proprio.txt']], a.repo.root])
+    // Logo depois, a ação própria ainda está dentro da janela do eco: o commit de fora não pode passar por ela.
+    a.write('externo.txt', 'y\n')
+    await gitOutside(a.dir, 'add', '-A')
+    await gitOutside(a.dir, 'commit', '-q', '-m', 'externo')
+
+    await waitFor(() => events.some((e) => e.channel === 'repo:changed' && (e.payload as { external?: boolean }).external === true))
+    const external = events.find((e) => (e.payload as { external?: boolean }).external === true)
+    expect((external?.payload as { root: string }).root).toBe(a.repo.root)
+  })
+
+  it('leitura própria logo depois de um commit de fora não absorve a mudança: o aviso continua externo', async () => {
+    const a = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    const { backend, events } = fakeHost()
+    await openRepo(backend, a.dir)
+
+    // Commit de fora, e em seguida a interface lê o status (leitura própria, dentro do debounce do aviso).
+    a.write('externo.txt', 'y\n')
+    await gitOutside(a.dir, 'add', '-A')
+    await gitOutside(a.dir, 'commit', '-q', '-m', 'externo')
+    await backend.invoke('repo:invoke', ['status', [], a.repo.root])
+
+    await waitFor(() => events.some((e) => e.channel === 'repo:changed' && (e.payload as { external?: boolean }).external === true))
+  })
+
+  it('commit próprio que demora (hook pós-commit) não sai como externo, mesmo com o aviso vencendo no meio dele', async () => {
+    const a = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    // O index é trocado logo no início do commit; depois, o hook dorme 1 s com o comando ainda rodando. O aviso do
+    // debounce (250 ms) vence nessa janela, com a assinatura própria ainda de antes do commit. Espera fixa só no hook.
+    const hook = join(a.dir, '.git', 'hooks', 'post-commit')
+    writeFileSync(hook, '#!/bin/sh\nsleep 1\n')
+    chmodSync(hook, 0o755)
+    const { backend, events } = fakeHost()
+    await openRepo(backend, a.dir)
+
+    a.write('b.txt', 'b\n')
+    await backend.invoke('repo:invoke', ['stageFiles', [['b.txt']], a.repo.root])
+    await backend.invoke('repo:invoke', ['commit', ['segundo'], a.repo.root])
+    // Ausência não tem o que esperar: deixa passar mais que o debounce para um aviso atrasado aparecer.
+    await waitFor(() => events.some((e) => e.channel === 'repo:changed'))
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    const changed = events.filter((e) => e.channel === 'repo:changed')
+    expect(changed.length).toBeGreaterThan(0)
+    expect(changed.every((e) => (e.payload as { external?: boolean }).external === false)).toBe(true)
+  })
+
+  it('só ação própria: nenhum aviso sai como externo', async () => {
+    const a = await createRepo()
+    await a.commit('a', { 'a.txt': 'a\n' })
+    const { backend, events } = fakeHost()
+    await openRepo(backend, a.dir)
+
+    a.write('proprio.txt', 'x\n')
+    await backend.invoke('repo:invoke', ['stageFiles', [['proprio.txt']], a.repo.root])
+    await waitFor(() => events.some((e) => e.channel === 'repo:changed'))
+    // Ausência não tem o que esperar: deixa passar mais que o debounce de 250 ms para um segundo aviso aparecer.
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    const changed = events.filter((e) => e.channel === 'repo:changed')
+    expect(changed.length).toBeGreaterThan(0)
+    expect(changed.every((e) => (e.payload as { external?: boolean }).external === false)).toBe(true)
   })
 })
 

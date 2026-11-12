@@ -6,6 +6,9 @@
 //   playwright instalado           (PLAYWRIGHT_MODULE e CHROMIUM apontam para outra instalação)
 //
 //   node scripts/perf/ui.mjs [lentidão-da-CPU=4] [clean|moderate|heavy] [--trace]
+import { execFileSync } from 'node:child_process'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { launch } from '../readme-media/harness.mjs'
 import { applyScenario, createStressRepo } from './stress-repo.mjs'
 
@@ -24,6 +27,14 @@ await cdp.send('Emulation.setCPUThrottlingRate', { rate })
 await cdp.send('Performance.enable')
 
 const show = (label, value) => console.log(`${label.padEnd(58)} ${value}`)
+const tetos = JSON.parse(readFileSync(new URL('../validacao/orcamentos.json', import.meta.url), 'utf8')).perfUi
+let estourou = false
+/** Compara o medido de Tour e Conflitos com o teto de orcamentos.json (perfUi); estouro faz o roteiro sair com 1. */
+const confere = (nome, medido, teto) => {
+  if (medido <= teto) return
+  estourou = true
+  console.log(`  FALHA ${nome}: ${medido} > teto ${teto}`)
+}
 const wait = (ms) => page.waitForTimeout(ms)
 
 /** Processos git desde a última chamada (com `--trace`, lista quais foram). */
@@ -239,6 +250,88 @@ const extreme = await custo(() => dragDivider(6), 6)
 if (extreme.result !== null) show('arrastar divisória com esse diff (6 passos)', `${extreme.result.toFixed(0)} ms por passo`)
 if (extreme.result !== null) show('  script / layout / estilo', `${extreme.linha} ms por passo`)
 
+// Tour (#98): fechado não custa nada (os números acima); aberto, mede abrir, nós no DOM, processos git e tempo por quadro.
+await page.waitForSelector('.toolbar')
+await gitProcesses()
+const nosSemTour = await dom()
+start = Date.now()
+await page.evaluate(() => window.dispatchEvent(new CustomEvent('gittools:tour')))
+await page.waitForSelector('.tour-card', { timeout: 60000 })
+show('abrir o Tour', `${Date.now() - start} ms`)
+await wait(1500)
+const gitTour = await gitProcesses()
+show('  processos git', gitTour)
+confere('Tour: processos git', gitTour, tetos.tour.gitAbrir)
+const nosComTour = await dom()
+show('  nós no DOM (sem Tour → com Tour)', `${nosSemTour} → ${nosComTour}`)
+confere('Tour: nós adicionais', nosComTour - nosSemTour, tetos.tour.nosAdicionais)
+await longTasks()
+const quadrosTour = await custo(
+  () => page.evaluate(async (n) => {
+    const begin = performance.now()
+    for (let i = 0; i < n; i++) await new Promise((done) => requestAnimationFrame(done))
+    return (performance.now() - begin) / n
+  }, 30),
+  30
+)
+show('quadros com o Tour aberto (30, parado)', `${quadrosTour.result.toFixed(1)} ms por quadro`)
+confere('Tour: ms por quadro', quadrosTour.result, tetos.tour.msPorQuadro)
+show('  script / layout / estilo', `${quadrosTour.linha} ms por quadro`)
+show('  tarefas longas', await longTasks())
+await page.keyboard.press('Escape')
+await page.waitForSelector('.tour-card', { state: 'detached', timeout: 10000 })
+
+// Conflitos (#96): cherry-pick que para em CONFLITOS arquivos do repositório de estresse; mede abrir a tela e rolar a lista.
+const CONFLITOS = 1500
+const gitFora = (...a) => execFileSync('git', a, { cwd: dir, stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1 << 30 }).toString()
+const rastreados = gitFora('ls-files').split('\n').filter(Boolean).slice(0, CONFLITOS)
+const escrever = (versao) => rastreados.forEach((f, n) => writeFileSync(join(dir, f), `${versao} ${n}\n`))
+gitFora('checkout', '-q', '-b', 'perf-deles', 'main')
+escrever('deles')
+gitFora('commit', '-qam', 'perf: deles')
+const deles = gitFora('rev-parse', 'HEAD').trim()
+gitFora('checkout', '-q', '-b', 'perf-nosso', 'main')
+escrever('nosso')
+gitFora('commit', '-qam', 'perf: nosso')
+try {
+  gitFora('cherry-pick', deles)
+} catch {
+  // O cherry-pick para em conflito: é o que se quer.
+}
+await gitProcesses()
+start = Date.now()
+await page.reload()
+await page.waitForSelector('.conflicts-screen, .toolbar', { timeout: 120000 })
+// A tela abre sozinha na partida; se não abriu, o título do banner a abre.
+if (!(await page.locator('.conflicts-screen').count())) await page.locator('button.operation-title').click()
+await page.waitForSelector('.conflicts-screen .conflicts-row', { timeout: 120000 })
+show(`abrir a tela Conflitos (${rastreados.length} arquivos)`, `${Date.now() - start} ms`)
+await wait(2500)
+await watchLongTasks()
+const gitConflitos = await gitProcesses()
+show('  processos git (recarga inteira)', gitConflitos)
+confere('Conflitos: processos git', gitConflitos, tetos.conflitos.gitRecarga)
+const linhasConf = await page.locator('.conflicts-row').count()
+const nosConf = await dom()
+show('  linhas montadas / nós no DOM', `${linhasConf} / ${nosConf}`)
+confere('Conflitos: linhas montadas', linhasConf, tetos.conflitos.linhasMontadas)
+confere('Conflitos: nós no DOM', nosConf, tetos.conflitos.nosDom)
+const rolagemConflitos = await custo(() => scroll('.conflicts-list', 30, 200), 30)
+show('rolar a lista de conflitos (30 quadros)', `${rolagemConflitos.result.toFixed(1)} ms por quadro`)
+confere('Conflitos: ms por quadro', rolagemConflitos.result, tetos.conflitos.msPorQuadroRolagem)
+show('  script / layout / estilo', `${rolagemConflitos.linha} ms por quadro`)
+show('  tarefas longas', await longTasks())
+show('  linhas montadas / nós no DOM', `${await page.locator('.conflicts-row').count()} / ${await dom()}`)
+
 if (app.errors.length) console.log('erros da página:', app.errors.slice(0, 5))
 await app.close()
+// Desfaz o conflito e os ramos de teste, para o repositório de estresse voltar ao estado de antes.
+for (const a of [['cherry-pick', '--abort'], ['checkout', '-q', '-f', 'main'], ['branch', '-qD', 'perf-nosso'], ['branch', '-qD', 'perf-deles']]) {
+  try {
+    gitFora(...a)
+  } catch {
+    // Já desfeito.
+  }
+}
 applyScenario(dir, 'clean')
+if (estourou) process.exit(1)

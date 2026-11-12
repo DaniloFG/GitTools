@@ -80,10 +80,10 @@ const BRIDGE = String.raw`
   const listeners = { cmd: new Set(), changed: new Set() }
   // A resposta chega como texto JSON e é lida aqui: o Playwright devolve objetos grandes à página muito devagar.
   const call = (channel, ...args) => window.__gt(channel, args).then((text) => JSON.parse(text).v)
-  // Mesmo contrato do preload: "repo:changed" chega como o root (ou nada, quando a janela ganha o foco).
+  // Mesmo contrato do preload: "repo:changed" chega como o root e external (ou nada, quando a janela ganha o foco).
   window.__emit = (channel, payload) => {
     if (channel === 'git:command') listeners.cmd.forEach((l) => l(payload))
-    else listeners.changed.forEach((l) => l(payload && payload.root))
+    else listeners.changed.forEach((l) => l(payload && payload.root, payload && payload.external === true))
   }
   const bridge = {
     openRepository: (p) => call('app:openRepository', p), openRepositories: () => call('app:openRepositories'), switchRepository: (r) => call('app:switchRepository', r),

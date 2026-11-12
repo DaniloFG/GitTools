@@ -39,8 +39,8 @@ const bridge: GitToolsBridge = {
   invokeOn: ((root: string, method: string, ...args: unknown[]) =>
     ipcRenderer.invoke('repo:invoke', method, args, root)) as GitToolsBridge['invokeOn'],
   onRepositoryChanged: (listener) => {
-    // O watcher manda `{ root }`; o aviso de foco da janela não manda nada.
-    const handler = (_e: unknown, payload?: { root?: string }) => listener(payload?.root)
+    // O watcher manda `{ root, external }`; o aviso de foco da janela não manda nada.
+    const handler = (_e: unknown, payload?: { root?: string; external?: unknown }) => listener(payload?.root, payload?.external === true)
     ipcRenderer.on('repo:changed', handler)
     return () => ipcRenderer.removeListener('repo:changed', handler)
   }
