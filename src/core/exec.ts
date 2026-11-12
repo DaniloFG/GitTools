@@ -97,6 +97,14 @@ export function cleanMessage(text: string): string {
 
 const BASE_ARGS = ['-c', 'core.quotepath=false', '-c', 'color.ui=false', '-c', 'advice.detachedHead=false']
 
+/**
+ * Tempo de espera, depois do `exit` do git, por um `close` normal, quando o pedido foi parado (tempo limite ou
+ * teto de saída). O `close` normal chega logo e conclui antes, preservando o comportamento de sempre. A espera
+ * só vale quando um processo neto segura os canais: aí o `close` não chega, e a resposta sai depois deste tempo.
+ * Sem a espera, a resposta sairia antes de o Windows soltar os handles do git e dos filhos (EBUSY ao apagar a pasta).
+ */
+const EXIT_GRACE_MS = 250
+
 // ------------------------------------------------------------ fila de processos
 
 /**
@@ -319,6 +327,7 @@ function execute(
   let stopping = false
   let finished = false
   let timer: ReturnType<typeof setTimeout> | null = null
+  let graceTimer: ReturnType<typeof setTimeout> | null = null
 
   // Pede ao git que pare, uma vez. Quem chama guarda o motivo em uma flag. Parar também cancela o tempo
   // limite, para ele não disparar depois e trocar o motivo do fim.
@@ -342,6 +351,7 @@ function execute(
     if (finished) return false
     finished = true
     if (timer) clearTimeout(timer)
+    if (graceTimer) clearTimeout(graceTimer)
     signal?.removeEventListener('abort', onAbort)
     giveBackSlot()
     return true
@@ -410,10 +420,19 @@ function execute(
     log.finish(-1, message)
     reject(new GitError(message, args, -1, '', ''))
   })
-  // Cancelado: o git já morreu, então não esperamos o fim dos canais de saída (um processo neto pode
-  // mantê-los abertos). Um pedido cancelado não usa a saída, então responder agora é seguro.
+  // Cancelado: o git já morreu e a saída não é usada, então responde na hora.
+  // Tempo limite ou teto de saída: o git foi morto de propósito, e um processo neto pode manter os canais
+  // abertos, o que impediria o `close` de chegar. Por isso espera EXIT_GRACE_MS por um `close` normal e só
+  // então responde. `complete` é idempotente: o `close` que chegar depois não faz nada, e `end()` limpa o timer.
   child.on('exit', (code) => {
-    if (aborted) complete(code)
+    if (aborted) {
+      complete(code)
+      return
+    }
+    if (timedOut || stoppedAtLimit) {
+      graceTimer = setTimeout(() => complete(code), EXIT_GRACE_MS)
+      graceTimer.unref()
+    }
   })
   child.on('close', (code) => complete(code))
   child.stdin.on('error', () => {
