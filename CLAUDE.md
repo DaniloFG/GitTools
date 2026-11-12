@@ -180,11 +180,11 @@ Regra que impede o pedido não se contorna em silêncio: explique o custo, propo
   entra nos seis catálogos de `src/shared/i18n/messages/` (o typecheck reprova catálogo incompleto).
 - Lógica pura fica em módulo `.ts` sem React e ganha teste em `tests/`. Módulo novo de `src/renderer/src` usado por teste
   entra no `include` do `tsconfig.node.json`. Gerado (`fileIcons.generated.ts`, `npm run build:icons`) não se edita à mão.
-- **Git e branches**: todo trabalho novo, ao começar ou ser pedido, ganha por padrão uma branch própria nova (`feature/`, `fix/`, `docs/`, `chore/`, `refactor/`, ou a `ccr-*` que a plataforma designar) **cortada da `main` atualizada** (`git fetch origin main`), porque
-  `develop` e `homolog` podem mudar ao mesmo tempo e quebrar o corte. Segue por PR branch → `develop`, a mesma branch → `homolog` (nunca `develop` → `homolog`) e `homolog` → `main`; PR é obrigatório;
-  merge na `main` é só do dono. O Claude não apaga branches (ver `.claude/rules/github.md`, "Ciclo de vida das branches"). Ao fim, remova o worktree (`git worktree remove` e `git worktree prune`). Nada de
-  force push, reescrita de histórico ou `--no-verify` em branch compartilhada.
-  Versão automática: não suba o patch à mão (`publicacao.md`).
+- **Git e branches**: cada alteração nasce de `develop` numa branch própria (`feature/`, `fix/`, `docs/`, `chore/`,
+  `refactor/`) e segue por PR branch → `develop`, a mesma branch → `homolog` (nunca `develop` → `homolog`) e `homolog` →
+  `main`; PR é obrigatório; merge na `main` é só do dono. O Claude não apaga branches (ver `.claude/rules/github.md`,
+  "Ciclo de vida das branches"). Ao fim, remova o worktree (`git worktree remove` e `git worktree prune`). Nada de
+  force push, reescrita de histórico ou `--no-verify` em branch compartilhada. Versão automática: não suba o patch à mão (`publicacao.md`).
 - Branch, commit e PR: sem Claude, IA, modelo ou ferramenta, nem `Co-Authored-By`, `Claude-Session` ou "Generated with".
 - **Este guia é código.** Mudou comando, pasta, orçamento ou jeito de trabalhar: corrija o `CLAUDE.md` e o `.claude/`
   juntos. Regra de área vai a `.claude/rules/`; procedimento, a skill; teto de 199 linhas (`/doctor prompt-audit`).
