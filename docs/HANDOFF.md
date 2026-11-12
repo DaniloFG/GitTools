@@ -23,7 +23,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E6` — flakiness do e2e-desempenho (#109)
+**A seguir:** `E7` — Tour (#98)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E3 | #92 (+#108) | Prova da #92: mutação do cenário e processos git antes/depois | feita | a897c90 | mutação A não reprova (ver seção 5); B e C1 reprovam; 4 cenários novos, e2e 31 ok |
 | E4 | #93, #94 | Provas restantes: painel à direita/embaixo, altura baixa; combobox compartilhado | feita | 0dc81de | mutação overflow e placePopover reprovam; z-index NÃO (seção 5); e2e 31 ok |
 | E5 | #97 | Prova: itens ocultos pelo menu Aparência (#56) | feita | 4c0a34f | mutação isScreenShown reprova; e2e 32 ok |
-| E6 | #109 | 5 execuções iguais do e2e-desempenho após a recalibração | a fazer | | |
+| E6 | #109 | 5 execuções iguais do e2e-desempenho após a recalibração | feita | (ver git log) | 5/5 ok; quadro 31,6-44,9 ms; carga a frio 587-675 ms; tetos intactos |
 | E7 | #98 | Tour: cenário e2e, foco e Esc, zero git, CPU 4× | a fazer | | |
 | E8 | #96 | Conflitos: itens não conferidos (1500 conflitos, Esc, medições) | a fazer | | |
 | E9 | #95 | Cherry-pick: entregas pendentes, tamanho a decidir pelo refinamento | a fazer | | |
@@ -42,12 +42,12 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: E5 (#97)
+### Última etapa fechada: E6 (#109)
 
-- **Feito**: `regressao-97-telas-ocultas` esconde Changes/Files/Compare pelo menu real, confere 4 abas, tela aberta
-  escondida continua à vista, 320/480/640 px sem item fora nem rolagem; desfaz no fim. Mutação em `isScreenShown`
-  (sempre true) reprova.
-- **Não conferido**: extensão do VS Code; painel à direita/embaixo com telas escondidas; alerta de conflito no topo.
+- **Feito**: `qa.mjs desempenho` 5 vezes seguidas, todas ok, sem mudar teto nem código. Pior caso: tarefa longa 60 ms
+  (teto 150), 2 tarefas longas na rolagem (teto 10), quadro 44,9 ms (teto 90), carga a frio 675 ms (teto 5000);
+  git 6/2/9/2/4 nos tetos exatos; DOM 1302. `tests/orcamentos.test.ts` 10 ok.
+- **Não conferido**: Windows e máquina fraca de verdade; só CPU 4× emulada neste contêiner.
 
 ## 3. Base de medição
 
@@ -59,11 +59,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
 
-### Etapa E6 — flakiness do e2e-desempenho (#109)
-
-- **Orquestra**: topo. **Aceite**: `node scripts/validacao/qa.mjs desempenho` 5 vezes seguidas, todas ok, saídas
-  registradas na issue; teto só muda com motivo e `tests/orcamentos.test.ts` verde. Flaky: investigue a causa antes de
-  subir teto. **Testes**: medição. **Depende de**: nada.
 ### Etapa E7 — Tour (#98)
 
 - **Orquestra**: topo. **Aceite**: cenário e2e do Tour em `scripts/validacao/e2e/cenarios/`; zero processos git durante
@@ -118,6 +113,7 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 - E4: o teste de `end` precisa de janela ~1000 px (botão de pessoas à direita); em 300–480 px o botão fica em x=31 e o popover só transborda. Remover o `z-index` não reprova o 94: se alguém retomar, ache o elemento que empilharia por cima.
 
 - E5: o menu é aberto com `.toolbar .tb-menu` + hover em Appearance/Screens; `alternados` copiado antes de `reverse` (laço infinito se mutar a lista).
+- E6: `build:extension` antes do `qa.mjs` (o dist não segue o código); 5 execuções levam ~1 min cada.
 
 ## 6. Encerramento
 
