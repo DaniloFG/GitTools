@@ -479,12 +479,10 @@ export const ptBR = {
     abortFilesMessage: 'Voltar os arquivos em conflito para a versão do último commit?',
     abortMessage: 'Desfazer a operação e voltar ao estado de antes de começar?',
     conflictsHelp: {
-      one: '{count} arquivo em conflito. Escolha uma versão ou edite e marque como resolvido.',
-      other: '{count} arquivos em conflito. Para cada um, escolha uma versão ou edite e marque como resolvido.'
+      one: '{count} arquivo em conflito. Clique nesta faixa para resolvê-lo na tela Conflitos.',
+      other: '{count} arquivos em conflito. Clique nesta faixa para resolvê-los na tela Conflitos.'
     },
     noConflicts: 'Sem conflitos pendentes. Continue para concluir.',
-    sideBySide: 'Resolver lado a lado',
-    sideBySideHelp: 'Comparar a versão atual com a que entra e escolher bloco a bloco',
     useOursHelp: 'Mantém a versão da branch atual (HEAD)',
     useTheirsHelp: 'Mantém a versão que está sendo aplicada',
     resolved: 'Resolvido',
@@ -564,8 +562,6 @@ export const ptBR = {
     includesIntermediate: '(inclui os commits intermediários)'
   },
   conflictBulk: {
-    title: 'Resolver todos',
-    resolveAllLabel: 'Resolver todos:',
     keepOurs: 'Manter todos locais (ours)',
     keepOursHelp: 'Mantém a versão da branch atual (HEAD) em todos os arquivos em conflito',
     takeTheirs: 'Aceitar todos os recebidos (theirs)',
@@ -591,9 +587,6 @@ export const ptBR = {
     },
     done: { one: '1 arquivo resolvido.', other: '{count} arquivos resolvidos.' },
     partial: 'Resolvidos: {resolved}. Não resolvidos: {failed} ({list}).',
-    filterLabel: 'Filtrar arquivos em conflito',
-    filterPlaceholder: 'Filtrar arquivos…',
-    showing: 'Mostrando {shown} de {count}',
     noMatch: 'Nenhum arquivo corresponde ao filtro.',
     notConflicted: 'Não está em conflito',
     hasMarkers: 'Ainda tem marcadores de conflito',
@@ -613,12 +606,16 @@ export const ptBR = {
     searchLabel: 'Buscar arquivo por nome',
     searchPlaceholder: 'Buscar por nome…',
     listLabel: 'Arquivos em conflito',
+    tabsLabel: 'Visão dos conflitos',
+    tabList: 'Lista',
+    tabEditor: 'Editor',
+    fileActions: 'Ações do arquivo selecionado',
     empty: 'Nenhum arquivo em conflito.',
     sideOurs: 'Nosso',
     sideTheirs: 'Deles',
     remembered: 'Você já escolheu este lado em um commit anterior: {side}',
     help: 'Selecione um arquivo para resolver lado a lado',
-    helpDetail: 'Clique num arquivo (ou use Enter) para abrir o editor lado a lado, onde ficam as ações por arquivo. «Resolver todos» continua na faixa acima.',
+    helpDetail: 'Clique num arquivo para abri-lo no painel do editor e resolvê-lo ali. F8 vai para o próximo arquivo pendente. A ação para todos os arquivos fica na barra abaixo.',
     mergeFooter: 'Em merge, depois de resolver os conflitos, faça o commit em Alterações.',
     kinds: {
       bothModified: 'Ambos modificaram',
@@ -946,7 +943,8 @@ export const ptBR = {
       multiSelect: 'Selecionar vários commits ou arquivos',
       lineRange: 'Selecionar um intervalo de linhas no diff',
       commit: 'Confirmar o commit',
-      close: 'Fechar diálogo ou menu'
+      close: 'Fechar diálogo ou menu',
+      nextConflictFile: 'Próximo arquivo em conflito pendente (tela Conflitos)'
     },
     helpTitle: 'Atalhos de teclado',
     helpFooter: 'Os atalhos podem ser alterados em Configurações → Atalhos de teclado.',

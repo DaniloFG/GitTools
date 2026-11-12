@@ -18,7 +18,18 @@ export const REUSE_NAMES = 3
 const NO_REUSE: ReusePlan = { ours: [], theirs: [] }
 const NO_DECISIONS: Decisions = new Map()
 
+/**
+ * Pedido para a tela Conflitos selecionar um arquivo (vem de `openConflict`, por exemplo o clique numa lista de
+ * mudanças). Cada pedido é um objeto novo: a tela guarda os que já aplicou pela identidade, então pedir o mesmo
+ * arquivo duas vezes funciona e reabrir a tela não repete um pedido antigo.
+ */
+export interface ConflictFocus {
+  path: string
+}
+
 export interface ConflictFlowValue {
+  /** Último pedido para selecionar um arquivo na tela Conflitos (null = nenhum). */
+  focus: ConflictFocus | null
   /** Escolhas "nosso"/"deles" lembradas nesta operação (vazio sem operação). */
   decisions: Decisions
   /** Das decisões lembradas, as que valem para os arquivos em conflito desta parada. */
@@ -47,7 +58,15 @@ export function useConflictFlow(): ConflictFlowValue {
   return value
 }
 
-export function ConflictFlowProvider({ onSaveSettings, children }: { onSaveSettings(next: Settings): Promise<void>; children: ReactNode }) {
+export function ConflictFlowProvider({
+  onSaveSettings,
+  focus,
+  children
+}: {
+  onSaveSettings(next: Settings): Promise<void>
+  focus: ConflictFocus | null
+  children: ReactNode
+}) {
   const { repo, data } = useRepoData()
   const { run, confirm, toast } = useAppActions()
   // Operação em andamento: continuar e pular sozinhos não disparam outra enquanto a primeira não termina.
@@ -199,8 +218,8 @@ export function ConflictFlowProvider({ onSaveSettings, children }: { onSaveSetti
   }, [run, confirm, toast, remember, root])
 
   const value = useMemo<ConflictFlowValue>(
-    () => ({ decisions, plan, reuseIgnored, autoContinue, ...actions }),
-    [decisions, plan, reuseIgnored, autoContinue, actions]
+    () => ({ focus, decisions, plan, reuseIgnored, autoContinue, ...actions }),
+    [focus, decisions, plan, reuseIgnored, autoContinue, actions]
   )
 
   return <ConflictFlowContext.Provider value={value}>{children}</ConflictFlowContext.Provider>

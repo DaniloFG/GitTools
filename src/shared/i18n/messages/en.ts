@@ -478,12 +478,10 @@ export const en: Messages = {
     abortFilesMessage: 'Restore the conflicted files to the last commit?',
     abortMessage: 'Undo the operation and go back to how things were before it started?',
     conflictsHelp: {
-      one: '{count} conflicted file. Choose a version or edit it and mark it as resolved.',
-      other: '{count} conflicted files. For each one, choose a version or edit it and mark it as resolved.'
+      one: '{count} conflicted file. Click this bar to resolve it in the Conflicts screen.',
+      other: '{count} conflicted files. Click this bar to resolve them in the Conflicts screen.'
     },
     noConflicts: 'No pending conflicts. Continue to finish.',
-    sideBySide: 'Resolve side by side',
-    sideBySideHelp: 'Compare the current version with the incoming one and choose block by block',
     useOursHelp: 'Keeps the version from the current branch (HEAD)',
     useTheirsHelp: 'Keeps the version being applied',
     resolved: 'Resolved',
@@ -563,8 +561,6 @@ export const en: Messages = {
     includesIntermediate: '(includes the commits in between)'
   },
   conflictBulk: {
-    title: 'Resolve all',
-    resolveAllLabel: 'Resolve all:',
     keepOurs: 'Keep all local (ours)',
     keepOursHelp: 'Keeps the current branch version (HEAD) in every conflicted file',
     takeTheirs: 'Accept all incoming (theirs)',
@@ -590,9 +586,6 @@ export const en: Messages = {
     },
     done: { one: '1 file resolved.', other: '{count} files resolved.' },
     partial: 'Resolved: {resolved}. Not resolved: {failed} ({list}).',
-    filterLabel: 'Filter conflicted files',
-    filterPlaceholder: 'Filter files…',
-    showing: 'Showing {shown} of {count}',
     noMatch: 'No file matches the filter.',
     notConflicted: 'Not in conflict',
     hasMarkers: 'Still has conflict markers',
@@ -612,12 +605,16 @@ export const en: Messages = {
     searchLabel: 'Search files by name',
     searchPlaceholder: 'Search by name…',
     listLabel: 'Conflicted files',
+    tabsLabel: 'Conflicts view',
+    tabList: 'List',
+    tabEditor: 'Editor',
+    fileActions: 'Actions for the selected file',
     empty: 'No conflicted files.',
     sideOurs: 'Ours',
     sideTheirs: 'Theirs',
     remembered: 'You already chose this side in an earlier commit: {side}',
     help: 'Select a file to resolve side by side',
-    helpDetail: 'Click a file (or press Enter) to open the side-by-side editor, where the per-file actions are. "Resolve all" stays in the bar above.',
+    helpDetail: 'Click a file to open it in the editor panel and resolve it there. F8 jumps to the next pending file. The action for all files is in the bar below.',
     mergeFooter: 'In a merge, once the conflicts are resolved, make the commit in Changes.',
     kinds: {
       bothModified: 'Both modified',
@@ -945,7 +942,8 @@ export const en: Messages = {
       multiSelect: 'Select several commits or files',
       lineRange: 'Select a range of lines in the diff',
       commit: 'Confirm the commit',
-      close: 'Close dialog or menu'
+      close: 'Close dialog or menu',
+      nextConflictFile: 'Next pending conflicted file (Conflicts screen)'
     },
     helpTitle: 'Keyboard shortcuts',
     helpFooter: 'Shortcuts can be changed in Settings → Keyboard shortcuts.',

@@ -1488,47 +1488,9 @@ button.operation-title:hover:not(:disabled) {
   background: transparent;
   text-decoration: underline;
 }
-.conflict-list {
-  list-style: none;
-  margin: 0;
-  padding: 4px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  /* Com dezenas de arquivos a lista rola dentro do próprio box, sem tomar a tela. */
-  max-height: min(40vh, 320px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.conflict-list li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.conflict-path {
-  flex: 1;
-  font-family: var(--mono);
-  font-size: 12px;
-}
-.conflict-list button {
-  padding: 2px 8px;
-  font-size: 12px;
-}
+/* ------------------------------------------------ conflitos: linha de ações */
 
-/* ------------------------------------------ conflitos: filtro e resolver todos */
-
-/* O painel ocupa uma linha própria do banner; a lista de arquivos rola dentro dele. */
-.conflict-panel {
-  flex-basis: 100%;
-  order: 3;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-/* Filtro e ações em lote ficam acima da lista, fora da rolagem. */
+/* Linha de ações (reaproveitar decisões) da tela Conflitos. */
 .conflict-tools {
   display: flex;
   flex-wrap: wrap;
@@ -1538,13 +1500,6 @@ button.operation-title:hover:not(:disabled) {
 .conflict-filter {
   flex: 1 1 180px;
   max-width: 320px;
-}
-.conflict-bulk {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-inline-start: auto;
 }
 .conflict-tools button {
   padding: 2px 8px;
@@ -1595,7 +1550,7 @@ button.operation-title:hover:not(:disabled) {
   display: grid;
   flex: 1 1 auto;
   min-height: 0;
-  grid-template-columns: minmax(260px, 2fr) minmax(0, 3fr);
+  grid-template-columns: minmax(220px, 1fr) minmax(0, 3fr);
 }
 /* A lista rola por dentro; as linhas têm altura fixa (30px, igual a ROW em ConflictsScreen.tsx). */
 .conflicts-list {
@@ -1619,6 +1574,9 @@ button.operation-title:hover:not(:disabled) {
 }
 .conflicts-row:hover {
   background: var(--bg-hover);
+}
+.conflicts-row.selected {
+  background: var(--bg-active);
 }
 .conflicts-row-path {
   flex: 1;
@@ -1673,16 +1631,112 @@ button.operation-title:hover:not(:disabled) {
 .conflicts-close {
   margin-inline-start: auto;
 }
-/* Janela estreita: a lista fica em cima e a ajuda embaixo. */
+/* Coluna do editor: o painel (ou a ajuda, sem arquivo selecionado) ocupa a altura toda e rola por dentro. */
+.conflicts-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+/* Abas Lista/Editor: só existem em janela estreita (a regra de @media abaixo as mostra). */
+.conflicts-tabs {
+  display: none;
+}
+.conflicts-tabs button {
+  flex: 1;
+  border-radius: 0;
+  border-width: 0 0 2px;
+  border-bottom-color: transparent;
+  background: transparent;
+}
+.conflicts-tabs button[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+/* Janela estreita: lista e editor viram abas, uma de cada vez (a escolhida está em data-tab). */
 @media (max-width: 640px) {
+  .conflicts-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  /* Em janela baixa e estreita o cabeçalho, os filtros e o rodapé quebram em várias linhas e sobrariam poucos pixels
+     para o editor: a tela rola e o corpo guarda uma altura mínima, em vez de o rodapé cobrir o editor. */
+  .conflicts-screen {
+    overflow-y: auto;
+  }
   .conflicts-body {
+    flex: 1 0 auto;
+    min-height: 320px;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .conflicts-body[data-tab='list'] > .conflicts-side,
+  .conflicts-body[data-tab='editor'] > :not(.conflicts-side) {
+    display: none;
   }
   .conflicts-list {
     border-inline-end: none;
-    border-bottom: 1px solid var(--border);
   }
+}
+
+/* ------------------------------------------------ editor de conflitos (painel) */
+
+.conflict-editor {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.conflict-editor-head {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.conflict-editor-title {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.conflict-file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.conflict-file-actions button {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+.conflict-editor-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 8px 12px;
+  overflow-y: auto;
+}
+/* Com os três painéis, quem rola são eles; o corpo só reparte a altura. */
+.conflict-editor-body:has(> .merge-editor) {
+  overflow: hidden;
+}
+.conflict-editor-foot {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
 }
 
 /* ------------------------------------------------------------ modais */
@@ -2909,11 +2963,6 @@ kbd.duplicate {
 
 /* ------------------------------------------------- editor de conflitos */
 
-.modal-body:has(> .merge-editor) {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
 .merge-editor {
   flex: 1;
   min-height: 0;
@@ -3480,7 +3529,6 @@ kbd.duplicate {
 [dir='rtl'] .merge-content textarea,
 [dir='rtl'] .merge-final,
 [dir='rtl'] .file-path,
-[dir='rtl'] .conflict-path,
 [dir='rtl'] .conflicts-row-path,
 [dir='rtl'] .diff-path,
 [dir='rtl'] code {

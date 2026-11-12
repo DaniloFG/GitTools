@@ -70,3 +70,24 @@ export function nextPending(rows: readonly ConflictRow[], currentPath: string | 
   }
   return null
 }
+
+/**
+ * Seleção que ainda vale: o arquivo escolhido sai de `status.conflicted` quando é resolvido (ou quando a operação
+ * termina), e o painel do editor não pode ficar apontando para um arquivo que já não está em conflito. Fora das
+ * linhas (ou sem seleção), null. Linear no número de linhas; quem chama a guarda num `useMemo`.
+ */
+export function keepSelection(rows: readonly ConflictRow[], selected: string | null): string | null {
+  if (selected === null) return null
+  return rows.some((row) => row.path === selected) ? selected : null
+}
+
+/** Aba visível na janela estreita (< 640px): lista ou editor. Em janela larga as duas aparecem juntas. */
+export type ConflictTab = 'list' | 'editor'
+
+/**
+ * Aba que de fato aparece. A aba "Editor" sem arquivo selecionado não teria o que mostrar (por exemplo, logo depois
+ * de resolver o arquivo), então a lista volta sozinha.
+ */
+export function effectiveTab(selected: string | null, tab: ConflictTab): ConflictTab {
+  return selected === null ? 'list' : tab
+}

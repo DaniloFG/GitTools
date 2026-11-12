@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { ConflictDetails } from '../../../shared/types'
 import { buildResult, parseConflicts, resolveChunk, type ChunkResolution, type MergeChunk } from '../../../shared/conflicts'
 import { useAppActions, useBusy, useRepoData } from '../context'
-import { BULK_RESOLUTIONS, bulkHelp, bulkLabel, useResolveAll } from '../bulkConflicts'
 import { errorMessage } from '../format'
 import { git } from '../git'
 import { t, textDirection } from '../i18n'
@@ -21,7 +20,6 @@ import {
   type MergeSource
 } from '../mergeLayout'
 import { ChangeRuler } from './ChangeRuler'
-import { Modal } from './Modal'
 import { Split } from './Split'
 import { LoaderPane } from './Loader'
 import { ViewOptionsButton } from './ViewOptions'
@@ -38,17 +36,47 @@ const LEADING_ARROWS = new Set(['←', '↖', '↙'])
 const withArrow = (label: string, arrow: string) => (LEADING_ARROWS.has(arrow) ? `${arrow} ${label}` : `${label} ${arrow}`)
 
 /**
+ * Casca do painel: cabeçalho (título e as ações por arquivo que a tela Conflitos passa), corpo e rodapé. O editor
+ * vive dentro da tela Conflitos (E9), então não há diálogo, nem Esc próprio, nem tamanho guardado.
+ */
+function EditorShell({
+  title,
+  actions,
+  footer,
+  rootRef,
+  children
+}: {
+  title: string
+  actions?: ReactNode
+  footer?: ReactNode
+  rootRef?: RefObject<HTMLDivElement | null>
+  children: ReactNode
+}) {
+  return (
+    <div className="conflict-editor" ref={rootRef}>
+      <header className="conflict-editor-head">
+        <h3 className="conflict-editor-title" title={title}>
+          {title}
+        </h3>
+        {actions}
+      </header>
+      <div className="conflict-editor-body">{children}</div>
+      {footer && <footer className="conflict-editor-foot">{footer}</footer>}
+    </div>
+  )
+}
+
+/**
  * Editor de conflitos com três painéis — versão atual (HEAD), resultado e versão que entra — em duas visões:
  * clássica (as duas versões em cima e o resultado embaixo) ou em colunas. Os painéis
  * podem ser arrastados para trocar de lugar; as setas e os atalhos seguem a posição deles na tela.
  * Os painéis rolam juntos, e cada bloco em conflito ocupa a mesma altura nos três.
  */
-export function ConflictEditor({ path, onClose }: { path: string; onClose(): void }) {
+export function ConflictEditor({ path, actions, onClose }: { path: string; actions?: ReactNode; onClose(): void }) {
   const { run, toast, showMenu } = useAppActions()
   const { repo } = useRepoData()
   // Operação em andamento: Salvar e as escolhas de arquivo inteiro não disparam outra enquanto a primeira não termina.
   const { busy } = useBusy()
-  const resolveAll = useResolveAll()
   const [details, setDetails] = useState<ConflictDetails | null>(null)
   const [resolutions, setResolutions] = useState<(ChunkResolution | undefined)[]>([])
   const [showFinal, setShowFinal] = useState(false)
@@ -62,6 +90,8 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   const syncing = useRef<MergePane | null>(null)
   const syncFrame = useRef(0)
   const rtl = textDirection() === 'rtl'
+  /** Raiz do painel: o ouvinte de Alt+setas confere se ela está visível (aba "Lista" em janela estreita a esconde). */
+  const rootRef = useRef<HTMLDivElement>(null)
 
   // `onClose` e `toast` mudam de identidade a cada renderização do App: ficam numa ref para o efeito depender só do
   // caminho. Antes, cada atualização depois de salvar relia os detalhes (mais processos git) e, com o arquivo já
@@ -142,11 +172,16 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   const [leftSource, rightSource] = sourcesByPosition(layout, rtl)
 
   // Atalhos dentro do editor: Alt+↓/↑ navegam entre conflitos; Alt+←/→ usam a versão do painel da esquerda/direita.
+  // Exceção à regra de ouvinte no elemento: continua na `window` como era no diálogo (valem com o foco em qualquer
+  // lugar da tela, e clicar num bloco não move o foco para o painel). Correção planejada: ouvinte no painel, com
+  // foco nele ao selecionar o arquivo.
   const keyState = useRef({ step, takeCurrent, leftSource, rightSource })
   keyState.current = { step, takeCurrent, leftSource, rightSource }
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!e.altKey || e.ctrlKey || e.metaKey) return
+      // Painel oculto (display: none): offsetParent é null. Lido só aqui, uma vez por tecla.
+      if (rootRef.current?.offsetParent === null) return
       const target = e.target as HTMLElement | null
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
       const k = keyState.current
@@ -179,9 +214,9 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
 
   if (!details) {
     return (
-      <Modal title={t('conflict.titleShort', { path })} onClose={onClose} size="medium">
+      <EditorShell title={t('conflict.titleShort', { path })} actions={actions}>
         <LoaderPane label={t('conflict.loading')} />
-      </Modal>
+      </EditorShell>
     )
   }
 
@@ -197,7 +232,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
             ? t('conflict.tooLarge')
             : t('conflict.unreadable')
     return (
-      <Modal title={t('conflict.titleShort', { path })} onClose={onClose} size="medium">
+      <EditorShell title={t('conflict.titleShort', { path })} actions={actions}>
         <p>{reason}</p>
         <div className="choice-list">
           <button className="choice" disabled={busy !== null} onClick={() => resolveWhole('ours')}>
@@ -211,7 +246,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
             <span>{t('conflict.editorHelp')}</span>
           </button>
         </div>
-      </Modal>
+      </EditorShell>
     )
   }
 
@@ -401,36 +436,15 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   )
 
   return (
-    <Modal
+    <EditorShell
       title={t('conflict.title', { path })}
-      onClose={onClose}
-      size="large"
-      id="conflict"
+      actions={actions}
+      rootRef={rootRef}
       footer={
         <>
           <span className="footer-summary">
             {conflicts.length === 0 ? t('conflict.noMarkers') : t('conflict.progress', { resolved: resolvedCount, count: conflicts.length })}
           </span>
-          <button
-            title={t('conflictBulk.menuHelp')}
-            onClick={(e) =>
-              showMenu(
-                e,
-                BULK_RESOLUTIONS.map((resolution) => ({
-                  label: t(bulkLabel(resolution)),
-                  hint: t(bulkHelp(resolution)),
-                  onClick: async () => {
-                    const result = await resolveAll(resolution)
-                    // Se este arquivo saiu do conflito, a janela já não tem o que mostrar.
-                    if (result && !result.failed.some((f) => f.path === path)) onClose()
-                  }
-                }))
-              )
-            }
-          >
-            {t('conflictBulk.menuLabel')} ▾
-          </button>
-          <button onClick={() => window.gittools.openFile(path, repo.root)}>{t('common.openInEditor')}</button>
           <button onClick={onClose}>{t('common.cancel')}</button>
           <button className="primary" disabled={resolvedCount < conflicts.length || busy !== null} onClick={save}>
             {t('conflict.save')}
@@ -499,7 +513,7 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
         </div>
         {showFinal ? <pre className="merge-final">{result}</pre> : <div className={`merge-panes merge-${layout.mode}`}>{panes}</div>}
       </div>
-    </Modal>
+    </EditorShell>
   )
 }
 

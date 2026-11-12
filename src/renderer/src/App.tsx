@@ -29,11 +29,11 @@ import { CommitList } from './components/CommitList'
 import { ContextMenu, type MenuItem, type MenuState } from './components/ContextMenu'
 // Só tipos: a tela de diálogos é carregada sob demanda (ver lazyScreens.ts).
 import type { ConfirmRequest, DialogScope, DialogState } from './components/Dialogs'
-import { CherryPickStudio, CloneDialog, CompareView, ConflictEditor, ConflictsScreen, Dashboards, DialogHost, RebaseEditor, SettingsCenter, ShortcutsHelp } from './lazyScreens'
+import { CherryPickStudio, CloneDialog, CompareView, ConflictsScreen, Dashboards, DialogHost, RebaseEditor, SettingsCenter, ShortcutsHelp } from './lazyScreens'
 import { FilesPanes } from './components/FilesView'
 import { GitLogView } from './components/GitLogView'
 import { KeyboardShortcuts } from './components/KeyboardShortcuts'
-import { ConflictFlowProvider } from './components/ConflictFlow'
+import { ConflictFlowProvider, type ConflictFocus } from './components/ConflictFlow'
 import { OperationBanner } from './components/OperationBanner'
 import { SidebarPanes } from './components/Sidebar'
 import { Loader, useDelayedLoading, useLastDefined } from './components/Loader'
@@ -700,6 +700,7 @@ function AppProviders({
   settings,
   app,
   onSaveSettings,
+  conflictFocus,
   children
 }: {
   repoData: RepoDataValue
@@ -708,6 +709,7 @@ function AppProviders({
   settings: AppSettingsValue
   app: AppContextValue
   onSaveSettings(next: Settings): Promise<void>
+  conflictFocus: ConflictFocus | null
   children: ReactNode
 }) {
   return (
@@ -717,7 +719,9 @@ function AppProviders({
           <AppSettingsContext.Provider value={settings}>
             <AppContext.Provider value={app}>
               {/* Estado do fluxo de conflitos (continuar sozinho, decisões lembradas): fica aqui para rodar com a tela fechada. */}
-              <ConflictFlowProvider onSaveSettings={onSaveSettings}>{children}</ConflictFlowProvider>
+              <ConflictFlowProvider onSaveSettings={onSaveSettings} focus={conflictFocus}>
+                {children}
+              </ConflictFlowProvider>
             </AppContext.Provider>
           </AppSettingsContext.Provider>
         </AppActionsContext.Provider>
@@ -804,7 +808,8 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [menu, setMenu] = useState<MenuState | null>(null)
   const [studio, setStudio] = useState<StudioRequest | null>(null)
-  const [conflict, setConflict] = useState<string | null>(null)
+  /** Arquivo que a tela Conflitos deve selecionar ao abrir (ver `openConflict`); o editor de conflitos é um painel dela. */
+  const [conflictFocus, setConflictFocus] = useState<ConflictFocus | null>(null)
   const [compare, setCompare] = useState<CompareRequest>(() => session.ui.compare)
   const [filePath, setFilePath] = useState<string | null>(() => session.ui.filePath)
   const [rebaseFrom, setRebaseFrom] = useState<string | null>(null)
@@ -1214,7 +1219,11 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       setView,
       openDiffWindow,
       resetLayout,
-      openConflict: (path) => setConflict(path),
+      // O editor de conflitos já não é um diálogo: abrir um arquivo é abrir a tela Conflitos com ele selecionado.
+      openConflict: (path) => {
+        setConflictFocus({ path })
+        setConflictsScreen(true)
+      },
       openCompare: (request) => {
         setCompare(request)
         setView('compare')
@@ -1330,10 +1339,10 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
     )
   }
 
-  const modalOpen = !!(studio || conflict || rebaseFrom || dialog || appModalOpen)
+  const modalOpen = !!(studio || rebaseFrom || dialog || appModalOpen)
 
   return (
-    <AppProviders repoData={repoDataValue} busy={busyValue} actions={actions} settings={settingsValue} app={context} onSaveSettings={onSaveSettings}>
+    <AppProviders repoData={repoDataValue} busy={busyValue} actions={actions} settings={settingsValue} app={context} onSaveSettings={onSaveSettings} conflictFocus={conflictFocus}>
       <KeyboardShortcutsPane locale={locale} disabled={modalOpen} onOpenRepository={openRepoDialog} />
       <ToolbarPane
         locale={locale}
@@ -1396,11 +1405,6 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
       {studio && (
         <Suspense fallback={null}>
           <CherryPickStudio request={studio} onClose={() => setStudio(null)} />
-        </Suspense>
-      )}
-      {conflict && (
-        <Suspense fallback={null}>
-          <ConflictEditor path={conflict} onClose={() => setConflict(null)} />
         </Suspense>
       )}
       {rebaseFrom && (
