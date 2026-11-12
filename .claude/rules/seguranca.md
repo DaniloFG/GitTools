@@ -38,14 +38,18 @@ enfraquecê-las, e código novo segue o mesmo desenho.
 | Editor externo | `src/main/editors.ts` | Sem shell, exceto `.cmd`/`.bat` no Windows, com tudo entre aspas; variáveis do Electron não vazam para o editor |
 
 **Limite conhecido (#134, #145).** `resolveInsideReal` e `resolveInsideParent` (`src/core/paths.ts`) conferem o
-`realpath` da pasta na hora da chamada; `openRegularFile` fecha a troca do último componente (`O_NOFOLLOW` + `fstat`).
-Fica um limite aceito: se uma pasta-mãe virar link para fora entre a conferência e a abertura, a leitura segue o link.
-Aceito porque exige processo com escrita concorrente na árvore do repositório (que já poderia alterar hooks, `.git/config`
-e os arquivos), fora do modelo "repositório baixado que o usuário abre". Fechar exigiria conferir o `realpath` do
-descritor ou abrir relativo à pasta: uma chamada extra de disco por arquivo em leituras em lote (princípios 2 e 3
-do `CLAUDE.md`), sem ganho no modelo.
-- **Leitura de arquivo de usuário** só passa por `resolveInsideReal`/`resolveInsideParent` + `openRegularFile`/
-  `readRegularFile`. Se o modelo de ameaça incluir adversário concorrente, reabra a #134.
+`realpath` da pasta na hora da chamada; `openRegularFile` fecha a troca do último componente só na **leitura**
+(`O_NOFOLLOW` + `fstat`). Ficam abertos, e aceitos: (1) leitura: pasta-mãe trocada por link para fora entre a conferência
+e a abertura; (2) **escrita**, mais grave (gravar fora do repositório): `writeFile` e `saveConflictResolution`
+(`src/core/repository.ts`) fazem `resolveInsideReal` e depois `writeFile` comum, então tanto a pasta-mãe quanto o último
+componente seguem um link posto entre o `lstat` e a gravação. Aceito porque exige processo com escrita concorrente na
+árvore (que já poderia alterar hooks, `.git/config` e os arquivos), fora do modelo "repositório baixado que o usuário
+abre". Fechar custaria uma chamada de disco por arquivo (`realpath` do descritor ou abertura relativa à pasta; princípios
+2 e 3 do `CLAUDE.md`), sem ganho no modelo.
+- **Exceções que existem:** `hasConflictMarkers` lê com `readFile` comum após `resolveInsideReal`; `untrackedStats` não
+  chama `resolveInsideReal` de propósito (laço quente; usa `lstat` e `readRegularFile`).
+- **Leitura de arquivo novo** passa por `resolveInsideReal`/`resolveInsideParent` + `readRegularFile`; escrita, por
+  `resolveInsideReal` e só em arquivo que já existe. Se o modelo de ameaça incluir adversário concorrente, reabra a #134.
 
 ## Regras para código novo
 

@@ -114,7 +114,7 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
 - 2026-11-12: o commit da E1 saiu com `Co-Authored-By`/`Claude-Session` (o lembrete de atribuição da plataforma contradiz o
   `CLAUDE.md`); próximas etapas: sem atribuição. Não reescrevi o histórico.
 - 2026-11-12 (E2): espião de teste vai em `open` (não em `lstat`, que `resolveInsideReal` também chama).
-- 2026-11-12 (E3): decidi sem o `gt-juiz` (escada, passo 1): a opção barata não existe sem custo por arquivo.
+- 2026-11-12 (E3): decisão (documentar) mantida; o `gt-juiz` reprovou o 1º texto por cobrir só leitura: faltavam a escrita (`writeFile`, `saveConflictResolution`), a exceção `hasConflictMarkers` e `untrackedStats`. Corrigido.
 
 ## 6. Encerramento
 
