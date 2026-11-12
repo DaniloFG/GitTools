@@ -11,10 +11,13 @@
 # tem conclusão `success`. Consulta que falha, resposta vazia, sha ilegível, check ausente, `failure`, `in_progress`
 # ou conclusão null bloqueiam. Na homolog o QA é consultado só depois da promoção.
 # Branches protegidas (issue #116, defesa em profundidade da regra "o Claude não apaga branches"): apagar `main`,
-# `develop` ou `homolog` bloqueia por `git push --delete`, `git push origin :ref`, `git branch -d/-D` e
-# `gh api -X DELETE .../git/refs/heads/<ref>`. O proxy já responde 403 ao DELETE; o hook barra antes, com a mensagem.
+# `develop` ou `homolog` bloqueia por `git push --delete`, `git push origin :ref`, `git branch -d/-D`,
+# `git update-ref -d` e `gh api -X DELETE .../git/refs/heads/<ref>`. O ref pode vir como `heads/<ref>`, sem `refs/`
+# (issue #124). O destino de apagar em variável (`git push origin :$VAR`) é bloqueado, porque não dá para conferir
+# o valor (issue #124). O proxy já responde 403 ao DELETE; o hook barra antes, com a mensagem.
 # Limites conhecidos (heurística sobre texto, não um parser de shell): `git push` sem destino com a main
-# já checada fora, `gh pr edit --base main` e `gh api --input arquivo.json` não são inspecionados.
+# já checada fora, `gh pr edit --base main` e `gh api --input arquivo.json` não são inspecionados. Destino em variável
+# que não apaga (`git push origin $BRANCH`, `HEAD:$X`) e `git update-ref -d $VAR` também não: o valor não é lido.
 entrada=$(cat)
 
 # Caminho comum: ferramenta que não é do GitHub MCP nem Bash sai aqui, sem abrir jq nem gh.
@@ -184,6 +187,13 @@ verificar_pr_por_seletor() { # seletor repo
 }
 
 re_protegida='^(refs/heads/|origin/|refs/remotes/origin/)?(main|develop|homolog)$'
+# Issue #124: o refspec de push aceita o ref sem `refs/` (`heads/develop`). Só o push ganha `heads/`: `git branch -D
+# heads/develop` apaga uma branch local com esse nome, que não é a protegida, então segue com `re_protegida`.
+re_protegida_push='^(refs/heads/|heads/|origin/|refs/remotes/origin/)?(main|develop|homolog)$'
+# Issue #124: `update-ref -d` pede o nome completo da ref; `refs/remotes/origin/<protegida>` é a cópia remota.
+re_ref_protegida='^(refs/)?(heads/)?(main|develop|homolog)$|^refs/remotes/origin/(main|develop|homolog)$'
+# Issue #124: destino de apagar em variável (`:$VAR`, com `+` opcional). O valor não é lido, então não se confere.
+re_apaga_variavel='^\+?:\$'
 
 bloquear_apagar() {
   {
@@ -218,6 +228,19 @@ analisar_git() {
     fi
     return 0
   fi
+  # Issue #124: `update-ref -d` apaga a ref sem passar pelo push; qualquer argumento protegido bloqueia.
+  if [ "${a[j]:-}" = update-ref ]; then
+    local apaga_ref=0
+    for tok in "${a[@]:j+1}"; do
+      if [[ $tok == --delete || $tok =~ ^-[a-zA-Z]*d[a-zA-Z]*$ ]]; then apaga_ref=1; fi
+    done
+    if [ "$apaga_ref" = 1 ]; then
+      for tok in "${a[@]:j+1}"; do
+        if [[ $tok =~ $re_ref_protegida ]]; then bloquear_apagar "git update-ref -d na branch protegida $tok."; fi
+      done
+    fi
+    return 0
+  fi
   [ "${a[j]:-}" = push ] || return 0
   local apaga_push=0
   for tok in "${a[@]:j+1}"; do
@@ -227,8 +250,9 @@ analisar_git() {
     case "$tok" in
       -*) ;;
       *)
-        if [[ ${tok#+} =~ ^:(refs/heads/)?(main|develop|homolog)$ ]]; then bloquear_apagar "git push apagando a branch protegida (${tok#*:})."; fi
-        if [ "$apaga_push" = 1 ] && [[ $tok =~ $re_protegida ]]; then bloquear_apagar "git push --delete na branch protegida $tok."; fi
+        if [[ $tok =~ $re_apaga_variavel ]]; then bloquear_apagar "git push apagando por variável ($tok): o destino não dá para conferir."; fi
+        if [[ ${tok#+} =~ ^:(refs/)?(heads/)?(main|develop|homolog)$ ]]; then bloquear_apagar "git push apagando a branch protegida (${tok#*:})."; fi
+        if [ "$apaga_push" = 1 ] && [[ $tok =~ $re_protegida_push ]]; then bloquear_apagar "git push --delete na branch protegida $tok."; fi
         ;;
     esac
   done

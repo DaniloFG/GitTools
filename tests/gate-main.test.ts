@@ -248,6 +248,19 @@ describe('gate-main: não apaga develop, homolog nem main (issue #116)', () => {
     'gh api -XDELETE repos/o/r/git/refs/heads/main',
     'gh api graphql -f query=mutation{deleteRef(input:{refId:x}){clientMutationId}}',
     'git push +:develop',
+    // Issue #124: o refspec sem `refs/` e o `update-ref -d` escapavam; o destino em variável não é verificável.
+    'git push origin :heads/develop',
+    'git push origin :heads/homolog',
+    'git push origin :heads/main',
+    'git push origin +:heads/develop',
+    'git push origin --delete heads/develop',
+    'git update-ref -d refs/heads/develop',
+    'git update-ref --delete refs/heads/homolog',
+    'git update-ref -d refs/heads/main',
+    'git update-ref -d refs/remotes/origin/develop',
+    'git -C x update-ref -d refs/heads/develop',
+    'git push origin ":$VAR"',
+    'git push origin :$BRANCH',
   ])('bloqueia: %s', async (comando) => {
     const r = await bash(comando)
     expect(r.code).toBe(2)
@@ -260,10 +273,18 @@ describe('gate-main: não apaga develop, homolog nem main (issue #116)', () => {
     'git branch -D feature/x',
     'git branch -a',
     'git branch develop-copia',
+    // Local `heads/develop` não é a branch protegida; `branch -D` continua fora do alcance da regra nova (#124).
+    'git branch -D heads/develop',
     'git push origin HEAD:develop',
     'git push origin develop',
     'gh api -X DELETE repos/o/r/git/refs/heads/feature/x',
     'gh api repos/o/r/git/refs/heads/develop',
+    'git update-ref -d refs/heads/feature/x',
+    'git update-ref refs/heads/develop HEAD',
+    'git update-ref -d refs/heads/develop-copia',
+    'git push origin :heads/feature/x',
+    'git push origin $BRANCH',
+    'git push origin HEAD:$BRANCH',
   ])('passa: %s', async (comando) => {
     expect((await bash(comando)).code).toBe(0)
   })
