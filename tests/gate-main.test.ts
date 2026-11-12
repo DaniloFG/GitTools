@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 // O `gh` de verdade nunca é chamado: um `gh` falso no início do PATH responde pela base conforme o número do PR.
 // Issue #104: base homolog só aceita a branch de trabalho (nunca a develop), já na história da develop (compare
 // behind/identical) e com o rótulo `validada-develop`; qualquer consulta que falhe bloqueia.
+// Issue #110: merge com base develop ou homolog exige o check-run `QA` da ponta com conclusão `success`.
 
 const script = fileURLToPath(new URL('../.claude/hooks/gate-main.sh', import.meta.url))
 
@@ -24,8 +25,13 @@ let ghLog = ''
 //   7 -> homolog, compare behind, mas só com outro rótulo (bug);
 //   8 -> homolog, com rótulo, mas a consulta de compare falha; 12 -> compare devolve status vazio;
 //   11 -> homolog, a consulta de origem/ponta/rótulos falha (a da base responde).
+//   20 -> develop, QA failure; 21 -> develop, check QA ausente; 23 -> develop, a consulta do check QA falha;
+//   22 -> homolog, compare behind, com rótulo, QA failure; 24 -> develop, QA in_progress (conclusion null).
 // Por seletor (`pr view`): "ramo-verde" -> ponta abc0002 com rótulo; "ramo-sem-rotulo" -> ponta abc0007 sem rótulo;
-// "ramo-develop" -> origem develop; "ramo-nao-mergeado" -> ponta abc0005 (ahead) com rótulo.
+// "ramo-develop" -> origem develop; "ramo-nao-mergeado" -> ponta abc0005 (ahead) com rótulo;
+// "ramo-qa-vermelho" -> base develop, ponta abc0020 (QA failure); "ramo-develop-verde" -> base develop, ponta abc0001.
+// Check-runs (`*/commits/SHA/check-runs`): QA success para qualquer SHA, exceto os dedicados acima (abc0020 e
+// abc0022 failure; abc0021 lista vazia; abc0023 o gh falha; abc0024 conclusion null).
 // O gh falso devolve JSON e aplica o --jq com o jq de verdade, para o filtro do hook também ser testado.
 // Cada chamada fica no log.
 const ghFalso = `#!/usr/bin/env bash
@@ -37,9 +43,11 @@ while [ $# -gt 0 ]; do
 done
 saida() { if [ -n "$filtro" ]; then printf '%s' "$1" | jq -r "$filtro"; else printf '%s\\n' "$1"; fi; }
 ok='{"name":"validada-develop"}'
+verde='{"name":"QA","conclusion":"success"}'
 pr() { saida '{"base":{"ref":"'"$1"'"},"head":{"ref":"'"$2"'","sha":"'"$3"'"},"labels":['"$4"']}'; exit 0; }
 cmp() { saida '{"status":"'"$1"'"}'; exit 0; }
 vista() { saida '{"headRefName":"'"$1"'","headRefOid":"'"$2"'","labels":['"$3"']}'; exit 0; }
+qa() { saida '{"check_runs":['"$1"']}'; exit 0; }
 if [ "$a1" = api ]; then
   case "$a2" in
     */pulls/1) pr develop fix/x abc0001 "$ok" ;;
@@ -53,6 +61,11 @@ if [ "$a1" = api ]; then
     */pulls/10) pr homolog fix/x abc0010 "$ok" ;;
     */pulls/11) case "$filtro" in *head.ref*) exit 1 ;; *) pr homolog fix/x abc0011 "$ok" ;; esac ;;
     */pulls/12) pr homolog fix/x abc0012 "$ok" ;;
+    */pulls/20) pr develop fix/x abc0020 "$ok" ;;
+    */pulls/21) pr develop fix/x abc0021 "$ok" ;;
+    */pulls/22) pr homolog fix/x abc0022 "$ok" ;;
+    */pulls/23) pr develop fix/x abc0023 "$ok" ;;
+    */pulls/24) pr develop fix/x abc0024 "$ok" ;;
     */compare/develop...abc0002) cmp behind ;;
     */compare/develop...abc0004) cmp behind ;;
     */compare/develop...abc0005) cmp ahead ;;
@@ -60,6 +73,13 @@ if [ "$a1" = api ]; then
     */compare/develop...abc0007) cmp behind ;;
     */compare/develop...abc0010) cmp identical ;;
     */compare/develop...abc0012) cmp '' ;;
+    */compare/develop...abc0022) cmp behind ;;
+    */commits/abc0020/check-runs*) qa '{"name":"QA","conclusion":"failure"}' ;;
+    */commits/abc0021/check-runs*) qa '' ;;
+    */commits/abc0022/check-runs*) qa '{"name":"QA","conclusion":"failure"}' ;;
+    */commits/abc0023/check-runs*) exit 1 ;;
+    */commits/abc0024/check-runs*) qa '{"name":"QA","status":"in_progress","conclusion":null}' ;;
+    */commits/*/check-runs*) qa "$verde" ;;
   esac
 fi
 if [ "$a1" = pr ] && [ "$a2" = view ]; then
@@ -68,6 +88,8 @@ if [ "$a1" = pr ] && [ "$a2" = view ]; then
     ramo-sem-rotulo) case "$todos" in *headRefOid*) vista ramo-sem-rotulo abc0007 '' ;; *baseRefName*) echo homolog; exit 0 ;; esac ;;
     ramo-develop) case "$todos" in *headRefOid*) vista develop abc0004 "$ok" ;; *baseRefName*) echo homolog; exit 0 ;; esac ;;
     ramo-nao-mergeado) case "$todos" in *headRefOid*) vista ramo-nao-mergeado abc0005 "$ok" ;; *baseRefName*) echo homolog; exit 0 ;; esac ;;
+    ramo-qa-vermelho) case "$todos" in *headRefOid*) vista ramo-qa-vermelho abc0020 "$ok" ;; *baseRefName*) echo develop; exit 0 ;; esac ;;
+    ramo-develop-verde) case "$todos" in *headRefOid*) vista ramo-develop-verde abc0001 "$ok" ;; *baseRefName*) echo develop; exit 0 ;; esac ;;
   esac
 fi
 exit 1
@@ -322,6 +344,72 @@ describe('gate-main: a homolog recebe só a branch de trabalho, mergeada e valid
 
   it('por seletor com -R fora do formato dono/repo não dá para confirmar e bloqueia', async () => {
     expect((await bash('gh pr merge ramo-verde -R github.com/o/r')).code).toBe(2)
+  })
+})
+
+describe('gate-main: o check QA precisa estar verde na ponta do PR', () => {
+  const msgQa = 'GATE DE QA: bloqueado.'
+
+  it.each([
+    ['develop', 1, 'abc0001'],
+    ['homolog', 2, 'abc0002'],
+  ])('base %s com QA success passa por MCP, gh pr merge, gh api e auto-merge', async (_base, n, sha) => {
+    expect((await mcp('merge_pull_request', pr(n))).code).toBe(0)
+    expect((await bash(`gh pr merge ${n}`)).code).toBe(0)
+    expect((await bash(`gh api -X PUT repos/o/r/pulls/${n}/merge`)).code).toBe(0)
+    expect((await mcp('enable_pr_auto_merge', pr(n))).code).toBe(0)
+    expect(readFileSync(ghLog, 'utf8')).toContain(`repos/o/r/commits/${sha}/check-runs?check_name=QA`)
+  })
+
+  it.each([
+    ['QA em failure (develop)', 20],
+    ['check QA ausente (develop)', 21],
+    ['QA sem conclusão, em andamento (develop)', 24],
+    ['a consulta do check QA falha (develop)', 23],
+    ['QA em failure (homolog, promoção já passa)', 22],
+  ])('bloqueia com GATE DE QA em todos os caminhos: %s', async (_nome, n) => {
+    const caminhos = [
+      () => mcp('merge_pull_request', pr(n)),
+      () => bash(`gh pr merge ${n}`),
+      () => bash(`gh api -X PUT repos/o/r/pulls/${n}/merge`),
+      () => mcp('enable_pr_auto_merge', pr(n)),
+    ]
+    for (const caminho of caminhos) {
+      const r = await caminho()
+      expect(r.code).toBe(2)
+      expect(r.stderr).toContain(msgQa)
+      expect(r.stderr).toContain('job `QA` do workflow')
+    }
+  })
+
+  it.each([4, 7])('PR %i (homolog) bloqueia por promoção antes de consultar o QA', async (n) => {
+    const r = await mcp('merge_pull_request', pr(n))
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('GATE DE PROMOÇÃO')
+    expect(readFileSync(ghLog, 'utf8')).not.toContain('check-runs')
+  })
+
+  it('base main continua bloqueada pela regra da main, sem consultar o check QA', async () => {
+    const r = await mcp('merge_pull_request', pr(3))
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('GATE DA MAIN')
+    expect(readFileSync(ghLog, 'utf8')).not.toContain('check-runs')
+  })
+
+  it('por seletor de base develop, o QA da ponta (headRefOid) decide', async () => {
+    const vermelho = await bash('gh pr merge ramo-qa-vermelho')
+    expect(vermelho.code).toBe(2)
+    expect(vermelho.stderr).toContain(msgQa)
+    expect(readFileSync(ghLog, 'utf8')).toContain('repos/{owner}/{repo}/commits/abc0020/check-runs')
+    expect((await bash('gh pr merge ramo-develop-verde')).code).toBe(0)
+  })
+
+  it('por seletor com -R dono/repo consulta o QA desse repositório; fora do formato bloqueia', async () => {
+    expect((await bash('gh pr merge ramo-qa-vermelho -R o/r')).code).toBe(2)
+    expect(readFileSync(ghLog, 'utf8')).toContain('repos/o/r/commits/abc0020/check-runs')
+    const foraDoFormato = await bash('gh pr merge ramo-develop-verde -R github.com/o/r')
+    expect(foraDoFormato.code).toBe(2)
+    expect(foraDoFormato.stderr).toContain(msgQa)
   })
 })
 

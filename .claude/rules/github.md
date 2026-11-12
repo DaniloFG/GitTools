@@ -97,6 +97,9 @@ origem e maturidade entram quando se aplicam.
 - Vermelho: issue de correção (`bug`, ligada à mãe), conserto antes de qualquer outro merge, sem promover.
 - O `gate-main.sh` só deixa o merge na `homolog` se a ponta do PR está na história da `develop`, o PR tem o rótulo
   `validada-develop` e a origem não é a `develop`.
+- O check obrigatório de PR se chama `QA` (workflow `qa.yml`, job `QA`): gate de cobertura de cenários e pipeline. O
+  `gate-main.sh` só deixa o merge em `develop` e `homolog` com o check-run `QA` em `success` na ponta do PR (consulta
+  que falha bloqueia). A proteção de branch que o exige no GitHub é do dono (#101).
 
 ## Branch do PR
 
