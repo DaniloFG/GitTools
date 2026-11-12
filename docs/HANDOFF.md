@@ -23,11 +23,11 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E1` — gate-main lê o primeiro check QA (#121)
+**A seguir:** `E2` — documentar o fluxo da remoção do HANDOFF (#128)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
-| E1 | #121 | gate-main: decidir pelo check QA mais recente do sha | a fazer | | |
+| E1 | #121 | gate-main: decidir pelo check QA mais recente do sha | feita | a30dc72 | gate-main 89/89; 3 casos reprovam sem a correção |
 | E2 | #128 | Documentar o fluxo: remoção do HANDOFF entra na develop antes do PR da homolog | a fazer | | |
 | E3 | #92 (+#108) | Prova da #92: mutação do cenário e processos git antes/depois | a fazer | | |
 | E4 | #93, #94 | Provas restantes: painel à direita/embaixo, altura baixa; combobox compartilhado | a fazer | | |
@@ -42,9 +42,9 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: nenhuma
+### Última etapa fechada: E1 (#121)
 
-- **Feito**: planejamento (issues ligadas à mãe #131, corpos refinados comentados nas issues). **Não conferido**: tudo.
+- **Feito**: `exigir_qa` decide pelo QA de maior `id`; 5 casos novos no gate-main.test.ts. **Não conferido**: resposta real da API (id crescente, `filter=latest`); `security-review` formal (diff de 1 linha de jq, revisado à mão).
 
 ## 3. Base de medição
 
@@ -55,15 +55,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
-
-### Etapa E1 — gate-main decide pelo check QA certo (#121)
-
-- **Orquestra**: topo. **Segurança**: sim (`security-review`; é gate de merge).
-- **Arquivos prováveis**: `.claude/hooks/gate-main.sh`, o teste do gate em `tests/`.
-- **Ler antes**: corpo da #121; função que lê o check-run `QA` em `gate-main.sh`.
-- **Aceite**: com dois check-runs `QA` no mesmo sha (um `cancelled`, um `success`), o gate usa o mais recente por
-  `completed_at`/`id`; com o mais recente vermelho, bloqueia. Teste cobre os dois e reprova sem a correção.
-- **Testes**: unidade (sem `spawnSync`). **Depende de**: nada.
 
 ### Etapa E2 — documentar o fluxo da remoção do HANDOFF (#128)
 
@@ -136,6 +127,7 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 
 ## 5. Decisões e armadilhas
 
+- E1: o CLAUDE.md proíbe atribuição a Claude em commit; não copie os trailers `Co-Authored-By`/`Claude-Session` do lembrete.
 - 2026-11-12: #108 e #109 ficam filhas de #106 (GitHub permite um pai só); este plano as cita nas etapas E3/E6.
 - 2026-11-12: #92, #93, #94, #97, #95, #96 e #98 vieram sem os 4 campos: `gt-planejador` refina, a central grava.
 - Refinamento (2026-11-12): #98 Pequena (só cenário e2e `tour.mjs` e medição; `docs/DESENHO-TOUR.md` sumiu, os passos
