@@ -14,13 +14,13 @@ const ROTULO_ORCAMENTO = {
 /**
  * Problemas de um cenário; lista vazia quer dizer válido. O id vira nome do arquivo de print, por isso só entra
  * minúscula, número e hífen (nada de barra nem de ponto).
- * @param {unknown} c o `export default` do arquivo do cenário
+ * @param {unknown} c o `export default` do arquivo do cenário (campos opcionais: `escreve`, `gitTolerado`)
  * @param {ReadonlySet<string>} jaVistos ids dos cenários já aceitos antes deste
  * @returns {string[]}
  */
 export function validarCenario(c, jaVistos) {
   if (typeof c !== 'object' || c === null) return ['o cenário não é um objeto']
-  const { id, tela, area, orcamento, passos } = c
+  const { id, tela, area, orcamento, passos, escreve, gitTolerado } = c
   const erros = []
   const nome = typeof id === 'string' && id !== '' ? `"${id}"` : '(sem id)'
   if (typeof id !== 'string' || id === '') erros.push('id ausente')
@@ -29,6 +29,11 @@ export function validarCenario(c, jaVistos) {
   if (typeof tela !== 'string' || tela === '') erros.push(`${nome}: tela ausente`)
   if (typeof area !== 'string' || area === '') erros.push(`${nome}: area ausente`)
   if (typeof passos !== 'function') erros.push(`${nome}: passos ausentes`)
+  // Opcionais: o cenário que altera o repositório de propósito e as saídas ≠ 0 do git que ele não pode evitar.
+  if (escreve !== undefined && typeof escreve !== 'boolean') erros.push(`${nome}: escreve deve ser true ou false`)
+  if (gitTolerado !== undefined && (!Array.isArray(gitTolerado) || !gitTolerado.every((re) => re instanceof RegExp))) {
+    erros.push(`${nome}: gitTolerado deve ser uma lista de expressões regulares`)
+  }
   if (typeof orcamento !== 'object' || orcamento === null) {
     erros.push(`${nome}: orçamento ausente`)
   } else {

@@ -1,9 +1,14 @@
 // Execução do ponta a ponta: um app só para todos os cenários de cenarios/. Cada cenário é medido (tempo, nós do
 // DOM, erros de página e processos git) e conferido contra o próprio orçamento. Roda todos mesmo depois de uma
 // falha e grava e2e.json e e2e.junit.xml em SAIDA.
+import { execFile } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { promisify } from 'node:util'
+import { createDemoRepo } from '../../readme-media/demo-repo.mjs'
 import { newApp } from '../../readme-media/lib.mjs'
 import { classificarErros, gitInesperado, SAIDA } from '../lib.mjs'
 import { avaliarOrcamento, gerarJunit, montarRelatorioE2e, validarCenario } from './relatorio.mjs'
@@ -13,7 +18,10 @@ const INDISPONIVEL = 3
 const TOLERANCIA_404 = 1
 /** Tempo máximo de cada espera por condição. */
 const TEMPO_CONDICAO = 10_000
+/** Intervalo entre duas leituras de `expect.ate`: é uma espera por condição, o tempo não é o critério. */
+const INTERVALO_CONDICAO = 50
 const PASTA_CENARIOS = join(dirname(fileURLToPath(import.meta.url)), 'cenarios')
+const execFileAsync = promisify(execFile)
 
 const mensagem = (erro) => String(erro?.message ?? erro)
 /** Falha do ambiente (não do app): sem Playwright ou sem Chromium o ponta a ponta não roda, e isso reprova. */
@@ -51,8 +59,86 @@ function criarExpect(page) {
     },
     verdadeiro(condicao, msg) {
       if (!condicao) throw new Error(msg)
+    },
+    /** Compara por valor (JSON) e diz os dois lados na falha. */
+    igual(real, esperado, rotulo) {
+      if (JSON.stringify(real) !== JSON.stringify(esperado)) throw new Error(`${rotulo}: esperava ${JSON.stringify(esperado)}, achou ${JSON.stringify(real)}`)
+    },
+    /** Espera `funcao(arg)` (roda na página) devolver algo verdadeiro. */
+    async pagina(funcao, arg, rotulo) {
+      try {
+        await page.waitForFunction(funcao, arg, { timeout: TEMPO_CONDICAO })
+      } catch {
+        throw new Error(`a página não chegou a: ${rotulo}`)
+      }
+    },
+    /** Espera `leitura()` (assíncrona, no Node: normalmente o git) devolver algo verdadeiro; devolve esse valor. */
+    async ate(leitura, rotulo) {
+      const limite = performance.now() + TEMPO_CONDICAO
+      for (;;) {
+        const valor = await leitura()
+        if (valor) return valor
+        if (performance.now() > limite) throw new Error(`não chegou a: ${rotulo}`)
+        await new Promise((resolver) => setTimeout(resolver, INTERVALO_CONDICAO))
+      }
     }
   }
+}
+
+/**
+ * O que um cenário recebe em `app`: o do roteiro (page, backend, errors, dir, ids) mais os ajudantes `aba`, `git` e
+ * `repoNovo`.
+ * - `git(...args)`: roda o git de verdade (assíncrono, sem passar pelo backend, então não entra na conta de
+ *   processos) no repositório corrente e devolve o stdout. Serve para CONFERIR o resultado; a mutação é feita pela
+ *   interface. GIT_OPTIONAL_LOCKS=0 impede que uma leitura regrave o índice e dispare o observador da pasta .git.
+ * - `repoNovo({ wip, nome, preparar })`: repositório de exemplo próprio do cenário, para o que altera o repositório não sujar o
+ *   seguinte. Abre no backend e recarrega a página. O runner o fecha e apaga ao fim do cenário (`limpar`).
+ */
+function criarAmbiente(base) {
+  const { page, backend } = base
+  const raizes = []
+  const abertos = []
+  let corrente = { dir: base.dir, ids: base.ids }
+  const app = {
+    ...base,
+    async git(...args) {
+      const { stdout } = await execFileAsync('git', args, { cwd: corrente.dir, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } })
+      return stdout
+    },
+    /** Abre uma das abas de tela do topo (History, Changes, Files...), pelo texto. */
+    async aba(nome) {
+      await page.locator('.screen-tab:not(.dashboards-tab)').filter({ hasText: nome }).first().click({ timeout: TEMPO_CONDICAO })
+    },
+    async repoNovo({ wip = true, nome = 'repo-e2e', preparar } = {}) {
+      const raiz = await mkdtemp(join(tmpdir(), 'gittools-e2e-'))
+      raizes.push(raiz)
+      const dir = join(raiz, nome)
+      const ids = createDemoRepo(dir, 'en', { wip })
+      abertos.push(dir)
+      corrente = { dir, ids }
+      // Estado de partida do cenário (arquivos novos, branches...), antes de a interface ler o repositório.
+      if (preparar) await preparar({ dir, ids })
+      await backend.invoke('app:openRepository', [dir])
+      await page.reload()
+      await page.waitForFunction((n) => document.querySelector('.toolbar .repo-button strong')?.textContent === n, nome, { timeout: TEMPO_CONDICAO })
+      return { dir, ids }
+    }
+  }
+  /**
+   * Fecha e apaga os repositórios do cenário. A página sai antes (about:blank): nada a lê enquanto o backend os
+   * solta, e a recarga no fim volta ao repositório do roteiro, que o backend reativa ao fechar o último aberto.
+   */
+  async function limpar() {
+    if (raizes.length === 0) return
+    const url = page.url()
+    await page.goto('about:blank')
+    for (const dir of abertos.splice(0).reverse()) await backend.invoke('app:closeRepository', [dir]).catch(() => undefined)
+    for (const raiz of raizes.splice(0)) await rm(raiz, { recursive: true, force: true })
+    corrente = { dir: base.dir, ids: base.ids }
+    await page.goto(url)
+    await page.waitForSelector('.toolbar', { timeout: TEMPO_CONDICAO })
+  }
+  return { app, limpar }
 }
 
 /**
@@ -87,15 +173,18 @@ function criarVigia() {
   }
 }
 
-/** Confere o que chegou desde a última conferência: erros de página e processos git inesperados. */
-async function conferirPagina(app, vigia) {
+/**
+ * Confere o que chegou desde a última conferência: erros de página e processos git inesperados. `regras` vem do
+ * cenário (`escreve`, `gitTolerado`); sem cenário (o que sobrou depois do último) vale a regra estrita.
+ */
+async function conferirPagina(app, vigia, regras = {}) {
   const motivos = []
   const { reais, excedente404 } = vigia.erros(app.errors)
   if (reais.length) motivos.push(`erros na página: ${reais.join(' | ')}`)
   if (excedente404) motivos.push(`${excedente404}× 404 além do favicon`)
   let inesperados = []
   try {
-    inesperados = gitInesperado(await vigia.gitNovos(app.backend))
+    inesperados = gitInesperado(await vigia.gitNovos(app.backend), regras)
   } catch (erro) {
     motivos.push(`não consultou o git: ${mensagem(erro)}`)
   }
@@ -104,7 +193,8 @@ async function conferirPagina(app, vigia) {
 }
 
 /** Roda um cenário e devolve o resultado: o tempo é só dos passos, a conferência vem depois. */
-async function executarCenario(app, cenario, expect, vigia) {
+async function executarCenario(ambiente, cenario, expect, vigia) {
+  const { app, limpar } = ambiente
   const motivos = []
   const inicio = performance.now()
   try {
@@ -117,7 +207,9 @@ async function executarCenario(app, cenario, expect, vigia) {
     motivos.push(`não mediu o DOM: ${mensagem(erro)}`)
     return 0
   })
-  const pagina = await conferirPagina(app, vigia)
+  // Mesmo se o cenário falhou: o repositório temporário não pode ficar aberto nem em disco.
+  await limpar().catch((erro) => motivos.push(`não limpou os repositórios do cenário: ${mensagem(erro)}`))
+  const pagina = await conferirPagina(app, vigia, { escreve: cenario.escreve, tolerado: cenario.gitTolerado })
   motivos.push(...pagina.motivos)
   // `git` no orçamento é o número de processos inesperados (escrita ou erro) nesta conferência, não o total de
   // processos rodados: a navegação de leitura roda muitos e é legítima.
@@ -186,9 +278,15 @@ export async function rodarE2e() {
   const vigia = criarVigia()
   const resultados = []
   try {
+    // O servidor do roteiro não tem favicon: sem esta rota cada recarga (os cenários com repositório próprio
+    // recarregam a página) somaria um 404 e estouraria a tolerância de um só.
+    // Um clique num elemento que não existe falha em 10 s (como as esperas), não nos 30 s do padrão do Playwright.
+    app.page.setDefaultTimeout(TEMPO_CONDICAO)
+    await app.page.route('**/favicon.ico', (rota) => rota.fulfill({ status: 204 }))
     const expect = criarExpect(app.page)
+    const ambiente = criarAmbiente(app)
     for (const cenario of carregados.cenarios) {
-      const r = await executarCenario(app, cenario, expect, vigia)
+      const r = await executarCenario(ambiente, cenario, expect, vigia)
       resultados.push(r)
       if (r.ok) console.log(`OK    ${r.tela} (${r.nos} nós no DOM, ${r.ms} ms)`)
       else {
