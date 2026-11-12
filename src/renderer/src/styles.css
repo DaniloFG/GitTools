@@ -5023,6 +5023,23 @@ button.blame-bubble:hover {
     max-width: 160px;
   }
 }
+/* Painel estreito (#97): nada fica fora da tela, e sem rolagem escondida. As telas quebram em mais linhas (sem máscara
+   nem rolagem) e as ações quebram para uma linha nova, com o ⚙ sempre dentro da largura. Só CSS: nenhum nó novo. */
+@container toolbar (max-width: 640px) {
+  .toolbar .toolbar-main {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .toolbar .toolbar-main > .toolbar-spacer {
+    flex: 1 1 0;
+  }
+  .toolbar > .screen-tabs {
+    flex-wrap: wrap;
+    overflow: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
 /* Muito estreita: a branch some para caber as ações (o repositório segue visível). */
 @container toolbar (max-width: 520px) {
   .toolbar .current-branch {
