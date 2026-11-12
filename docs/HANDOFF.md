@@ -23,11 +23,11 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E1`
+**A seguir:** `E2`
 
 | Etapa | Issue | Objetivo | Orquestra | Estado | Commit |
 | --- | --- | --- | --- | --- | --- |
-| E1 | #143 (#142) | `origin/HEAD` garantido para code-review e security-review | sonnet | a fazer | |
+| E1 | #143 (#142) | `origin/HEAD` garantido para code-review e security-review | sonnet | fechada | df18263 |
 | E2 | #144 (#135) | Teste por chamador de `readRegularFile` (link no lugar do arquivo) | sonnet | a fazer | |
 | E3 | #145 (#134) | Corrida da pasta-mãe trocada por link: fechar ou documentar | topo | a fazer | |
 | E4 | #146 (#132) | Aviso externo logo após ação da interface (`isOwnEcho`) | topo | a fazer | |
@@ -41,23 +41,14 @@ Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede 
 
 ### Última etapa fechada
 
-Nenhuma. O planejamento criou #139, as sub-issues #143 a #151 e as descobertas #140, #141, #142 (a candidata (c)
-do ENC da #131 já era a #132). Nada foi executado além do planejamento.
+E1 (`df18263`): hook `SessionStart` `.claude/hooks/origin-head.sh` aponta `origin/HEAD` para develop/homolog/main sem rede;
+`tests/origin-head.test.ts` 8/8; typecheck e `npm test` (1447) verdes. Skill `security-review` completa não rodada.
 
 ## 3. Base de medição
 
 Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` antes de mexer.
 
 ## 4. Plano
-
-### Etapa E1 — `origin/HEAD` para as skills de revisão (#143, #142)
-
-- **Orquestra**: sonnet
-- **Arquivos prováveis**: `.claude/skills/etapa/SKILL.md`, `.claude/skills/pr/SKILL.md` e/ou um hook de início de
-  sessão em `.claude/hooks/` + `.claude/settings.json`; teste do script em `tests/` (sem `spawnSync`).
-- **Ler antes**: `.claude/rules/github.md` (gates), `.claude/settings.json`.
-- **Aceite**: numa cópia sem `origin/HEAD`, `security-review` roda até o fim (saída anexada); `CLAUDE.md` ≤ 199 linhas.
-- **Testes**: do script, se houver; `npm run typecheck`, `npm test`. **Segurança**: não (não afrouxar `gate-*.sh`).
 
 ### Etapa E2 — um teste por chamador de `readRegularFile` (#144, #135)
 
@@ -137,6 +128,9 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
 - 2026-11-12: a plataforma não designou branch (HEAD solto na `homolog`); criada `chore/plano-4-provas` a partir de
   `3f0239b`. `git remote set-head origin -a` falha sem `origin/main` buscado; usei `git fetch origin main` primeiro.
 - 2026-11-12: #92 está `status:planejada` apesar da revisão; a E5 corrige o rótulo. #133 é do dono (base da branch).
+
+- 2026-11-12: o commit da E1 saiu com `Co-Authored-By`/`Claude-Session` (o lembrete de atribuição da plataforma contradiz o
+  `CLAUDE.md`); próximas etapas: sem atribuição. Não reescrevi o histórico.
 
 ## 6. Encerramento
 
