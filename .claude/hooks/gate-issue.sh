@@ -22,6 +22,21 @@ bloquear() {
   exit 2
 }
 
+# Resolve ".", ".." e "//" de um caminho absoluto sem tocar o disco (igual em Linux, macOS e Git Bash).
+normalizar() {
+  local parte saida=() resultado=
+  local IFS=/
+  for parte in $1; do
+    case "$parte" in
+      ''|.) ;;
+      ..) [ "${#saida[@]}" -gt 0 ] && unset 'saida[${#saida[@]}-1]' ;;
+      *) saida+=("$parte") ;;
+    esac
+  done
+  for parte in "${saida[@]}"; do resultado+="/$parte"; done
+  printf '%s' "${resultado:-/}"
+}
+
 mensagem_sem_issue() {
   bloquear 'todo pedido vira issue antes de qualquer ação. Crie a issue (escopo, critérios de aceite, considerações técnicas, testes) com `mcp__github__issue_write` e grave `#N` na primeira linha de .claude/issue.local (política: .claude/rules/github.md).'
 }
@@ -39,14 +54,11 @@ IFS=$'\x1f' read -r -d '' ferramenta subagente caminho <<<"$campos"
 case "$ferramenta" in
   Agent) [ "$subagente" = gt-escritor ] || exit 0 ;;
   Edit|Write|NotebookEdit)
-    # Normaliza (.., ./, relativo) para que "/tmp/../projeto/x" não passe por "fora do projeto".
-    if command -v realpath >/dev/null 2>&1; then
-      [ -n "$caminho" ] && [[ $caminho != /* ]] && caminho="$raiz/$caminho"
-      caminho=$(realpath -m -- "$caminho" 2>/dev/null || printf '%s' "$caminho")
-      raiz_abs=$(realpath -m -- "$raiz" 2>/dev/null || printf '%s' "$raiz")
-    else
-      raiz_abs=$raiz
-    fi
+    # Normaliza (.., ./, //, relativo) para que "/tmp/../projeto/x" não passe por "fora do projeto".
+    # Léxico e em bash puro: o realpath do macOS (BSD) não tem -m e, sem ele, o caminho ficava torto.
+    [ -n "$caminho" ] && [[ $caminho != /* ]] && caminho="$raiz/$caminho"
+    caminho=$(normalizar "$caminho")
+    raiz_abs=$(normalizar "$raiz")
     # Fora do projeto (scratchpad, /tmp): não é trabalho no código.
     case "$caminho" in
       "$raiz_abs"/*) ;;

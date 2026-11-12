@@ -42,6 +42,9 @@ reprova na `homolog` e na `main` o PR que o contenha (na `develop` é permitido)
 Plano 1 (issues #92 a #98, #100 a #105, #112) fechado em `6e36d23` e `1b48108`: telas Conflitos e Tour prontas,
 fluxo de PR, gates, backlog e autosave. **Sem PR e sem validação em ambiente ainda**: é o que R1 faz.
 
+R1-fix: o PR #118 ficou vermelho no macOS (`gate-issue.test.ts`, caminho `/tmp/../<projeto>`): o `realpath` BSD não tem `-m`.
+O `gate-issue.sh` agora normaliza em bash puro (`normalizar`), com teste que simula o `realpath` sem `-m`. Windows: reconferir o CI.
+
 ## 3. Base de medição
 
 Pacote: `npm run perf:bundle` → 695.821 de 700.000 bytes (relato da E13, commit `45cac62`). Tour aberto: 15 nós no

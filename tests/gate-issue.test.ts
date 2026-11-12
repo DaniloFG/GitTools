@@ -89,6 +89,20 @@ describe('gate-issue: sem issue ativa', () => {
     expect(escrever(`/tmp/../${projeto.slice(1)}/src/a.ts`).code).toBe(2)
   })
 
+  it('sem realpath -m (BSD/macOS), ".." que volta ao projeto continua bloqueado', () => {
+    // O realpath do macOS não aceita -m: o hook não pode depender dele para normalizar o caminho.
+    const falso = join(bin, 'realpath')
+    writeFileSync(falso, '#!/usr/bin/env bash\necho "realpath: illegal option -- m" >&2\nexit 1\n')
+    chmodSync(falso, 0o755)
+    try {
+      expect(escrever(`/tmp/../${projeto.slice(1)}/src/a.ts`).code).toBe(2)
+      expect(escrever('src/../src/a.ts').code).toBe(2)
+      expect(escrever(`${projeto}/../fora/a.ts`).code).toBe(0)
+    } finally {
+      rmSync(falso, { force: true })
+    }
+  })
+
   it('HANDOFF sem #N e sem marcador bloqueia', () => {
     handoff('# Plano\n\n| Etapa | Issue |\n| --- | --- |\n| 1 | a criar |\n')
     expect(escreverNoProjeto().code).toBe(2)
