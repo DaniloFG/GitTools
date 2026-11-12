@@ -109,6 +109,7 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
   return (
     <div className="commit-box">
       <textarea
+        aria-label={t('changes.commitPlaceholder')}
         placeholder={t('changes.commitPlaceholder')}
         value={message}
         onChange={(e) => setMessage(e.target.value)}

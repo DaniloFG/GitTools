@@ -106,10 +106,14 @@
   padding-inline: 10px;
   font-size: 15px;
 }
+/* #119: a 320 px os botões do cabeçalho não cabem numa linha; quebram em vez de estourar a página. */
 .dash-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+  min-width: 0;
   margin-inline-start: auto;
 }
 .dash-updated {
@@ -139,6 +143,11 @@
 .dash-filters .segmented button {
   padding: 3px 10px;
 }
+/* #119: a 320 px o grupo de período (e o de escopo) não cabe numa linha; quebra os botões (modelo: .segmented.wrap). */
+.dash-filters .segmented {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
 .dash-date {
   display: inline-flex;
   align-items: center;
@@ -150,8 +159,9 @@
   padding: 3px 6px;
   font-size: 12px;
 }
+/* #119: a 320 px o resumo passava 2 px da janela; pode quebrar linha quando falta espaço. */
 .dash-summary {
-  white-space: nowrap;
+  min-width: 0;
 }
 .dash-banner {
   margin: 10px 18px 0;
@@ -263,8 +273,10 @@
   background: var(--dash-surface);
   box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent) inset, 0 8px 24px -16px rgba(0, 0, 0, 0.5);
 }
+/* #119: em cartão estreito, as ferramentas quebram para a linha de baixo em vez de estourar o cartão. */
 .dash-card-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 11px 12px 0 16px;
@@ -284,8 +296,11 @@
 }
 .dash-card-tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
+  min-width: 0;
 }
 .dash-select {
   max-width: 120px;

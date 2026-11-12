@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { afterEach, describe, expect, it, type TestContext } from 'vitest'
+import { readRegularFile } from '../src/core/paths'
 import { GitRepository } from '../src/core/repository'
 import { createRepo, lines, linkOrSkip } from './helpers'
 
@@ -196,5 +197,31 @@ describe('leitura, escrita e editor de conflitos pelo link', () => {
     await expect(t.repo.saveConflictResolution('pasta-link/fora.txt', 'PWNED\n')).rejects.toThrow()
     await expect(t.repo.saveConflictResolution('arquivo-link.txt', 'PWNED\n')).rejects.toThrow()
     expect(readFileSync(o.file, 'utf8')).toBe('SEGREDO FORA\nlinha 2\nlinha 3\n')
+  })
+})
+
+// Issue #125: o `lstat` e a leitura são duas chamadas. Se o arquivo virar link entre elas, a abertura é que precisa
+// barrar. A troca não se provoca de forma determinística; o teste põe o disco no estado em que ela termina (o caminho
+// já é um link) e chama a leitura que vem depois do `lstat`.
+describe('leitura do arquivo de trabalho não segue link na abertura (TOCTOU)', () => {
+  it('readRegularFile lê arquivo comum', async () => {
+    const t = await createRepo()
+    writeFileSync(join(t.dir, 'ok.txt'), 'dentro\n')
+    expect((await readRegularFile(join(t.dir, 'ok.txt'))).toString()).toBe('dentro\n')
+  })
+
+  it('readRegularFile recusa arquivo trocado por link para fora, sem devolver o segredo', async (ctx) => {
+    if (process.platform === 'win32') ctx.skip('sem O_NOFOLLOW no Windows')
+    const t = await createRepo()
+    const o = outside()
+    writeFileSync(join(t.dir, 'troca.txt'), 'antes\n')
+    unlinkSync(join(t.dir, 'troca.txt'))
+    linkOrSkip(ctx, o.file, join(t.dir, 'troca.txt'), 'file')
+    await expect(readRegularFile(join(t.dir, 'troca.txt'))).rejects.toThrow()
+  })
+
+  it('readRegularFile recusa diretório', async () => {
+    const t = await createRepo()
+    await expect(readRegularFile(t.dir)).rejects.toThrow()
   })
 })

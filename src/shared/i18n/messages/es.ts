@@ -283,6 +283,7 @@ export const es: Messages = {
     linesContext: 'De {path} en el commit {sha} — "{subject}"',
     takeChecked: { one: 'Llevar {count} archivo marcado a {target}…', other: 'Llevar {count} archivos marcados a {target}…' },
     dragFile: 'Arrastra a una rama para llevar este archivo',
+    checkFile: 'Marcar {path} para llevar',
     selectLinesHelp: 'Selecciona líneas y aplica solo esas en otra rama.',
     takeWholeFile: 'Llevar el archivo completo…'
   },

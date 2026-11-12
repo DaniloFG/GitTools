@@ -253,6 +253,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
             >
               <input
                 type="checkbox"
+                aria-label={t('details.checkFile', { path: file.path })}
                 checked={checked.has(file.path)}
                 onClick={(e) => e.stopPropagation()}
                 onChange={(e) => {
