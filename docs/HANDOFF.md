@@ -137,7 +137,6 @@ Não se aplica ao planejamento. E3, E4 e E6 tiram a base (`medir`) no `3f0239b` 
 - 2026-11-12: a plataforma não designou branch (HEAD solto na `homolog`); criada `chore/plano-4-provas` a partir de
   `3f0239b`. `git remote set-head origin -a` falha sem `origin/main` buscado; usei `git fetch origin main` primeiro.
 - 2026-11-12: #92 está `status:planejada` apesar da revisão; a E5 corrige o rótulo. #133 é do dono (base da branch).
-- A #108 só fecha depois de E5, E8 e E9 (mutações de #92, #93, #94, #97).
 
 ## 6. Encerramento
 
