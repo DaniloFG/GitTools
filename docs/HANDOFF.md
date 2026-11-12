@@ -15,15 +15,15 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**A seguir:** `E3`
+**A seguir:** `E4`
 
-**Última etapa fechada:** E2: `security-review` rodou até o fim sobre o diff da #95 (`5f2edcb`+`bf8dd18`, 5 arquivos) numa cópia com `origin/HEAD`: sem achados; saída comentada na #147 e #95. `cherry-pick-sequence.test.ts` 12/12.
+**Última etapa fechada:** E3: processos git por ação iguais na base `4b9f8e5^` e em `4b9f8e5` (stage 3, commit 4, checkout 5, externa 0; interface real, 3 rodadas); `readSignature` (5 stats) mediana ~0,09 ms (3×300); `perf:bundle` 695.635. Produto intocado; evidência na #146, #132 e #168.
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | E1 | #166 | security-review sem origin/HEAD + disparo real do SessionStart (#143, #142) | fechada | (este commit) | disparo real + security-review ok |
 | E2 | #167 | security-review do diff da #95 (#147, #95); depende da E1 | fechada | (este commit) | sem achados |
-| E3 | #168 | processos git por ação e stats em ms (#146, #132) | a fazer | | |
+| E3 | #168 | processos git por ação e stats em ms (#146, #132) | fechada | (este commit) | sem aumento; stats 0,09 ms |
 | E4 | #169 | relato da #93, z-index do `.dash-popover`, fechar #108 (#150, #93, #94) | a fazer | | |
 | E5 | #170 | telas ocultas na barra estreita (#97) | a fazer | | |
 | E6 | #171 | Tour: reduced-motion, sem repositório, Windows (#98) | a fazer | | |
@@ -38,10 +38,6 @@ Só a E3 mede. Base: `4b9f8e5^` contra `4b9f8e5` (commit da correção da #132),
 
 Cada etapa: ler a issue e os comentários de fechamento do Plano 4, executar, comentar a evidência por critério e
 trocar o rótulo para `status:em-revisao`. Issues antigas só fecham com prova completa.
-
-### Etapa E3 — processos git e stats (#168)
-- **Orquestra**: topo. **Ler antes**: skill `medir`, `docs/PERFORMANCE.md` seção 7.
-- **Aceite**: processos por ação antes/depois sem aumento; custo dos stats em ms (mediana); comandos e saídas na #146/#132.
 
 ### Etapa E4 — relato da #93 e z-index (#169)
 - **Orquestra**: topo. **Aceite**: pergunta ao dono na #93 (`question`), plano segue; veredito do `gt-juiz` sobre `.dash-popover` aplicado, com mutação vista reprovando. #108 só fecha depois da E5.
@@ -61,6 +57,8 @@ trocar o rótulo para `status:em-revisao`. Issues antigas só fecham com prova c
 - Cópia de teste sem `origin/HEAD` vive no scratchpad, nunca no repositório. Apagar a ref remota de `develop` na cópia é bloqueado pelo `gate-main.sh`: monte a cópia com `git init` + `git fetch origin <branch-de-trabalho>`.
 - `claude -p` roda os hooks de `.claude/settings.json` do cwd (prova do SessionStart); `/security-review` em `-p` funciona.
 - `claude -p "/security-review"` com `--permission-mode bypassPermissions` é negado pelo classificador; use `--allowedTools Read Grep Glob "Bash(git diff:*)"…`. Para revisar commits antigos, a cópia leva `origin/HEAD` no pai e só o `git diff` deles aplicado (o clone é raso).
+
+- Medição por ação (E3): roteiro de rascunho abre `launch` do worktree, chama `repo:invoke` (`stageFiles`, `commit`, `checkout`) e conta `app:gitLog` 3,5 s depois; `esbuild` não resolve fora do repositório (copie o script para dentro do worktree com `node_modules` ligado). `labels` em `issue_write update` SUBSTITUI todos os rótulos: reenvie a lista inteira.
 
 ## 6. Encerramento
 
