@@ -44,6 +44,8 @@ fluxo de PR, gates, backlog e autosave. **Sem PR e sem validação em ambiente a
 
 R1-fix: o PR #118 ficou vermelho no macOS (`gate-issue.test.ts`, caminho `/tmp/../<projeto>`): o `realpath` BSD não tem `-m`.
 O `gate-issue.sh` agora normaliza em bash puro (`normalizar`), com teste que simula o `realpath` sem `-m`. Windows: reconferir o CI.
+R1-fix2: no Windows (Git Bash) o caminho chega como `C:\...` e o `/tmp` do teste não existia; o hook converte `C:\x` em `/c/x`
+(`para_posix`) e o teste monta o `..` a partir do tmp real. Reconferir o CI.
 
 ## 3. Base de medição
 

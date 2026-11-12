@@ -37,6 +37,17 @@ normalizar() {
   printf '%s' "${resultado:-/}"
 }
 
+# Caminho do Windows (C:\x\y, C:/x/y) vira o formato do Git Bash (/c/x/y); fora do Windows não muda nada.
+# A letra do drive é minúscula para "C:" e "/c" compararem iguais, e "\" vira "/".
+para_posix() {
+  local c=${1//\\//}
+  if [[ $c =~ ^([A-Za-z]):(/.*)?$ ]]; then
+    local d=${BASH_REMATCH[1]}
+    c="/${d,,}${BASH_REMATCH[2]}"
+  fi
+  printf '%s' "$c"
+}
+
 mensagem_sem_issue() {
   bloquear 'todo pedido vira issue antes de qualquer ação. Crie a issue (escopo, critérios de aceite, considerações técnicas, testes) com `mcp__github__issue_write` e grave `#N` na primeira linha de .claude/issue.local (política: .claude/rules/github.md).'
 }
@@ -56,9 +67,10 @@ case "$ferramenta" in
   Edit|Write|NotebookEdit)
     # Normaliza (.., ./, //, relativo) para que "/tmp/../projeto/x" não passe por "fora do projeto".
     # Léxico e em bash puro: o realpath do macOS (BSD) não tem -m e, sem ele, o caminho ficava torto.
-    [ -n "$caminho" ] && [[ $caminho != /* ]] && caminho="$raiz/$caminho"
+    raiz_abs=$(normalizar "$(para_posix "$raiz")")
+    caminho=$(para_posix "$caminho")
+    [ -n "$caminho" ] && [[ $caminho != /* ]] && caminho="$raiz_abs/$caminho"
     caminho=$(normalizar "$caminho")
-    raiz_abs=$(normalizar "$raiz")
     # Fora do projeto (scratchpad, /tmp): não é trabalho no código.
     case "$caminho" in
       "$raiz_abs"/*) ;;

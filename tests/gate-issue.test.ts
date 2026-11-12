@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { delimiter, join } from 'node:path'
+import { basename, delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
@@ -65,6 +65,9 @@ function rodar(script: string, entrada: unknown) {
 }
 
 const escrever = (file_path: string, tool_name = 'Write') => rodar(gate, { tool_name, tool_input: { file_path, content: 'x' } })
+// Caminho com ".." que volta ao projeto, montado a partir do tmp real (no Windows não existe "/tmp" nem "projeto.slice(1)").
+// Concatenação de propósito: join() já normalizaria o ".." e o hook não veria o caminho torto.
+const comVolta = () => `${dirname(projeto)}/../${basename(dirname(projeto))}/${basename(projeto)}/src/a.ts`
 const escreverNoProjeto = () => escrever(join(projeto, 'src', 'a.ts'))
 const agente = (subagent_type: string) => rodar(gate, { tool_name: 'Agent', tool_input: { subagent_type, prompt: 'faça' } })
 
@@ -86,7 +89,7 @@ describe('gate-issue: sem issue ativa', () => {
   it('caminho relativo e ".." que voltam ao projeto continuam bloqueados', () => {
     expect(escrever('src/a.ts').code).toBe(2)
     // Concatenação de propósito: join() já normalizaria o ".." e o hook não veria o caminho torto.
-    expect(escrever(`/tmp/../${projeto.slice(1)}/src/a.ts`).code).toBe(2)
+    expect(escrever(comVolta()).code).toBe(2)
   })
 
   it('sem realpath -m (BSD/macOS), ".." que volta ao projeto continua bloqueado', () => {
@@ -95,7 +98,7 @@ describe('gate-issue: sem issue ativa', () => {
     writeFileSync(falso, '#!/usr/bin/env bash\necho "realpath: illegal option -- m" >&2\nexit 1\n')
     chmodSync(falso, 0o755)
     try {
-      expect(escrever(`/tmp/../${projeto.slice(1)}/src/a.ts`).code).toBe(2)
+      expect(escrever(comVolta()).code).toBe(2)
       expect(escrever('src/../src/a.ts').code).toBe(2)
       expect(escrever(`${projeto}/../fora/a.ts`).code).toBe(0)
     } finally {
