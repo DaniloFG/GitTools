@@ -9,6 +9,8 @@
 
 ## Checklist
 - [ ] Testado localmente (`npm run typecheck` e `npm test`)
+- [ ] Cenário e2e que reprova sem a mudança em `scripts/validacao/e2e/cenarios/`, ou rótulo `sem-e2e` com a linha `sem-e2e: <motivo>` no corpo
+- [ ] Check `QA` verde (gate de cobertura e pipeline)
 - [ ] Para PR → `main`: a mudança foi validada na `homolog`
 - [ ] Documentação e README atualizados, se necessário
 - [ ] Nenhum segredo, `.env` ou arquivo gerado no diff

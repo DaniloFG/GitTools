@@ -26,7 +26,10 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
 | `build` | Aplicativo Electron compila |
 | `build-extension` | Extensão e interface do webview compilam |
 | `perf-bundle` | Tamanho do pacote dentro dos tetos |
-| `e2e` | Interface real: abre repositório de exemplo, navega pelas telas, sem erro de console nem processo git inesperado |
+| `e2e` | Cenários de `scripts/validacao/e2e/cenarios/` na interface real: cada um dentro do seu orçamento, sem erro de console nem processo git inesperado (skill `qa`) |
+| `e2e-responsivo` | Barra, tela ativa e alerta de conflito dentro da janela, sem rolagem horizontal, em 5 larguras × 3 posições do painel de branches |
+| `e2e-desempenho` | Carga a frio, processos git por ação, rolagem e nós no DOM, contra os tetos de `orcamentos.json` |
+| `e2e-teclado` | Controles sem nome acessível e sem foco visível, contra os tetos de `orcamentos.json` (base medida, #120) |
 
 ## Procedimento
 
@@ -34,7 +37,8 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
    branch para a homolog, chame `Agent` com `subagent_type: "gt-validador"` e `model: "sonnet"`, pedindo a ref `develop`
    e passando os números das issues do PR, se quiser que ele comente.
 2. **`VALIDADO develop <commit> <árvore>`**:
-   - comente em cada issue do PR a evidência: commit, árvore, fases com tempos e o link da execução;
+   - comente em cada issue do PR a evidência: commit, árvore, fases com tempos, cenários passados e falhas
+     (`validacao-out/e2e.json`, `total` e `falhas`), o check `QA` da ponta e o link da execução;
    - troque o rótulo para `status:validada` (`.claude/rules/github.md`, política 7);
    - abra o PR da **mesma** branch para a `homolog` (skill `pr`; a develop nunca vai para a homolog) e ponha nele o
      rótulo `validada-develop`, só depois do veredito e do comentário. O gate `.claude/hooks/gate-main.sh` só deixa o
@@ -54,3 +58,6 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
 - Sem workflow disponível (por exemplo, ainda não está na ref), o `gt-validador` roda o pipeline local num checkout
   limpo; o veredito vale igual, e a evidência diz "pipeline local".
 - Não afrouxe nem pule fase para "passar". Fase instável é issue de correção, não motivo de promover.
+- O veredito `VALIDADO` exige também o check `QA` da ponta em `success` (o `qa.yml` roda em push para `develop` e
+  `homolog`, então a ponta validada já tem o seu). Check ausente ou não `success` é `REPROVADO QA`. Sem workflow
+  (pipeline local), o check não existe: rode `node scripts/validacao/gate-cobertura.mjs` e registre o resultado no lugar.

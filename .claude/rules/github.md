@@ -100,6 +100,8 @@ origem e maturidade entram quando se aplicam.
 - O check obrigatório de PR se chama `QA` (workflow `qa.yml`, job `QA`): gate de cobertura de cenários e pipeline. O
   `gate-main.sh` só deixa o merge em `develop` e `homolog` com o check-run `QA` em `success` na ponta do PR (consulta
   que falha bloqueia). A proteção de branch que o exige no GitHub é do dono (#101).
+  O que o `QA` confere (cenário de ponta a ponta por tela, `sem-e2e`, tetos) está em `.claude/rules/qa.md`; o
+  procedimento, na skill `qa`.
 
 ## Branch do PR
 
