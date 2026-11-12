@@ -54,6 +54,17 @@ fonte do estado; o Project só espelha o que os rótulos dizem.
 - Descrição: `.github/pull_request_template.md`, com as seções preenchidas e a etapa do fluxo marcada. Sem atribuição
   de Claude ou IA em PR nem em commit (`CLAUDE.md`).
 
+## Pipeline de validação
+
+- **Obrigatório depois de todo merge na `develop` e de novo na `homolog`** (issue #103): `node scripts/validacao/pipeline.mjs`
+  (typecheck, `npm test` com git real, builds, `perf:bundle` e ponta a ponta na interface real), pelo workflow
+  `validacao.yml` ou local. Quem roda é o agente `gt-validador`, pela skill `validar`; unidade verde não basta.
+- Verde na `develop`: evidência (commit, árvore, fases, tempos, link) nas issues do PR e `status:validada`; só então o
+  PR para a `homolog`. Na `homolog` o pipeline também exige a árvore idêntica à da `develop`. Só com as duas verdes o
+  PR `homolog → main` é aberto, com as duas evidências, e fica ao dono.
+- Vermelho: issue de correção (`bug`, ligada à mãe), conserto antes de qualquer outro merge, sem promover.
+- O `gate-main.sh` recusa o merge de PR com base `homolog` cuja ponta não tenha o check-run `Validação*` com sucesso.
+
 ## Branch do PR
 
 - O check `branch-flow.yml` só aceita origem `feature/*`, `fix/*`, `docs/*`, `chore/*` ou `refactor/*` para `develop`,

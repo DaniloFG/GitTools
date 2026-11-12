@@ -97,7 +97,7 @@ Antes de fazer à mão, veja se a skill citada existe na lista da sessão; se n�
 | IPC, execução do git, terminal, caminho de arquivo, webview, dependência, workflow | `security-review` e `.claude/rules/seguranca.md` |
 | Gráficos e dashboards (`src/renderer/src/analytics`) | `dataviz` |
 | Permissões, hooks, variáveis de ambiente | `update-config`; menos pedidos de permissão: `fewer-permission-prompts` |
-| Abrir, acompanhar ou fazer merge de PR | skill `pr` (merge só até a `homolog`): sessão em Haiku, esforço `low` |
+| Abrir, acompanhar ou fazer merge de PR | skill `pr` (merge só até a `homolog`): Haiku, `low`. Depois de todo merge na `develop` e na `homolog`: `validar` (`gt-validador`, pipeline com integração e e2e) antes de promover; sem as duas verdes, nada de PR para `main` |
 | Repetir ou vigiar algo | `loop` |
 | Abre muitos agentes ou gasta crédito: `batch` (um PR por unidade, fora do fluxo de branches), `code-review` nos níveis `max` e `ultra` | Só com a palavra do dono: sugira e espere |
 
@@ -116,7 +116,7 @@ O dono pede que subagentes baratos leiam e escrevam o código; o modelo caro só
 | `gt-escritor` | `haiku`, sempre o mais recente; `sonnet` em escalada | Escreve código, testes e documentação, só nos arquivos recebidos | Não decide desenho; não roda git que altera estado |
 | `gt-juiz` | `opus`, sempre o mais recente | Dá o veredito (aprovado / reprovado com motivo) quando a central precisa de julgamento: verificação que diverge, aviso que não bate, decisão de desenho, diff de etapa arriscada | Não escreve código nem altera arquivo; não decide pela central |
 
-- **Toda chamada a `Agent` nomeia `gt-leitor`, `gt-escritor` ou `gt-juiz`, ou passa `model`.** Agente genérico sem
+- **Toda chamada a `Agent` nomeia `gt-leitor`, `gt-escritor`, `gt-juiz` ou `gt-validador`, ou passa `model`.** Agente genérico sem
   modelo herda o modelo caro, e o `Explore` também roda em modelo caro: para ler, use o `gt-leitor`.
 - **Suba o modelo, não a insistência.** Dois erros do `gt-escritor` na mesma tarefa, ou tarefa densa (concorrência,
   cancelamento, algoritmo novo): chame-o com `model: "sonnet"`. Ainda não saiu: refaça a especificação.

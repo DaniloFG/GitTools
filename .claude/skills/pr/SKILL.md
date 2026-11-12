@@ -31,7 +31,8 @@ Para cada PR, na ordem:
    Sem laço de espera, sem sleep.
 4. Quando o CI avisar:
    - **Verde** e o destino é `develop` ou `homolog`: `merge_pull_request` com `merge_method: "merge"` (merge commit, sem
-     squash nem rebase, `CONTRIBUTING.md`). Siga para o próximo PR da cadeia. Destino `main`: nunca merge; vá ao passo 5.
+     squash nem rebase, `CONTRIBUTING.md`). Merge na `develop` ou na `homolog`: pare e valide antes do próximo PR da
+     cadeia (seção "Merge" e skill `validar`). Destino `main`: nunca merge; vá ao passo 5.
    - **Vermelho**: não corrija código nem afrouxe teste. Avise `PR PARADO <número> | <check e trecho do log>` e pare.
      A correção é da sessão de trabalho.
    - **Conflito**: idem, `PR PARADO`.
@@ -43,5 +44,9 @@ Para cada PR, na ordem:
 ## Merge
 
 - `develop` e `homolog`: merge sempre que o CI estiver verde (`.claude/rules/github.md`), sem depender de pedido.
+- **Validação antes de promover** (skill `validar`, issue #103): depois do merge na `develop`, valide a `develop` (agente
+  `gt-validador`) antes de abrir o PR `develop → homolog`; depois do merge na `homolog`, valide de novo. O gate recusa
+  o merge na `homolog` sem o check `Validação` verde na ponta do PR. Só com as duas verdes o PR `homolog → main` é
+  aberto. Vermelho: `PR PARADO <número> | <fase e trecho do log>`; a correção é da sessão de trabalho.
 - `main`: **nunca** faz merge nem auto-merge, nem `merge_pull_request` nem `gh pr merge` com destino `main`. Quem faz é
   o dono ou o aprovador.

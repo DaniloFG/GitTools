@@ -148,9 +148,13 @@ palavra do dono. Você não faz git nem PR: delega à sessão de PR.
 3. **PRs, em ordem**: uma sessão da skill `pr` (modelo e esforço em "Quem pede" da skill) com a cadeia
    `<origem> → develop` (merge após CI verde), `develop → homolog` (merge após CI verde) e `homolog → main` (só abre).
    Ela avisa `PR FEITO` ou `PR ABERTO <n> (aguarda dono)`. `PR PARADO`: não avance; é caso de juiz (seção acima).
-4. **Issues**: depois dos merges, para cada sub-issue cujos critérios foram conferidos na evidência da etapa, comente a
-   evidência final, troque para `status:validada` e feche com `state_reason: completed`. A issue-mãe fecha por último,
-   com a mesma regra.
+   **A cadeia tem validação entre os PRs** (skill `validar`): a sessão de PR para depois do merge na `develop`; você
+   chama o `gt-validador` para a `develop` e, só com `VALIDADO`, pede o PR `develop → homolog`; depois do merge na
+   `homolog`, valida de novo a `homolog`; só com as duas verdes pede o `homolog → main`. `REPROVADO`: issue de correção
+   (`bug`, ligada à mãe), conserto antes de qualquer outro merge e nenhuma promoção.
+4. **Issues**: depois dos merges e das validações, para cada sub-issue cujos critérios foram conferidos na evidência da
+   etapa (e na do `gt-validador`), comente a evidência final, troque para `status:validada` e feche com
+   `state_reason: completed`. A issue-mãe fecha por último, com a mesma regra.
 5. **Fim**: avise o dono em uma linha, com o `PR ABERTO <n> (aguarda dono)`. Você não faz merge na `main`.
 
 ## HANDOFF em formato antigo
