@@ -86,7 +86,6 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 - 2026-11-12: ordem 1 → 2(#155) → 3(#158) → 4(#156) pelo levantamento; #160 entrou depois como etapa 5.
 - 2026-11-12: `RebaseEditor` fora do escopo do #158 (não é editor de código); padrão da quebra = `true`.
 - 2026-11-12: etapa 4 começa por reprodução; se não reproduzir, o `gt-juiz` decide (não inventar correção).
-  nem nome vai para commit, HANDOFF ou issue.
 - Gate: `.claude/triagem.local` com `media <assunto>` e `.claude/issue.local` (fora do git) em cada sessão de etapa.
 
 - 2026-11-12: o arraste do Playwright não estende seleção em `td.code` do diff (também sem a mudança; caret cai fora do lugar, causa não achada). O cenário `diff-selecao-lado` aperta o mouse de verdade e estende a seleção pela API; não repetir a tentativa de `mouse.move` com o botão apertado.
