@@ -32,7 +32,7 @@ fechada está na mensagem do commit dela.
 | E3 | #145 (#134) | Corrida da pasta-mãe trocada por link: fechar ou documentar | topo | fechada (documentada) | f7ce096 |
 | E4 | #146 (#132) | Aviso externo logo após ação da interface (`isOwnEcho`) | topo | fechada | 4b9f8e5 |
 | E5 | #147 (#92, #95) | Provas de conflitos e cherry-pick | topo | fechada | bf8dd18 |
-| E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | fechada | COMMIT |
+| E6 | #148 (#141) | `ui.mjs` com Conflitos e Tour; medições de #96 e #98 | topo | fechada | c627a0f |
 | E7 | #149 (#96) | Conflitos: merge por Alterações, 320 px, hi/ar/zh-CN | topo | a fazer | |
 | E8 | #150 (#93, #94, #108) | Rolagem do Changes e empilhamento do combobox | topo | a fazer | |
 | E9 | #151 (#97, #119, #140) | Barra estreita (direita/embaixo), Dashboard ≥ 1050, `.wip-open` | topo | a fazer | |
@@ -41,7 +41,7 @@ Ordem = dependência: E1 destrava `security-review` (E2, E3, E5); E2 dá a rede 
 
 ### Última etapa fechada
 
-**E6** (COMMIT): `ui.mjs` abre Tour e Conflitos (1500 arquivos, cherry-pick fora do app) e confere `perfUi` em
+**E6** (c627a0f): `ui.mjs` abre Tour e Conflitos (1500 arquivos, cherry-pick fora do app) e confere `perfUi` em
 `orcamentos.json` (fora do `qa.mjs`; sai 1 se estourar). Hoje vs base `b1dd21c` (antes do Tour), CPU 4×, moderate: Tour
 fechado igual (1029 nós, 6/2/4 git, rolagem 41,3 vs 41,5 ms). Tour aberto: 0 git, +15 nós, 16,2 ms/quadro. Conflitos:
 10 git na recarga, 41 linhas, 4484 nós, rolagem 16,0 ms/quadro. `conflict-save.mjs`: 3 processos. `perf:bundle`
