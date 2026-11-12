@@ -23,7 +23,7 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E13` — Dashboard a 320 px (#119); sem refinamento PRONTO, segue para ENC
+**A seguir:** `ENC` — Encerramento (#131); lembrar de separar o commit `aeeda3f` (seção 5)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -39,17 +39,16 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E10 | #120 | Acessibilidade: 3 controles sem nome, 5 sem foco visível | feita | cf8db35 | qa teclado 3/5 → 0/0, tetos em 0; pacote 696.098 |
 | E11 | #125 | readFile: janela TOCTOU em conflictDetails | feita | (ver git log) | openRegularFile (O_NOFOLLOW+fstat); mutação reprova; 1415 testes ok |
 | E12 | #124 | gate-main: escapes da trava de apagar branch | feita | a8911a2 + correção | 16 casos de bloqueio novos reprovam sem a correção; gate-main 113/113; 1439 testes ok |
-| E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
+| E13 | #119 | Dashboard a 320 px: rolagem horizontal | feita | dfad82f | e2e 38 ok; 3 mutações reprovam; só CSS; pacote dentro dos tetos |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: E12 (#124)
+### Última etapa fechada: E13 (#119)
 
-- **Feito**: `gate-main.sh` bloqueia push de apagar com `heads/<protegida>` (sem `refs/`), `push --delete heads/<protegida>`,
-  `git update-ref -d` em ref protegida e apagar por variável (refspec com dois-pontos, `--delete`/`-d` com `$`, `gh api DELETE` de ref
-  com `$`). Juiz reprovou a 1ª versão (só o refspec); corrigido. Limites no cabeçalho: refspec `SRC:DST` com variável, `update-ref -d` e
-  `branch -D` com variável. 25 casos novos em `gate-main.test.ts`.
-- **Descobertas**: #134 (pasta-mãe trocada por link, ressalva da E11) e #135 (falta teste dos chamadores de `readRegularFile`).
-- **Não conferido**: `code-review`/`security-review` (sem `origin/HEAD`): revisão manual do diff.
+- **Feito**: refinada (gt-planejador, PRONTA, Pequena) e implementada só em CSS (`dashboard.css`): `flex-wrap` em `.dash-actions`,
+  `.dash-filters .segmented`, `.dash-card-head`, `.dash-card-tools`; `.dash-summary` sem `nowrap`. O cenário `regressao-97-barra-estreita`
+  confere a rolagem da página e os botões das ações/filtros nas duas telas.
+- **Provas**: sem wrap em `.dash-actions` (340>320), sem wrap nos `.segmented` (467>320) e com `nowrap` de volta (322>320) reprovam.
+- **Não conferido**: aparência a olho em ≥ 1050 px; `.wip-open` do History a 320 px (x=390, a página não rola) segue sem investigar.
 
 ## 3. Base de medição
 
@@ -60,11 +59,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
-
-### Etapa E13 — Dashboard a 320 px (#119)
-
-- **Orquestra**: topo. **Aceite**: o do refinamento (scrollWidth ≤ 320 com a janela a 320 px); cenário no
-  `e2e-responsivo`. Sem refinamento PRONTO, a etapa não abre: segue para ENC. **Depende de**: E5.
 
 ### Etapa ENC — Encerramento
 
@@ -92,6 +86,8 @@ evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o
 - E8: o runner e2e não filtra por id (suíte inteira ~80 s); `ui.mjs` não abre Conflitos; aviso do watcher logo após ação da própria interface é descartado por 1 s (`isOwnEcho`, App.tsx): issue descoberta.
 
 - E11: as skills `security-review`/`code-review` quebram sem `origin/HEAD` (`git remote set-head origin -a` talvez resolva); o espião de `repository.test.ts` conta `readFile` de node:fs/promises, então leia por `readFile(handle)`, não `handle.readFile()`.
+
+- E13: o `.dash-summary` com `white-space: nowrap` estourava 2 px mesmo com o resto contido; ache o excedente listando `body *` com `right > vw` no cenário (temporário).
 
 - E12: o hook lê o texto inteiro do comando, inclusive a mensagem de commit: citar o padrão de apagar com variável num `git commit -m` ou heredoc é barrado. `git branch -D heads/develop` passa de propósito (branch local); `update-ref -d` com variável e push com variável que não apaga são limites documentados no cabeçalho do hook.
 
