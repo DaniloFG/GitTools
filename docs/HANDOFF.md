@@ -15,9 +15,9 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**A seguir:** `E5`
+**A seguir:** `E6`
 
-**Última etapa fechada:** E4: pergunta ao dono na #93 (rótulo `question`); veredito do `gt-juiz` (opção A): `z-index: 30` do `.dash-popover` era inócuo e saiu; mutações vistas reprovando (remover `z-index: 20` de `.dash-filters`; `openUp = false`); e2e 41 ok, testes 1474. #108 fecha depois da E5.
+**Última etapa fechada:** E5: `e2e-responsivo` (`qa.mjs`) não varia telas ocultas (sem `pref.screens` no roteiro); cenário novo `regressao-97-z-estado-limpo` prova o `finally`; teste "tela ativa oculta ainda aparece"; 3 mutações reprovam (finally, `isScreenShown`, CSS do `7cd72d1`); e2e 42 ok, testes 1474.
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -25,7 +25,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E2 | #167 | security-review do diff da #95 (#147, #95); depende da E1 | fechada | (este commit) | sem achados |
 | E3 | #168 | processos git por ação e stats em ms (#146, #132) | fechada | (este commit) | sem aumento; stats 0,09 ms |
 | E4 | #169 | relato da #93, z-index do `.dash-popover`, fechar #108 (#150, #93, #94) | fechada | (este commit) | 2 mutações reprovam; 1474 testes |
-| E5 | #170 | telas ocultas na barra estreita (#97) | a fazer | | |
+| E5 | #170 | telas ocultas na barra estreita (#97) | fechada | (este commit) | 3 mutações reprovam; 42 e2e |
 | E6 | #171 | Tour: reduced-motion, sem repositório, Windows (#98) | a fazer | | |
 
 Ordem: E1 → E2 → E3 → E4 → E5 → E6 (E4 fecha #108 depois de #93/#94/#97: o fechamento da #108 fica para depois da E5).
@@ -38,10 +38,6 @@ Só a E3 mede. Base: `4b9f8e5^` contra `4b9f8e5` (commit da correção da #132),
 
 Cada etapa: ler a issue e os comentários de fechamento do Plano 4, executar, comentar a evidência por critério e
 trocar o rótulo para `status:em-revisao`. Issues antigas só fecham com prova completa.
-
-### Etapa E5 — telas ocultas (#170)
-- **Orquestra**: topo. **Ler antes**: `Toolbar.tsx:125-151`, `layout.ts:9`, `screenVisibility.ts:39`.
-- **Aceite**: variação de `e2e-responsivo` registrada; cenário com mutação (reverter `7cd72d1`); `finally` provado; teste "tela ativa oculta ainda aparece". Ao fim, fechar #108 (E4) com as mutações anexadas.
 
 ### Etapa E6 — Tour (#171)
 - **Orquestra**: topo. **Ler antes**: `scripts/validacao/e2e/cenarios/tour.mjs`.
@@ -57,6 +53,7 @@ trocar o rótulo para `status:em-revisao`. Issues antigas só fecham com prova c
 
 - E4: `npm run build:extension` é obrigatório entre cada mutação de CSS/TS no e2e (ele testa o `extension/dist`); #108 segue aberta até a E5, com as mutações da #93 e #94 já anexadas na #150.
 - Medição por ação (E3): roteiro de rascunho abre `launch` do worktree, chama `repo:invoke` (`stageFiles`, `commit`, `checkout`) e conta `app:gitLog` 3,5 s depois; `esbuild` não resolve fora do repositório (copie o script para dentro do worktree com `node_modules` ligado). `labels` em `issue_write update` SUBSTITUI todos os rótulos: reenvie a lista inteira.
+- E5: o runner roda os cenários em ordem alfabética na mesma página (localStorage persiste); por isso o cenário de limpeza se chama `regressao-97-z-…`. Mutar CSS exige `npm run build:extension` antes do e2e; o e2e completo passa de 2 min (rode em segundo plano).
 
 ## 6. Encerramento
 
