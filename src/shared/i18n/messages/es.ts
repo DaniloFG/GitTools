@@ -490,7 +490,12 @@ export const es: Messages = {
     resolvedHelp: 'Ya edité el archivo y quité los marcadores <<<<<<< >>>>>>>',
     continue: 'Continuar',
     skip: 'Omitir este commit',
-    showChanges: 'Ver cambios'
+    showChanges: 'Ver cambios',
+    reuseBoth: 'En commits anteriores ya elegiste «nuestro» para {ours} archivo(s) y «suyo» para {theirs}: {files}',
+    reuseOurs: 'En commits anteriores ya elegiste «nuestro» para {count} archivo(s): {files}',
+    reuseTheirs: 'En commits anteriores ya elegiste «suyo» para {count} archivo(s): {files}',
+    reuseApply: 'Aplicar',
+    reuseIgnore: 'Ignorar'
   },
   studio: {
     name: 'Cherry-pick Studio',
@@ -791,6 +796,8 @@ export const es: Messages = {
       detected: 'Detectado: {language}',
       multiRepo: 'Detectar varios repositorios en el espacio de trabajo',
       multiRepoHelp: 'Al abrir GitTools en VS Code, abre cada repositorio (.git) encontrado en el espacio de trabajo en su propia pestaña y sigue detectando los repositorios nuevos.',
+      autoContinue: 'Continuar automáticamente tras resolver los conflictos',
+      autoContinueHelp: 'En un cherry-pick, revert o rebase, al resolver el último archivo en conflicto de un paso, GitTools continúa solo con el siguiente. No se aplica a merge.',
     },
     appearance: {
       title: 'Apariencia',

@@ -480,7 +480,12 @@ export const zhCN: Messages = {
     resolvedHelp: '我已编辑文件并删除了 <<<<<<< >>>>>>> 标记',
     continue: '继续',
     skip: '跳过此提交',
-    showChanges: '查看更改'
+    showChanges: '查看更改',
+    reuseBoth: '在之前的提交中，你已为 {ours} 个文件选择“我方”，为 {theirs} 个文件选择“对方”：{files}',
+    reuseOurs: '在之前的提交中，你已为 {count} 个文件选择“我方”：{files}',
+    reuseTheirs: '在之前的提交中，你已为 {count} 个文件选择“对方”：{files}',
+    reuseApply: '应用',
+    reuseIgnore: '忽略'
   },
   studio: {
     name: '拣选工作台',
@@ -760,6 +765,8 @@ export const zhCN: Messages = {
       detected: '检测到：{language}',
       multiRepo: '检测工作区中的多个仓库',
       multiRepoHelp: '在 VS Code 中打开 GitTools 时，会为工作区中找到的每个仓库（.git）各开一个标签页，并持续监视新出现的仓库。',
+      autoContinue: '解决冲突后自动继续',
+      autoContinueHelp: '在 cherry-pick、revert 或 rebase 中，解决某一步的最后一个冲突文件后，GitTools 会自动继续下一步。不适用于 merge。',
     },
     appearance: {
       title: '外观',

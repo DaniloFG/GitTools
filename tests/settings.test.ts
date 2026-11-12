@@ -54,6 +54,15 @@ describe('configurações de exibição', () => {
   })
 })
 
+describe('continuar automaticamente após resolver conflitos', () => {
+  it('vem desligado, e só liga se o usuário pedir `true`', () => {
+    expect(DEFAULT_SETTINGS.autoContinueConflicts).toBe(false)
+    expect(normalizeSettings({}).autoContinueConflicts).toBe(false)
+    expect(normalizeSettings({ autoContinueConflicts: true }).autoContinueConflicts).toBe(true)
+    expect(normalizeSettings({ autoContinueConflicts: 'sim' }).autoContinueConflicts).toBe(false)
+  })
+})
+
 describe('detecção de vários repositórios', () => {
   // Vem desligada: abrir o app não varre pasta e subpastas por padrão (desempenho). Só `true` literal liga.
   it('vem desligada, e só liga se o usuário pedir `true`', () => {

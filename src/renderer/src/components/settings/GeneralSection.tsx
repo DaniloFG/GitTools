@@ -26,6 +26,16 @@ export function GeneralSection({ draft, update }: SettingsSectionProps) {
         />
       </SettingRow>
 
+      <SettingCheckbox
+        id="setting-auto-continue-conflicts"
+        category={category}
+        title={t('settings.general.autoContinue')}
+        description={t('settings.general.autoContinueHelp')}
+        checked={draft.autoContinueConflicts}
+        modified={draft.autoContinueConflicts !== DEFAULT_SETTINGS.autoContinueConflicts}
+        onChange={(autoContinueConflicts) => update({ autoContinueConflicts })}
+      />
+
       {insideVsCode() && (
         <SettingCheckbox
           id="setting-multi-repo"

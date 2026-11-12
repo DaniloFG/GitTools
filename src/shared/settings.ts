@@ -67,11 +67,13 @@ export interface Settings {
   inlineBlame: boolean
   /** Detectar vários repositórios no workspace do VS Code e acompanhar novos dinamicamente. */
   multiRepoDetection: boolean
+  /** Cherry-pick, revert e rebase continuam sozinhos quando o usuário resolve o último conflito da parada. */
+  autoContinueConflicts: boolean
   /** Atalhos personalizados: id da ação → combinação (ex.: "Ctrl+Shift+P"). */
   shortcuts: Record<string, string>
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', dateFormat: 'iso', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, multiRepoDetection: false, toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
+export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', dateFormat: 'iso', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, multiRepoDetection: false, autoContinueConflicts: false, toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
 
 export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6]
 export const DIVIDER_WIDTHS = [1, 2, 3, 4, 6, 8]
@@ -114,6 +116,8 @@ export function normalizeSettings(value: unknown): Settings {
     inlineBlame: raw.inlineBlame !== false,
     // Só `true` literal liga: valor de outro tipo (ex.: 'sim') não liga a varredura do workspace.
     multiRepoDetection: raw.multiRepoDetection === true,
+    // Também só `true` literal: continuar sem o usuário pedir é uma ação que ele precisa ter ligado de propósito.
+    autoContinueConflicts: raw.autoContinueConflicts === true,
     editor: typeof raw.editor === 'string' ? raw.editor.trim() : DEFAULT_SETTINGS.editor,
     toast: normalizeToast(raw.toast),
     shortcuts: shortcuts as Record<string, string>

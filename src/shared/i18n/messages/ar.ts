@@ -499,7 +499,12 @@ export const ar: Messages = {
     resolvedHelp: 'عدّلت الملف وأزلت علامات <<<<<<< >>>>>>>',
     continue: 'متابعة',
     skip: 'تخطي هذا الإيداع',
-    showChanges: 'عرض التغييرات'
+    showChanges: 'عرض التغييرات',
+    reuseBoth: 'في إيداعات سابقة اخترت «نسختنا» لـ {ours} ملف(ات) و«نسختهم» لـ {theirs}: {files}',
+    reuseOurs: 'في إيداعات سابقة اخترت «نسختنا» لـ {count} ملف(ات): {files}',
+    reuseTheirs: 'في إيداعات سابقة اخترت «نسختهم» لـ {count} ملف(ات): {files}',
+    reuseApply: 'تطبيق',
+    reuseIgnore: 'تجاهل'
   },
   studio: {
     name: 'استوديو الانتقاء',
@@ -803,6 +808,8 @@ export const ar: Messages = {
       detected: 'المكتشفة: {language}',
       multiRepo: 'اكتشاف عدة مستودعات في مساحة العمل',
       multiRepoHelp: 'عند فتح GitTools في VS Code، يُفتح كل مستودع (.git) موجود في مساحة العمل في علامة تبويب خاصة به، ويستمر في مراقبة المستودعات الجديدة.',
+      autoContinue: 'المتابعة تلقائيًا بعد حل التعارضات',
+      autoContinueHelp: 'في cherry-pick أو revert أو rebase، عند حل آخر ملف متعارض في خطوة ما، يتابع GitTools إلى الخطوة التالية من تلقاء نفسه. لا ينطبق على merge.',
     },
     appearance: {
       title: 'المظهر',

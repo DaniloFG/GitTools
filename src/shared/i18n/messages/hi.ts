@@ -493,7 +493,12 @@ export const hi: Messages = {
     resolvedHelp: 'मैंने फ़ाइल संपादित कर दी है और <<<<<<< >>>>>>> चिह्न हटा दिए हैं',
     continue: 'जारी रखें',
     skip: 'यह commit छोड़ें',
-    showChanges: 'बदलाव देखें'
+    showChanges: 'बदलाव देखें',
+    reuseBoth: 'पिछले कमिट में आप {ours} फ़ाइल के लिए «हमारा» और {theirs} के लिए «उनका» चुन चुके हैं: {files}',
+    reuseOurs: 'पिछले कमिट में आप {count} फ़ाइल के लिए «हमारा» चुन चुके हैं: {files}',
+    reuseTheirs: 'पिछले कमिट में आप {count} फ़ाइल के लिए «उनका» चुन चुके हैं: {files}',
+    reuseApply: 'लागू करें',
+    reuseIgnore: 'अनदेखा करें'
   },
   studio: {
     name: 'Cherry-pick Studio',
@@ -794,6 +799,8 @@ export const hi: Messages = {
       detected: 'पहचानी गई: {language}',
       multiRepo: 'वर्कस्पेस में कई रिपॉज़िटरी का पता लगाएँ',
       multiRepoHelp: 'VS Code में GitTools खोलने पर, वर्कस्पेस में मिले हर रिपॉज़िटरी (.git) को उसके अपने टैब में खोला जाता है और नए रिपॉज़िटरी पर नज़र रखी जाती है।',
+      autoContinue: 'कॉन्फ़्लिक्ट सुलझाने के बाद अपने-आप जारी रखें',
+      autoContinueHelp: 'cherry-pick, revert या rebase में, किसी चरण की आख़िरी कॉन्फ़्लिक्ट वाली फ़ाइल सुलझाते ही GitTools अपने-आप अगले चरण पर बढ़ जाता है। merge पर लागू नहीं होता।',
     },
     appearance: {
       title: 'रूप-रंग',

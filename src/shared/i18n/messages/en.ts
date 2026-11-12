@@ -490,7 +490,12 @@ export const en: Messages = {
     resolvedHelp: 'I edited the file and removed the <<<<<<< >>>>>>> markers',
     continue: 'Continue',
     skip: 'Skip this commit',
-    showChanges: 'Show changes'
+    showChanges: 'Show changes',
+    reuseBoth: 'In earlier commits you already chose "ours" for {ours} file(s) and "theirs" for {theirs}: {files}',
+    reuseOurs: 'In earlier commits you already chose "ours" for {count} file(s): {files}',
+    reuseTheirs: 'In earlier commits you already chose "theirs" for {count} file(s): {files}',
+    reuseApply: 'Apply',
+    reuseIgnore: 'Ignore'
   },
   studio: {
     name: 'Cherry-pick Studio',
@@ -791,6 +796,8 @@ export const en: Messages = {
       detected: 'Detected: {language}',
       multiRepo: 'Detect several repositories in the workspace',
       multiRepoHelp: 'When GitTools opens in VS Code, it opens each repository (.git) found in the workspace in its own tab and keeps watching for new repositories.',
+      autoContinue: 'Continue automatically after resolving conflicts',
+      autoContinueHelp: 'In a cherry-pick, revert or rebase, when you resolve the last conflicted file of a step, GitTools continues to the next one on its own. It does not apply to merge.',
     },
     appearance: {
       title: 'Appearance',
