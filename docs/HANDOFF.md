@@ -16,7 +16,7 @@ fechada está na mensagem do commit dela.
 
 ## 2. Estado
 
-**A seguir:** `E9` (ler `docs/ESBOCO-CONFLITOS.md`, seção 8, e a seção 5 daqui)
+**A seguir:** `E10` (ler `docs/ESBOCO-CONFLITOS.md`, seções 5 e 8, e a seção 5 daqui)
 
 | Etapa | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- |
@@ -29,16 +29,17 @@ fechada está na mensagem do commit dela.
 | E6 | #95 implementar os caminhos decididos (seção 5) | fechada | `80caaea`, `4ed4c12` | `orderCommits` em empate de data corrigido; continuar automático + reaproveitar decisão; 1010 testes verdes, pacote 689.842/700.000 |
 | E7 | #96 esboço da tela Conflitos | fechada | ver commit | `docs/ESBOCO-CONFLITOS.md` (147 linhas), juiz APROVADO na 2ª rodada |
 | E8 | #96 tela Conflitos: lista, estado, rodapé | fechada | `9af47be` | pacote JS 689.842 → 693.527/700.000; 60 conflitos: 41 linhas montadas, 1.169 nós |
-| E9-E10 | #96 editor embutido e seção Conflitos | E9 a fazer | | |
+| E9 | #96 editor embutido, banner informativo, F8, abas | fechada | `1fc81c2` | pacote JS 691.046/700.000; salvar+refresh 3 processos git; 320/480/640 sem rolagem horizontal |
+| E10 | #96 seção Conflitos nas configurações | a fazer | | |
 | E11 | #98 Tour: desenho e lista de passos | a fazer | | |
 | E12-E13 | #98 Tour: infraestrutura e conteúdo | depende de E3, E10, E11 | | |
 
-### Última etapa fechada: `E8` (#96, tela Conflitos)
+### Última etapa fechada: `E9` (#96, editor embutido)
 
-- `ConflictsScreen.tsx` (lazy, substitui o dock como Dashboards), `ConflictFlow.tsx` (provedor: decisões, continuar sozinho, ações).
-  Banner informativo (esconde a lista com a tela aberta); continuar/pular/abortar/auto/reaproveitar no rodapé. Entradas: ⚠ da aba ativa, banner, painel `changes.conflicts`, partida.
-- Verificado: typecheck, 1147 testes, builds, `perf:bundle`; tela vista com 60 conflitos. Code-review high: 5 achados corrigidos.
-- **Não conferido**: `core.mjs --trace`, `ui.mjs 4×`, janela estreita depois da correção, Esc dentro do `ConflictEditor`, merge concluindo pelo commit de Alterações (merge perdeu o "Continuar" do banner: decisão 5 do esboço). Sem teste de React.
+- `ConflictEditor` é painel (`EditorShell`) dentro de `ConflictsScreen`; ações por arquivo no cabeçalho, lote no rodapé; banner só abre a tela; `openConflict` abre a tela com o arquivo (`flow.focus`); F8 = próximo pendente; abas Lista/Editor < 640 px (em 320 px a tela rola, corpo min 320 px).
+- Verificado: typecheck, 1153 testes, builds, `perf:bundle`, `conflict-save.mjs` (3 processos git), roteiro 1000/640/480/320. code-review high: 4 achados corrigidos; sem superfície de segurança (nenhum IPC novo; skill `security-review` falhou por `origin/HEAD`, conferido por grep no diff).
+- **Não conferido**: `core.mjs --trace`, `ui.mjs 4×`, `capture.mjs`/`gifs.mjs` (só `node --check`), Esc/Alt+setas na tela. Sem teste de React.
+- **Limitações (retrabalho, não feito)**: trocar de arquivo/Cancelar descarta escolhas por bloco sem aviso; `modalOpen` não inclui mais o editor, então atalhos globais seguem ativos com ele aberto; abas sem `tabpanel`.
 - **Remover `docs/ESBOCO-CONFLITOS.md` no encerramento** (`git rm`), junto do HANDOFF.
 
 ## 3. Base de medição
@@ -50,7 +51,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
 
 ### Etapas seguintes (detalhar quando destravadas)
 
-- **E9-E10** (#96): seção 8 de `docs/ESBOCO-CONFLITOS.md` (E9 editor embutido e ações por arquivo, E10 seção Conflitos). E9 deve: tirar a lista por arquivo e `resolveEvery` do banner, medir `ui.mjs` em 320/480/640, `security-review`; E10 liga `CONFLICT_STARTUP` (App.tsx) e `shouldCloseAfterResolve`.
+- **E10** (#96): seção 5 e 8 de `docs/ESBOCO-CONFLITOS.md`: seção Conflitos com `conflictSummary` e `conflictStartup`; liga `CONFLICT_STARTUP` (App.tsx) e `shouldCloseAfterResolve`. Incluir aviso ao trocar de arquivo com edição (limitação da E9) se couber.
 - **E11** (#98): lista final de recursos e ordem dos passos (juiz aprova); desenho do convite e do cartão.
 - **E12-E13** (#98): infraestrutura sob demanda (chunk separado, `data-tour`, convite); depois conteúdo nos seis idiomas
   e teste "todo alvo existe". Medir pacote da primeira carga e CPU 4×.
@@ -73,6 +74,7 @@ Não se aplica ainda. E4 e E5 tiram a base (processos git do fluxo de conflito e
   usam `process.env.GIT_COMMITTER_DATE` (o `runGit` herda `process.env`). `rerere` com `reset --hard` na `main` errada
   muda o conflito: use uma tag do ponto de partida.
 - **E8**: o `RepoView` é remontado por aba (`key`), por isso `conflictsStartupSeen` é módulo e o provedor fica no `AppProviders`. `.app > .dock-hidden` foi copiado para `styles.css` (a regra original só carrega com o chunk dos Dashboards). Esc da tela: `onKeyDown` no `<section>`, nunca `window` (regra da interface). Filtro "Decididas" só tem decisões lembradas de paradas anteriores.
+- **E9**: `conflict-save.mjs` roda de verdade (`node scripts/readme-media/conflict-save.mjs`) após `build:extension`; para viewport estreito o `.conflicts-row` só é clicável na aba Lista. `/skill security-review` falha sem `origin/HEAD`. A branch remota recebe commits de processo (#104/#105): `git fetch` e rebase antes de push.
 - Instalar dependências em contêiner novo: `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`.
 
 ## 6. Encerramento
