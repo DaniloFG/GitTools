@@ -7,7 +7,7 @@ etapa fechada está na mensagem do commit dela.
 ## 1. Pedido e regras do dono
 
 - **Pedido**: (1) no diff lado a lado, o arraste do mouse seleciona os dois lados e a cópia sai misturada: confinar a
-  seleção ao lado onde o arraste começou (#155); (2) History → "Open in new window" abre o arquivo atual, deveria abrir
+  seleção ao lado onde o arraste começou (#155); (1b) #160 (Commit diff não ocupa a altura do painel e perde linhas após arrastar o divisor); (2) History → "Open in new window" abre o arquivo atual, deveria abrir
   a comparação feita naquele commit (#156); (3) READMEs: as primeiras imagens são History e depois Commit; Dashboards
   vêm depois (#157); (4) editores de código: opção de NÃO quebrar linha (barra horizontal), configuração em Settings
   (padrão fixo) e alternância rápida no menu ⋯ do componente, como o lado a lado; textos nos 6 idiomas (#158).
@@ -43,7 +43,7 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 
 ## 4. Plano
 
-### Etapa `4` — "Open in new window" abre a comparação do commit
+### Etapa `5` — "Open in new window" abre a comparação do commit
 
 - **Orquestra**: topo
 - **Arquivos prováveis**: `CommitDetails.tsx` (:166-174, :240, :374), `CommitList.tsx` (:504, :871, :912),
@@ -60,15 +60,19 @@ Base (antes da etapa 2): `perf:bundle` JS da 1ª carga Electron 695.532 / webvie
 - **Aceite**: e2e novo que reprova sem a correção; `tests/` do `diffWindowRequest`; typecheck e `npm test` verdes.
 - **Testes**: unidade, integração do canal, tela. **Depende de**: nada (fica por último: a causa é incerta).
 
-### Etapa `5` — ENCERRAMENTO
+### Etapa `6` — ENCERRAMENTO
 
 - **Orquestra**: sonnet. Roda a seção 6.
 
 ## 5. Decisões e armadilhas
 
-- 2026-11-12: ordem 1 → 2 → 3 → 4 pelo levantamento (2 e 3 tocam `DiffView.tsx`; 4 tem causa incerta).
+- 2026-11-12: ordem 1 → 2(#160) → 3(#155) → 4(#158) → 5(#156) pelo levantamento (2 e 3 tocam `DiffView.tsx`; 4 tem causa incerta).
 - 2026-11-12: `RebaseEditor` fora do escopo do #158 (não é editor de código); padrão da quebra = `true`.
 - 2026-11-12: etapa 4 começa por reprodução; se não reproduzir, o `gt-juiz` decide (não inventar correção).
+- 2026-11-12 (dono, via sessão pai): #160 entra como etapa 2. Em #155 o sintoma não aparece em imagem estática: o e2e
+  reproduz com `window.getSelection()`. #158: linhas longas quebram no lado a lado e no unificado.
+- **Privacidade**: prints do dono mostram nomes de repositórios e pessoas e o repositório é público: nenhuma imagem
+  nem nome vai para commit, HANDOFF ou issue.
 - Gate: `.claude/triagem.local` com `media <assunto>` e `.claude/issue.local` (fora do git) em cada sessão de etapa.
 
 - 2026-11-12: o arraste do Playwright não estende seleção em `td.code` do diff (também sem a mudança; caret cai fora do lugar, causa não achada). O cenário `diff-selecao-lado` aperta o mouse de verdade e estende a seleção pela API; não repetir a tentativa de `mouse.move` com o botão apertado.
