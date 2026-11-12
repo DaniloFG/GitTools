@@ -853,6 +853,9 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
    * é remontado), então o repositório novo sem conflito nunca a herda aberta; com conflito, vale a regra da partida.
    */
   const [conflictsOpen, setConflictsOpen] = useState(false)
+  // Lida no fim de `run`: ler o estado ali recriaria `run` (e tudo que depende dele) a cada abrir/fechar da tela.
+  const conflictsOpenRef = useRef(false)
+  conflictsOpenRef.current = conflictsOpen
   // Uma tela que ocupa o lugar dos painéis por vez: abrir uma fecha a outra.
   const setDashboards = useCallback((open: boolean) => {
     setDashboardsOpen(open)
@@ -1195,7 +1198,8 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
             if (result.ok) toast('success', result.message)
             else {
               toast('warning', result.message)
-              setView('changes')
+              // Parada seguinte de um cherry-pick/rebase em sequência: quem resolve na tela Conflitos continua nela.
+              if (!(conflictsOpenRef.current && result.conflicts.length > 0)) setView('changes')
             }
           } else if (typeof result === 'string' && result) toast('info', result)
           return result

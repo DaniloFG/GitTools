@@ -44,8 +44,9 @@ Para cada PR, na ordem:
 ## Merge
 
 - Destino `develop` e `homolog`: merge sempre que o CI estiver verde (`.claude/rules/github.md`), sem depender de pedido.
-- **Fluxo** (skill `validar`, issues #103 e #104): branch → `develop` e merge; valide a `develop` (agente `gt-validador`);
-  só então abra o PR da **mesma** branch → `homolog` (nunca `develop` → `homolog`), já sem `docs/HANDOFF.md`. O gate só
+- **Fluxo** (skill `validar`, issues #103, #104 e #128): se o `docs/HANDOFF.md` ainda estiver na branch, antes do PR para
+  a `develop` faça o `git rm` e o commit, último da branch. Depois: branch → `develop` e merge; valide a `develop` (agente
+  `gt-validador`); só então abra o PR da **mesma** branch → `homolog` (nunca `develop` → `homolog`), já sem HANDOFF. O gate só
   deixa o merge na `homolog` se a ponta do PR está na história da `develop`, o PR tem o rótulo `validada-develop` (posto
   pela skill `validar`) e a origem não é a `develop`. Depois do merge, valide a `homolog`; só com as duas verdes o PR
   `homolog → main` é aberto. Vermelho: `PR PARADO <número> | <fase e trecho do log>`; a correção é da sessão de trabalho.

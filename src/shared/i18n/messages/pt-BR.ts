@@ -284,6 +284,7 @@ export const ptBR = {
     linesContext: 'De {path} no commit {sha} — "{subject}"',
     takeChecked: { one: 'Levar {count} arquivo marcado para {target}…', other: 'Levar {count} arquivos marcados para {target}…' },
     dragFile: 'Arraste para uma branch para levar este arquivo',
+    checkFile: 'Marcar {path} para levar',
     selectLinesHelp: 'Selecione linhas e aplique só elas em outra branch.',
     takeWholeFile: 'Levar arquivo inteiro…'
   },

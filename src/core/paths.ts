@@ -1,7 +1,9 @@
 // Caminhos relativos ao repositório → caminhos absolutos do sistema, sem sair do repositório.
 
 import { realpathSync } from 'node:fs'
-import { lstat, realpath } from 'node:fs/promises'
+import { constants } from 'node:fs'
+import { lstat, open, readFile, realpath } from 'node:fs/promises'
+import type { FileHandle } from 'node:fs/promises'
 import path from 'node:path'
 import { t } from '../shared/i18n'
 
@@ -100,4 +102,33 @@ export async function resolveInsideParent(root: string, relative: string): Promi
   const [realRoot, real] = await Promise.all([realRootOf(root), realExisting(path.dirname(full))])
   if (!isWithin(caseKey(real), caseKey(realRoot))) throw new Error(t('main.outsideRepository'))
   return full
+}
+
+/**
+ * Abre um arquivo comum para leitura sem seguir link no último componente. O `lstat` que antecede a leitura e a
+ * abertura são duas chamadas: se o arquivo for trocado por um link entre elas (TOCTOU), um `open` comum seguiria o
+ * link para fora do repositório. Aqui a troca é barrada na própria abertura (`O_NOFOLLOW`, onde existe) e o
+ * descritor ainda é conferido com `fstat`. `O_NONBLOCK` evita que um FIFO posto no lugar trave a abertura. Sem `O_NOFOLLOW` (Windows), um `lstat` depois da abertura estreita a
+ * janela. Não é arquivo comum, ou virou link: lança.
+ */
+export async function openRegularFile(full: string): Promise<FileHandle> {
+  const handle = await open(full, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0))
+  try {
+    const regular = (await handle.stat()).isFile() && (constants.O_NOFOLLOW ? true : (await lstat(full)).isFile())
+    if (!regular) throw new Error(t('main.outsideRepository'))
+    return handle
+  } catch (error) {
+    await handle.close()
+    throw error
+  }
+}
+
+/** Lê o arquivo inteiro pelo descritor aberto por `openRegularFile`. */
+export async function readRegularFile(full: string): Promise<Buffer> {
+  const handle = await openRegularFile(full)
+  try {
+    return await readFile(handle)
+  } finally {
+    await handle.close()
+  }
 }

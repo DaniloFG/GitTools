@@ -80,6 +80,53 @@ describe('cherry-pick de vários commits com conflitos em sequência', () => {
   })
 })
 
+describe('progresso "commit N de M" do cherry-pick em sequência', () => {
+  it('operationState informa o passo em cada parada, sem abrir processo git', async () => {
+    const { t, shas } = await threeStops()
+    await t.repo.cherryPickCommits('main', shas)
+    const seen: Array<[number | undefined, number | undefined]> = []
+    for (const n of [0, 1, 2]) {
+      let git = 0
+      const off = onGitCommand((e) => {
+        if (e.exitCode === undefined) git++
+      })
+      const op = await t.repo.operationState()
+      off()
+      expect(git).toBe(0)
+      seen.push([op.step, op.total])
+      if (n < 2) {
+        await resolveWith(t, LINES((i) => `r${n} ${i}`))
+        await t.repo.continueOperation()
+      }
+    }
+    expect(seen).toEqual([[1, 3], [2, 3], [3, 3]])
+  })
+
+  it('segundo cherry-pick recusado durante a sequência não troca o total', async () => {
+    const { t, shas } = await threeStops()
+    await t.repo.cherryPickCommits('main', shas)
+    await t.repo.cherryPickCommits('main', [shas[0]]).catch(() => undefined)
+    const op = await t.repo.operationState()
+    expect([op.step, op.total]).toEqual([1, 3])
+  })
+
+  it('sequência iniciada fora do app não mostra passo', async () => {
+    const { t, shas } = await threeStops()
+    await t.git('cherry-pick', ...shas).catch(() => undefined)
+    const op = await t.repo.operationState()
+    expect(op.kind).toBe('cherry-pick')
+    expect(op.step).toBeUndefined()
+  })
+
+  it('cherry-pick de um commit só não mostra passo', async () => {
+    const { t, shas } = await threeStops()
+    await t.repo.cherryPickCommits('main', [shas[0]])
+    const op = await t.repo.operationState()
+    expect(op.kind).toBe('cherry-pick')
+    expect(op.step).toBeUndefined()
+  })
+})
+
 /** Argumentos de cada processo git aberto enquanto `fn` roda. */
 async function recordGit(fn: () => Promise<unknown>): Promise<string[][]> {
   const commands: string[][] = []

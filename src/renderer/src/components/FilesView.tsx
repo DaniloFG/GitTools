@@ -139,7 +139,7 @@ function FilesList({ path, onPath }: { path: string | null; onPath(path: string)
   return (
     <div className="files-list">
       <div className="files-list-header">
-        <input className="files-filter" placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
+        <input className="files-filter" aria-label={t('files.filter', { count: files.length })} placeholder={t('files.filter', { count: files.length })} value={filter} onChange={(e) => setFilter(e.target.value)} autoFocus />
         <FileViewOptions />
       </div>
       <ul className="file-list">

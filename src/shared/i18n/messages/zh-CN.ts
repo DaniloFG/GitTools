@@ -282,6 +282,7 @@ export const zhCN: Messages = {
     linesContext: '来自提交 {sha} 中的 {path} — “{subject}”',
     takeChecked: { other: '将 {count} 个勾选的文件带到 {target}…' },
     dragFile: '拖到分支上即可带走此文件',
+    checkFile: '勾选 {path} 以带走',
     selectLinesHelp: '选择行，并只把它们应用到另一个分支。',
     takeWholeFile: '带走整个文件…'
   },

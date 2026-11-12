@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import type { ConflictDetails } from '../../../shared/types'
 import { buildResult, parseConflicts, resolveChunk, type ChunkResolution, type MergeChunk } from '../../../shared/conflicts'
+import { createConflictDrafts } from '../conflictDrafts'
 import { useAppActions, useBusy, useRepoData } from '../context'
 import { errorMessage } from '../format'
 import { git } from '../git'
@@ -30,6 +31,11 @@ const CONTEXT = 3
 const LINE = 18
 const PAD = 6
 const PANE_MIME = 'application/x-gittools-merge-pane'
+/**
+ * Escolhas ainda não salvas de cada arquivo (ver `conflictDrafts.ts`). Fica no módulo: a tela remonta o editor a cada
+ * arquivo (`key`), e a instância tem de sobreviver a essa remontagem.
+ */
+const drafts = createConflictDrafts()
 
 /** Setas do lado esquerdo do texto ("← Usar a atual"); as demais ficam depois ("Usar a que entra →"). */
 const LEADING_ARROWS = new Set(['←', '↖', '↙'])
@@ -98,11 +104,24 @@ export function ConflictEditor({ path, actions, onClose }: { path: string; actio
   // resolvido, mostrava por um instante a modal de três opções antes de o editor fechar (#92).
   const handlers = useRef({ onClose, toast })
   handlers.current = { onClose, toast }
+  // Valores atuais para a limpeza de desmontagem (que não pode esperar um render). `finished`: o arquivo foi salvo ou
+  // resolvido, então a limpeza não guarda as escolhas de novo.
+  const draftState = useRef<{ details: ConflictDetails | null; resolutions: (ChunkResolution | undefined)[]; finished: boolean }>({
+    details: null,
+    resolutions: [],
+    finished: false
+  })
+  draftState.current.details = details
+  draftState.current.resolutions = resolutions
   useEffect(() => {
     let cancelled = false
     git.conflictDetails(path).then(
       (value) => {
-        if (!cancelled) setDetails(value)
+        if (cancelled) return
+        // Escolhas feitas antes de trocar de arquivo voltam, se o texto do arquivo não mudou desde então.
+        const restored = value.working != null ? drafts.take(path, value.working) : undefined
+        if (restored) setResolutions(restored)
+        setDetails(value)
       },
       (e) => {
         if (cancelled) return
@@ -114,6 +133,16 @@ export function ConflictEditor({ path, actions, onClose }: { path: string; actio
       cancelled = true
     }
   }, [path])
+  // Ao sair do arquivo (trocar de arquivo ou fechar o editor), guarda as escolhas ainda não salvas. Sem detalhes
+  // carregados não há texto para comparar depois, então não guarda nada.
+  useEffect(
+    () => () => {
+      const s = draftState.current
+      if (s.finished || !s.details || s.details.working == null) return
+      drafts.save(path, s.details.working, s.resolutions)
+    },
+    [path]
+  )
 
   const parsed = useMemo(() => (details?.working != null ? parseConflicts(details.working) : null), [details])
   const conflicts = useMemo(() => parsed?.chunks.filter((c): c is Conflict => c.kind === 'conflict') ?? [], [parsed])
@@ -196,12 +225,21 @@ export function ConflictEditor({ path, actions, onClose }: { path: string; actio
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  /** Arquivo resolvido: apaga o rascunho e impede a limpeza de desmontagem de guardá-lo de novo. */
+  const markResolved = () => {
+    draftState.current.finished = true
+    drafts.clear(path)
+  }
+
   const save = async () => {
     const done = await run(t('busy.savingResolution'), async () => {
       await git.saveConflictResolution(path, result)
       return true
     })
-    if (done) onClose()
+    if (done) {
+      markResolved()
+      onClose()
+    }
   }
 
   const resolveWhole = async (side: 'ours' | 'theirs') => {
@@ -209,7 +247,10 @@ export function ConflictEditor({ path, actions, onClose }: { path: string; actio
       await git.resolveConflict(path, side)
       return true
     })
-    if (done) onClose()
+    if (done) {
+      markResolved()
+      onClose()
+    }
   }
 
   if (!details) {
