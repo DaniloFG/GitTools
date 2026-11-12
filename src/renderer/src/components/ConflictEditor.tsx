@@ -63,12 +63,27 @@ export function ConflictEditor({ path, onClose }: { path: string; onClose(): voi
   const syncFrame = useRef(0)
   const rtl = textDirection() === 'rtl'
 
+  // `onClose` e `toast` mudam de identidade a cada renderização do App: ficam numa ref para o efeito depender só do
+  // caminho. Antes, cada atualização depois de salvar relia os detalhes (mais processos git) e, com o arquivo já
+  // resolvido, mostrava por um instante a modal de três opções antes de o editor fechar (#92).
+  const handlers = useRef({ onClose, toast })
+  handlers.current = { onClose, toast }
   useEffect(() => {
-    git.conflictDetails(path).then(setDetails, (e) => {
-      toast('error', errorMessage(e))
-      onClose()
-    })
-  }, [path, toast, onClose])
+    let cancelled = false
+    git.conflictDetails(path).then(
+      (value) => {
+        if (!cancelled) setDetails(value)
+      },
+      (e) => {
+        if (cancelled) return
+        handlers.current.toast('error', errorMessage(e))
+        handlers.current.onClose()
+      }
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [path])
 
   const parsed = useMemo(() => (details?.working != null ? parseConflicts(details.working) : null), [details])
   const conflicts = useMemo(() => parsed?.chunks.filter((c): c is Conflict => c.kind === 'conflict') ?? [], [parsed])
