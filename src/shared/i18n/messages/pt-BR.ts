@@ -599,6 +599,37 @@ export const ptBR = {
     hasMarkers: 'Ainda tem marcadores de conflito',
     stillConflicted: 'Continua em conflito'
   },
+  conflictsScreen: {
+    title: 'Conflitos',
+    open: 'Abrir a tela Conflitos',
+    step: 'passo {step} de {total}',
+    counts: 'Pendentes: {pending} de {total}',
+    filterKind: 'Filtrar por tipo de conflito',
+    kindAll: 'Todos os tipos',
+    filterSituation: 'Filtrar por situação',
+    situationAll: 'Todas as situações',
+    situationPending: 'Pendentes',
+    situationDecided: 'Decididas',
+    searchLabel: 'Buscar arquivo por nome',
+    searchPlaceholder: 'Buscar por nome…',
+    listLabel: 'Arquivos em conflito',
+    empty: 'Nenhum arquivo em conflito.',
+    sideOurs: 'Nosso',
+    sideTheirs: 'Deles',
+    remembered: 'Você já escolheu este lado em um commit anterior: {side}',
+    help: 'Selecione um arquivo para resolver lado a lado',
+    helpDetail: 'Clique num arquivo (ou use Enter) para abrir o editor lado a lado, onde ficam as ações por arquivo. «Resolver todos» continua na faixa acima.',
+    mergeFooter: 'Em merge, depois de resolver os conflitos, faça o commit em Alterações.',
+    kinds: {
+      bothModified: 'Ambos modificaram',
+      bothAdded: 'Ambos adicionaram',
+      bothDeleted: 'Ambos removeram',
+      addedByUs: 'Adicionado por nós',
+      addedByThem: 'Adicionado por eles',
+      deletedByUs: 'Removido por nós',
+      deletedByThem: 'Removido por eles'
+    }
+  },
   conflict: {
     titleShort: 'Conflito em {path}',
     title: 'Resolver conflito — {path}',

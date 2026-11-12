@@ -601,6 +601,37 @@ export const hi: Messages = {
     hasMarkers: 'अब भी टकराव के चिह्न हैं',
     stillConflicted: 'अब भी टकराव में है'
   },
+  conflictsScreen: {
+    title: 'टकराव',
+    open: 'टकराव स्क्रीन खोलें',
+    step: 'चरण {step} / {total}',
+    counts: 'बाकी: {total} में से {pending}',
+    filterKind: 'टकराव के प्रकार से फ़िल्टर करें',
+    kindAll: 'सभी प्रकार',
+    filterSituation: 'स्थिति से फ़िल्टर करें',
+    situationAll: 'सभी स्थितियाँ',
+    situationPending: 'बाकी',
+    situationDecided: 'तय',
+    searchLabel: 'नाम से फ़ाइल खोजें',
+    searchPlaceholder: 'नाम से खोजें…',
+    listLabel: 'टकराव वाली फ़ाइलें',
+    empty: 'टकराव वाली कोई फ़ाइल नहीं।',
+    sideOurs: 'हमारा',
+    sideTheirs: 'उनका',
+    remembered: 'आप पिछले कमिट में यह पक्ष चुन चुके हैं: {side}',
+    help: 'अगल-बगल हल करने के लिए कोई फ़ाइल चुनें',
+    helpDetail: 'अगल-बगल वाला एडिटर खोलने के लिए किसी फ़ाइल पर क्लिक करें (या Enter दबाएँ); फ़ाइल-वार कार्रवाइयाँ उसी एडिटर में हैं। «सभी को हल करें» ऊपर की पट्टी में ही है।',
+    mergeFooter: 'merge में, टकराव हल करने के बाद बदलाव (Changes) में जाकर commit करें।',
+    kinds: {
+      bothModified: 'दोनों ने बदला',
+      bothAdded: 'दोनों ने जोड़ा',
+      bothDeleted: 'दोनों ने हटाया',
+      addedByUs: 'हमने जोड़ा',
+      addedByThem: 'उन्होंने जोड़ा',
+      deletedByUs: 'हमने हटाया',
+      deletedByThem: 'उन्होंने हटाया'
+    }
+  },
   conflict: {
     titleShort: '{path} में टकराव',
     title: 'टकराव हल करें — {path}',

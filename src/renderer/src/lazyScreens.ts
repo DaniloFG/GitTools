@@ -21,6 +21,7 @@ interface PaneProps {
 }
 
 export const Dashboards = screen<ComponentType<PaneProps>>(() => import('./components/Dashboards').then((m) => ({ default: m.Dashboards })))
+export const ConflictsScreen = screen<ComponentType<PaneProps>>(() => import('./components/ConflictsScreen').then((m) => ({ default: m.ConflictsScreen })))
 export const CompareView = screen<ComponentType<PaneProps & { request: CompareRequest; onRequest(request: CompareRequest): void }>>(() =>
   import('./components/CompareView').then((m) => ({ default: m.CompareView }))
 )

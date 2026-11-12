@@ -570,6 +570,37 @@ export const zhCN: Messages = {
     hasMarkers: '仍有冲突标记',
     stillConflicted: '仍处于冲突中'
   },
+  conflictsScreen: {
+    title: '冲突',
+    open: '打开“冲突”界面',
+    step: '第 {step} 步，共 {total} 步',
+    counts: '待处理：{pending} / {total}',
+    filterKind: '按冲突类型筛选',
+    kindAll: '所有类型',
+    filterSituation: '按状态筛选',
+    situationAll: '所有状态',
+    situationPending: '待处理',
+    situationDecided: '已决定',
+    searchLabel: '按名称搜索文件',
+    searchPlaceholder: '按名称搜索…',
+    listLabel: '有冲突的文件',
+    empty: '没有冲突的文件。',
+    sideOurs: '我方',
+    sideTheirs: '对方',
+    remembered: '你在之前的提交中已选择这一方：{side}',
+    help: '选择一个文件，并排解决冲突',
+    helpDetail: '点击文件（或按 Enter）打开并排编辑器，逐个文件的操作都在其中。“全部解决”仍在上方的横条中。',
+    mergeFooter: '合并（merge）时，解决冲突后请在“更改”中提交。',
+    kinds: {
+      bothModified: '双方都修改',
+      bothAdded: '双方都新增',
+      bothDeleted: '双方都删除',
+      addedByUs: '我方新增',
+      addedByThem: '对方新增',
+      deletedByUs: '我方删除',
+      deletedByThem: '对方删除'
+    }
+  },
   conflict: {
     titleShort: '{path} 中的冲突',
     title: '解决冲突 — {path}',

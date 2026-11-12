@@ -598,6 +598,37 @@ export const en: Messages = {
     hasMarkers: 'Still has conflict markers',
     stillConflicted: 'Still in conflict'
   },
+  conflictsScreen: {
+    title: 'Conflicts',
+    open: 'Open the Conflicts screen',
+    step: 'step {step} of {total}',
+    counts: 'Pending: {pending} of {total}',
+    filterKind: 'Filter by conflict type',
+    kindAll: 'All types',
+    filterSituation: 'Filter by status',
+    situationAll: 'All statuses',
+    situationPending: 'Pending',
+    situationDecided: 'Decided',
+    searchLabel: 'Search files by name',
+    searchPlaceholder: 'Search by name…',
+    listLabel: 'Conflicted files',
+    empty: 'No conflicted files.',
+    sideOurs: 'Ours',
+    sideTheirs: 'Theirs',
+    remembered: 'You already chose this side in an earlier commit: {side}',
+    help: 'Select a file to resolve side by side',
+    helpDetail: 'Click a file (or press Enter) to open the side-by-side editor, where the per-file actions are. "Resolve all" stays in the bar above.',
+    mergeFooter: 'In a merge, once the conflicts are resolved, make the commit in Changes.',
+    kinds: {
+      bothModified: 'Both modified',
+      bothAdded: 'Both added',
+      bothDeleted: 'Both deleted',
+      addedByUs: 'Added by us',
+      addedByThem: 'Added by them',
+      deletedByUs: 'Deleted by us',
+      deletedByThem: 'Deleted by them'
+    }
+  },
   conflict: {
     titleShort: 'Conflict in {path}',
     title: 'Resolve conflict — {path}',

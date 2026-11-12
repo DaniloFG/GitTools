@@ -598,6 +598,37 @@ export const es: Messages = {
     hasMarkers: 'Todavía tiene marcadores de conflicto',
     stillConflicted: 'Sigue en conflicto'
   },
+  conflictsScreen: {
+    title: 'Conflictos',
+    open: 'Abrir la pantalla Conflictos',
+    step: 'paso {step} de {total}',
+    counts: 'Pendientes: {pending} de {total}',
+    filterKind: 'Filtrar por tipo de conflicto',
+    kindAll: 'Todos los tipos',
+    filterSituation: 'Filtrar por estado',
+    situationAll: 'Todos los estados',
+    situationPending: 'Pendientes',
+    situationDecided: 'Decididos',
+    searchLabel: 'Buscar archivo por nombre',
+    searchPlaceholder: 'Buscar por nombre…',
+    listLabel: 'Archivos en conflicto',
+    empty: 'Ningún archivo en conflicto.',
+    sideOurs: 'Nuestro',
+    sideTheirs: 'Suyo',
+    remembered: 'Ya elegiste este lado en un commit anterior: {side}',
+    help: 'Selecciona un archivo para resolverlo lado a lado',
+    helpDetail: 'Haz clic en un archivo (o pulsa Enter) para abrir el editor lado a lado, donde están las acciones por archivo. «Resolver todos» sigue en la franja de arriba.',
+    mergeFooter: 'En un merge, después de resolver los conflictos, haz el commit en Cambios.',
+    kinds: {
+      bothModified: 'Ambos modificaron',
+      bothAdded: 'Ambos añadieron',
+      bothDeleted: 'Ambos eliminaron',
+      addedByUs: 'Añadido por nosotros',
+      addedByThem: 'Añadido por ellos',
+      deletedByUs: 'Eliminado por nosotros',
+      deletedByThem: 'Eliminado por ellos'
+    }
+  },
   conflict: {
     titleShort: 'Conflicto en {path}',
     title: 'Resolver conflicto — {path}',

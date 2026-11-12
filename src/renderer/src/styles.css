@@ -1356,6 +1356,12 @@ button.ghost.danger-text:hover:not(:disabled) {
   color: var(--text-muted);
   font-size: 12px;
 }
+.section-link {
+  margin: 0 8px 6px;
+  align-self: flex-start;
+  padding: 2px 8px;
+  font-size: 12px;
+}
 .section-empty {
   margin: 0;
   padding: 8px 10px 12px;
@@ -1469,10 +1475,18 @@ button.ghost.danger-text:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
 }
-.operation-actions {
-  display: flex;
-  gap: 6px;
-  margin-inline-start: auto;
+/* A faixa de título é um botão que abre a tela Conflitos: sem a aparência de botão. */
+button.operation-title {
+  align-items: flex-start;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: start;
+  white-space: normal;
+}
+button.operation-title:hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
 }
 .conflict-list {
   list-style: none;
@@ -1535,6 +1549,140 @@ button.ghost.danger-text:hover:not(:disabled) {
 .conflict-tools button {
   padding: 2px 8px;
   font-size: 12px;
+}
+
+/* ------------------------------------------------------------ tela Conflitos */
+
+/* Ocupa o lugar dos painéis (como os Dashboards); o dock continua montado por trás, escondido. */
+.app > .dock-hidden {
+  display: none;
+}
+.conflicts-screen:focus {
+  outline: none;
+}
+
+.conflicts-screen {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+}
+.conflicts-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 8px 12px 4px;
+}
+.conflicts-title {
+  margin: 0;
+  font-size: 15px;
+}
+.conflicts-counts {
+  margin-inline-start: auto;
+}
+.conflicts-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 4px 12px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.conflicts-body {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-template-columns: minmax(260px, 2fr) minmax(0, 3fr);
+}
+/* A lista rola por dentro; as linhas têm altura fixa (30px, igual a ROW em ConflictsScreen.tsx). */
+.conflicts-list {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-inline-end: 1px solid var(--border);
+}
+.conflicts-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: start;
+}
+.conflicts-row:hover {
+  background: var(--bg-hover);
+}
+.conflicts-row-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.conflicts-row-kind {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.conflicts-row-badge {
+  flex: none;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-size: 11px;
+}
+.conflicts-empty {
+  margin: 0;
+  padding: 12px;
+}
+.conflicts-help {
+  min-width: 0;
+  padding: 16px;
+}
+.conflicts-help p {
+  margin: 6px 0 0;
+}
+.conflicts-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+.conflicts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.conflicts-auto {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.conflicts-close {
+  margin-inline-start: auto;
+}
+/* Janela estreita: a lista fica em cima e a ajuda embaixo. */
+@media (max-width: 640px) {
+  .conflicts-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .conflicts-list {
+    border-inline-end: none;
+    border-bottom: 1px solid var(--border);
+  }
 }
 
 /* ------------------------------------------------------------ modais */
@@ -2356,6 +2504,16 @@ button.danger .loader {
 }
 .repo-tab-flag.conflict {
   color: var(--danger);
+}
+/* O alerta de conflito é um botão (abre a tela Conflitos): sem a aparência de botão, como o ×. */
+button.repo-tab-flag {
+  padding: 0 3px;
+  border: none;
+  background: transparent;
+  line-height: 1;
+}
+button.repo-tab-flag:hover:not(:disabled) {
+  background: var(--bg-hover);
 }
 .repo-tab-flag.operation {
   color: var(--warning);
@@ -3323,6 +3481,7 @@ kbd.duplicate {
 [dir='rtl'] .merge-final,
 [dir='rtl'] .file-path,
 [dir='rtl'] .conflict-path,
+[dir='rtl'] .conflicts-row-path,
 [dir='rtl'] .diff-path,
 [dir='rtl'] code {
   direction: ltr;
@@ -4340,9 +4499,6 @@ body.docking .pane-grip {
 }
 .operation-title {
   margin-inline-end: auto;
-}
-.operation-actions {
-  justify-content: flex-end;
 }
 .diff-nav {
   display: flex;

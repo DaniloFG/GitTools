@@ -607,6 +607,37 @@ export const ar: Messages = {
     hasMarkers: 'ما زال فيه علامات تعارض',
     stillConflicted: 'ما زال في حالة تعارض'
   },
+  conflictsScreen: {
+    title: 'التعارضات',
+    open: 'فتح شاشة التعارضات',
+    step: 'الخطوة {step} من {total}',
+    counts: 'المعلّق: {pending} من {total}',
+    filterKind: 'تصفية حسب نوع التعارض',
+    kindAll: 'كل الأنواع',
+    filterSituation: 'تصفية حسب الحالة',
+    situationAll: 'كل الحالات',
+    situationPending: 'معلّقة',
+    situationDecided: 'محسومة',
+    searchLabel: 'البحث عن ملف بالاسم',
+    searchPlaceholder: 'بحث بالاسم…',
+    listLabel: 'ملفات فيها تعارض',
+    empty: 'لا توجد ملفات فيها تعارض.',
+    sideOurs: 'نسختنا',
+    sideTheirs: 'نسختهم',
+    remembered: 'اخترت هذا الجانب في إيداع سابق: {side}',
+    help: 'اختر ملفًا لحله جنبًا إلى جنب',
+    helpDetail: 'انقر على ملف (أو اضغط Enter) لفتح المحرر جنبًا إلى جنب، وفيه إجراءات كل ملف. يبقى «حل الكل» في الشريط أعلاه.',
+    mergeFooter: 'في الدمج (merge)، بعد حل التعارضات أجرِ الإيداع من شاشة التغييرات.',
+    kinds: {
+      bothModified: 'عدّله الطرفان',
+      bothAdded: 'أضافه الطرفان',
+      bothDeleted: 'حذفه الطرفان',
+      addedByUs: 'أضفناه نحن',
+      addedByThem: 'أضافوه هم',
+      deletedByUs: 'حذفناه نحن',
+      deletedByThem: 'حذفوه هم'
+    }
+  },
   conflict: {
     titleShort: 'تعارض في {path}',
     title: 'حل التعارض — {path}',
