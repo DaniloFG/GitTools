@@ -74,10 +74,13 @@ origem e maturidade entram quando se aplicam.
 ## Fluxo de PR (regra sagrada)
 
 - Branch de trabalho → `develop`: PR e merge pelo Claude, depois do CI verde. A `develop` é o ambiente livre e aceita
-  qualquer branch (`ccr-*`, com `docs/HANDOFF.md`, mistura de outros agentes). Merge feito: validação completa na `develop`.
+  qualquer branch de trabalho (`ccr-*`, mistura de outros agentes); o `docs/HANDOFF.md` só é aceito enquanto o plano está
+  em andamento. Ao encerrar o plano, ele sai antes deste PR: `git rm docs/HANDOFF.md` e commit, último da branch.
+  Merge feito: validação completa na `develop`.
 - A **mesma** branch de trabalho → `homolog`: PR e merge pelo Claude, depois do CI verde, da branch já mergeada na
-  `develop`, da validação VALIDADO e do último commit `git rm docs/HANDOFF.md`. A `develop` **nunca** é promovida para a
-  `homolog` (pode ter mistura): a `homolog` leva só o que a branch fez. Merge feito: a mesma validação completa na `homolog`.
+  `develop`, da validação VALIDADO da `develop` e com a branch já sem `docs/HANDOFF.md` (saiu antes do PR para a `develop`).
+  A `develop` **nunca** é promovida para a `homolog` (pode ter mistura): a `homolog` leva só o que a branch fez. Merge
+  feito: a mesma validação completa na `homolog`.
 - `homolog` → `main`: o Claude pode **abrir** o PR com o checklist do template e as duas evidências. Ele **nunca** faz merge, auto-merge,
   push direto nem `gh pr merge` ou `merge_pull_request` na `main`. Quem faz o merge é o dono ou o aprovador. O Claude
   para aí e segue o resto do trabalho.
@@ -105,9 +108,11 @@ origem e maturidade entram quando se aplicam.
 
 ## Branch do PR
 
-- A `develop` aceita qualquer branch de trabalho (inclusive `ccr-*` e com `docs/HANDOFF.md`); a `homolog` aceita qualquer
-  uma, menos `develop` e `main`. O check `branch-flow.yml` barra `docs/HANDOFF.md` na `homolog` e na `main`.
-- Não é preciso renomear a branch. O HANDOFF só sai antes do PR para a `homolog`: `git rm docs/HANDOFF.md` e commit.
+- A `develop` aceita qualquer branch de trabalho (inclusive `ccr-*`; com `docs/HANDOFF.md` só enquanto o plano está em
+  andamento); a `homolog` aceita qualquer uma, menos `develop` e `main`. O check `branch-flow.yml` barra `docs/HANDOFF.md`
+  na `homolog` e na `main`.
+- Não é preciso renomear a branch. Ao encerrar o plano, o HANDOFF sai antes do PR para a `develop`: `git rm
+  docs/HANDOFF.md` e commit, último da branch.
 
 ## Ciclo de vida das branches
 

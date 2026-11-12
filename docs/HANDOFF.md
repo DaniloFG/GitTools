@@ -23,12 +23,12 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 
 ## 2. Estado
 
-**A seguir:** `E2` — documentar o fluxo da remoção do HANDOFF (#128)
+**A seguir:** `E3` — prova da regressão #92 e processos git (#92, #108)
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | E1 | #121 | gate-main: decidir pelo check QA mais recente do sha | feita | a30dc72 | gate-main 89/89; 3 casos reprovam sem a correção |
-| E2 | #128 | Documentar o fluxo: remoção do HANDOFF entra na develop antes do PR da homolog | a fazer | | |
+| E2 | #128 | Documentar o fluxo: remoção do HANDOFF entra na develop antes do PR da homolog | feita | (ver git log) | 3 textos alinhados; CLAUDE.md 199 linhas |
 | E3 | #92 (+#108) | Prova da #92: mutação do cenário e processos git antes/depois | a fazer | | |
 | E4 | #93, #94 | Provas restantes: painel à direita/embaixo, altura baixa; combobox compartilhado | a fazer | | |
 | E5 | #97 | Prova: itens ocultos pelo menu Aparência (#56) | a fazer | | |
@@ -42,9 +42,9 @@ ANTES do PR da homolog. Teto: 150 linhas; o detalhe de etapa fechada está na me
 | E13 | #119 | Dashboard a 320 px: rolagem horizontal (precisa-refinamento) | a fazer | | |
 | ENC | #131 | Encerramento: PRs, validações, fechar issues, lista de branches | a fazer | | |
 
-### Última etapa fechada: E1 (#121)
+### Última etapa fechada: E2 (#128)
 
-- **Feito**: `exigir_qa` decide pelo QA de maior `id`; 5 casos novos no gate-main.test.ts. **Não conferido**: resposta real da API (id crescente, `filter=latest`); `security-review` formal (diff de 1 linha de jq, revisado à mão).
+- **Feito**: `central`, `pr` e `rules/github.md` dizem o mesmo fluxo (`git rm` do HANDOFF antes do PR para a develop; validar develop; só então homolog). `gate-main.sh` intocado. **Não conferido**: typecheck e testes (só documentação); `branch-flow.yml` não revisto.
 
 ## 3. Base de medição
 
@@ -56,13 +56,6 @@ Não se aplica a desempenho de produto. Base do QA: develop `082f5bc`, homolog `
 Cada etapa lê só o necessário, delega ao `gt-escritor`, termina com `npm run typecheck` e `npm test` verdes, comenta a
 evidência na issue (política 9) e mantém `status:em-revisao`; quem fecha é o ENCERRAMENTO.
 
-### Etapa E2 — documentar o fluxo da remoção do HANDOFF (#128)
-
-- **Orquestra**: sonnet. **Segurança**: não.
-- **Arquivos prováveis**: `.claude/skills/central/SKILL.md`, `.claude/rules/github.md`, `.claude/skills/pr/SKILL.md`.
-- **Aceite**: os três dizem o mesmo fluxo (branch → develop com a remoção, validar develop, só então homolog);
-  `gate-main.sh` não é afrouxado; teto de 199 linhas do `CLAUDE.md` mantido.
-- **Testes**: leitura cruzada dos três textos. **Depende de**: nada.
 ### Etapa E3 — prova da regressão #92 e processos git (#92, #108)
 
 - **Orquestra**: topo. **Arquivos**: `scripts/validacao/e2e/cenarios/conflito-resolver-salvar*`, runner.

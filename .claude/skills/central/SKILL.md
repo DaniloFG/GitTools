@@ -164,13 +164,15 @@ A branch de trabalho é a **mesma** nos dois primeiros PRs, qualquer nome serve 
 promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esforço em "Quem pede" da skill); ela avisa
 `PR FEITO`, `PR ABERTO <n> (aguarda dono)` ou `PR PARADO` (não avance; é caso de juiz, seção acima). Em ordem:
 
-1. **Branch → `develop`**: PR e merge após CI verde (com ou sem `docs/HANDOFF.md`).
-2. **Validar a `develop`** (skill `validar`): chame o `gt-validador`. `REPROVADO`: issue de correção (`bug`, ligada à
+1. **HANDOFF**: sai antes do PR para a `develop`, para a remoção chegar à `develop` junto com a branch. Confira em
+   `origin/<branch>` que o `docs/HANDOFF.md` saiu: a etapa ENCERRAMENTO faz o `git rm`; se ainda estiver lá, a sessão de
+   PR faz o `git rm` e o commit, último da branch, antes do PR para a `develop`.
+2. **Branch → `develop`**: PR e merge após CI verde, já sem `docs/HANDOFF.md`.
+3. **Validar a `develop`** (skill `validar`): chame o `gt-validador`. `REPROVADO`: issue de correção (`bug`, ligada à
    mãe), conserto antes de qualquer outro merge e nenhuma promoção.
-3. **HANDOFF**: a `homolog` e a `main` barram `docs/HANDOFF.md`. Confira em `origin/<branch>` que ele saiu: a etapa
-   ENCERRAMENTO faz o `git rm`; se ainda estiver lá, a sessão de PR faz o `git rm` e o commit, último da branch.
-4. **Branch → `homolog`**: PR da mesma branch; com o `VALIDADO` da `develop` e o comentário de evidência, a skill
-   `validar` põe o rótulo `validada-develop` (o gate exige). Merge após CI verde.
+4. **Branch → `homolog`**: PR da mesma branch, já sem o HANDOFF (a `homolog` e a `main` barram o arquivo); com o
+   `VALIDADO` da `develop` e o comentário de evidência, a skill `validar` põe o rótulo `validada-develop` (o gate
+   exige). Merge após CI verde.
 5. **Validar a `homolog`**: mesma validação completa, com o `gt-validador`.
 6. **`homolog → main`**: só com as duas verdes, a sessão de PR **abre** o PR com as duas evidências e o deixa ao dono.
 7. **Issues**: para cada sub-issue cujos critérios foram conferidos na evidência da etapa (e na do `gt-validador`),
