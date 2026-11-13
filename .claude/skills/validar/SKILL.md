@@ -37,7 +37,8 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
 
 ## Procedimento
 
-1. **Merge da branch de trabalho na develop feito** (pela skill `pr` ou pelo encerramento da central). Antes do PR da
+1. **Merge da branch de trabalho na develop feito** (pela skill `pr`, pelo encerramento da central ou pela fila do
+   lote). Antes do PR da
    branch para a homolog, chame `Agent` com `subagent_type: "gt-validador"` e `model: "sonnet"`, pedindo a ref `develop`
    com o `merge_commit_sha` do PR (`gh api repos/{o}/{r}/pulls/<N> --jq .merge_commit_sha`) e passando os números das
    issues do PR, se quiser que ele comente. Em rajada, um pedido só com os SHAs de todos os merges, em ordem.
@@ -74,7 +75,8 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
   muda o veredito de um SHA anterior; um commit novo na branch pede a validação do SHA novo. O rótulo vale por PR.
 - Branch inocente (veredito `herdado`): o veredito do SHA antigo não muda, e ele não bloqueia a branch nem os outros
   merges. Depois que o culpado for consertado ou revertido (o conserto ou a reversão já na develop), revalide a branch no
-  SHA da ponta da develop, ou no merge seguinte da branch, se houver. Esse `VALIDADO` é o que libera o rótulo
+  commit de merge da develop que já contém o conserto ou a reversão: o `merge_commit_sha` do PR de conserto ou de
+  reversão, ou o do merge seguinte da branch, se houver; nunca na ponta da ref. Esse `VALIDADO` é o que libera o rótulo
   `validada-develop`; sem ele, a branch não vai à homolog.
 - Sem workflow disponível (por exemplo, ainda não está na ref), o `gt-validador` roda o pipeline local num checkout
   limpo do SHA; o veredito vale igual, e a evidência diz "pipeline local".

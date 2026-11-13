@@ -49,6 +49,8 @@ portanto, no modelo que quer para as etapas; o contexto da central é pequeno, e
 1. `git fetch origin <branch>` e leia as seções 1 e 2 do HANDOFF em `origin/<branch>`.
 2. `list_sessions`: não pode haver outra sessão de etapa ativa nesta branch (título `<trabalho>: …`). Havendo, não
    abra outra: a que existe avisa. Agende a conferência (seção "Quando a conferência agendada dispara") e pare.
+   Sessões de **outras** branches (inclusive `<tipo>/<N>-…` de lote, skill `lote`) são outro trabalho e não bloqueiam;
+   só vale a mesma branch.
 3. Abra a etapa de "A seguir".
 
 ## Abrir uma etapa
