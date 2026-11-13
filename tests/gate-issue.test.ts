@@ -1,9 +1,10 @@
 import { spawn } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { linkOrSkip } from './helpers'
 
 // Gate de issue (issue #102): .claude/hooks/gate-issue.sh bloqueia (exit 2) escrita sem issue ativa, e
 // .claude/hooks/lembrete-issue.sh injeta o lembrete a cada prompt. O `gh` de verdade nunca é chamado: um `gh`
@@ -295,9 +296,9 @@ describe('gate-issue: worktrees', () => {
     expect((await escrever(join(wtDentro, '.claude', 'triagem.local'))).code).toBe(0)
   })
 
-  it('marcador de worktree fora do projeto, alcançado por link simbólico (/var -> /private/var no macOS), é gravável sem issue', async () => {
+  it('marcador de worktree fora do projeto, alcançado por link simbólico (/var -> /private/var no macOS), é gravável sem issue', async (ctx) => {
     const link = join(fora, '..', `${basename(fora)}-link`)
-    symlinkSync(fora, link)
+    linkOrSkip(ctx, fora, link, 'dir')
     try {
       expect((await escrever(join(link, 'b', '.claude', 'issue.local'))).code).toBe(0)
       expect((await escrever(join(link, 'b', '.claude', 'triagem.local'))).code).toBe(0)
