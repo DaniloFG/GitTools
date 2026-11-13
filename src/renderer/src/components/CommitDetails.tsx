@@ -11,6 +11,7 @@ import { editorKind, editorLabelKey, openEditorItem } from '../editorLabel'
 import { insideVsCode } from '../vscodeBridge'
 import { endDrag, startDrag } from '../dnd'
 import { errorMessage, fullDate, shortSha, statusLabel } from '../format'
+import { commitDiffWindowRequest, historyDiffLayout, reportHistoryDiffLayout } from '../historyDiffWindow'
 import { git } from '../git'
 import { getLocale, t } from '../i18n'
 import { DiffView, useFullFile } from './DiffView'
@@ -163,8 +164,10 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     revealView('commit.diff')
   }
 
+  // A janela abre no modo que está na tela (lido na hora do clique). Compare, Changes e histórico de arquivo não passam
+  // `layout`: a janela deles segue lendo o padrão das configurações.
   const openWindow = (file: ChangedFile) =>
-    openDiffWindow({ source: { kind: 'commit', sha, oldPath: file.oldPath }, path: file.path, title: `${file.path} · ${shortSha(sha)}` })
+    openDiffWindow(commitDiffWindowRequest({ sha, path: file.path, oldPath: file.oldPath, title: `${file.path} · ${shortSha(sha)}`, layout: historyDiffLayout() }))
 
   const fileMenu = (e: React.MouseEvent, file: ChangedFile) =>
     showMenu(e, [
@@ -370,6 +373,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
                 selection={head ? selection : undefined}
                 onSelectionChange={setSelection}
                 fileNav={fileNav}
+                onLayout={reportHistoryDiffLayout}
                 panelActions={[
                   { label: `⧉ ${t('diffExtra.openWindow')}`, hint: t('diffExtra.openWindowHelp'), onClick: () => openWindow(active!) },
                   ...(head

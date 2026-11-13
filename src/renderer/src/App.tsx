@@ -47,6 +47,7 @@ import { RepoTabs } from './components/RepoTabs'
 import { Dock, type ViewMeta } from './components/Dock'
 import { installCopy } from './copy'
 import { errorMessage, shortSha } from './format'
+import { commitDiffWindowRequest, historyDiffLayout } from './historyDiffWindow'
 import { gitCalls, gitFor, gitInBackground, markChanged, OWN_CHANGE_WINDOW_MS, readCache, setActiveRoot } from './git'
 import { draftPaths } from './editorDrafts'
 import { getLocale, t, type MessageKey } from './i18n'
@@ -1388,8 +1389,10 @@ function RepoView({ repo, several, workspace, settings, onSummary, notify, appMo
     [setView]
   )
 
+  // Lista de arquivos do History: a janela abre no modo do diff que está na tela (lido no clique, sem estado novo).
   const openFileWindow = useCallback(
-    (sha: string, path: string, oldPath?: string) => openDiffWindow({ source: { kind: 'commit', sha, oldPath }, path, title: `${path} · ${shortSha(sha)}` }),
+    (sha: string, path: string, oldPath?: string) =>
+      openDiffWindow(commitDiffWindowRequest({ sha, path, oldPath, title: `${path} · ${shortSha(sha)}`, layout: historyDiffLayout() })),
     [openDiffWindow]
   )
 

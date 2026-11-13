@@ -115,10 +115,12 @@ function isText(value: unknown): value is string {
  */
 export function isDiffWindowRequest(request: unknown): request is DiffWindowRequest {
   if (!isRecord(request)) return false
-  const { path, title, root, source } = request
+  const { path, title, root, source, layout } = request
   if (!isText(path) || !isRecord(source)) return false
   if (title !== undefined && !isText(title)) return false
   if (root !== undefined && !isText(root)) return false
+  // Só os dois modos conhecidos; qualquer outro valor é recusado (a janela o usaria para escolher a tabela do diff).
+  if (layout !== undefined && layout !== 'inline' && layout !== 'split') return false
   const { kind, sha, from, to, oldPath, path: caminho, fullFile, uncapped } = source
   if (oldPath !== undefined && !isText(oldPath)) return false
   if (caminho !== undefined && !isText(caminho)) return false

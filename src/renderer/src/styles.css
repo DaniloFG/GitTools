@@ -4460,6 +4460,49 @@ body.docking .pane-grip {
 .diff-panel .diff-file-header {
   flex: none;
 }
+/* Cabeçalho do diff no painel (#160): uma linha só. O caminho leva a sobra e cede até 8em; a dica cede primeiro (some
+   em larguras estreitas); os botões não encolhem. Dentro do caminho, o diretório encolhe com reticências antes do nome.
+   Fora do painel (janela de diff e studio) nada muda. */
+.diff-panel .diff-file-header {
+  flex-wrap: nowrap;
+}
+.diff-panel .diff-file-header > .diff-path {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 8em;
+}
+/* O diretório encolhe com um fator muito maior que o do nome: a divisão é proporcional, então o nome perde só uma
+   fração ínfima do corte enquanto o diretório ainda tem largura. Com o fator do nome abaixo de 1 o flexbox multiplicaria
+   a sobra pela soma dos fatores (o nome sozinho não cortaria); por isso o nome fica com 1. */
+.diff-panel .diff-file-header > .diff-path > .diff-path-dir {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  flex: 0 10000 auto;
+}
+.diff-panel .diff-file-header > .diff-path > .diff-path-name {
+  white-space: nowrap;
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.diff-panel .diff-file-header > .muted.small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 100 auto;
+}
+/* Etiqueta, estatísticas, botões e navegação não encolhem: sem isso o texto "+1 −0" e a etiqueta "renamed" (em ar)
+   quebravam em duas linhas e o cabeçalho passava de uma linha. */
+.diff-panel .diff-file-header > .tag,
+.diff-panel .diff-file-header > .diff-stats,
+.diff-panel .diff-file-header > .diff-nav,
+.diff-panel .diff-file-header > .view-options-btn {
+  flex-shrink: 0;
+}
 .diff-panel .diff-body {
   flex: 1 1 auto;
   min-height: 0;
