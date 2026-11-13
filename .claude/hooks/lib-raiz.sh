@@ -7,6 +7,18 @@
 # Caminho rápido, sem processo git: alvo dentro do projeto e fora de .claude/worktrees/ (o caso comum).
 # Senão: o topo do worktree do alvo vale se o `--git-common-dir` for o mesmo do projeto (mesmo repositório).
 # Tudo entre aspas; nada do alvo é interpretado pelo shell nem vira opção do git (vai só depois de `-C`).
+# Caminho do Windows (C:\x\y, C:/x/y) vira o formato do Git Bash (/c/x/y); fora do Windows não muda nada.
+# A letra do drive é minúscula para "C:" e "/c" compararem iguais, e "\" vira "/". É o formato ÚNICO dos hooks: tudo o
+# que vem do git (`--show-toplevel`, `--git-common-dir` saem como "C:/...") e do Node passa por aqui antes de comparar.
+para_posix() {
+  local c=${1//\\//}
+  if [[ $c =~ ^([A-Za-z]):(/.*)?$ ]]; then
+    local d=${BASH_REMATCH[1]}
+    c="/${d,,}${BASH_REMATCH[2]}"
+  fi
+  printf '%s' "$c"
+}
+
 raiz_de_trabalho() {
   local alvo=${1%/} projeto=${2%/} dir topo comum comum_projeto
   [ -n "$alvo" ] && [ -n "$projeto" ] || return 1
@@ -23,7 +35,13 @@ raiz_de_trabalho() {
   topo=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 1
   comum=$(git -C "$dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
   comum_projeto=$(git -C "$projeto" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
-  [ -n "$topo" ] && [ "$comum" = "$comum_projeto" ] || return 1
+  topo=$(para_posix "$topo")
+  comum=$(para_posix "$comum")
+  comum_projeto=$(para_posix "$comum_projeto")
+  [ -n "$topo" ] || return 1
+  # Mesmo repositório = mesmo texto ou a mesma pasta (-ef: mesmo dispositivo e inode). No Windows o mesmo diretório sai
+  # com grafias diferentes (nome curto 8.3 do tmpdir contra o longo do git); -ef não afrouxa nada, só compara identidade.
+  [ "$comum" = "$comum_projeto" ] || { [ -d "$comum" ] && [ -d "$comum_projeto" ] && [ "$comum" -ef "$comum_projeto" ]; } || return 1
   printf '%s' "$topo"
 }
 
@@ -41,6 +59,19 @@ caminho_fisico() {
   fisico=$(cd "$dir" 2>/dev/null && pwd -P) || return 1
   [ "$fisico" = / ] && fisico=
   printf '%s' "$fisico$resto"
+}
+
+# Verdadeiro se o caminho é o marcador (.claude/issue.local ou .claude/triagem.local) DA raiz. Compara o texto e, quando a
+# pasta .claude existe dos dois lados, a identidade da pasta (-ef): cobre link simbólico e grafia curta/longa no Windows.
+# Só esses dois nomes, só dentro de .claude da raiz; o componente final nunca é resolvido.
+marcador_da_raiz() {
+  local alvo=$1 raiz=${2%/} base pai
+  base=${alvo##*/}
+  pai=${alvo%/*}
+  case "$base" in issue.local|triagem.local) ;; *) return 1 ;; esac
+  [ "${pai##*/}" = .claude ] || return 1
+  [ "$pai" = "$raiz/.claude" ] && return 0
+  [ -d "$pai" ] && [ -d "$raiz/.claude" ] && [ "$pai" -ef "$raiz/.claude" ]
 }
 
 # Número(s) de issue no nome da branch do worktree (`<tipo>/<N>-<assunto>`); vazio se não casar.

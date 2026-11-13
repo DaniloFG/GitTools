@@ -42,17 +42,6 @@ normalizar() {
   printf '%s' "${resultado:-/}"
 }
 
-# Caminho do Windows (C:\x\y, C:/x/y) vira o formato do Git Bash (/c/x/y); fora do Windows não muda nada.
-# A letra do drive é minúscula para "C:" e "/c" compararem iguais, e "\" vira "/".
-para_posix() {
-  local c=${1//\\//}
-  if [[ $c =~ ^([A-Za-z]):(/.*)?$ ]]; then
-    local d=${BASH_REMATCH[1]}
-    c="/${d,,}${BASH_REMATCH[2]}"
-  fi
-  printf '%s' "$c"
-}
-
 mensagem_sem_issue() {
   bloquear 'todo pedido vira issue antes de qualquer ação. Crie a issue (escopo, critérios de aceite, considerações técnicas, testes) com `mcp__github__issue_write` e grave `#N` na primeira linha de .claude/issue.local (política: .claude/rules/github.md).'
 }
@@ -89,12 +78,8 @@ case "$ferramenta" in
     # Os marcadores precisam ser graváveis, senão não há como registrar a issue.
     # $raiz vem físico do git; compara também o caminho físico (links como /var -> /private/var), nunca só o léxico.
     fisico=$(caminho_fisico "$caminho") || fisico=$caminho
-    case "$caminho" in
-      "$raiz/.claude/issue.local"|"$raiz/.claude/triagem.local") exit 0 ;;
-    esac
-    case "$fisico" in
-      "$raiz/.claude/issue.local"|"$raiz/.claude/triagem.local") exit 0 ;;
-    esac
+    marcador_da_raiz "$caminho" "$raiz" && exit 0
+    marcador_da_raiz "$fisico" "$raiz" && exit 0
     ;;
   *) exit 0 ;;
 esac
