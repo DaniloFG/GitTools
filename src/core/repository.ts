@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { access, lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { basename, join, resolve } from 'node:path'
+import { basename, isAbsolute, join, resolve } from 'node:path'
 import type { LogOptions, RepoApi } from '../shared/api'
 import type {
   Analytics,
@@ -1958,6 +1958,58 @@ export class GitRepository implements RepoApi {
   async restoreFile(sha: string, path: string): Promise<void> {
     assertRef(sha, 'commit')
     await this.git(['checkout', sha, '--', path])
+  }
+
+  /**
+   * Põe um arquivo, na pasta de trabalho E no stage, como estava em `sha` (`which: 'this'`) ou no pai dele
+   * (`'before'`, em que um arquivo renomeado usa o nome antigo `oldPath`). Arquivo que não existe nessa versão
+   * (adicionado pelo commit, no "before"; removido por ele, no "this") é removido do stage e do disco.
+   * Com alteração local no arquivo e sem `overwrite`, não toca em nada e devolve 'dirty' para a interface confirmar.
+   * No máximo 3 processos git: `ls-tree`, `status` e `restore`/`rm` (o `status` some com `overwrite`).
+   */
+  async restoreFileFromCommit(
+    sha: string,
+    path: string,
+    which: 'this' | 'before',
+    oldPath?: string,
+    overwrite = false
+  ): Promise<'restored' | 'dirty'> {
+    assertRef(sha, 'commit')
+    // Tudo é validado antes do primeiro processo git: o caminho vem da interface e vira pathspec.
+    const paths = [path, ...(oldPath === undefined ? [] : [oldPath])]
+    for (const p of paths) await this.assertPathInside(p)
+    const rev = which === 'this' ? sha : `${sha}^`
+    const target = which === 'before' ? (oldPath ?? path) : path
+
+    // `--literal-pathspecs`: um arquivo chamado `*.txt` ou `:(top)x` é só um nome, nunca um padrão do git.
+    const literal = ['--literal-pathspecs']
+    let exists: boolean
+    try {
+      exists = (await this.git([...literal, 'ls-tree', '-z', '--name-only', rev, '--', target])).stdout !== ''
+    } catch (error) {
+      // sha inválido e commit raiz dão o mesmo erro no `ls-tree`; só no segundo caso o sha em si é válido.
+      if (which === 'before' && (await this.git(['rev-parse', '--verify', '--quiet', `${sha}^{commit}`], { okExitCodes: [0, 1] })).exitCode === 0)
+        throw new Error(t('core.rootCommitNoParent'))
+      throw error
+    }
+
+    if (!overwrite) {
+      // Renomeado, no "before": o nome antigo vai ser recriado e o novo continua lá; alteração em qualquer um conta.
+      const local = target === path ? [target] : [target, path]
+      const { stdout } = await this.git([...literal, 'status', '--porcelain=v1', '-z', '--', ...local])
+      if (stdout !== '') return 'dirty'
+    }
+
+    if (exists) await this.git([...literal, 'restore', `--source=${rev}`, '--staged', '--worktree', '--', target])
+    else await this.git([...literal, 'rm', '-f', '-q', '--ignore-unmatch', '--', target])
+    return 'restored'
+  }
+
+  /** Caminho relativo, dentro do repositório (inclusive pela pasta-mãe real) e que não é a própria raiz. */
+  private async assertPathInside(p: string): Promise<void> {
+    if (!p || p.includes('\0') || isAbsolute(p)) throw new Error(t('main.outsideRepository'))
+    // Raiz (`.`) viraria um pathspec que restaura o repositório inteiro.
+    if ((await resolveInsideParent(this.root, p)) === resolve(this.root)) throw new Error(t('main.outsideRepository'))
   }
 
   // ------------------------------------------------------ rebase interativo

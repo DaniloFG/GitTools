@@ -243,6 +243,8 @@ export const es: Messages = {
       help: 'Haz clic para ver el diff · arrastra a una rama para llevar el archivo',
       openDiff: 'Ver diff',
       take: 'Llevar este archivo a {target}…',
+      revertThis: 'Revertir este archivo',
+      revertBefore: 'Revertir a antes de este archivo',
       copyPath: 'Copiar ruta'
     },
     menu: {
@@ -459,6 +461,7 @@ export const es: Messages = {
       message: '¿Crear un nuevo commit que deshaga "{subject}" ({sha})?',
       confirm: 'Revertir'
     },
+    restoreFile: '"{path}" tiene cambios locales; revertir los reemplaza para siempre.',
     reset: {
       title: 'Mover {branch} a {sha}',
       softHelp: 'Mantiene en stage los cambios de los commits deshechos.',
@@ -1026,6 +1029,7 @@ export const es: Messages = {
     },
     noChangesIn: 'No hay cambios en "{path}".',
     noLinesSelected: 'No se seleccionó ninguna línea modificada.',
+    rootCommitNoParent: 'Este commit raíz no tiene padre.',
     lines: {
       stage: { one: '{count} línea añadida al stage.', other: '{count} líneas añadidas al stage.' },
       unstage: { one: '{count} línea quitada del stage.', other: '{count} líneas quitadas del stage.' },

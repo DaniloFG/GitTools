@@ -243,6 +243,8 @@ export const en: Messages = {
       help: 'Click to see the diff · drag onto a branch to take the file',
       openDiff: 'Show diff',
       take: 'Take this file to {target}…',
+      revertThis: 'Revert this file',
+      revertBefore: 'Revert before this file',
       copyPath: 'Copy path'
     },
     menu: {
@@ -459,6 +461,7 @@ export const en: Messages = {
       message: 'Create a new commit that undoes "{subject}" ({sha})?',
       confirm: 'Revert'
     },
+    restoreFile: '"{path}" has local changes; reverting replaces them for good.',
     reset: {
       title: 'Move {branch} to {sha}',
       softHelp: 'Keeps the changes of the undone commits staged.',
@@ -1026,6 +1029,7 @@ export const en: Messages = {
     },
     noChangesIn: 'There are no changes in "{path}".',
     noLinesSelected: 'No changed line was selected.',
+    rootCommitNoParent: 'This root commit has no parent.',
     lines: {
       stage: { one: '{count} line staged.', other: '{count} lines staged.' },
       unstage: { one: '{count} line unstaged.', other: '{count} lines unstaged.' },

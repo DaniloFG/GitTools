@@ -246,6 +246,8 @@ export const hi: Messages = {
       help: 'diff देखने के लिए क्लिक करें · फ़ाइल ले जाने के लिए किसी branch पर खींचें',
       openDiff: 'diff देखें',
       take: 'यह फ़ाइल {target} में ले जाएँ…',
+      revertThis: 'यह फ़ाइल Revert करें',
+      revertBefore: 'पिछली स्थिति पर Revert करें',
       copyPath: 'पथ कॉपी करें'
     },
     menu: {
@@ -462,6 +464,7 @@ export const hi: Messages = {
       message: 'एक नया commit बनाएँ जो "{subject}" ({sha}) को पलट दे?',
       confirm: 'Revert करें'
     },
+    restoreFile: '"{path}" के स्थानीय बदलाव Revert से मिट जाएँगे।',
     reset: {
       title: '{branch} को {sha} पर ले जाएँ',
       softHelp: 'हटाए गए commits के बदलाव stage में रखता है।',
@@ -1029,6 +1032,7 @@ export const hi: Messages = {
     },
     noChangesIn: '"{path}" में कोई बदलाव नहीं है।',
     noLinesSelected: 'कोई बदली हुई लाइन नहीं चुनी गई।',
+    rootCommitNoParent: 'रूट कमिट का पैरेंट नहीं होता।',
     lines: {
       stage: { one: '{count} लाइन stage में जोड़ी गई।', other: '{count} लाइनें stage में जोड़ी गईं।' },
       unstage: { one: '{count} लाइन stage से हटाई गई।', other: '{count} लाइनें stage से हटाई गईं।' },
