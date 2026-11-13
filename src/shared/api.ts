@@ -1,4 +1,4 @@
-import type { Settings } from './settings'
+import type { DiffLayout, Settings } from './settings'
 import type { TerminalCommandResult } from './terminal'
 import type {
   Analytics,
@@ -242,6 +242,11 @@ export interface DiffWindowRequest {
   title?: string
   /** Repositório do diff: a janela só fala com ele, mesmo que a aba ativa mude depois. */
   root?: string
+  /**
+   * Modo de visualização escolhido na tela de origem (lado a lado ou cima e baixo). Ausente: a janela lê o `diffLayout`
+   * das configurações. Hoje só o diff de commit do History o preenche; Compare, Changes e histórico de arquivo não.
+   */
+  layout?: DiffLayout
 }
 
 export interface AppInfo {
