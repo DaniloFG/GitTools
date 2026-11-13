@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
-import { readdirSync, readFileSync, chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { readdirSync, readFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { delimiter, join } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { linkOrSkip } from './helpers'
@@ -68,18 +68,15 @@ describe('marcador_da_raiz e raiz_de_trabalho', () => {
     // git de mentira: a pasta comum do worktree sai por um link (outra grafia do mesmo diretório).
     const apelido = join(base, 'apelido-git')
     linkOrSkip(ctx, join(raiz, '.git'), apelido, 'dir')
-    const bin = join(base, 'bin')
-    mkdirSync(bin)
-    // O git de verdade é achado pelo próprio bash (command -v), no formato que ele entende, em qualquer sistema.
-    const real = bash('command -v git').out.trim()
-    writeFileSync(
-      join(bin, 'git'),
-      `#!/usr/bin/env bash\ncase "$*" in *--git-common-dir*) if [ "$2" = "${posix(wt)}" ]; then echo "$GIT_COMUM"; exit 0; fi;; esac\nexec "${real}" "$@"\n`,
-    )
-    chmodSync(join(bin, 'git'), 0o755)
-    const env = { PATH: `${bin}${delimiter}${process.env.PATH}` }
+    // O git de mentira é uma FUNÇÃO do bash (sombreia o comando, sem arquivo nem PATH: funciona igual no Git Bash).
     const roda = (comum: string) =>
-      bash(`raiz_de_trabalho "${posix(wt)}/src/a.ts" "${posix(raiz)}"`, { ...env, GIT_COMUM: posix(comum) })
+      bash(
+        `git() { if [ "$1" = -C ] && [ "$2" = "$WT" ]; then case "$*" in *--git-common-dir*) echo "$GIT_COMUM"; return 0;; esac; fi; command git "$@"; }; ` +
+          `raiz_de_trabalho "${posix(wt)}/src/a.ts" "${posix(raiz)}"`,
+        { WT: posix(wt), GIT_COMUM: posix(comum) },
+      )
+    // Sem o git de mentira a função também aceita (mesma pasta): confirma que o caso base funciona antes do falso.
+    expect(bash(`raiz_de_trabalho "${posix(wt)}/src/a.ts" "${posix(raiz)}"`)).toEqual({ status: 0, out: posix(wt) })
     expect(roda(apelido)).toEqual({ status: 0, out: posix(wt) })
     mkdirSync(join(base, 'outro-git'))
     expect(roda(join(base, 'outro-git')).status).toBe(1)

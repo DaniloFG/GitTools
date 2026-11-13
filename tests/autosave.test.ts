@@ -73,14 +73,19 @@ async function configurar(dir: string): Promise<void> {
 }
 
 async function rodar(projeto: string, ...args: string[]): Promise<Resultado> {
-  return rodarEm(projeto, undefined, ...args)
+  return rodarEm(projeto, undefined, {}, ...args)
 }
 
 // `cwd` é o diretório da sessão (o do hook de verdade); `projeto` vira CLAUDE_PROJECT_DIR.
-async function rodarEm(projeto: string, cwd: string | undefined, ...args: string[]): Promise<Resultado> {
+async function rodarEm(
+  projeto: string,
+  cwd: string | undefined,
+  extra: NodeJS.ProcessEnv = {},
+  ...args: string[]
+): Promise<Resultado> {
   const r = await executar('bash', [script, ...args], {
     cwd,
-    env: { ...ambienteGit, CLAUDE_PROJECT_DIR: projeto },
+    env: { ...ambienteGit, CLAUDE_PROJECT_DIR: projeto, ...extra },
   })
   // O hook nunca pode bloquear o Claude: em qualquer cenário sai com 0 e sem barulho.
   expect(r.status).toBe(0)
@@ -158,7 +163,7 @@ describe('autosave.sh', () => {
       escrever(arvore, 'src/novo.ts', 'export {}\n')
       escrever(clone, 'raiz.txt', 'pendente na raiz\n')
       const pontaRaiz = await git(clone, 'rev-parse', 'HEAD')
-      const r = await rodarEm(clone, arvore)
+      const r = await rodarEm(clone, arvore, { AUTOSAVE_DEBUG: '1' })
       // Na falha, mostra o que o hook viu (stderr e autosave.log da raiz e do worktree): no CI do Windows é a única pista.
       const logs = [clone, arvore]
         .map((d) => {
