@@ -23,7 +23,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | E0 | #198 | Base: trazer a regra da #133 para a branch | fechada | merge de 8a28fea | CLAUDE.md 199 linhas; grep vazio |
-| E1 | #199 | Marcadores de issue e triagem por worktree/branch | fechada | ver `git log` (Refs #199) | gate-issue+gate-etapas 36 testes; typecheck e 1529 testes verdes |
+| E1 | #199 | Marcadores de issue e triagem por worktree/branch | fechada | ver `git log` (Refs #199) | gate-issue+gate-etapas 36 testes; typecheck e 1529 testes verdes; correção macOS (link /var→/private/var) em `lib-raiz.sh`/`gate-issue.sh`: typecheck e 1540 testes verdes |
 | E2 | #200 | Autosave por worktree | fechada | ver `git log` (Refs #200) | autosave 42 testes (o novo reprova sem a mudança); 1531 testes verdes |
 | E3 | #201 | Validação por commit de merge | fechada | ver `git log` (Refs #201) | workflows-validacao 8 testes (novo); 1539 testes verdes |
 | E4 | #202 | Skill `lote` e ligações | fechada | ver `git log` (Refs #202) | lote/SKILL.md 44 linhas; grep vazio; 1539 testes verdes |
@@ -85,3 +85,4 @@ Só com a palavra do dono de que o trabalho acabou.
 - [ ] `npm run typecheck`, `npm test`, `npm run build`, `npm run build:extension` e `npm run perf:bundle` verdes
 - [ ] Issues das etapas validadas (evidência comentada, `status:validada`, fechadas); issue-mãe #198 fechada por último
 - [ ] PR → `develop` mergeado e validado; HANDOFF removido; PR da mesma branch → `homolog` mergeado e validado; PR `homolog` → `main` aberto e deixado ao dono
+- **E1-correção (#199)**: CI macOS vermelho em `gate-issue.test.ts:294`; causa confirmada reproduzindo no Linux com tmpdir via link simbólico (o teste novo reprovava antes). `caminho_fisico` (lib-raiz.sh) resolve só o diretório existente (`pwd -P`), nunca o componente final; `gate-issue.sh` isenta o marcador se o caminho léxico OU o físico bate com `$raiz/.claude/{issue,triagem}.local`. `gate-etapas.sh` e `autosave.sh` só usam o topo devolvido (físico) para ler arquivos/`pwd -P`: sem o mesmo defeito. `security-review` do diff da correção: sem achados (só marcadores, nenhum bypass novo). Windows/QA do run 43488383900: não conferidos aqui.

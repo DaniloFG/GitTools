@@ -87,7 +87,12 @@ case "$ferramenta" in
     # do diretório do projeto, é trabalho e segue para a checagem de issue.
     raiz=$(raiz_de_trabalho "$caminho" "$raiz_abs") || exit 0
     # Os marcadores precisam ser graváveis, senão não há como registrar a issue.
+    # $raiz vem físico do git; compara também o caminho físico (links como /var -> /private/var), nunca só o léxico.
+    fisico=$(caminho_fisico "$caminho") || fisico=$caminho
     case "$caminho" in
+      "$raiz/.claude/issue.local"|"$raiz/.claude/triagem.local") exit 0 ;;
+    esac
+    case "$fisico" in
       "$raiz/.claude/issue.local"|"$raiz/.claude/triagem.local") exit 0 ;;
     esac
     ;;

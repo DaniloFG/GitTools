@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, delimiter, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -293,6 +293,19 @@ describe('gate-issue: worktrees', () => {
   it('marcadores dos worktrees são graváveis sem issue', async () => {
     expect((await escrever(join(wtFora, '.claude', 'issue.local'))).code).toBe(0)
     expect((await escrever(join(wtDentro, '.claude', 'triagem.local'))).code).toBe(0)
+  })
+
+  it('marcador de worktree fora do projeto, alcançado por link simbólico (/var -> /private/var no macOS), é gravável sem issue', async () => {
+    const link = join(fora, '..', `${basename(fora)}-link`)
+    symlinkSync(fora, link)
+    try {
+      expect((await escrever(join(link, 'b', '.claude', 'issue.local'))).code).toBe(0)
+      expect((await escrever(join(link, 'b', '.claude', 'triagem.local'))).code).toBe(0)
+      // O link não afrouxa nada: código no worktree continua pedindo issue.
+      expect((await escrever(join(link, 'b', 'src', 'a.ts'))).code).toBe(2)
+    } finally {
+      rmSync(link, { force: true })
+    }
   })
 
   it('branch <tipo>/<N>-<assunto> libera (issue aberta) e bloqueia (fechada); ccr-* sem marcador bloqueia', async () => {

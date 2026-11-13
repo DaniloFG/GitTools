@@ -27,6 +27,22 @@ raiz_de_trabalho() {
   printf '%s' "$topo"
 }
 
+# Caminho físico do alvo: resolve os links simbólicos do diretório existente mais próximo (`pwd -P`) e reanexa o resto.
+# O componente final nunca é resolvido (um link no próprio marcador não leva a outro arquivo). No macOS o tmpdir fica em
+# /var, link para /private/var, e o topo do worktree vem físico do git: sem isto o marcador não casava com a raiz.
+caminho_fisico() {
+  local alvo=${1%/} dir resto= fisico
+  [ -n "$alvo" ] || return 1
+  dir=$alvo
+  while [ -n "$dir" ] && [ ! -d "$dir" ]; do
+    case "$dir" in */*) resto="/${dir##*/}$resto"; dir=${dir%/*} ;; *) return 1 ;; esac
+  done
+  [ -n "$dir" ] || dir=/
+  fisico=$(cd "$dir" 2>/dev/null && pwd -P) || return 1
+  [ "$fisico" = / ] && fisico=
+  printf '%s' "$fisico$resto"
+}
+
 # Número(s) de issue no nome da branch do worktree (`<tipo>/<N>-<assunto>`); vazio se não casar.
 # O nome vem do git e só o número validado (dígitos) sai daqui.
 issue_da_branch() {
