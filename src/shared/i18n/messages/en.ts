@@ -89,7 +89,6 @@ export const en: Messages = {
     reset: 'Resetting',
     resolving: 'Resolving',
     restoring: 'Restoring',
-    restoringFile: 'Restoring file',
     reverting: 'Reverting',
     rewriting: 'Rewriting history',
     savingResolution: 'Saving resolution',
@@ -462,11 +461,7 @@ export const en: Messages = {
       message: 'Create a new commit that undoes "{subject}" ({sha})?',
       confirm: 'Revert'
     },
-    restoreFile: {
-      title: 'Overwrite local changes?',
-      message: '"{path}" has local changes (staged, unstaged or untracked). Reverting the file replaces them and this cannot be undone.',
-      confirm: 'Overwrite'
-    },
+    restoreFile: '"{path}" has local changes; reverting replaces them for good.',
     reset: {
       title: 'Move {branch} to {sha}',
       softHelp: 'Keeps the changes of the undone commits staged.',
@@ -1034,7 +1029,7 @@ export const en: Messages = {
     },
     noChangesIn: 'There are no changes in "{path}".',
     noLinesSelected: 'No changed line was selected.',
-    rootCommitNoParent: 'This is the root commit: it has no parent to restore the file from.',
+    rootCommitNoParent: 'This root commit has no parent.',
     lines: {
       stage: { one: '{count} line staged.', other: '{count} lines staged.' },
       unstage: { one: '{count} line unstaged.', other: '{count} lines unstaged.' },

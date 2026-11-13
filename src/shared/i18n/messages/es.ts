@@ -89,7 +89,6 @@ export const es: Messages = {
     reset: 'Reset',
     resolving: 'Resolviendo',
     restoring: 'Restaurando',
-    restoringFile: 'Restaurando archivo',
     reverting: 'Revirtiendo',
     rewriting: 'Reescribiendo historial',
     savingResolution: 'Guardando resolución',
@@ -462,11 +461,7 @@ export const es: Messages = {
       message: '¿Crear un nuevo commit que deshaga "{subject}" ({sha})?',
       confirm: 'Revertir'
     },
-    restoreFile: {
-      title: '¿Sobrescribir los cambios locales?',
-      message: '"{path}" tiene cambios locales (en el stage, fuera del stage o sin seguimiento). Revertir el archivo los reemplaza y no se puede deshacer.',
-      confirm: 'Sobrescribir'
-    },
+    restoreFile: '"{path}" tiene cambios locales; revertir los reemplaza para siempre.',
     reset: {
       title: 'Mover {branch} a {sha}',
       softHelp: 'Mantiene en stage los cambios de los commits deshechos.',
@@ -1034,7 +1029,7 @@ export const es: Messages = {
     },
     noChangesIn: 'No hay cambios en "{path}".',
     noLinesSelected: 'No se seleccionó ninguna línea modificada.',
-    rootCommitNoParent: 'Este es el commit raíz: no tiene padre desde el cual restaurar el archivo.',
+    rootCommitNoParent: 'Este commit raíz no tiene padre.',
     lines: {
       stage: { one: '{count} línea añadida al stage.', other: '{count} líneas añadidas al stage.' },
       unstage: { one: '{count} línea quitada del stage.', other: '{count} líneas quitadas del stage.' },

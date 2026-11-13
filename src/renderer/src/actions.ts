@@ -235,15 +235,17 @@ export function useActions() {
    * no arquivo não é perdida em silêncio: o núcleo devolve 'dirty' sem tocar em nada e só a confirmação regrava.
    */
   async function restoreFileFromCommit(sha: string, file: { path: string; oldPath?: string }, which: 'this' | 'before') {
-    const outcome = await run(t('busy.restoringFile'), () => git.restoreFileFromCommit(sha, file.path, which, file.oldPath, false))
-    if (outcome !== 'dirty') return
+    const restore = (overwrite: boolean) =>
+      run(t('busy.restoring'), () => git.restoreFileFromCommit(sha, file.path, which, file.oldPath, overwrite))
+    if ((await restore(false)) !== 'dirty') return
     const ok = await confirm({
-      title: t('actions.restoreFile.title'),
-      message: t('actions.restoreFile.message', { path: which === 'before' ? (file.oldPath ?? file.path) : file.path }),
-      confirmLabel: t('actions.restoreFile.confirm'),
+      // Reaproveita título e botão "Sobrescrever" do editor: chave nova pesaria no catálogo de cada idioma (teto do pacote).
+      title: t('editor.overwriteTitle'),
+      message: t('actions.restoreFile', { path: which === 'before' ? (file.oldPath ?? file.path) : file.path }),
+      confirmLabel: t('editor.overwrite'),
       danger: true
     })
-    if (ok) await run(t('busy.restoringFile'), () => git.restoreFileFromCommit(sha, file.path, which, file.oldPath, true))
+    if (ok) await restore(true)
   }
 
   /**

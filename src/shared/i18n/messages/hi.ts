@@ -92,7 +92,6 @@ export const hi: Messages = {
     reset: 'Reset',
     resolving: 'हल किया जा रहा है',
     restoring: 'पुनर्स्थापित किया जा रहा है',
-    restoringFile: 'फ़ाइल पुनर्स्थापित की जा रही है',
     reverting: 'Revert किया जा रहा है',
     rewriting: 'इतिहास दोबारा लिखा जा रहा है',
     savingResolution: 'समाधान सहेजा जा रहा है',
@@ -247,8 +246,8 @@ export const hi: Messages = {
       help: 'diff देखने के लिए क्लिक करें · फ़ाइल ले जाने के लिए किसी branch पर खींचें',
       openDiff: 'diff देखें',
       take: 'यह फ़ाइल {target} में ले जाएँ…',
-      revertThis: 'इस फ़ाइल को Revert करें',
-      revertBefore: 'इस फ़ाइल से पहले की स्थिति में Revert करें',
+      revertThis: 'यह फ़ाइल Revert करें',
+      revertBefore: 'पिछली स्थिति पर Revert करें',
       copyPath: 'पथ कॉपी करें'
     },
     menu: {
@@ -465,11 +464,7 @@ export const hi: Messages = {
       message: 'एक नया commit बनाएँ जो "{subject}" ({sha}) को पलट दे?',
       confirm: 'Revert करें'
     },
-    restoreFile: {
-      title: 'स्थानीय बदलाव अधिलेखित करें?',
-      message: '"{path}" में स्थानीय बदलाव हैं (stage में, stage के बाहर या अनट्रैक्ड)। फ़ाइल को Revert करने पर वे बदल जाएँगे और इसे पूर्ववत नहीं किया जा सकता।',
-      confirm: 'अधिलेखित करें'
-    },
+    restoreFile: '"{path}" के स्थानीय बदलाव Revert से मिट जाएँगे।',
     reset: {
       title: '{branch} को {sha} पर ले जाएँ',
       softHelp: 'हटाए गए commits के बदलाव stage में रखता है।',
@@ -1037,7 +1032,7 @@ export const hi: Messages = {
     },
     noChangesIn: '"{path}" में कोई बदलाव नहीं है।',
     noLinesSelected: 'कोई बदली हुई लाइन नहीं चुनी गई।',
-    rootCommitNoParent: 'यह रूट कमिट है: इसका कोई पैरेंट नहीं है जिससे फ़ाइल पुनर्स्थापित की जा सके।',
+    rootCommitNoParent: 'रूट कमिट का पैरेंट नहीं होता।',
     lines: {
       stage: { one: '{count} लाइन stage में जोड़ी गई।', other: '{count} लाइनें stage में जोड़ी गईं।' },
       unstage: { one: '{count} लाइन stage से हटाई गई।', other: '{count} लाइनें stage से हटाई गईं।' },

@@ -97,7 +97,6 @@ export const ar: Messages = {
     reset: 'جارٍ إعادة التعيين',
     resolving: 'جارٍ الحل',
     restoring: 'جارٍ الاستعادة',
-    restoringFile: 'جارٍ استعادة الملف',
     reverting: 'جارٍ التراجع',
     rewriting: 'جارٍ إعادة كتابة السجل',
     savingResolution: 'جارٍ حفظ الحل',
@@ -471,11 +470,7 @@ export const ar: Messages = {
       message: 'إنشاء إيداع جديد يتراجع عن "{subject}" ({sha})؟',
       confirm: 'تراجع'
     },
-    restoreFile: {
-      title: 'استبدال التغييرات المحلية؟',
-      message: 'يحتوي "{path}" على تغييرات محلية (في منطقة التجهيز أو خارجها أو غير متتبَّعة). سيؤدي التراجع عن الملف إلى استبدالها ولا يمكن التراجع عن ذلك.',
-      confirm: 'استبدال'
-    },
+    restoreFile: '"{path}" يحتوي على تغييرات محلية؛ التراجع يستبدلها نهائيًا.',
     reset: {
       title: 'نقل {branch} إلى {sha}',
       softHelp: 'يبقي تغييرات الإيداعات الملغاة في منطقة التجهيز.',
@@ -1046,7 +1041,7 @@ export const ar: Messages = {
     },
     noChangesIn: 'لا توجد تغييرات في "{path}".',
     noLinesSelected: 'لم يُحدَّد أي سطر معدَّل.',
-    rootCommitNoParent: 'هذا هو الـ commit الجذري: ليس له أصل لاستعادة الملف منه.',
+    rootCommitNoParent: 'هذا commit جذري وليس له أصل.',
     lines: {
       stage: { one: 'تم تجهيز سطر واحد.', two: 'تم تجهيز سطرين.', other: 'الأسطر المجهزة: {count}.' },
       unstage: { one: 'تم إلغاء تجهيز سطر واحد.', two: 'تم إلغاء تجهيز سطرين.', other: 'الأسطر الملغى تجهيزها: {count}.' },
