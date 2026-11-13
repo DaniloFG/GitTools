@@ -4461,8 +4461,9 @@ body.docking .pane-grip {
   flex: none;
 }
 /* Cabeçalho do diff no painel (#160): uma linha só. O caminho leva a sobra e cede até 8em; a dica cede primeiro (some
-   em larguras estreitas); os botões não encolhem. Dentro do caminho, o diretório encolhe com reticências antes do nome.
-   Fora do painel (janela de diff e studio) nada muda. */
+   em larguras estreitas); os botões não encolhem. Dentro do caminho, o diretório encolhe antes do nome e corta pelo
+   começo (#183): as reticências ficam à esquerda e o fim do caminho (diretório mais próximo do arquivo, mais o nome)
+   continua visível. Fora do painel (janela de diff e studio) nada muda. */
 .diff-panel .diff-file-header {
   flex-wrap: nowrap;
 }
@@ -4480,6 +4481,14 @@ body.docking .pane-grip {
   white-space: nowrap;
   min-width: 0;
   flex: 0 10000 auto;
+  /* Com direction rtl, o corte e as reticências vão para o começo do caminho (#183). Vale em en e em ar. */
+  direction: rtl;
+}
+/* O texto do caminho volta a ler da esquerda para a direita: sem isso, o contêiner rtl reordenaria a barra final e as
+   setas de renomeação (`→`). bidi-override força a ordem dos caracteres. */
+.diff-panel .diff-file-header > .diff-path > .diff-path-dir > .diff-path-dir-text {
+  direction: ltr;
+  unicode-bidi: bidi-override;
 }
 .diff-panel .diff-file-header > .diff-path > .diff-path-name {
   white-space: nowrap;

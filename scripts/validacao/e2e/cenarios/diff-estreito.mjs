@@ -1,12 +1,14 @@
 // #160: o cabeçalho do diff, com o caminho do arquivo, tem de ficar em uma linha só nas janelas (420, 560, 761, 900 e
-// 1440 px), em en e em ar (RTL). O diretório encolhe com reticências e o nome do arquivo fica inteiro enquanto couber;
-// o nome só é cortado depois que o diretório já sumiu. Antes da correção, o caminho quebrava no meio da palavra e o
-// cabeçalho passava de uma linha. A 1440 px a lista de commits passa de 700 px, então a régua da coluna Autor com
+// 1440 px), em en e em ar (RTL). O diretório encolhe pelo começo (#183): as reticências ficam à esquerda e o fim do
+// caminho (diretório mais próximo do arquivo, mais o nome) fica visível; o nome do arquivo fica inteiro enquanto
+// couber; o nome só é cortado depois que o diretório já sumiu. Antes da correção, o caminho quebrava no meio da palavra
+// e o cabeçalho passava de uma linha. A 1440 px a lista de commits passa de 700 px, então a régua da coluna Autor com
 // 140 px é conferida nesse ponto (o host electron do runner abre o histórico lado a lado com o diff nessa largura).
 // Reprova se, em alguma largura e idioma: o cabeçalho passa de 40 px ou o caminho de 24 px (mais de uma linha); o
-// `title` do caminho não é o completo (com `antigo → novo` na renomeação); o nome é cortado com o diretório ainda
-// visível; o nome de 151 caracteres não aparece cortado com reticências; o painel do diff rola na horizontal; ou a
-// coluna Autor do histórico não bate com a régua. Régua do Autor: `@container (max-width: 699px)` sobre `.commit-list`
+// `title` do caminho não é o completo (com `antigo → novo` na renomeação); o diretório é cortado pelo fim (o fim do
+// caminho some); o nome é cortado com o diretório ainda visível; o nome de 151 caracteres não aparece cortado com
+// reticências; em en, a 420 px, o caminho longo não chega a ter o diretório cortado (o ramo do corte não rodou); o
+// painel do diff rola na horizontal; ou a coluna Autor do histórico não bate com a régua. Régua do Autor: `@container (max-width: 699px)` sobre `.commit-list`
 // (styles.css, ~4351) zera a coluna quando a lista tem menos de 700 px de largura (clientWidth; a lista não tem
 // padding, então é a mesma largura que a régua do CSS usa); a partir de 700 px ela fica com `--user-author`, que vale
 // 140 por padrão (CommitList.tsx, DEFAULT_WIDTHS). Com as larguras deste cenário a lista fica abaixo de 700 px, então
@@ -50,6 +52,8 @@ function medir() {
   const cabecalho = document.querySelector('[data-slot="commit.diff"] .diff-file-header')
   const caminho = cabecalho?.querySelector('.diff-path')
   const dir = caminho?.querySelector('.diff-path-dir')
+  // O texto do diretório é o filho que vaza do contêiner: com o corte pelo começo (#183) ele sai pela esquerda.
+  const dirTexto = caminho?.querySelector('.diff-path-dir-text')
   const nome = caminho?.querySelector('.diff-path-name')
   const painel = document.querySelector('[data-slot="commit.diff"] .diff-panel')
   const espacador = cabecalho?.querySelector('.toolbar-spacer')
@@ -61,6 +65,10 @@ function medir() {
     caminho: caminho ? Math.round(caminho.getBoundingClientRect().height) : null,
     title: caminho?.getAttribute('title') ?? null,
     dirW: dir ? Math.round(dir.getBoundingClientRect().width) : null,
+    /** O texto do diretório é mais largo que a caixa (cortado); e, cortado, as bordas são o começo e o fim do caminho. */
+    dirCortado: dir && dirTexto ? dirTexto.getBoundingClientRect().width > dir.getBoundingClientRect().width + 1 : null,
+    fimVisivel: dir && dirTexto ? Math.abs(dirTexto.getBoundingClientRect().right - dir.getBoundingClientRect().right) <= 1 : null,
+    inicioCortado: dir && dirTexto ? dirTexto.getBoundingClientRect().left < dir.getBoundingClientRect().left - 1 : null,
     nomeCortado: nome ? nome.scrollWidth > nome.clientWidth + 1 : null,
     /** Espaço livre do cabeçalho: com o nome cortado, ele tem de estar cheio pelo caminho (ver `avaliar`). */
     espacador: espacador ? Math.round(espacador.getBoundingClientRect().width) : null,
@@ -81,6 +89,8 @@ function avaliar(caso, m, rotulo, idioma) {
   if (m.cabecalho > 40) falhas.push(`cabeçalho com ${m.cabecalho} px (uma linha cabe em 40)`)
   if (m.caminho > 24) falhas.push(`caminho com ${m.caminho} px de altura (uma linha cabe em 24): quebrou em linhas`)
   if (m.nomeCortado && m.dirW > 1) falhas.push(`nome cortado com o diretório ainda com ${m.dirW} px: o corte começa pelo diretório`)
+  // #183: cortado o diretório, as reticências ficam no começo e o fim do caminho (diretório mais o nome) tem de aparecer.
+  if (m.dirCortado && (!m.fimVisivel || !m.inicioCortado)) falhas.push('diretório cortado pelo fim: o corte tem de ser pelo começo')
   // O caminho leva a sobra do cabeçalho: se o nome está cortado, o espaçador (flex: 1, sem conteúdo) não pode ter sobrado.
   if (m.nomeCortado && m.espacador > 2) falhas.push(`nome cortado com ${m.espacador} px de espaço livre no cabeçalho`)
   if (caso.cortado && !m.nomeCortado) falhas.push('nome de 151 caracteres sem reticências: deveria estar cortado')
@@ -167,6 +177,10 @@ export default {
               return assentou ? atual : null
             }, `cabeçalho assentado (${caso.rotulo}, ${rotulo})`)
             falhas.push(...avaliar(caso, m, rotulo, idioma))
+            // Garante que o ramo do corte é exercido: em en, a 420 px, o caminho longo tem de sair com o diretório cortado.
+            if (idioma === 'en' && largura === 420 && caso.rotulo === 'caminho longo' && m.dirCortado !== true) {
+              falhas.push(`${rotulo}: ${caso.rotulo}: diretório sem corte: o ramo do corte pelo começo não foi exercido`)
+            }
             if (idioma === 'en') falhas.push(...avaliarAutor(m, rotulo))
           }
         }
