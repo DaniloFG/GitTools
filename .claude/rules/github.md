@@ -73,6 +73,11 @@ origem e maturidade entram quando se aplicam.
 
 ## Fluxo de PR (regra sagrada)
 
+- **Origem**: toda branch de trabalho nova nasce da `main` (`git switch main && git pull`, depois `git switch -c ...`).
+  A `develop` e a `homolog` podem ter conteúdo que a `main` não tem; por isso a branch não depende de código que só a
+  `develop` tem: o que precisar vem da `main` ou por cherry-pick explícito. Trabalhos de assuntos diferentes têm branches
+  próprias e podem ser mergeados em paralelo na `develop` e na `homolog`. Plano em curso continua na branch que tem: não
+  se recorta no meio.
 - Branch de trabalho → `develop`: PR e merge pelo Claude, depois do CI verde. A `develop` é o ambiente livre e aceita
   qualquer branch de trabalho (`ccr-*`, mistura de outros agentes); o `docs/HANDOFF.md` só é aceito enquanto o plano está
   em andamento. Ao encerrar o plano, ele sai antes deste PR: `git rm docs/HANDOFF.md` e commit, último da branch.
@@ -116,15 +121,19 @@ origem e maturidade entram quando se aplicam.
 
 ## Ciclo de vida das branches
 
-A branch de trabalho nasce de `develop`, vai por PR para `develop` e, depois, a **mesma** branch vai por PR para `homolog`.
+A branch de trabalho nasce da `main`, vai por PR para `develop` e, depois, a **mesma** branch vai por PR para `homolog`.
 As duas passagens dependem dela, então ela fica de pé até o fim do plano: não se apaga logo após o merge na `develop`.
+Quando a sessão só puder empurrar para a branch designada (`ccr-*`), o trabalho segue nela; o corte da `main` vale quando a
+branch puder ser escolhida.
 
 - **O Claude não apaga branches.** A sessão recebe 403 ao tentar (git e `gh api` são bloqueados pelo proxy). Apagar é do
   dono; fica proibido tentar por qualquer caminho.
 - **`delete_branch_on_merge` não é ligado.** Com ele ligado, a branch sumiria antes do PR para a `homolog`.
-- **Limpeza ao fim do plano**: a central lista as branches já mergeadas na `homolog` e pede ao dono que as apague, com a
-  lista no relatório ou na issue-mãe. `develop`, `homolog` e `main` nunca são apagadas: o ruleset do GitHub bloqueia, e o
-  `gate-main.sh` é a defesa em profundidade.
+- **Exclusão é do dono, depois da `main`**: a branch só é apagada pelo dono depois do merge na `main`, com os pipelines
+  verdes e o trabalho totalmente finalizado. A central só LISTA as candidatas (branches de trabalho já na história da
+  `main`: `git branch -r --merged origin/main`, sem `develop`, `homolog` e `main`) com o SHA da ponta de cada uma, no
+  relatório ou na issue-mãe. Com o PR `homolog → main` ainda aberto, a lista sai vazia. Branch com PR aberto fica de fora.
+  `develop`, `homolog` e `main` nunca são apagadas: o ruleset do GitHub bloqueia, e o `gate-main.sh` é a defesa em profundidade.
 - **Apagar não perde trabalho nem quebra a verificação.** Leia a branch pelo SHA, não pelo nome: `compare/BASE...SHA` no
   lugar do nome, e `refs/pull/N/head` para a ponta de um PR cuja branch sumiu. As duas formas foram provadas na B1 (issue
   #114). O pipeline (`validacao.yml`, `qa.yml`, `pipeline.mjs`) usa o nome da branch só como rótulo e concorrência.

@@ -545,7 +545,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
           />
         )}
         <span className="diff-path" title={pathParts.title}>
-          <span className="diff-path-dir">{pathParts.prefix}</span>
+          <span className="diff-path-dir"><span className="diff-path-dir-text">{pathParts.prefix}</span></span>
           <span className="diff-path-name">{pathParts.name}</span>
         </span>
         <span className={`tag tag-${file.changeType}`}>{t(TYPE_LABEL[file.changeType])}</span>

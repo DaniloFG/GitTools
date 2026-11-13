@@ -10,7 +10,7 @@ homolog ──PR──▶ main                      (o Claude só abre o PR; o m
 
 | Branch | Para que serve | Recebe PR de | Aceita push direto? |
 |---|---|---|---|
-| `feature/`, `fix/`, `docs/`, `chore/`, `refactor/`, nascidas de `develop` | Trabalho do dia a dia | — | Sim, são as branches de trabalho |
+| `feature/`, `fix/`, `docs/`, `chore/`, `refactor/`, nascidas da `main` | Trabalho do dia a dia | — | Sim, são as branches de trabalho |
 | `develop` | Integração das mudanças, ambiente livre | qualquer branch de trabalho (até `ccr-*`, com `docs/HANDOFF.md`) | Não, só por PR |
 | `homolog` | Validação antes de produzir | a branch de trabalho, já validada na `develop` (nunca a `develop`); sem `docs/HANDOFF.md` | Não, só por PR |
 | `main` | Produção: sempre igual ao que foi validado na homolog | `homolog` | Não, só por PR |
@@ -26,9 +26,9 @@ homolog ──PR──▶ main                      (o Claude só abre o PR; o m
 
 ## Passo a passo
 
-1. Criar a branch de trabalho a partir da `develop`:
+1. Criar a branch de trabalho a partir da `main` (a produção; a `develop` e a `homolog` podem ter o que a `main` não tem):
    ```bash
-   git switch develop && git pull
+   git switch main && git pull
    git switch -c feature/nome-da-mudanca
    ```
 2. Commitar, enviar e abrir o PR com base `develop`:
@@ -39,13 +39,14 @@ homolog ──PR──▶ main                      (o Claude só abre o PR; o m
 
 ## Ciclo de vida das branches
 
-A branch de trabalho nasce de `develop` e vai por PR para `develop`. Depois, a **mesma** branch vai por PR para `homolog`;
+A branch de trabalho nasce da `main` e vai por PR para `develop`. Depois, a **mesma** branch vai por PR para `homolog`;
 por isso ela fica de pé até o fim do plano, e não se apaga logo após o merge na `develop`.
 
 - O Claude não apaga branches: apagar é do dono. `delete_branch_on_merge` fica desligado, porque apagar a branch no merge
   tiraria a base do PR para a `homolog`.
-- Ao fim do plano, a central lista as branches já mergeadas na `homolog` e pede ao dono que as apague. `develop`, `homolog`
-  e `main` nunca são apagadas.
+- Depois do merge na `main`, com os pipelines verdes e o trabalho finalizado, a exclusão da branch é do dono. A central só
+  lista as candidatas (já na história da `main`), com o SHA da ponta de cada uma. `develop`, `homolog` e `main` nunca são
+  apagadas.
 - Antes de pedir a limpeza, registre o SHA da ponta da branch na descrição do PR para a `homolog`. Com o SHA, a
   verificação segue funcionando mesmo sem a branch (compare por SHA e `refs/pull/N/head`).
 
