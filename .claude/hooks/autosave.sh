@@ -20,6 +20,38 @@ raiz="${CLAUDE_PROJECT_DIR:-}"
 [ -z "$raiz" ] && raiz=$(git rev-parse --show-toplevel 2>/dev/null)
 [ -n "$raiz" ] && [ -d "$raiz" ] || exit 0
 
+# Fábrica paralela (#200): com um worktree por issue, a pendência é do worktree da sessão (o diretório em que o hook
+# roda), não da raiz do projeto. Sem isto o `wip:` sairia na branch da raiz e o trabalho do worktree ficaria solto.
+# Só vale se o diretório for do mesmo repositório (lib-raiz.sh); senão fica a raiz do projeto, como antes.
+# shellcheck source=lib-raiz.sh
+# O diretório do script sai de expansão pura do bash (sem processo: isto roda a cada PostToolUse, antes do limitador). Não
+# vale `${BASH_SOURCE[0]%/*}` sozinho: no Windows o Node passa `C:\x\autosave.sh` (sem `/`), o `%/*` devolvia o caminho
+# inteiro, a lib não era achada e o worktree era ignorado em silêncio (CI do Windows, #200). Por isso `\` vira `/` antes.
+caminho_script=${BASH_SOURCE[0]//\\//}
+case "$caminho_script" in
+  */*) dir_hooks=${caminho_script%/*} ;;
+  *) dir_hooks=. ;;
+esac
+if [ -f "$dir_hooks/lib-raiz.sh" ]; then
+  . "$dir_hooks/lib-raiz.sh"
+  atual=$(pwd -P 2>/dev/null) || atual=
+  raiz_projeto=$(cd "$raiz" 2>/dev/null && pwd -P)
+  RAIZ_DIAGNOSTICO=
+  if [ -n "$atual" ] && [ -n "$raiz_projeto" ] && trabalho=$(raiz_de_trabalho "$atual" "$raiz_projeto"); then
+    [ -d "$trabalho" ] && raiz=$trabalho
+  else
+    # O subshell de $(...) não leva a variável de volta: refaz a consulta só para registrar os caminhos vistos.
+    # Só quando a sessão está num worktree do projeto (onde a resolução deveria ter dado certo): fora disso é o caso comum.
+    case "$atual/" in "$raiz_projeto"/.claude/worktrees/*) raiz_de_trabalho "$atual" "$raiz_projeto" >/dev/null 2>&1 ;; *) RAIZ_DIAGNOSTICO=sem ;; esac
+    [ "$RAIZ_DIAGNOSTICO" = sem ] || diagnostico="raiz do worktree não resolvida: atual=$atual raiz_projeto=$raiz_projeto ${RAIZ_DIAGNOSTICO:-}"
+  fi
+else
+  diagnostico="lib-raiz.sh não encontrada em $dir_hooks"
+fi
+
+# AUTOSAVE_DEBUG=1 (só diagnóstico, os testes do Windows): registra no log o contexto e o motivo de cada saída antecipada.
+[ -n "${AUTOSAVE_DEBUG:-}" ] && diagnostico="${diagnostico:-} contexto: bash=$BASH_VERSION CLAUDE_PROJECT_DIR=${CLAUDE_PROJECT_DIR:-} pwd=$(pwd) atual=${atual:-} raiz_projeto=${raiz_projeto:-} raiz=$raiz RAIZ_DIAGNOSTICO=${RAIZ_DIAGNOSTICO:-}"
+
 carimbo="$raiz/.claude/autosave.stamp"
 registro="$raiz/.claude/autosave.log"
 
@@ -43,6 +75,15 @@ log() {
   return 0
 }
 
+# Saída antecipada em modo depuração: grava o motivo (cria .claude se faltar, senão o log nem nasce).
+dbg() {
+  [ -n "${AUTOSAVE_DEBUG:-}" ] || return 0
+  mkdir -p "$raiz/.claude" 2>/dev/null
+  log "debug: $*"
+}
+
+[ -n "${diagnostico:-}" ] && { [ -z "${AUTOSAVE_DEBUG:-}" ] || mkdir -p "$raiz/.claude" 2>/dev/null; log "$diagnostico"; }
+
 # Rede e commit com prazo: o hook não pode pendurar o Claude. Sem `timeout` (coreutils), roda direto.
 com_prazo() {
   local segundos=$1
@@ -50,24 +91,24 @@ com_prazo() {
   if command -v timeout >/dev/null 2>&1; then timeout "$segundos" "$@"; else "$@"; fi
 }
 
-cd "$raiz" || exit 0
+cd "$raiz" || { dbg "cd $raiz falhou"; exit 0; }
 
 # Nunca pedir senha nem abrir editor: o hook roda sem terminal.
 export GIT_TERMINAL_PROMPT=0 GIT_EDITOR=true GIT_MERGE_AUTOEDIT=no
 
 branch=$(git branch --show-current 2>/dev/null)
-[ -n "$branch" ] || exit 0 # HEAD solto
+[ -n "$branch" ] || { dbg "HEAD solto em $raiz"; exit 0; } # HEAD solto
 case "$branch" in
-  develop | homolog | main) exit 0 ;;
+  develop | homolog | main) dbg "branch protegida: $branch"; exit 0 ;;
 esac
 
 # Merge, rebase ou cherry-pick em andamento: commitar no meio estragaria a operação.
 for estado in MERGE_HEAD rebase-merge rebase-apply CHERRY_PICK_HEAD; do
   caminho_estado=$(git rev-parse --git-path "$estado" 2>/dev/null)
-  [ -n "$caminho_estado" ] && [ -e "$caminho_estado" ] && exit 0
+  [ -n "$caminho_estado" ] && [ -e "$caminho_estado" ] && { dbg "operação em andamento: $estado"; exit 0; }
 done
 
-git remote get-url origin >/dev/null 2>&1 || exit 0
+git remote get-url origin >/dev/null 2>&1 || { dbg "sem remoto origin em $raiz"; exit 0; }
 
 # Arquivos do próprio autosave nunca contam como mudança (em repositório sem o .gitignore do projeto eles apareceriam).
 proprio() {
@@ -131,20 +172,23 @@ while IFS= read -r -d '' entrada; do
   fi
 done < <(git status --porcelain -z --untracked-files=all 2>/dev/null)
 
+dbg "raiz=$raiz branch=$branch pendentes=$pendentes"
 [ "$pendentes" -gt 0 ] || exit 0
 
 # Trava contra dois salvamentos ao mesmo tempo (mkdir é atômico). Trava com 120 s ou mais é de um processo morto.
 trava=$(git rev-parse --git-path autosave.lock 2>/dev/null)
-[ -n "$trava" ] || exit 0
+[ -n "$trava" ] || { dbg "sem caminho de trava"; exit 0; }
 if ! mkdir "$trava" 2>/dev/null; then
   criada=$(stat -c %Y "$trava" 2>/dev/null || stat -f %m "$trava" 2>/dev/null)
   if [[ $criada =~ ^[0-9]+$ ]] && [ $((agora - criada)) -ge "$LOCK_SEGUNDOS" ]; then
     rmdir "$trava" 2>/dev/null
-    mkdir "$trava" 2>/dev/null || exit 0
+    mkdir "$trava" 2>/dev/null || { dbg "trava presa: $trava"; exit 0; }
   else
+    dbg "trava ativa: $trava"
     exit 0
   fi
 fi
+dbg "trava obtida: $trava"
 trap 'rmdir "$trava" 2>/dev/null; exit 0' EXIT
 
 # A partir daqui houve tentativa de salvar: só agora o carimbo anda.

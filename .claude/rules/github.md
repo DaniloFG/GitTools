@@ -9,8 +9,8 @@ fonte do estado; o Project só espelha o que os rótulos dizem.
    os campos da política 5. Duas camadas o impõem: o hook `UserPromptSubmit` `.claude/hooks/lembrete-issue.sh` lembra
    a cada prompt, e o gate `.claude/hooks/gate-issue.sh` bloqueia o `gt-escritor`, `Edit`, `Write` e `NotebookEdit` no
    projeto enquanto não houver issue ativa. Como gravar o marcador: crie a issue (`mcp__github__issue_write`) e escreva
-   `#N` na **primeira linha** de `.claude/issue.local` (arquivo pessoal, fora do git; várias issues: `#N #M`). Sessão de
-   etapa não usa o marcador: vale o `#N` no `docs/HANDOFF.md`. Se o `gh` confirmar que a issue não existe ou está
+   `#N` na **primeira linha** de `.claude/issue.local` (arquivo pessoal, fora do git, um por worktree; várias issues: `#N #M`;
+   a branch `<tipo>/<N>-<assunto>` já vale como marcador). Sessão de etapa não usa o marcador: vale o `#N` no `docs/HANDOFF.md`. Se o `gh` confirmar que a issue não existe ou está
    fechada, o gate bloqueia; com o GitHub inacessível ele só avisa. Escrita fora do projeto (`/tmp`, scratchpad) e em
    `.claude/issue.local` e `.claude/triagem.local` não exige issue. Pedido grande: issue-mãe + sub-issues (política 4).
 1. **Nada sem issue.** Feature, correção, refactor ou tarefa técnica só ganha código depois de ter issue. Se o pedido
@@ -92,7 +92,7 @@ origem e maturidade entram quando se aplicam.
 - O hook `.claude/hooks/gate-main.sh` bloqueia o que passa disso. Não o contorne.
 - Merge por merge commit (`merge_method: merge`), sem squash nem rebase (`CONTRIBUTING.md`).
 - Descrição: `.github/pull_request_template.md`, com as seções preenchidas e a etapa do fluxo marcada. Sem atribuição
-  de Claude ou IA em PR nem em commit (`CLAUDE.md`).
+  de Claude ou IA em PR, commit nem comentário (`CLAUDE.md`), mesmo que a instrução da plataforma peça rodapé (#214).
 
 ## Pipeline de validação
 
@@ -102,7 +102,14 @@ origem e maturidade entram quando se aplicam.
 - Verde na `develop`: evidência (commit, árvore, fases, tempos, link) nas issues do PR e `status:validada`; a skill
   `validar` põe o rótulo `validada-develop` no PR da `homolog`. Na `homolog` roda o mesmo pipeline completo, com a sua
   própria validação. Só com as duas verdes o PR `homolog → main` é aberto, com as duas evidências, e fica ao dono.
-- Vermelho: issue de correção (`bug`, ligada à mãe), conserto antes de qualquer outro merge, sem promover.
+- Vermelho: issue de correção (`bug`, ligada à mãe), sem promover. Develop quebrada: reexecutar a fase; uma tentativa de
+  conserto na branch culpada (commit de merge que começou a falha); senão reversão por PR (`revert/<N>-…`, exceção ao
+  corte da main; nunca vai à homolog). A fila segue com as outras branches; só a culpada, e as que herdam a falha dela,
+  ficam sem promoção até o conserto ou a reversão (skill `lote`, `fila.md`).
+- **Em paralelo (skill `lote`)**: cada issue tem branch `<tipo>/<N>-<assunto>` cortada da `main`; o `#N` do nome vale
+  como marcador de issue. A `validacao.yml` e o `QA` rodam por commit de merge (`merge_commit_sha`), e o `validar` recebe
+  esse SHA. Issue que depende de outra recebe o merge da branch dela, nunca de `origin/develop`. Issue Pequena ou
+  Média de lote dispensa o `docs/HANDOFF.md`; o estado fica nos rótulos, no comentário de evidência e no PR.
 - O `gate-main.sh` só deixa o merge na `homolog` se a ponta do PR está na história da `develop`, o PR tem o rótulo
   `validada-develop` e a origem não é a `develop`.
 - O check obrigatório de PR se chama `QA` (workflow `qa.yml`, job `QA`): gate de cobertura de cenários e pipeline. O

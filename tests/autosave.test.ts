@@ -73,8 +73,19 @@ async function configurar(dir: string): Promise<void> {
 }
 
 async function rodar(projeto: string, ...args: string[]): Promise<Resultado> {
+  return rodarEm(projeto, undefined, {}, ...args)
+}
+
+// `cwd` é o diretório da sessão (o do hook de verdade); `projeto` vira CLAUDE_PROJECT_DIR.
+async function rodarEm(
+  projeto: string,
+  cwd: string | undefined,
+  extra: NodeJS.ProcessEnv = {},
+  ...args: string[]
+): Promise<Resultado> {
   const r = await executar('bash', [script, ...args], {
-    env: { ...ambienteGit, CLAUDE_PROJECT_DIR: projeto },
+    cwd,
+    env: { ...ambienteGit, CLAUDE_PROJECT_DIR: projeto, ...extra },
   })
   // O hook nunca pode bloquear o Claude: em qualquer cenário sai com 0 e sem barulho.
   expect(r.status).toBe(0)
@@ -138,6 +149,44 @@ describe('autosave.sh', () => {
     expect(corpo).toContain('Branch: trabalho')
     expect(corpo).toContain('src/novo.ts')
     expect(corpo).toContain('README.md')
+  })
+
+  describe('worktree por issue (#200)', () => {
+    let arvore = ''
+    beforeEach(async () => {
+      arvore = join(clone, '.claude', 'worktrees', 'issue-7')
+      await git(clone, 'worktree', 'add', '-q', '-b', 'fix/7-assunto', arvore, 'trabalho')
+      await git(clone, 'push', '-q', '-u', 'origin', 'fix/7-assunto')
+    })
+
+    // Os dois modos: o comum (sem AUTOSAVE_DEBUG, o que roda de verdade) e o de depuração (log de cada saída antecipada).
+    it.each([false, true])('pendência no worktree vira wip: na branch dele, e a raiz fica intocada (depuração: %s)', async (depuracao) => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      escrever(clone, 'raiz.txt', 'pendente na raiz\n')
+      const pontaRaiz = await git(clone, 'rev-parse', 'HEAD')
+      const r = await rodarEm(clone, arvore, depuracao ? { AUTOSAVE_DEBUG: '1' } : {})
+      // Na falha, mostra o que o hook viu (stderr e autosave.log da raiz e do worktree): no CI do Windows é a única pista.
+      const logs = [clone, arvore]
+        .map((d) => {
+          const f = join(d, '.claude', 'autosave.log')
+          return `${f}: ${existsSync(f) ? readFileSync(f, 'utf8') : '(sem log)'}`
+        })
+        .join('\n')
+
+      expect(await assunto(arvore), `stderr do hook: ${r.stderr}\n${logs}\n(modo comum não grava log; repita com AUTOSAVE_DEBUG=1)`).toMatch(/^wip: salvamento automático/)
+      expect(await git(arvore, 'show', '--name-only', '--format=', 'HEAD')).toContain('src/novo.ts')
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+      expect(await git(clone, 'rev-parse', 'HEAD')).toBe(pontaRaiz)
+      expect(await pendente(clone)).toContain('raiz.txt')
+      expect(existsSync(join(clone, '.claude', 'autosave.stamp'))).toBe(false)
+      expect(existsSync(join(arvore, '.claude', 'autosave.stamp'))).toBe(true)
+    })
+
+    it('com a sessão na raiz, não salva o que está só no worktree', async () => {
+      escrever(arvore, 'so-no-worktree.ts', 'x\n')
+      await rodarEm(clone, clone)
+      expect(await contagem(arvore)).toBe(1)
+    })
   })
 
   it('sem mudança não cria commit', async () => {

@@ -80,9 +80,9 @@ recurso (skill, agente, modelo) cada parte pede.
 - **REGRA ABSOLUTA: a triagem manda.** Pedido **Grande** nunca é implementado na sessão de entrada: ela roda `planejar`,
   grava `docs/HANDOFF.md` e abre a central. Código sem triagem é violação.
 - **Gate**: `.claude/hooks/gate-etapas.sh` (hook `PreToolUse`, `.claude/settings.json`) bloqueia o `gt-escritor` sem
-  `docs/HANDOFF.md` ou sem a linha `pequena|media <assunto>` em `.claude/triagem.local` (fora do git). Não o contorne.
+  `docs/HANDOFF.md` ou sem a linha `pequena|media <assunto>` em `.claude/triagem.local` do worktree (fora do git). Não o contorne.
 - **GitHub** (`.claude/rules/github.md`): todo pedido do dono vira issue ANTES de agir (gate `gate-issue.sh` + lembrete a
-  cada prompt); número em `.claude/issue.local`. Trabalho vira PR; merge só em `develop` e `homolog`, NUNCA em `main` (`gate-main.sh`).
+  cada prompt); número em `.claude/issue.local` do worktree ou no nome da branch `<tipo>/<N>-<assunto>`. Trabalho vira PR; merge só em `develop` e `homolog`, NUNCA em `main` (`gate-main.sh`).
 
 ## Recursos certos para cada pedido
 
@@ -98,12 +98,13 @@ Antes de fazer à mão, veja se a skill citada existe na lista da sessão; se n�
 | IPC, execução do git, terminal, caminho de arquivo, webview, dependência, workflow | `security-review` e `.claude/rules/seguranca.md` |
 | Gráficos e dashboards (`src/renderer/src/analytics`) | `dataviz` |
 | Permissões, hooks, variáveis de ambiente | `update-config`; menos pedidos de permissão: `fewer-permission-prompts` |
-| Abrir, acompanhar ou fazer merge de PR | skill `pr` (merge só até a `homolog`): Haiku, `low`. Depois de todo merge na `develop` e na `homolog`: `validar` (`gt-validador`, pipeline com integração e e2e) antes do passo seguinte; sem as duas verdes, nada de PR para `main` |
+| Abrir, acompanhar ou fazer merge de PR | skill `pr` (merge só até a `homolog`): Haiku, `low`. Depois de todo merge na `develop` e na `homolog`: `validar` o commit do merge (`gt-validador`, pipeline com integração e e2e) antes do passo seguinte; sem as duas verdes, nada de PR para `main` |
 | Repetir ou vigiar algo | `loop` |
+| Fila de issues Pequenas/Médias em paralelo, uma branch por issue | `lote` (`.claude/rules/github.md`) |
 | Abre muitos agentes ou gasta crédito: `batch` (um PR por unidade, fora do fluxo de branches), `code-review` nos níveis `max` e `ultra` | Só com a palavra do dono: sugira e espere |
 
 Comandos só do dono (sugira em uma linha): `/clear` ao mudar de assunto; `/context`, `/compact <o que manter>` em
-sessão longa; `/plan` antes de mudança grande; `/effort`, `/model`, `/btw`, `/rewind`; `/usage` para o limite.
+sessão longa; `/plan` antes de mudança grande; `/effort`, `/model`; `/usage` para o limite.
 
 ## Modelos e delegação
 
@@ -192,8 +193,7 @@ Regra que impede o pedido não se contorna em silêncio: explique o custo, propo
 ## Trabalho com o Claude em etapas
 
 Trabalho que não cabe numa conversa vira **etapas**, uma sessão cada. Skills: `planejar`, `central`, `etapa`.
-- **Cadeia**: o dono pede; a entrada planeja e abre a central sem esperar ninguém; a central abre uma sessão por etapa,
-  confere no remoto e arquiva; a etapa delega aos subagentes. Nenhuma etapa abre a seguinte (profundidade 8 recusa sessões).
-- **Uma sessão, uma etapa**, mesmo com pressa; nunca duas na mesma branch.
+- **Cadeia**: o dono pede; a entrada planeja e abre a central; ela abre e arquiva uma sessão por etapa; nenhuma etapa abre a seguinte.
+- **Uma sessão, uma etapa**, mesmo com pressa; nunca duas na mesma branch. Em paralelo, só branches diferentes; issue Pequena/Média de lote dispensa o HANDOFF.
 - **`docs/HANDOFF.md` é a única memória entre etapas**: só na branch de trabalho (o check "Validar fluxo de
   branches" reprova o PR que o contenha), com teto de 150 linhas, removido com `git rm` no encerramento.

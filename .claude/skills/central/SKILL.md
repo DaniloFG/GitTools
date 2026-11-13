@@ -49,6 +49,8 @@ portanto, no modelo que quer para as etapas; o contexto da central é pequeno, e
 1. `git fetch origin <branch>` e leia as seções 1 e 2 do HANDOFF em `origin/<branch>`.
 2. `list_sessions`: não pode haver outra sessão de etapa ativa nesta branch (título `<trabalho>: …`). Havendo, não
    abra outra: a que existe avisa. Agende a conferência (seção "Quando a conferência agendada dispara") e pare.
+   Sessões de **outras** branches (inclusive `<tipo>/<N>-…` de lote, skill `lote`) são outro trabalho e não bloqueiam;
+   só vale a mesma branch.
 3. Abra a etapa de "A seguir".
 
 ## Abrir uma etapa
@@ -169,7 +171,7 @@ promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esfor
    PR faz o `git rm` e o commit, último da branch, antes do PR para a `develop`.
 2. **Branch → `develop`**: PR e merge após CI verde, já sem `docs/HANDOFF.md`.
 3. **Validar a `develop`** (skill `validar`): chame o `gt-validador`. `REPROVADO`: issue de correção (`bug`, ligada à
-   mãe), conserto antes de qualquer outro merge e nenhuma promoção.
+   mãe), política de develop quebrada (skill `validar`, passo 3) e nenhuma promoção.
 4. **Branch → `homolog`**: PR da mesma branch, já sem o HANDOFF (a `homolog` e a `main` barram o arquivo); com o
    `VALIDADO` da `develop` e o comentário de evidência, a skill `validar` põe o rótulo `validada-develop` (o gate
    exige). Merge após CI verde.

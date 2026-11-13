@@ -12,15 +12,16 @@ PR é procedimento simples e roda no modelo barato. A sessão que recebe o pedid
 ## Quem pede
 
 - **Na nuvem** (há `create_session`): abra uma sessão com `model: "claude-haiku-5-5"` (o Haiku mais recente),
-  `effort: "low"`, `source_url` e `source_revision` da branch e título curto (`PR <origem> → <destino>`). O prompt diz
-  quais PRs, na ordem (origem → destino); manda seguir a skill `pr`, seção "Na sessão de PR"; e pede um aviso com
+  `effort: "low"`, `source_url` e `source_revision` da branch e título curto (`PR <origem> → <destino>`). **Uma sessão
+  pode cuidar de N PRs** (a fila do lote, `lote/fila.md`, é uma). O prompt diz quais PRs, na ordem (origem → destino);
+  manda seguir a skill `pr`, seção "Na sessão de PR"; e pede um aviso com
   `send_message` no fim: `PR FEITO <números> | <resultado>`, `PR ABERTO <n> (aguarda dono)` ou `PR PARADO <número> | <motivo>`.
 - **Fora da nuvem** (sem `create_session`): `Agent` com `model: "haiku"` e `effort: "low"` abre o PR e, se o destino é
   `develop` ou `homolog`, faz o merge. Quem chamou acompanha o CI com `subscribe_pr_activity`.
 
 ## Na sessão de PR
 
-Para cada PR, na ordem:
+Para cada PR, na ordem (numa sessão de N PRs, o seguinte só começa depois que o anterior fechou: merge e validação):
 
 1. **Corpo**: siga as seções de `.github/pull_request_template.md`, preenchidas com o que mudou e a etapa do fluxo.
    Em "Observações para revisão", o que foi verificado e o que não foi, tirados dos commits (`git log`). Traga
@@ -36,7 +37,8 @@ Para cada PR, na ordem:
    - **Vermelho**: não corrija código nem afrouxe teste. Avise `PR PARADO <número> | <check e trecho do log>` e pare.
      A correção é da sessão de trabalho.
    - **Conflito**: idem, `PR PARADO`.
-5. `homolog → main`: abra o PR com o checklist do template e **pare**. Sem merge, sem auto-merge, sem `gh pr merge`.
+5. `homolog → main`: abra o PR com o checklist do template e **pare**. Se já há um PR `homolog → main` aberto, não abra
+   outro: reaproveite-o e acrescente a evidência no corpo (`mcp__github__*`). Sem merge, sem auto-merge, sem `gh pr merge`.
    Avise `PR ABERTO <n> (aguarda dono)`; o merge é do dono ou do aprovador.
 6. No fim: `unsubscribe_pr_activity` e o aviso `PR FEITO <números> | <resultado>` (se houve `main`, o aviso de
    `PR ABERTO` vai junto).
