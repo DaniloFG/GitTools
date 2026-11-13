@@ -47,8 +47,9 @@ claro: desempenho, valor no código, estrutura, infra, arquitetura, engenharia):
 1. Liste as abertas com `status:planejada`, sem `bloqueada` e sem `precisa-refinamento`
    (`gh api -X GET search/issues -f q='repo:DaniloFG/GitTools is:issue is:open label:"status:planejada" -label:bloqueada -label:precisa-refinamento'`).
 2. Ordem: `prioridade:alta`; depois `seguranca` e `bug`; depois `fix`, `enhancement` e `feature`; o resto por último.
-3. Pegue uma (ou um grupo da mesma `area:*`) e faça a triagem de tamanho do `CLAUDE.md`: Pequena ou Média na
-   sessão; Grande, skill `planejar`. Troque para `status:em-andamento`.
+3. Pegue uma. Se há mais de uma pronta e disjunta (não se cruza em arquivo nem em costura), elas viram lote (skill
+   `lote`), uma sessão de issue cada; uma só segue nesta sessão. Faça a triagem de tamanho do `CLAUDE.md`: Pequena ou
+   Média na sessão (ou no lote); Grande, skill `planejar`, nunca lote. Troque para `status:em-andamento`.
 4. Quando um plano acaba e há backlog pronto, repita C: a fábrica não para. Sem backlog pronto, rode o A nas
    `precisa-refinamento` mais prioritárias.
 

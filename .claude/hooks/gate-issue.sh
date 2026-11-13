@@ -2,9 +2,11 @@
 # Gate de issue (issue #102): todo pedido do dono vira issue estruturada ANTES de qualquer ação.
 # Hook PreToolUse: lê o JSON do hook no stdin (tool_name e tool_input). exit 2 + mensagem no stderr = bloqueia.
 # Atua em: Agent com subagent_type gt-escritor; Edit, Write e NotebookEdit. Qualquer outra ferramenta sai com 0.
-# Issue ativa =
+# A raiz é a do WORKTREE do alvo (lib-raiz.sh), não só $CLAUDE_PROJECT_DIR: cada worktree tem os seus marcadores.
+# Issue ativa, no worktree =
 #   (a) .claude/issue.local (arquivo pessoal, fora do git) com ao menos um #N na primeira linha; ou
-#   (b) sem esse arquivo, docs/HANDOFF.md com ao menos um #N (sessões de etapa não têm o marcador).
+#   (b) sem esse arquivo, branch `<tipo>/<N>-<assunto>` (feature|fix|docs|chore|refactor); ou
+#   (c) docs/HANDOFF.md com ao menos um #N (sessões de etapa não têm o marcador).
 # Com marcador, o gh confirma que a issue existe e está aberta. Só bloqueia se TODOS os números forem
 # inexistentes ou fechados; se o GitHub estiver inacessível, avisa e libera (rede fora não pode travar a produção).
 entrada=$(cat)
@@ -15,7 +17,10 @@ case "$entrada" in
   *) exit 0 ;;
 esac
 
-raiz="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+projeto="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+raiz=$projeto
+# shellcheck source=lib-raiz.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib-raiz.sh"
 
 bloquear() {
   printf 'GATE DE ISSUE: %s\n' "$1" >&2
@@ -37,17 +42,6 @@ normalizar() {
   printf '%s' "${resultado:-/}"
 }
 
-# Caminho do Windows (C:\x\y, C:/x/y) vira o formato do Git Bash (/c/x/y); fora do Windows não muda nada.
-# A letra do drive é minúscula para "C:" e "/c" compararem iguais, e "\" vira "/".
-para_posix() {
-  local c=${1//\\//}
-  if [[ $c =~ ^([A-Za-z]):(/.*)?$ ]]; then
-    local d=${BASH_REMATCH[1]}
-    c="/${d,,}${BASH_REMATCH[2]}"
-  fi
-  printf '%s' "$c"
-}
-
 mensagem_sem_issue() {
   bloquear 'todo pedido vira issue antes de qualquer ação. Crie a issue (escopo, critérios de aceite, considerações técnicas, testes) com `mcp__github__issue_write` e grave `#N` na primeira linha de .claude/issue.local (política: .claude/rules/github.md).'
 }
@@ -58,28 +52,34 @@ command -v jq >/dev/null 2>&1 || bloquear 'o jq não está instalado; sem ele n�
 campos=$(printf '%s' "$entrada" | jq -r '
   def s: (. // "") | tostring;
   [ (.tool_name | s), (.tool_input.subagent_type | s),
-    ((.tool_input.file_path // .tool_input.notebook_path) | s) ] | join("\u001f")') \
+    ((.tool_input.file_path // .tool_input.notebook_path) | s), (.cwd | s) ] | join("\u001f")') \
   || bloquear 'não foi possível ler a chamada da ferramenta (JSON inválido).'
-IFS=$'\x1f' read -r -d '' ferramenta subagente caminho <<<"$campos"
+IFS=$'\x1f' read -r -d '' ferramenta subagente caminho cwd <<<"$campos"
 
 case "$ferramenta" in
-  Agent) [ "$subagente" = gt-escritor ] || exit 0 ;;
+  Agent)
+    [ "$subagente" = gt-escritor ] || exit 0
+    # O subagente escreve no diretório da sessão (cwd do hook); fora do repositório, vale o projeto.
+    if [ -n "$cwd" ]; then
+      cwd=$(normalizar "$(para_posix "$cwd")")
+      raiz=$(raiz_de_trabalho "$cwd" "$(normalizar "$(para_posix "$projeto")")") || raiz=$projeto
+    fi
+    ;;
   Edit|Write|NotebookEdit)
     # Normaliza (.., ./, //, relativo) para que "/tmp/../projeto/x" não passe por "fora do projeto".
     # Léxico e em bash puro: o realpath do macOS (BSD) não tem -m e, sem ele, o caminho ficava torto.
-    raiz_abs=$(normalizar "$(para_posix "$raiz")")
+    raiz_abs=$(normalizar "$(para_posix "$projeto")")
     caminho=$(para_posix "$caminho")
     [ -n "$caminho" ] && [[ $caminho != /* ]] && caminho="$raiz_abs/$caminho"
     caminho=$(normalizar "$caminho")
-    # Fora do projeto (scratchpad, /tmp): não é trabalho no código.
-    case "$caminho" in
-      "$raiz_abs"/*) ;;
-      *) exit 0 ;;
-    esac
+    # Fora do repositório (scratchpad, /tmp): não é trabalho no código. Worktree do mesmo repositório, mesmo fora
+    # do diretório do projeto, é trabalho e segue para a checagem de issue.
+    raiz=$(raiz_de_trabalho "$caminho" "$raiz_abs") || exit 0
     # Os marcadores precisam ser graváveis, senão não há como registrar a issue.
-    case "$caminho" in
-      "$raiz_abs/.claude/issue.local"|"$raiz_abs/.claude/triagem.local") exit 0 ;;
-    esac
+    # $raiz vem físico do git; compara também o caminho físico (links como /var -> /private/var), nunca só o léxico.
+    fisico=$(caminho_fisico "$caminho") || fisico=$caminho
+    marcador_da_raiz "$caminho" "$raiz" && exit 0
+    marcador_da_raiz "$fisico" "$raiz" && exit 0
     ;;
   *) exit 0 ;;
 esac
@@ -87,12 +87,15 @@ esac
 marcador="$raiz/.claude/issue.local"
 handoff="$raiz/docs/HANDOFF.md"
 
-if [ ! -f "$marcador" ]; then
-  if [ -f "$handoff" ] && grep -qE '#[0-9]+' "$handoff"; then exit 0; fi
-  mensagem_sem_issue
+if [ -f "$marcador" ]; then
+  numeros=$(head -n 1 "$marcador" | grep -oE '#[0-9]+' | tr -d '#' | sort -un)
+else
+  numeros=$(issue_da_branch "$raiz")
+  if [ -z "$numeros" ]; then
+    if [ -f "$handoff" ] && grep -qE '#[0-9]+' "$handoff"; then exit 0; fi
+    mensagem_sem_issue
+  fi
 fi
-
-numeros=$(head -n 1 "$marcador" | grep -oE '#[0-9]+' | tr -d '#' | sort -un)
 [ -n "$numeros" ] || mensagem_sem_issue
 
 # --- Confirmação opcional no GitHub (qualquer dúvida de infraestrutura pula a verificação) ---

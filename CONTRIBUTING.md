@@ -63,4 +63,4 @@ Cada branch (`main`, `homolog` e `develop`) tem:
 - bloqueio de deleção e de force push;
 - PR obrigatório, sem bypass para administradores;
 - conversas resolvidas antes do merge;
-- checks obrigatórios: **Validar fluxo de branches** e o CI nos três sistemas operacionais, com a branch atualizada em relação à base.
+- checks obrigatórios: **Validar fluxo de branches** e o CI nos três sistemas operacionais. Na `main`, a branch precisa estar atualizada em relação à base; na `develop` e na `homolog` essa exigência não vale, porque serializaria a fábrica paralela. A validação da `develop` e da `homolog` é por commit de merge: cada merge tem o seu veredito.
