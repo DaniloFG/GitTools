@@ -48,11 +48,12 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
    - abra o PR da **mesma** branch para a `homolog` (skill `pr`; a develop nunca vai para a homolog) e ponha nele o
      rótulo `validada-develop`, só depois do veredito e do comentário. O gate `.claude/hooks/gate-main.sh` só deixa o
      merge passar se a ponta do PR está na história da develop, o PR tem esse rótulo e a origem não é a develop.
-3. **`REPROVADO <fase> | …`**: não promova o SHA. A linha que **não** diz `herdado` é o culpado; a que diz `herdado de
-   <sha>` espera o culpado, que é o primeiro commit vermelho da cadeia. Política de develop quebrada (outros merges não
-   ficam bloqueados):
+3. **`REPROVADO <fase> | …`**: não promova o SHA. Só o culpado (a linha que **não** diz `herdado`) pede ação: conserto ou
+   reversão, abaixo. A linha `herdado de <sha>` não gera issue nem conserto: ela espera o culpado, que é o primeiro commit
+   vermelho da cadeia. Política de develop quebrada (outros merges não ficam bloqueados):
    - reexecute o job vermelho no mesmo commit (`gh run rerun <ID> --failed`) para separar falha real de instabilidade.
-     Verde na reexecução: a instabilidade vira issue `bug`, e a nova execução é a que vale.
+     Verde na reexecução: a fase não foi afrouxada nem pulada; a falha original vira issue de instabilidade (`bug`), e a
+     reexecução verde é a que vale.
    - Vermelho de novo: abra issue de correção (rótulo `bug`, ligada à mãe, com a fase, o trecho do log, o SHA culpado e a
      branch dele) e peça **uma** tentativa de conserto na branch culpada, pela sessão dessa branch (skill `pr` para o PR
      de correção na develop). Conserto validado: valide o SHA novo desde o passo 1.
@@ -60,8 +61,8 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
      da main: é desfazer um commit que já está na develop), reverte o commit de merge culpado (`git revert -m 1 <sha>`
      se for merge commit; `git revert <sha>` se for squash) e segue a develop como qualquer PR, com CI verde e validação
      do SHA novo. **Reversão nunca vai à homolog.**
-   - Nenhum SHA vermelho é promovido, herdado incluso: a branch de cada um só vai à homolog com o `VALIDADO` do próprio
-     SHA, depois do conserto ou da reversão.
+   - Nenhum SHA `REPROVADO` é promovido, herdado incluso: a branch só vai à homolog com um `VALIDADO` (regra da branch
+     inocente, em Regras).
 4. **Merge na homolog feito**: repita exatamente a mesma validação completa, agora para `homolog` (`merge_commit_sha` do
    PR da homolog), com a sua própria evidência. Não há comparação de árvore com a develop (ela pode conter mistura de outros).
 5. **Só com as duas validações verdes** abra o PR `homolog → main`, com as duas evidências na descrição (commit,
@@ -71,6 +72,10 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
 
 - A validação é por commit de merge: cada SHA pedido tem o seu veredito e nenhum é descartado. Um merge posterior não
   muda o veredito de um SHA anterior; um commit novo na branch pede a validação do SHA novo. O rótulo vale por PR.
+- Branch inocente (veredito `herdado`): o veredito do SHA antigo não muda, e ele não bloqueia a branch nem os outros
+  merges. Depois que o culpado for consertado ou revertido (o conserto ou a reversão já na develop), revalide a branch no
+  SHA da ponta da develop, ou no merge seguinte da branch, se houver. Esse `VALIDADO` é o que libera o rótulo
+  `validada-develop`; sem ele, a branch não vai à homolog.
 - Sem workflow disponível (por exemplo, ainda não está na ref), o `gt-validador` roda o pipeline local num checkout
   limpo do SHA; o veredito vale igual, e a evidência diz "pipeline local".
 - Não afrouxe nem pule fase para "passar". Fase instável é issue de correção, não motivo de promover.

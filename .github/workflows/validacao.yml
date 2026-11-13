@@ -13,7 +13,8 @@ permissions:
 
 # Uma validação por commit: o grupo leva o SHA, então merges em rajada na develop geram uma execução para cada commit
 # de merge, e nenhuma é cancelada nem descartada (cancel-in-progress: false). Antes o grupo era só a ref, e a execução
-# do commit do meio sumia quando o seguinte entrava na fila. Execuções do mesmo SHA (reexecução manual) ainda se enfileiram.
+# do commit do meio sumia quando o seguinte entrava na fila. Execuções do mesmo SHA (reexecução manual) ainda se enfileiram:
+# o GitHub guarda só uma pendente por grupo.
 concurrency:
   group: validacao-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false

@@ -40,10 +40,13 @@ Repita os passos 1 a 5 para cada SHA, na ordem do pedido. Cada SHA tem o seu ver
    O `qa.yml` roda em push para `develop` e `homolog`, então cada commit de merge já tem o seu. Espere como a execução (passo 2);
    ausente, sem conclusão ou diferente de `success` no fim: `REPROVADO QA | check QA <conclusão ou ausente>`.
    Pipeline local (passo 3): não há check; rode `node scripts/validacao/gate-cobertura.mjs` e registre o resultado.
-6. **Herança em rajada** (só com mais de um SHA, depois de cada SHA vermelho): se o SHA anterior da lista (M_{i-1}) também
-   está vermelho, na **mesma fase** e com o **mesmo erro**, a falha é herdada. O veredito de M_i vira
-   `REPROVADO <fase> | herdado de <sha culpado>`, onde o culpado é o primeiro commit vermelho da cadeia (o que não herdou
-   de ninguém). Erro diferente, ou fase diferente: M_i tem veredito próprio. Sem M_{i-1} no pedido, não há herança.
+6. **Herança em rajada** (depois de cada SHA vermelho). Ache o merge anterior na ref, M_{i-1}: o primeiro commit de
+   `git log --first-parent --format=%H <SHA>^1` cujo `gh api "repos/{o}/{r}/commits/<c>/pulls" --jq '[.[] | select(.merged_at != null)] | length'`
+   é maior que zero. Se M_{i-1} veio no pedido, use o veredito dele; senão, confira a execução dele por
+   `runs?head_sha=` (passo 2). Sem M_{i-1} (início da história) ou sem execução dele na ref, não há herança: o veredito
+   de M_i é o próprio e diz `(sem execução de M_{i-1}: herança não conferida)`. Com M_{i-1} também vermelho, na **mesma
+   fase** e com o **mesmo erro**, a falha é herdada: M_i vira `REPROVADO <fase> | herdado de <sha culpado>`, onde o culpado
+   é o primeiro commit vermelho da cadeia (o que não herdou de ninguém). Erro ou fase diferente, ou M_{i-1} verde: veredito próprio.
 
 Na `homolog` roda o mesmo pipeline completo: a `homolog` tem a sua própria validação, sem comparar com a `develop`.
 
@@ -52,7 +55,7 @@ Na `homolog` roda o mesmo pipeline completo: a `homolog` tem a sua própria vali
 Primeiro, uma linha por SHA pedido, na ordem do pedido, só uma destas:
 
 - `VALIDADO <ref> <sha> <árvore>`
-- `REPROVADO <fase> | <motivo e trecho do log>`
+- `REPROVADO <fase> | <motivo e trecho do log>` (com `(sem execução de M_{i-1}: herança não conferida)` quando o passo 6 não pôde conferir)
 - `REPROVADO <fase> | herdado de <sha culpado>` (passo 6)
 
 Depois, para cada SHA, no máximo 15 linhas: as fases com `ok` e `ms` (copiados do relatório, nunca estimados), os cenários
