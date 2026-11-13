@@ -6,6 +6,7 @@
 # Imprime o topo do worktree que contém o alvo; status 1 quando o alvo não é deste repositório (não é trabalho nele).
 # Caminho rápido, sem processo git: alvo dentro do projeto e fora de .claude/worktrees/ (o caso comum).
 # Senão: o topo do worktree do alvo vale se o `--git-common-dir` for o mesmo do projeto (mesmo repositório).
+# Em falha, $RAIZ_DIAGNOSTICO guarda os caminhos vistos (o autosave os registra no log).
 # Tudo entre aspas; nada do alvo é interpretado pelo shell nem vira opção do git (vai só depois de `-C`).
 # Caminho do Windows (C:\x\y, C:/x/y) vira o formato do Git Bash (/c/x/y); fora do Windows não muda nada.
 # A letra do drive é minúscula para "C:" e "/c" compararem iguais, e "\" vira "/". É o formato ÚNICO dos hooks: tudo o
@@ -32,9 +33,11 @@ raiz_de_trabalho() {
     case "$dir" in */*) dir=${dir%/*} ;; *) return 1 ;; esac
   done
   [ -n "$dir" ] || dir=/
+  RAIZ_DIAGNOSTICO="alvo=$alvo projeto=$projeto dir=$dir"
   topo=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null) || return 1
   comum=$(git -C "$dir" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
   comum_projeto=$(git -C "$projeto" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 1
+  RAIZ_DIAGNOSTICO="$RAIZ_DIAGNOSTICO topo=$topo comum=$comum comum_projeto=$comum_projeto"
   topo=$(para_posix "$topo")
   comum=$(para_posix "$comum")
   comum_projeto=$(para_posix "$comum_projeto")

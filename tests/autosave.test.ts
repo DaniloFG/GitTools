@@ -158,9 +158,16 @@ describe('autosave.sh', () => {
       escrever(arvore, 'src/novo.ts', 'export {}\n')
       escrever(clone, 'raiz.txt', 'pendente na raiz\n')
       const pontaRaiz = await git(clone, 'rev-parse', 'HEAD')
-      await rodarEm(clone, arvore)
+      const r = await rodarEm(clone, arvore)
+      // Na falha, mostra o que o hook viu (stderr e autosave.log da raiz e do worktree): no CI do Windows é a única pista.
+      const logs = [clone, arvore]
+        .map((d) => {
+          const f = join(d, '.claude', 'autosave.log')
+          return `${f}: ${existsSync(f) ? readFileSync(f, 'utf8') : '(sem log)'}`
+        })
+        .join('\n')
 
-      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+      expect(await assunto(arvore), `stderr do hook: ${r.stderr}\n${logs}`).toMatch(/^wip: salvamento automático/)
       expect(await git(arvore, 'show', '--name-only', '--format=', 'HEAD')).toContain('src/novo.ts')
       expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
       expect(await git(clone, 'rev-parse', 'HEAD')).toBe(pontaRaiz)

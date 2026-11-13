@@ -28,8 +28,14 @@ if [ -f "${BASH_SOURCE[0]%/*}/lib-raiz.sh" ]; then
   . "${BASH_SOURCE[0]%/*}/lib-raiz.sh"
   atual=$(pwd -P 2>/dev/null) || atual=
   raiz_projeto=$(cd "$raiz" 2>/dev/null && pwd -P)
+  RAIZ_DIAGNOSTICO=
   if [ -n "$atual" ] && [ -n "$raiz_projeto" ] && trabalho=$(raiz_de_trabalho "$atual" "$raiz_projeto"); then
     [ -d "$trabalho" ] && raiz=$trabalho
+  else
+    # O subshell de $(...) não leva a variável de volta: refaz a consulta só para registrar os caminhos vistos.
+    # Só quando a sessão está num worktree do projeto (onde a resolução deveria ter dado certo): fora disso é o caso comum.
+    case "$atual/" in "$raiz_projeto"/.claude/worktrees/*) raiz_de_trabalho "$atual" "$raiz_projeto" >/dev/null 2>&1 ;; *) RAIZ_DIAGNOSTICO=sem ;; esac
+    [ "$RAIZ_DIAGNOSTICO" = sem ] || diagnostico="raiz do worktree não resolvida: atual=$atual raiz_projeto=$raiz_projeto ${RAIZ_DIAGNOSTICO:-}"
   fi
 fi
 
@@ -55,6 +61,8 @@ log() {
   fi
   return 0
 }
+
+[ -n "${diagnostico:-}" ] && log "$diagnostico"
 
 # Rede e commit com prazo: o hook não pode pendurar o Claude. Sem `timeout` (coreutils), roda direto.
 com_prazo() {
