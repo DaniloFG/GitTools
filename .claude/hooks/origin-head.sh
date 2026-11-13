@@ -2,7 +2,7 @@
 # origin/HEAD (issue #143): em contêiner novo o clone não traz refs/remotes/origin/HEAD, e as skills code-review e
 # security-review quebram ao descobrir a branch-base. `git remote set-head origin -a` falha sem origin/main buscado.
 # Hook SessionStart: aponta o símbolo para a primeira branch remota que existir, na ordem develop, homolog, main
-# (a branch de trabalho nasce de develop, então develop é a base certa).
+# (a ordem é só preferência de qual ref remota existe; não tem relação com a origem da branch de trabalho, que nasce da main).
 # Idempotente e offline: se o símbolo já existe, sai sem tocar em nada. Só faz um fetch de develop quando nenhuma das
 # três refs existe localmente. Sempre sai 0: nunca bloqueia a sessão; falha vira aviso no stderr.
 raiz="${CLAUDE_PROJECT_DIR:-$(pwd)}"

@@ -160,7 +160,7 @@ Verificação vermelha, decisão de desenho e aviso que não bate não são para
 Quando a etapa `ENCERRAMENTO` fecha e o remoto confere, execute a política de `.claude/rules/github.md` sem pedir a
 palavra do dono. Você não faz git nem PR: delega à sessão de PR.
 
-A branch de trabalho é a **mesma** nos dois primeiros PRs, qualquer nome serve (`ccr-*` inclusive); a `develop` nunca é
+A branch de trabalho (nascida da `main`) é a **mesma** nos dois primeiros PRs, qualquer nome serve (`ccr-*` inclusive); a `develop` nunca é
 promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esforço em "Quem pede" da skill); ela avisa
 `PR FEITO`, `PR ABERTO <n> (aguarda dono)` ou `PR PARADO` (não avance; é caso de juiz, seção acima). Em ordem:
 
@@ -179,10 +179,11 @@ promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esfor
    comente a evidência final, troque para `status:validada` e feche com `state_reason: completed`. A issue-mãe fecha
    por último, com a mesma regra.
 8. **Limpeza das branches** (`.claude/rules/github.md`, "Ciclo de vida"): só LISTA e pede ao dono; nunca apaga (403, e o
-   `gate-main.sh` barra `develop`, `homolog` e `main`). `git fetch origin`; liste as branches de trabalho já na história
-   da `homolog` (`git branch -r --merged origin/homolog`, sem `develop`, `homolog`, `main`) com o SHA da ponta de cada
-   uma (registrado na descrição do PR da `homolog`). Ponha a lista e os SHAs no relatório e na issue-mãe, pedindo ao dono
-   que as apague. Branch com PR aberto ou fora da `homolog` não entra na lista.
+   `gate-main.sh` barra `develop`, `homolog` e `main`). `git fetch origin`; candidatas = branches de trabalho já na história
+   da `main` (`git branch -r --merged origin/main`, sem `develop`, `homolog`, `main`), com pipelines verdes na `main` e o
+   SHA da ponta de cada uma (registrado na descrição do PR da `homolog`). O merge na `main` é do dono: com o PR
+   `homolog → main` aberto, a lista sai vazia e a central diz isso. Ponha a lista e os SHAs no relatório e na issue-mãe,
+   pedindo ao dono que as apague. Branch com PR aberto ou fora da `main` não entra na lista.
 9. **Fim**: avise o dono em uma linha, com o `PR ABERTO <n> (aguarda dono)` e a lista do passo 8. Você não faz merge na `main`.
 10. **Próximo plano**: com o encerramento feito, rode `backlog` C. Havendo backlog pronto, a triagem de tamanho decide
    (Grande: `planejar` e nova central); sem backlog pronto, `backlog` A nas `precisa-refinamento` mais prioritárias.
