@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { readdirSync, readFileSync, chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -84,4 +84,29 @@ describe('marcador_da_raiz e raiz_de_trabalho', () => {
     mkdirSync(join(base, 'outro-git'))
     expect(roda(join(base, 'outro-git')).status).toBe(1)
   })
+})
+
+// O macOS traz o bash 3.2: os hooks rodam em quem usa macOS e não podem usar construção do bash 4+ (`${x,,}` falhava lá
+// e devolvia vazio). Cada padrão abaixo é do bash 4 ou posterior.
+describe('hooks em bash 3.2 (macOS)', () => {
+  const pasta = fileURLToPath(new URL('../.claude/hooks/', import.meta.url))
+  const proibidos: [string, RegExp][] = [
+    ['${x,,} ${x^^} ${x,} ${x^}', /\$\{[A-Za-z_0-9]+(,,|\^\^|,|\^)\}/],
+    ['declare -A / local -A', /\b(declare|local|typeset) -[a-zA-Z]*A/],
+    ['mapfile / readarray', /\b(mapfile|readarray)\b/],
+    ['|& e &>>', /\|&|&>>/],
+    ['coproc', /\bcoproc\b/],
+    ['${!x} indireta e ${x@U}', /\$\{![A-Za-z_]|\$\{[A-Za-z_0-9]+@[UuLlQ]\}/],
+    ['[[ -v x ]] e printf -v', /\[\[ -v |printf -v /],
+    ['case com ;& ou ;;&', /;;&|;&\s*$/m],
+  ]
+  for (const arquivo of readdirSync(pasta).filter((f) => f.endsWith('.sh'))) {
+    it(`${arquivo} não usa construção do bash 4+`, () => {
+      const codigo = readFileSync(join(pasta, arquivo), 'utf8')
+        .split('\n')
+        .filter((l) => !l.trimStart().startsWith('#'))
+        .join('\n')
+      for (const [nome, re] of proibidos) expect(codigo, nome).not.toMatch(re)
+    })
+  }
 })

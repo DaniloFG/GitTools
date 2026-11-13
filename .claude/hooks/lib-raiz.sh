@@ -14,8 +14,14 @@
 para_posix() {
   local c=${1//\\//}
   if [[ $c =~ ^([A-Za-z]):(/.*)?$ ]]; then
-    local d=${BASH_REMATCH[1]}
-    c="/${d,,}${BASH_REMATCH[2]}"
+    local d=${BASH_REMATCH[1]} resto=${BASH_REMATCH[2]}
+    # Minúscula sem `${d,,}` (bash 4+; o macOS traz o 3.2) e sem processo: a letra do drive é uma só.
+    case "$d" in
+      A) d=a ;; B) d=b ;; C) d=c ;; D) d=d ;; E) d=e ;; F) d=f ;; G) d=g ;; H) d=h ;; I) d=i ;; J) d=j ;;
+      K) d=k ;; L) d=l ;; M) d=m ;; N) d=n ;; O) d=o ;; P) d=p ;; Q) d=q ;; R) d=r ;; S) d=s ;; T) d=t ;;
+      U) d=u ;; V) d=v ;; W) d=w ;; X) d=x ;; Y) d=y ;; Z) d=z ;;
+    esac
+    c="/$d$resto"
   fi
   printf '%s' "$c"
 }
