@@ -168,7 +168,7 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
                   ) : 'error' in diff ? (
                     <p className="empty">{diff.error}</p>
                   ) : (
-                    <DiffView file={diff} />
+                    <DiffView file={diff} initialLayout={request.layout} />
                   )}
                 </div>
                 {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}

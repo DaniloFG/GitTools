@@ -12,6 +12,15 @@ describe('app:openDiffWindow: formato do pedido', () => {
     expect(isDiffWindowRequest({ source: { kind: 'staged', path: 'a.txt', fullFile: true, uncapped: false }, path: 'a.txt' })).toBe(true)
   })
 
+  // O modo (lado a lado ou cima e baixo) que o usuário escolheu no diff vai no pedido; sem ele a janela lê as configurações.
+  it('aceita layout ausente, inline ou split e recusa qualquer outro valor', () => {
+    const base = { source: { kind: 'commit', sha: 'abc' }, path: 'a.txt' }
+    expect(isDiffWindowRequest(base)).toBe(true)
+    expect(isDiffWindowRequest({ ...base, layout: 'inline' })).toBe(true)
+    expect(isDiffWindowRequest({ ...base, layout: 'split' })).toBe(true)
+    for (const layout of ['unified', 'SPLIT', '', 1, true, null, {}, ['split']]) expect(isDiffWindowRequest({ ...base, layout })).toBe(false)
+  })
+
   it('recusa o que não tem a forma do pedido: kind, sha, from/to, oldPath, title, root e path', () => {
     const invalidos: unknown[] = [
       undefined,

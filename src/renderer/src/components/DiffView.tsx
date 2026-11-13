@@ -16,16 +16,19 @@ import { diffViewGroups, ViewOptionsButton } from './ViewOptions'
 import { allowFullDiff } from '../diffLimit'
 import { BLOCK_ROWS, buildRows, changeBlocks, chunkRows, longestCodeChars, rowKeys, rowKind, type DiffRow } from '../diffBlocks'
 import { marksFromRows, type RulerIndexRow } from '../changeRuler'
+import { diffPathParts } from '../fileTree'
 
 /**
  * Escolha entre "cima e baixo" e "lado a lado": todo diff abre no modo padrão das configurações;
- * os botões do cabeçalho trocam o modo só enquanto o diff está aberto.
+ * os botões do cabeçalho trocam o modo só enquanto o diff está aberto. `initial` é o modo que o pedido da janela de
+ * diff trouxe da tela de origem: começa valendo, em vez do padrão, até o usuário trocar.
  */
-export function useDiffLayout(): [DiffLayout, (layout: DiffLayout) => void] {
+export function useDiffLayout(initial?: DiffLayout): [DiffLayout, (layout: DiffLayout) => void] {
   const preferred = useContext(AppSettingsContext)?.settings.diffLayout ?? DEFAULT_SETTINGS.diffLayout
-  const [override, setOverride] = useState<{ preferred: DiffLayout; layout: DiffLayout } | null>(null)
+  // `preferred: null` marca a escolha vinda do pedido: ela não depende do padrão, que na janela chega depois do primeiro desenho.
+  const [override, setOverride] = useState<{ preferred: DiffLayout | null; layout: DiffLayout } | null>(initial ? { preferred: null, layout: initial } : null)
   // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
-  const layout = override && override.preferred === preferred ? override.layout : preferred
+  const layout = override && (override.preferred === null || override.preferred === preferred) ? override.layout : preferred
   return [layout, (next) => setOverride({ preferred, layout: next })]
 }
 
@@ -68,6 +71,10 @@ interface Props {
   fileNav?: { index: number; count: number; go(delta: 1 | -1): void }
   /** Ações do painel (abrir em janela, aplicar linhas…), mostradas no submenu "Opções" do menu ⋯ do cabeçalho. */
   panelActions?: MenuItem[]
+  /** Modo inicial (lado a lado ou cima e baixo): o da janela de diff, vindo do pedido. Sem ele, o padrão das configurações. */
+  initialLayout?: DiffLayout
+  /** Recebe o modo atual (e `undefined` ao sair da tela), para quem abre uma janela com o mesmo modo. */
+  onLayout?(layout: DiffLayout | undefined): void
 }
 
 /** Teclas atuais de uma ação (as personalizadas das configurações, se houver). */
@@ -312,9 +319,13 @@ const DiffBlock = memo(function DiffBlock({ file, rows, start, end, layout, live
  * O corpo é uma lista em janela de blocos (BLOCK_ROWS linhas). Só os blocos perto da tela são montados; a
  * seleção só redesenha os blocos cuja assinatura mudou.
  */
-export function DiffView({ file, selection, onSelectionChange, fileNav, panelActions }: Props) {
+export function DiffView({ file, selection, onSelectionChange, fileNav, panelActions, initialLayout, onLayout }: Props) {
   const selectable = !!selection && !!onSelectionChange && !file.binary
-  const [layout, setLayout] = useDiffLayout()
+  const [layout, setLayout] = useDiffLayout(initialLayout)
+  useEffect(() => {
+    onLayout?.(layout)
+    return () => onLayout?.(undefined)
+  }, [layout, onLayout])
   const [fullFile, setFullFile] = useFullFile()
   const [wrapLines, setWrapLines] = useWrapLines()
   const dragMode = useRef<'add' | 'remove' | null>(null)
@@ -515,6 +526,10 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
     return <DiffBlock file={file} rows={rows} start={start} end={end} layout={layout} sig={sig} live={live} />
   }
 
+  // Caminho do cabeçalho em duas partes (diretório e nome): o diretório encolhe antes do nome (#160). O caminho antigo
+  // só entra na renomeação, como antes.
+  const pathParts = diffPathParts(file.path, file.changeType === 'renamed' ? (file.oldPath ?? undefined) : undefined)
+
   return (
     <div className="diff-file" ref={root}>
       <div className="diff-file-header">
@@ -529,9 +544,9 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
             title={t('diff.selectFile')}
           />
         )}
-        <span className="diff-path">
-          {file.changeType === 'renamed' && file.oldPath ? `${file.oldPath} → ` : ''}
-          {file.path}
+        <span className="diff-path" title={pathParts.title}>
+          <span className="diff-path-dir">{pathParts.prefix}</span>
+          <span className="diff-path-name">{pathParts.name}</span>
         </span>
         <span className={`tag tag-${file.changeType}`}>{t(TYPE_LABEL[file.changeType])}</span>
         <span className="diff-stats">
@@ -600,6 +615,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
             keyOf={keyOf}
             isVariable={alwaysVariable}
             overscan={OVERSCAN}
+            anchorTop
             renderItem={renderItem}
           />
         )}
