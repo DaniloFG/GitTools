@@ -8,6 +8,7 @@ import {
   countChecked,
   filterCommits,
   growBatch,
+  initialChecked,
   localDateKey,
   uncheckAll
 } from '../src/renderer/src/commitSearch'
@@ -209,5 +210,16 @@ describe('Todos e Nenhum com busca ativa', () => {
     expect(countChecked(new Set([A.sha, B.sha]), lista)).toBe(2)
     expect(countChecked(new Set([A.sha, B.sha]), [A])).toBe(1)
     expect(countChecked(new Set(), lista)).toBe(0)
+  })
+})
+
+describe('initialChecked (#197)', () => {
+  const list = [commit({ sha: 'a' }), commit({ sha: 'b' }), commit({ sha: 'c', alreadyApplied: true })]
+  it('sem pré-seleção nada vem marcado, nem os pendentes', () => {
+    expect(initialChecked(list, null).size).toBe(0)
+    expect(initialChecked([], null).size).toBe(0)
+  })
+  it('com pré-seleção mantém só os pedidos que estão na lista', () => {
+    expect([...initialChecked(list, new Set(['b', 'zzz']))]).toEqual(['b'])
   })
 })

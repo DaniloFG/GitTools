@@ -231,6 +231,24 @@ export function useActions() {
   }
 
   /**
+   * Põe o arquivo (no disco e no stage) como estava no commit (`this`) ou no pai dele (`before`). Alteração local
+   * no arquivo não é perdida em silêncio: o núcleo devolve 'dirty' sem tocar em nada e só a confirmação regrava.
+   */
+  async function restoreFileFromCommit(sha: string, file: { path: string; oldPath?: string }, which: 'this' | 'before') {
+    const restore = (overwrite: boolean) =>
+      run(t('busy.restoring'), () => git.restoreFileFromCommit(sha, file.path, which, file.oldPath, overwrite))
+    if ((await restore(false)) !== 'dirty') return
+    const ok = await confirm({
+      // Reaproveita título e botão "Sobrescrever" do editor: chave nova pesaria no catálogo de cada idioma (teto do pacote).
+      title: t('editor.overwriteTitle'),
+      message: t('actions.restoreFile', { path: which === 'before' ? (file.oldPath ?? file.path) : file.path }),
+      confirmLabel: t('editor.overwrite'),
+      danger: true
+    })
+    if (ok) await restore(true)
+  }
+
+  /**
    * Pergunta se as linhas escolhidas ficam no stage ou viram um commit, e as aplica em `target`.
    * Retorna true quando a operação foi disparada.
    */
@@ -364,6 +382,7 @@ export function useActions() {
     cherryPickCommits,
     branchOntoBranch,
     filesOntoBranch,
+    restoreFileFromCommit,
     applyLines,
     dropOnBranch,
     revert,

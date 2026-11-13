@@ -251,6 +251,8 @@ export const ar: Messages = {
       help: 'انقر لعرض الفروق · اسحب إلى فرع لنقل الملف',
       openDiff: 'عرض الفروق',
       take: 'نقل هذا الملف إلى {target}…',
+      revertThis: 'التراجع عن هذا الملف',
+      revertBefore: 'التراجع إلى ما قبل هذا الملف',
       copyPath: 'نسخ المسار'
     },
     menu: {
@@ -468,6 +470,7 @@ export const ar: Messages = {
       message: 'إنشاء إيداع جديد يتراجع عن "{subject}" ({sha})؟',
       confirm: 'تراجع'
     },
+    restoreFile: '"{path}" يحتوي على تغييرات محلية؛ التراجع يستبدلها نهائيًا.',
     reset: {
       title: 'نقل {branch} إلى {sha}',
       softHelp: 'يبقي تغييرات الإيداعات الملغاة في منطقة التجهيز.',
@@ -1038,6 +1041,7 @@ export const ar: Messages = {
     },
     noChangesIn: 'لا توجد تغييرات في "{path}".',
     noLinesSelected: 'لم يُحدَّد أي سطر معدَّل.',
+    rootCommitNoParent: 'هذا commit جذري وليس له أصل.',
     lines: {
       stage: { one: 'تم تجهيز سطر واحد.', two: 'تم تجهيز سطرين.', other: 'الأسطر المجهزة: {count}.' },
       unstage: { one: 'تم إلغاء تجهيز سطر واحد.', two: 'تم إلغاء تجهيز سطرين.', other: 'الأسطر الملغى تجهيزها: {count}.' },

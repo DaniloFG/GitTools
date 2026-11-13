@@ -174,6 +174,9 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
       { label: t('history.files.openDiff'), onClick: () => showDiff(file) },
       { label: `⧉ ${t('diffExtra.openWindow')}`, onClick: () => openWindow(file) },
       ...(head ? [{ label: t('history.files.take', { target: head }), onClick: () => actions.filesOntoBranch(sha, pathsOf([file]), head) }] : []),
+      { label: t('history.files.revertThis'), onClick: () => actions.restoreFileFromCommit(sha, file, 'this') },
+      // Commit raiz não tem pai: o item fica desligado em vez de falhar depois do clique.
+      { label: t('history.files.revertBefore'), disabled: !details?.parents.length, onClick: () => actions.restoreFileFromCommit(sha, file, 'before') },
       { label: t('common.blameHistory'), onClick: () => openFileView(file.path) },
       { label: t(editorLabelKey(editor)), onClick: openEditorItem(editor, file.path, { openFileView, openInEditor }) },
       'separator',

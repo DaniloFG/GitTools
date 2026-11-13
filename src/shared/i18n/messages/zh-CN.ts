@@ -242,6 +242,8 @@ export const zhCN: Messages = {
       help: '点击查看差异 · 拖到分支上即可带走该文件',
       openDiff: '查看差异',
       take: '将此文件带到 {target}…',
+      revertThis: '还原此文件',
+      revertBefore: '还原到此文件之前',
       copyPath: '复制路径'
     },
     menu: {
@@ -452,6 +454,7 @@ export const zhCN: Messages = {
       message: '创建一个新提交来撤销“{subject}”（{sha}）？',
       confirm: '还原'
     },
+    restoreFile: '“{path}”有本地更改；还原会永久替换它们。',
     reset: {
       title: '将 {branch} 移到 {sha}',
       softHelp: '把被撤销提交的更改保留在暂存区。',
@@ -995,6 +998,7 @@ export const zhCN: Messages = {
     },
     noChangesIn: '“{path}”中没有更改。',
     noLinesSelected: '没有选择任何更改的行。',
+    rootCommitNoParent: '这是根提交，没有父提交。',
     lines: {
       stage: { other: '已暂存 {count} 行。' },
       unstage: { other: '已取消暂存 {count} 行。' },
