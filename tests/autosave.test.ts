@@ -159,11 +159,12 @@ describe('autosave.sh', () => {
       await git(clone, 'push', '-q', '-u', 'origin', 'fix/7-assunto')
     })
 
-    it('pendência no worktree vira wip: na branch dele, e a raiz fica intocada', async () => {
+    // Os dois modos: o comum (sem AUTOSAVE_DEBUG, o que roda de verdade) e o de depuração (log de cada saída antecipada).
+    it.each([false, true])('pendência no worktree vira wip: na branch dele, e a raiz fica intocada (depuração: %s)', async (depuracao) => {
       escrever(arvore, 'src/novo.ts', 'export {}\n')
       escrever(clone, 'raiz.txt', 'pendente na raiz\n')
       const pontaRaiz = await git(clone, 'rev-parse', 'HEAD')
-      const r = await rodarEm(clone, arvore, { AUTOSAVE_DEBUG: '1' })
+      const r = await rodarEm(clone, arvore, depuracao ? { AUTOSAVE_DEBUG: '1' } : {})
       // Na falha, mostra o que o hook viu (stderr e autosave.log da raiz e do worktree): no CI do Windows é a única pista.
       const logs = [clone, arvore]
         .map((d) => {
@@ -172,7 +173,7 @@ describe('autosave.sh', () => {
         })
         .join('\n')
 
-      expect(await assunto(arvore), `stderr do hook: ${r.stderr}\n${logs}`).toMatch(/^wip: salvamento automático/)
+      expect(await assunto(arvore), `stderr do hook: ${r.stderr}\n${logs}\n(modo comum não grava log; repita com AUTOSAVE_DEBUG=1)`).toMatch(/^wip: salvamento automático/)
       expect(await git(arvore, 'show', '--name-only', '--format=', 'HEAD')).toContain('src/novo.ts')
       expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
       expect(await git(clone, 'rev-parse', 'HEAD')).toBe(pontaRaiz)

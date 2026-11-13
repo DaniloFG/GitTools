@@ -24,9 +24,14 @@ raiz="${CLAUDE_PROJECT_DIR:-}"
 # roda), não da raiz do projeto. Sem isto o `wip:` sairia na branch da raiz e o trabalho do worktree ficaria solto.
 # Só vale se o diretório for do mesmo repositório (lib-raiz.sh); senão fica a raiz do projeto, como antes.
 # shellcheck source=lib-raiz.sh
-# O diretório do script vem do dirname, não de `${BASH_SOURCE[0]%/*}`: no Windows o Node passa `C:\x\autosave.sh` (sem `/`),
-# o `%/*` devolvia o caminho inteiro, a lib não era achada e o worktree era ignorado em silêncio (CI do Windows, #200).
-dir_hooks=$(dirname "${BASH_SOURCE[0]}")
+# O diretório do script sai de expansão pura do bash (sem processo: isto roda a cada PostToolUse, antes do limitador). Não
+# vale `${BASH_SOURCE[0]%/*}` sozinho: no Windows o Node passa `C:\x\autosave.sh` (sem `/`), o `%/*` devolvia o caminho
+# inteiro, a lib não era achada e o worktree era ignorado em silêncio (CI do Windows, #200). Por isso `\` vira `/` antes.
+caminho_script=${BASH_SOURCE[0]//\\//}
+case "$caminho_script" in
+  */*) dir_hooks=${caminho_script%/*} ;;
+  *) dir_hooks=. ;;
+esac
 if [ -f "$dir_hooks/lib-raiz.sh" ]; then
   . "$dir_hooks/lib-raiz.sh"
   atual=$(pwd -P 2>/dev/null) || atual=
@@ -40,6 +45,8 @@ if [ -f "$dir_hooks/lib-raiz.sh" ]; then
     case "$atual/" in "$raiz_projeto"/.claude/worktrees/*) raiz_de_trabalho "$atual" "$raiz_projeto" >/dev/null 2>&1 ;; *) RAIZ_DIAGNOSTICO=sem ;; esac
     [ "$RAIZ_DIAGNOSTICO" = sem ] || diagnostico="raiz do worktree não resolvida: atual=$atual raiz_projeto=$raiz_projeto ${RAIZ_DIAGNOSTICO:-}"
   fi
+else
+  diagnostico="lib-raiz.sh não encontrada em $dir_hooks"
 fi
 
 # AUTOSAVE_DEBUG=1 (só diagnóstico, os testes do Windows): registra no log o contexto e o motivo de cada saída antecipada.

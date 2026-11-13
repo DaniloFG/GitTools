@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { readdirSync, readFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
+import { copyFileSync, readdirSync, readFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -141,11 +141,49 @@ describe('hooks em bash 3.2 (macOS)', () => {
   })
 
   // No Windows o Node chama `bash C:\\x\\hook.sh`: sem `/` no caminho, `${BASH_SOURCE[0]%/*}` devolve o caminho inteiro e a
-  // lib não é achada (o autosave ignorava o worktree em silêncio). O diretório do hook vem do `dirname`.
+  // lib não é achada (o autosave ignorava o worktree em silêncio). O diretório do hook sai de expansão do bash, sem `%/*` solto.
   it('nenhum hook acha o próprio diretório com ${BASH_SOURCE[0]%/*}', () => {
     for (const arquivo of readdirSync(pasta).filter((f) => f.endsWith('.sh'))) {
       const codigo = readFileSync(join(pasta, arquivo), 'utf8').split('\n').map(semComentario).join('\n')
       expect(codigo, arquivo).not.toMatch(/\$\{BASH_SOURCE(\[0\])?%/)
+    }
+  })
+
+  // O autosave roda a cada PostToolUse e o limitador (`# Limitador primeiro`) tem de vir antes de qualquer comando externo:
+  // nada de dirname/basename/sed/awk/tr/cut/head/tail/cat/readlink/realpath/date na parte que vem antes dele, só expansão do bash
+  // (`pwd`/`cd` embutidos e o `git rev-parse` do caminho sem CLAUDE_PROJECT_DIR, que já existia). Limite do guarda: texto, não execução.
+  it('autosave.sh não chama comando externo de texto antes do limitador', () => {
+    const codigo = readFileSync(join(pasta, 'autosave.sh'), 'utf8')
+    const antes = codigo.slice(0, codigo.indexOf('# Limitador primeiro')).split('\n').map(semComentario).join('\n')
+    expect(antes.length).toBeGreaterThan(200)
+    expect(antes).not.toMatch(/\b(dirname|basename|sed|awk|tr|cut|head|tail|cat|readlink|realpath|date)\b/)
+    expect(antes).not.toMatch(/`/)
+  })
+
+  // Windows: o Node chama `bash C:\x\autosave.sh`, sem `/`. No Linux um arquivo cujo NOME tem `\` reproduz o mesmo
+  // BASH_SOURCE: `hooks\autosave.sh` com a lib em `hooks/`. Sem a troca de `\` por `/` a lib não era achada.
+  it('autosave.sh acha a lib quando o caminho do script tem só barra invertida', () => {
+    const raizTeste = mkdtempSync(join(tmpdir(), 'gittools-autosave-bs-'))
+    try {
+      mkdirSync(join(raizTeste, 'hooks'))
+      copyFileSync(join(pasta, 'lib-raiz.sh'), join(raizTeste, 'hooks', 'lib-raiz.sh'))
+      copyFileSync(join(pasta, 'autosave.sh'), join(raizTeste, 'hooks\\autosave.sh'))
+      const repo = join(raizTeste, 'repo')
+      mkdirSync(repo)
+      const g = (...a: string[]) => spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: repo })
+      g('init', '-q')
+      mkdirSync(join(repo, '.claude'))
+      const r = spawnSync('bash', ['hooks\\autosave.sh'], {
+        cwd: raizTeste,
+        encoding: 'utf8',
+        env: { ...process.env, CLAUDE_PROJECT_DIR: repo, AUTOSAVE_DEBUG: '1' },
+      })
+      expect(r.status).toBe(0)
+      const log = readFileSync(join(repo, '.claude', 'autosave.log'), 'utf8')
+      expect(log).toContain('contexto:')
+      expect(log).not.toContain('lib-raiz.sh não encontrada')
+    } finally {
+      rmSync(raizTeste, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
     }
   })
 
