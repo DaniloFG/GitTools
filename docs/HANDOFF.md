@@ -16,9 +16,9 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**A seguir:** `E5`
+**A seguir:** `E6`
 
-**Última etapa fechada:** `E4` — skill `lote` (SKILL 44 linhas, sessao-issue, fila) e ligações em pr/backlog/central/etapa/planejar/validar; typecheck e 1539 testes verdes; comportamento da plataforma não conferido (E6).
+**Última etapa fechada:** `E5` — `CLAUDE.md` 199 linhas (saldo zero), `github.md` +5 linhas (149→154), conciliado com `lote`/`fila.md`; typecheck e 1539 testes verdes.
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E2 | #200 | Autosave por worktree | fechada | ver `git log` (Refs #200) | autosave 42 testes (o novo reprova sem a mudança); 1531 testes verdes |
 | E3 | #201 | Validação por commit de merge | fechada | ver `git log` (Refs #201) | workflows-validacao 8 testes (novo); 1539 testes verdes |
 | E4 | #202 | Skill `lote` e ligações | fechada | ver `git log` (Refs #202) | lote/SKILL.md 44 linhas; grep vazio; 1539 testes verdes |
-| E5 | #203 | `CLAUDE.md` e `github.md` | a fazer | | |
+| E5 | #203 | `CLAUDE.md` e `github.md` | fechada | ver `git log` (Refs #203) | CLAUDE.md 199; github.md +5; 1539 testes verdes |
 | E6 | #204 | Ensaio com #196 e #197 | a fazer | | |
 
 ## 3. Base de medição
@@ -35,17 +35,6 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 Não se aplica.
 
 ## 4. Plano
-
-### Etapa `E5` — `CLAUDE.md` e `github.md` (#203)
-
-- **Orquestra**: sonnet
-- **Arquivos prováveis**: `CLAUDE.md`, `.claude/rules/github.md`.
-- **Aceite**: `wc -l CLAUDE.md` = 199; `github.md` cresce ≤ 10 linhas; sem contradição com `lote`.
-- **Testes**: não se aplica. **Segurança**: não. **Depende de**: E4.
-- **CLAUDE.md, saldo zero**: entra 1 linha na tabela de recursos (`lote`) e 1 em "Trabalho em etapas" ("Em paralelo, só
-  branches diferentes; issue Pequena/Média de lote dispensa o HANDOFF"); saem 2 (a "Cadeia" de duas linhas vira uma; os
-  comandos do dono ficam em uma linha, sem `/btw` e `/rewind`). Ajustes in loco: `triagem.local` e `issue.local` "do
-  worktree ou no nome da branch `<tipo>/<N>-<assunto>`"; `validar` o commit do merge.
 
 ### Etapa `E6` — ensaio com #197 e #196 em paralelo (#204)
 
@@ -83,6 +72,7 @@ Desenho completo (subagente de planejamento, resumido):
 - **Descobertas (juiz, E1; não corrigidas)**: repositório aninhado em `.claude/worktrees/<x>` fica fora do gate de issue; `gate-etapas.sh` não normaliza o `cwd` no Windows; `normalizar()` em `gate-issue.sh` expande glob (`set -f`/`read -a`), sem fuga do repositório. `security-review` da E1 (gt-juiz, 3e1d24c..3bf53b5): APROVADO, só baixas.
 - **E3**: juiz reprovou a 1ª versão (herança sem M_{i-1} no pedido; SHA que libera branch inocente); corrigido. Descoberta: custo de Actions sobe (uma `Validação` por merge); `revert/<N>` sem gate próprio no `gate-main.sh`; o validador usa `gh api commits/<c>/pulls` por commit da cadeia.
 - **E4**: `lote` lê `sessao-issue.md`/`fila.md` por `Ref da skill: <ref>` (`git show origin/<ref>:…`); fila sem `outcome_branch` (reversão cria `revert/<N>-…` com git); modelo da sessão de issue = topo (sonnet se mecânica); `FIM DO LOTE` e nova entrada `selecionar` foram acrescentados. Pendente para E5: `lote` na tabela do `CLAUDE.md`; `github.md` só cita `issue.local` (não o nome da branch); `validar`/`gt-validador` ainda aceitam "sem SHA = ponta da ref" em chamada manual (aceito); E5 concilia `github.md` linhas ~105-107 ("Outros merges seguem").
+- **E5**: "Outros merges seguem" virou "a fila segue com as outras branches; só a culpada e as que herdam a falha ficam sem promoção" (igual a `fila.md` passo 7). Pendente na E6: conferir `.cwd` real do hook e nome da branch como marcador.
 - **Atribuição**: instrução de sessão pede rodapés, mas o `CLAUDE.md` do projeto proíbe; vale sem rodapé.
 
 ## 6. Encerramento

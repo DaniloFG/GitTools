@@ -102,9 +102,14 @@ origem e maturidade entram quando se aplicam.
 - Verde na `develop`: evidência (commit, árvore, fases, tempos, link) nas issues do PR e `status:validada`; a skill
   `validar` põe o rótulo `validada-develop` no PR da `homolog`. Na `homolog` roda o mesmo pipeline completo, com a sua
   própria validação. Só com as duas verdes o PR `homolog → main` é aberto, com as duas evidências, e fica ao dono.
-- Vermelho: issue de correção (`bug`, ligada à mãe), sem promover. Develop quebrada: reexecutar a fase; conserto na
-  branch culpada (commit de merge que começou a falha); senão reversão por PR (`revert/<N>-…`, exceção ao corte da
-  main; nunca vai à homolog). Outros merges seguem.
+- Vermelho: issue de correção (`bug`, ligada à mãe), sem promover. Develop quebrada: reexecutar a fase; uma tentativa de
+  conserto na branch culpada (commit de merge que começou a falha); senão reversão por PR (`revert/<N>-…`, exceção ao
+  corte da main; nunca vai à homolog). A fila segue com as outras branches; só a culpada, e as que herdam a falha dela,
+  ficam sem promoção até o conserto ou a reversão (skill `lote`, `fila.md`).
+- **Em paralelo (skill `lote`)**: cada issue tem branch `<tipo>/<N>-<assunto>` cortada da `main`; o `#N` do nome vale
+  como marcador de issue. A `validacao.yml` e o `QA` rodam por commit de merge (`merge_commit_sha`), e o `validar` recebe
+  esse SHA. Issue que depende de outra recebe o merge da branch dela, nunca de `origin/develop`. Issue Pequena ou
+  Média de lote dispensa o `docs/HANDOFF.md`; o estado fica nos rótulos, no comentário de evidência e no PR.
 - O `gate-main.sh` só deixa o merge na `homolog` se a ponta do PR está na história da `develop`, o PR tem o rótulo
   `validada-develop` e a origem não é a `develop`.
 - O check obrigatório de PR se chama `QA` (workflow `qa.yml`, job `QA`): gate de cobertura de cenários e pipeline. O
