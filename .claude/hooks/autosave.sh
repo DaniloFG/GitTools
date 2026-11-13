@@ -24,8 +24,11 @@ raiz="${CLAUDE_PROJECT_DIR:-}"
 # roda), não da raiz do projeto. Sem isto o `wip:` sairia na branch da raiz e o trabalho do worktree ficaria solto.
 # Só vale se o diretório for do mesmo repositório (lib-raiz.sh); senão fica a raiz do projeto, como antes.
 # shellcheck source=lib-raiz.sh
-if [ -f "${BASH_SOURCE[0]%/*}/lib-raiz.sh" ]; then
-  . "${BASH_SOURCE[0]%/*}/lib-raiz.sh"
+# O diretório do script vem do dirname, não de `${BASH_SOURCE[0]%/*}`: no Windows o Node passa `C:\x\autosave.sh` (sem `/`),
+# o `%/*` devolvia o caminho inteiro, a lib não era achada e o worktree era ignorado em silêncio (CI do Windows, #200).
+dir_hooks=$(dirname "${BASH_SOURCE[0]}")
+if [ -f "$dir_hooks/lib-raiz.sh" ]; then
+  . "$dir_hooks/lib-raiz.sh"
   atual=$(pwd -P 2>/dev/null) || atual=
   raiz_projeto=$(cd "$raiz" 2>/dev/null && pwd -P)
   RAIZ_DIAGNOSTICO=

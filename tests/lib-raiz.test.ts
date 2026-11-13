@@ -140,6 +140,15 @@ describe('hooks em bash 3.2 (macOS)', () => {
     }
   })
 
+  // No Windows o Node chama `bash C:\\x\\hook.sh`: sem `/` no caminho, `${BASH_SOURCE[0]%/*}` devolve o caminho inteiro e a
+  // lib não é achada (o autosave ignorava o worktree em silêncio). O diretório do hook vem do `dirname`.
+  it('nenhum hook acha o próprio diretório com ${BASH_SOURCE[0]%/*}', () => {
+    for (const arquivo of readdirSync(pasta).filter((f) => f.endsWith('.sh'))) {
+      const codigo = readFileSync(join(pasta, arquivo), 'utf8').split('\n').map(semComentario).join('\n')
+      expect(codigo, arquivo).not.toMatch(/\$\{BASH_SOURCE(\[0\])?%/)
+    }
+  })
+
   for (const arquivo of readdirSync(pasta).filter((f) => f.endsWith('.sh'))) {
     it(`${arquivo} não usa construção do bash 4+`, () => {
       const codigo = readFileSync(join(pasta, arquivo), 'utf8').split('\n').map(semComentario).join('\n')
