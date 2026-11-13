@@ -1,6 +1,7 @@
 ---
 paths:
   - "extension/package.json"
+  - "extension/CHANGELOG.md"
   - "package.json"
   - "scripts/extension-version.mjs"
   - "scripts/apply-branch-protection.sh"
@@ -23,3 +24,14 @@ paths:
   traz o antes e o depois medidos.
 - **Dependência** (`package.json`, `package-lock.json`): só muda quando a tarefa é essa, com motivo, tamanho no
   pacote e licença; `THIRD_PARTY_NOTICES.md` acompanha o que passa a ser distribuído.
+
+## CHANGELOG da extensão
+
+- **Toda mudança visível ao usuário na extensão entra em `extension/CHANGELOG.md`**, sob `## [Unreleased]`, no mesmo
+  PR. Em inglês (o Marketplace é em inglês), formato Keep a Changelog (`### Added`, `### Changed`, `### Fixed`), bullet
+  curto e concreto; sem número de issue, nome de pessoa nem termo interno.
+- **Ao subir minor ou major** em `extension/package.json`, o mesmo PR troca `## [Unreleased]` pela seção
+  `## [x.y.z] - AAAA-MM-DD` e abre um `## [Unreleased]` novo no topo, com `- Nothing yet.`.
+- **`tests/extensionChangelog.test.ts` confere** a seção da versão do `package.json`, o `Unreleased` com bullet, a
+  ordem decrescente das versões e bullet em cada seção. O patch que o workflow publica sozinho não sobe o arquivo e
+  não ganha seção; o teste não o cobre.
