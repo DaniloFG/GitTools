@@ -13,7 +13,7 @@ import {
   type UIEvent,
   type UIEventHandler
 } from 'react'
-import { buildOffsets, indexAt, nextRange, sameRange, scrollToReveal, type RowRange } from '../virtual'
+import { anchoredScrollTop, buildOffsets, indexAt, nextRange, sameRange, scrollToReveal, type RowRange } from '../virtual'
 
 /** Altura considerada antes do primeiro ResizeObserver responder: uma tela típica. */
 const FALLBACK_VIEWPORT = 1200
@@ -39,6 +39,12 @@ export interface VirtualListProps extends Omit<HTMLAttributes<HTMLDivElement>, '
   footer?: ReactNode
   /** Altura coberta no topo por uma linha sticky do header, para a rolagem por teclado não esconder o item. */
   stickyTop?: number
+  /**
+   * Quando as posições mudam sem o usuário ter rolado (alturas medidas depois, chaves trocadas, contagem diferente),
+   * mantém no topo o mesmo ponto do mesmo item, em vez de deixar o scrollTop em pixels e o conteúdo andar.
+   * Opt-in: o diff usa porque alterna a quebra de linha, que muda as alturas de todos os blocos de uma vez.
+   */
+  anchorTop?: boolean
 }
 
 export interface VirtualListHandle {
@@ -63,7 +69,7 @@ function fallbackRange(offsets: Float64Array): RowRange {
  */
 export const VirtualList = forwardRef<VirtualListHandle, VirtualListProps>(function VirtualList(props, handleRef) {
   // `count` sai do rest para não virar atributo do <div>; a lista real é `offsets`.
-  const { count: itemCount, rowHeight, keyOf, renderItem, isVariable, overscan = DEFAULT_OVERSCAN, header, footer, stickyTop = 0, onScroll, style, ...rest } = props
+  const { count: itemCount, rowHeight, keyOf, renderItem, isVariable, overscan = DEFAULT_OVERSCAN, header, footer, stickyTop = 0, anchorTop = false, onScroll, style, ...rest } = props
 
   const containerRef = useRef<HTMLDivElement>(null)
   const topRef = useRef<HTMLDivElement>(null)
@@ -121,11 +127,24 @@ export const VirtualList = forwardRef<VirtualListHandle, VirtualListProps>(funct
 
   // Mudou a lista (ex.: pesquisa encolheu) ou as alturas: recalcula antes de pintar, com os últimos valores conhecidos.
   useLayoutEffect(() => {
+    const prev = offsetsRef.current
     offsetsRef.current = offsets
+    // Âncora do topo: usa a rolagem e a base conhecidas (não o DOM, que o navegador já pode ter limitado ao novo
+    // máximo quando a lista encolheu). Uma escrita e uma leitura por mudança de posições, nunca por evento de rolagem.
+    if (anchorTop && prev !== offsets) {
+      const el = containerRef.current
+      const current = scrollRef.current
+      const target = anchoredScrollTop(prev, offsets, current, baseRef.current)
+      if (el && target !== current) {
+        el.scrollTop = target
+        // Relê o valor aceito: o navegador limita ao máximo rolável.
+        scrollRef.current = el.scrollTop
+      }
+    }
     overscanRef.current = overscan
     rowHeightRef.current = rowHeight
     recompute()
-  }, [offsets, overscan, rowHeight, recompute])
+  }, [offsets, overscan, rowHeight, anchorTop, recompute])
 
   useLayoutEffect(() => {
     onScrollRef.current = onScroll
