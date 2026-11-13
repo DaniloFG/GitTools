@@ -123,3 +123,30 @@ export function scrollToReveal(
   // Não existe rolagem negativa; o navegador também limita o máximo.
   return Math.max(0, target)
 }
+
+/**
+ * Nova posição de rolagem que mantém no topo o mesmo ponto da lista quando as posições mudam (alturas medidas
+ * depois, chaves trocadas, contagem diferente) sem o usuário ter rolado. Sem isto, o scrollTop em pixels fica igual
+ * e o conteúdo "anda" sob a área visível.
+ *
+ * O ponto é o item do topo (pelas posições ANTERIORES) e a fração dele já percorrida. Fração, e não pixels: quando o
+ * próprio item muda de altura (quebra de linha ligada ou desligada), os pixels dentro dele não valem mais, mas a
+ * fração leva ao mesmo trecho do conteúdo. Cálculo todo sobre os dados, sem ler o DOM.
+ *
+ * - `base`: distância do início do conteúdo que rola até o primeiro item (ver scrollToReveal).
+ * - Rolagem em 0 ou ainda dentro do cabeçalho (antes de `base`) não ancora: devolve `scrollTop`.
+ * - Lista vazia (antes ou depois) devolve `scrollTop`. Se o item do topo deixou de existir, vale o início do último.
+ * - Não limita ao máximo rolável (depende da área visível): quem chama limita, o navegador também.
+ */
+export function anchoredScrollTop(prevOffsets: Float64Array, nextOffsets: Float64Array, scrollTop: number, base: number): number {
+  const prevCount = prevOffsets.length - 1
+  const nextCount = nextOffsets.length - 1
+  if (scrollTop <= 0 || scrollTop < base || prevCount <= 0 || nextCount <= 0) return scrollTop
+  const y = scrollTop - base
+  const index = indexAt(prevOffsets, y)
+  if (index >= nextCount) return base + nextOffsets[nextCount - 1]
+  const prevHeight = prevOffsets[index + 1] - prevOffsets[index]
+  // Altura zero não tem fração; além do fim da lista antiga a fração para em 1 (o fim do último item).
+  const fraction = prevHeight > 0 ? Math.min(1, (y - prevOffsets[index]) / prevHeight) : 0
+  return base + nextOffsets[index] + fraction * (nextOffsets[index + 1] - nextOffsets[index])
+}

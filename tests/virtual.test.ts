@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildOffsets, indexAt, nextRange, sameRange, scrollToReveal, visibleRange, type RowRange } from '../src/renderer/src/virtual'
+import { anchoredScrollTop, buildOffsets, indexAt, nextRange, sameRange, scrollToReveal, visibleRange, type RowRange } from '../src/renderer/src/virtual'
 
 describe('buildOffsets', () => {
   it('altura fixa: posição de cada item e total no último índice', () => {
@@ -215,5 +215,61 @@ describe('sameRange', () => {
   it('compara início e fim', () => {
     expect(sameRange({ start: 1, end: 4 }, { start: 1, end: 4 })).toBe(true)
     expect(sameRange({ start: 1, end: 4 }, { start: 1, end: 5 })).toBe(false)
+  })
+})
+
+describe('anchoredScrollTop', () => {
+  // Cinco itens de 100 px: [0, 100, 200, 300, 400, 500].
+  const prev = buildOffsets(5, 100)
+  const heights = (...h: number[]) => buildOffsets(h.length, 100, (i) => h[i])
+
+  it('topo em 0 não ancora: continua em 0 mesmo com alturas diferentes', () => {
+    expect(anchoredScrollTop(prev, heights(300, 100, 100, 100, 100), 0, 0)).toBe(0)
+  })
+
+  it('offsets idênticos mantêm a rolagem', () => {
+    expect(anchoredScrollTop(prev, buildOffsets(5, 100), 250, 0)).toBe(250)
+  })
+
+  it('meio de um item: o item do topo e o deslocamento dentro dele ficam no lugar', () => {
+    // topo no item 2 (começa em 200), 50 px dentro; itens acima ganham 50 px cada: o item 2 passa a começar em 300.
+    expect(anchoredScrollTop(prev, heights(150, 150, 100, 100, 100), 250, 0)).toBe(350)
+  })
+
+  it('alturas menores acima: a rolagem diminui junto', () => {
+    expect(anchoredScrollTop(prev, heights(50, 50, 100, 100, 100), 250, 0)).toBe(150)
+  })
+
+  it('o próprio item do topo muda de altura: mantém a mesma fração dele', () => {
+    // 50 px dentro de um item de 100 (metade); ele passa a ter 300 px: metade = 150 px dentro.
+    expect(anchoredScrollTop(prev, heights(100, 300, 100, 100, 100), 150, 0)).toBe(100 + 150)
+  })
+
+  it('base (cabeçalho antes da lista) é descontada e somada de volta', () => {
+    expect(anchoredScrollTop(prev, heights(150, 150, 100, 100, 100), 40 + 250, 40)).toBe(40 + 350)
+  })
+
+  it('rolagem ainda dentro do cabeçalho não ancora', () => {
+    expect(anchoredScrollTop(prev, heights(300, 100, 100, 100, 100), 20, 40)).toBe(20)
+  })
+
+  it('lista que encolheu: o índice acima do novo total vai para o último item', () => {
+    // topo no item 4; a lista passa a ter 2 itens ([0, 100, 200]): vale o início do último.
+    expect(anchoredScrollTop(prev, buildOffsets(2, 100), 450, 0)).toBe(100)
+  })
+
+  it('lista vazia (antes ou depois) mantém a rolagem', () => {
+    expect(anchoredScrollTop(prev, buildOffsets(0, 100), 250, 0)).toBe(250)
+    expect(anchoredScrollTop(buildOffsets(0, 100), prev, 250, 0)).toBe(250)
+  })
+
+  it('item do topo com altura zero antes: não divide por zero', () => {
+    expect(anchoredScrollTop(heights(0, 100), heights(0, 100), 10, 0)).toBe(10)
+    expect(Number.isFinite(anchoredScrollTop(heights(100, 0, 100), heights(100, 50, 100), 100, 0))).toBe(true)
+  })
+
+  it('rolagem além do fim da lista antiga cai no fim do último item novo', () => {
+    // total antigo 500; scrollTop 600 (espaço abaixo da lista): fração limitada a 1 no último item.
+    expect(anchoredScrollTop(prev, heights(100, 100, 100, 100, 200), 600, 0)).toBe(600)
   })
 })
