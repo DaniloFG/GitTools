@@ -9,6 +9,6 @@ prompt=$(printf '%s' "$entrada" | jq -r '(.prompt // "") | tostring' 2>/dev/null
 case "$prompt" in
   '[SYSTEM NOTIFICATION'*) exit 0 ;;
 esac
-texto='OBRIGATÓRIO: este pedido do dono (ajuste, correção, feature, qualquer coisa) deve virar issue estruturada ANTES de qualquer ação: crie a issue, grave `#N` em .claude/issue.local e só então siga (gate-issue.sh bloqueia escrita sem issue). Pedido grande: issue-mãe + sub-issues. Política em .claude/rules/github.md.'
+texto='OBRIGATÓRIO: este pedido do dono (ajuste, correção, feature, qualquer coisa) deve virar issue estruturada ANTES de qualquer ação: crie a issue, grave `#N` na primeira linha de .claude/issue.local do worktree desta sessão (ou use a branch `<tipo>/<N>-<assunto>`) e só então siga (gate-issue.sh bloqueia escrita sem issue). Pedido grande: issue-mãe + sub-issues. Política em .claude/rules/github.md.'
 jq -n --arg t "$texto" '{hookSpecificOutput: {hookEventName: "UserPromptSubmit", additionalContext: $t}}'
 exit 0

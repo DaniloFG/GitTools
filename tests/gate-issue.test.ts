@@ -256,3 +256,77 @@ describe('lembrete-issue', () => {
     }
   })
 })
+
+// Fábrica paralela (#199): a raiz é a do worktree do alvo, não só $CLAUDE_PROJECT_DIR.
+describe('gate-issue: worktrees', () => {
+  const git = (cwd: string, ...args: string[]) =>
+    executar('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd })
+  let fora = ''
+  let wtDentro = ''
+  let wtFora = ''
+
+  beforeEach(async () => {
+    fora = mkdtempSync(join(tmpdir(), 'gittools-gateissue-fora-'))
+    await git(projeto, 'commit', '-q', '--allow-empty', '-m', 'base')
+    wtDentro = join(projeto, '.claude', 'worktrees', 'a')
+    wtFora = join(fora, 'b')
+    expect((await git(projeto, 'worktree', 'add', '-q', '-b', 'ccr-x', wtDentro)).status).toBe(0)
+    expect((await git(projeto, 'worktree', 'add', '-q', '-b', 'ccr-y', wtFora)).status).toBe(0)
+    mkdirSync(join(wtDentro, '.claude'), { recursive: true })
+    mkdirSync(join(wtFora, '.claude'), { recursive: true })
+    return () => rmSync(fora, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  })
+
+  it('worktree fora do diretório do projeto, mas do mesmo repositório, bloqueia sem issue', async () => {
+    expect((await escrever(join(wtFora, 'src', 'a.ts'))).code).toBe(2)
+  })
+
+  it('o marcador do projeto não vale no worktree e o do worktree não vale no projeto', async () => {
+    marcador('#5\n')
+    expect((await escrever(join(wtFora, 'a.ts'))).code).toBe(2)
+    expect((await escrever(join(wtDentro, 'a.ts'))).code).toBe(2)
+    writeFileSync(join(wtFora, '.claude', 'issue.local'), '#5\n')
+    expect((await escrever(join(wtFora, 'a.ts'))).code).toBe(0)
+    expect((await escrever(join(wtDentro, 'a.ts'))).code).toBe(2)
+  })
+
+  it('marcadores dos worktrees são graváveis sem issue', async () => {
+    expect((await escrever(join(wtFora, '.claude', 'issue.local'))).code).toBe(0)
+    expect((await escrever(join(wtDentro, '.claude', 'triagem.local'))).code).toBe(0)
+  })
+
+  it('branch <tipo>/<N>-<assunto> libera (issue aberta) e bloqueia (fechada); ccr-* sem marcador bloqueia', async () => {
+    await git(wtFora, 'switch', '-q', '-c', 'fix/5-ajuste')
+    expect((await escrever(join(wtFora, 'a.ts'))).code).toBe(0)
+    await git(wtFora, 'switch', '-q', '-c', 'fix/6-fechada')
+    expect((await escrever(join(wtFora, 'a.ts'))).code).toBe(2)
+    await git(wtFora, 'switch', '-q', '-c', 'ccr-z')
+    expect((await escrever(join(wtFora, 'a.ts'))).code).toBe(2)
+    await git(wtFora, 'switch', '-q', '-c', 'fix/5')
+    expect((await escrever(join(wtFora, 'a.ts'))).code).toBe(2)
+  })
+
+  it('HANDOFF com #N no worktree libera só aquele worktree', async () => {
+    mkdirSync(join(wtDentro, 'docs'), { recursive: true })
+    writeFileSync(join(wtDentro, 'docs', 'HANDOFF.md'), '| E1 | #5 |\n')
+    expect((await escrever(join(wtDentro, 'a.ts'))).code).toBe(0)
+    expect((await escrever(join(wtFora, 'a.ts'))).code).toBe(2)
+  })
+
+  it('gt-escritor usa o cwd do hook: bloqueia no worktree sem issue mesmo com o projeto liberado', async () => {
+    marcador('#5\n')
+    const entrada = { tool_name: 'Agent', cwd: wtFora, tool_input: { subagent_type: 'gt-escritor', prompt: 'x' } }
+    expect((await rodar(gate, entrada)).code).toBe(2)
+    expect((await rodar(gate, { ...entrada, cwd: projeto })).code).toBe(0)
+  })
+
+  it('diretório de outro repositório continua fora do escopo', async () => {
+    const outro = mkdtempSync(join(tmpdir(), 'gittools-gateissue-outro-'))
+    try {
+      await executar('git', ['init', '-q', outro])
+      expect((await escrever(join(outro, 'a.ts'))).code).toBe(0)
+    } finally {
+      rmSync(outro, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+    }
+  })
+})

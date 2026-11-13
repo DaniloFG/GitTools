@@ -16,12 +16,14 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**A seguir:** `E1`
+**A seguir:** `E2`
+
+**Última etapa fechada:** `E1` — hooks por worktree/branch (`lib-raiz.sh`); 36 testes de gate verdes com worktrees reais; `.cwd` real do hook não conferido.
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
 | E0 | #198 | Base: trazer a regra da #133 para a branch | fechada | merge de 8a28fea | CLAUDE.md 199 linhas; grep vazio |
-| E1 | #199 | Marcadores de issue e triagem por worktree/branch | a fazer | | |
+| E1 | #199 | Marcadores de issue e triagem por worktree/branch | fechada | ver `git log` (Refs #199) | gate-issue+gate-etapas 36 testes; typecheck e 1529 testes verdes |
 | E2 | #200 | Autosave por worktree | a fazer | | |
 | E3 | #201 | Validação por commit de merge | a fazer | | |
 | E4 | #202 | Skill `lote` e ligações | a fazer | | |
@@ -33,14 +35,6 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 Não se aplica.
 
 ## 4. Plano
-
-### Etapa `E1` — marcadores de issue e triagem por worktree/branch (#199)
-
-- **Orquestra**: topo
-- **Arquivos prováveis**: `.claude/hooks/{lib-raiz,gate-issue,gate-etapas,lembrete-issue}.sh`, `tests/gate-issue.test.ts`, `tests/gate-etapas.test.ts` (novo).
-- **Ler antes**: os três hooks; `.claude/rules/seguranca.md`.
-- **Aceite**: `npx vitest run tests/gate-issue.test.ts tests/gate-etapas.test.ts` verde com dois worktrees reais; sonda real do `.cwd` do JSON do hook.
-- **Testes**: integração (worktrees git reais). **Segurança**: sim (`security-review`). **Depende de**: E0.
 
 ### Etapa `E2` — autosave por worktree (#200)
 
@@ -107,6 +101,7 @@ Desenho completo (subagente de planejamento, resumido):
 - **Branch**: a plataforma fixou `ccr-4ff33997-njtxld` (cortada da `main`); não renomear (`github.md` permite).
 - **Não conferido** (E1 e E6 provam): `create_session` com `outcome_branch` livre; `.cwd` do JSON do hook em worktree;
   troca da execução pendente no grupo de concorrência; `labeled` recomputar o merge de teste.
+- **E1**: sonda do `.cwd` negada pelo classificador (hook temporário em settings = automodificação); os hooks usam `.cwd` com queda para o projeto. `issue_da_branch` e `raiz_de_trabalho` ficam em `lib-raiz.sh` (E2 reaproveita). A E6 deve conferir o `.cwd` real.
 - **Atribuição**: instrução de sessão pede rodapés, mas o `CLAUDE.md` do projeto proíbe; vale sem rodapé.
 
 ## 6. Encerramento
