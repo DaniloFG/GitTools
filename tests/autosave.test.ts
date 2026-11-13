@@ -73,7 +73,13 @@ async function configurar(dir: string): Promise<void> {
 }
 
 async function rodar(projeto: string, ...args: string[]): Promise<Resultado> {
+  return rodarEm(projeto, undefined, ...args)
+}
+
+// `cwd` é o diretório da sessão (o do hook de verdade); `projeto` vira CLAUDE_PROJECT_DIR.
+async function rodarEm(projeto: string, cwd: string | undefined, ...args: string[]): Promise<Resultado> {
   const r = await executar('bash', [script, ...args], {
+    cwd,
     env: { ...ambienteGit, CLAUDE_PROJECT_DIR: projeto },
   })
   // O hook nunca pode bloquear o Claude: em qualquer cenário sai com 0 e sem barulho.
@@ -138,6 +144,36 @@ describe('autosave.sh', () => {
     expect(corpo).toContain('Branch: trabalho')
     expect(corpo).toContain('src/novo.ts')
     expect(corpo).toContain('README.md')
+  })
+
+  describe('worktree por issue (#200)', () => {
+    let arvore = ''
+    beforeEach(async () => {
+      arvore = join(clone, '.claude', 'worktrees', 'issue-7')
+      await git(clone, 'worktree', 'add', '-q', '-b', 'fix/7-assunto', arvore, 'trabalho')
+      await git(clone, 'push', '-q', '-u', 'origin', 'fix/7-assunto')
+    })
+
+    it('pendência no worktree vira wip: na branch dele, e a raiz fica intocada', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      escrever(clone, 'raiz.txt', 'pendente na raiz\n')
+      const pontaRaiz = await git(clone, 'rev-parse', 'HEAD')
+      await rodarEm(clone, arvore)
+
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+      expect(await git(arvore, 'show', '--name-only', '--format=', 'HEAD')).toContain('src/novo.ts')
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+      expect(await git(clone, 'rev-parse', 'HEAD')).toBe(pontaRaiz)
+      expect(await pendente(clone)).toContain('raiz.txt')
+      expect(existsSync(join(clone, '.claude', 'autosave.stamp'))).toBe(false)
+      expect(existsSync(join(arvore, '.claude', 'autosave.stamp'))).toBe(true)
+    })
+
+    it('com a sessão na raiz, não salva o que está só no worktree', async () => {
+      escrever(arvore, 'so-no-worktree.ts', 'x\n')
+      await rodarEm(clone, clone)
+      expect(await contagem(arvore)).toBe(1)
+    })
   })
 
   it('sem mudança não cria commit', async () => {

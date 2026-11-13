@@ -20,6 +20,19 @@ raiz="${CLAUDE_PROJECT_DIR:-}"
 [ -z "$raiz" ] && raiz=$(git rev-parse --show-toplevel 2>/dev/null)
 [ -n "$raiz" ] && [ -d "$raiz" ] || exit 0
 
+# Fábrica paralela (#200): com um worktree por issue, a pendência é do worktree da sessão (o diretório em que o hook
+# roda), não da raiz do projeto. Sem isto o `wip:` sairia na branch da raiz e o trabalho do worktree ficaria solto.
+# Só vale se o diretório for do mesmo repositório (lib-raiz.sh); senão fica a raiz do projeto, como antes.
+# shellcheck source=lib-raiz.sh
+if [ -f "${BASH_SOURCE[0]%/*}/lib-raiz.sh" ]; then
+  . "${BASH_SOURCE[0]%/*}/lib-raiz.sh"
+  atual=$(pwd -P 2>/dev/null) || atual=
+  raiz_projeto=$(cd "$raiz" 2>/dev/null && pwd -P)
+  if [ -n "$atual" ] && [ -n "$raiz_projeto" ] && trabalho=$(raiz_de_trabalho "$atual" "$raiz_projeto"); then
+    [ -d "$trabalho" ] && raiz=$trabalho
+  fi
+fi
+
 carimbo="$raiz/.claude/autosave.stamp"
 registro="$raiz/.claude/autosave.log"
 
