@@ -11,9 +11,11 @@ on:
 permissions:
   contents: read
 
-# Uma validação por ref; a seguinte espera a atual terminar para cada commit ter o seu relatório.
+# Uma validação por commit: o grupo leva o SHA, então merges em rajada na develop geram uma execução para cada commit
+# de merge, e nenhuma é cancelada nem descartada (cancel-in-progress: false). Antes o grupo era só a ref, e a execução
+# do commit do meio sumia quando o seguinte entrava na fila. Execuções do mesmo SHA (reexecução manual) ainda se enfileiram.
 concurrency:
-  group: validacao-${{ github.ref }}
+  group: validacao-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -47,6 +49,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: validacao-${{ github.ref_name }}
+          # Nome com o SHA: cada commit de merge guarda o seu relatório, e o validador o baixa pelo SHA.
+          name: validacao-${{ github.ref_name }}-${{ github.sha }}
           path: validacao-out/
           retention-days: 14

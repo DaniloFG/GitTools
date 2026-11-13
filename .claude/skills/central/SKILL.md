@@ -169,7 +169,7 @@ promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esfor
    PR faz o `git rm` e o commit, último da branch, antes do PR para a `develop`.
 2. **Branch → `develop`**: PR e merge após CI verde, já sem `docs/HANDOFF.md`.
 3. **Validar a `develop`** (skill `validar`): chame o `gt-validador`. `REPROVADO`: issue de correção (`bug`, ligada à
-   mãe), conserto antes de qualquer outro merge e nenhuma promoção.
+   mãe), política de develop quebrada (skill `validar`, passo 3) e nenhuma promoção.
 4. **Branch → `homolog`**: PR da mesma branch, já sem o HANDOFF (a `homolog` e a `main` barram o arquivo); com o
    `VALIDADO` da `develop` e o comentário de evidência, a skill `validar` põe o rótulo `validada-develop` (o gate
    exige). Merge após CI verde.

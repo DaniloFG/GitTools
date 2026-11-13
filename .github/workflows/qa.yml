@@ -19,10 +19,11 @@ on:
 permissions:
   contents: read
 
-# Em PR, um commit novo cancela a execução do anterior (só o último importa). Em push nunca: cada commit precisa do
-# seu próprio veredito, senão o relatório de um commit some por causa do seguinte.
+# Uma validação por commit. Em PR o grupo é a ref: um commit novo cancela o anterior, e só o último importa. Em push o
+# SHA entra no grupo: cada commit de merge tem a sua execução e nenhuma é cancelada (cancel-in-progress só em PR), senão o
+# veredito de um commit some por causa do seguinte.
 concurrency:
-  group: qa-${{ github.workflow }}-${{ github.ref }}
+  group: qa-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || format('{0}-{1}', github.ref, github.sha) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
