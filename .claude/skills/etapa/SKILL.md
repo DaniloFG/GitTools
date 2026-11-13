@@ -32,6 +32,10 @@ abre PR e não adianta a etapa seguinte.
 
 A branch da etapa já existe e nasceu da `main` (`.claude/rules/github.md`): não crie outra.
 
+Nunca faça `git merge origin/develop` (nem rebase sobre ela) na branch de trabalho: a `homolog` passaria a levar o que não
+é da branch. A branch só se atualiza pela `main` ou pela branch de outra issue, e só quando a fila mandar (skill `lote`,
+`fila.md`); a fila decide.
+
 Retomando depois de um limite de uso: leia o último commit `wip:` (`git log --grep '^wip:' -1 --format=%B`) e o
 HANDOFF, e continue de onde parou. O `wip:` é salvamento do `.claude/hooks/autosave.sh`, nunca entrega: o commit
 final da etapa é verde e normal.

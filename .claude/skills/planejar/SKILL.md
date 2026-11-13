@@ -37,8 +37,8 @@ Uma etapa é o que **uma sessão** fecha com folga:
 - um objetivo só, que dá para dizer em uma linha e conferir com um comando;
 - até umas três tarefas de escrita e, no máximo, uma rodada de medição de interface;
 - termina com a branch verde (`npm run typecheck` e `npm test`) e algo entregue, mesmo que as seguintes não aconteçam;
-- arquivos disjuntos das etapas que poderiam rodar ao mesmo tempo (elas não rodam ao mesmo tempo, mas isso mostra
-  que o corte está limpo).
+- etapas independentes (arquivos disjuntos, sem ordem entre elas) não entram em série no HANDOFF: viram issues de lote
+  (skill `lote`), cada uma com a sua sessão de issue. Só as etapas que dependem umas das outras seguem em série.
 
 Ordene por dependência e por risco: primeiro o que destrava medir (roteiro, teste que conta), depois o ganho maior.
 Etapa que não dá para conferir está mal cortada: divida ou junte.
@@ -80,7 +80,7 @@ Mostre na conversa, sem repetir o arquivo:
 
 1. a tabela das etapas (id, objetivo, quem orquestra, aceite);
 2. o que ficou de fora e as decisões que você tomou sozinho;
-3. quantas sessões o trabalho abre (uma central e uma por etapa).
+3. quantas sessões o trabalho abre (uma central e uma por etapa; uma por issue de lote, se houver).
 
 Não peça o "pode seguir": ele já está dado (modo fábrica). Abra a central direto:
 

@@ -21,7 +21,7 @@ CHECKS=$(jq -n '[
 ] | map({context: .})')
 
 aplicar() {
-  local nome=$1 branch=$2 metodos=$3
+  local nome=$1 branch=$2 metodos=$3 strict=$4
   local payload id
 
   payload=$(jq -n \
@@ -29,6 +29,7 @@ aplicar() {
     --arg ref "refs/heads/$branch" \
     --argjson metodos "$metodos" \
     --argjson aprovacoes "$APROVACOES" \
+    --argjson strict "$strict" \
     --argjson checks "$CHECKS" '{
       name: $nome,
       target: "branch",
@@ -47,7 +48,7 @@ aplicar() {
           allowed_merge_methods: $metodos
         }},
         {type: "required_status_checks", parameters: {
-          strict_required_status_checks_policy: true,
+          strict_required_status_checks_policy: $strict,
           required_status_checks: $checks
         }}
       ]
@@ -65,6 +66,11 @@ aplicar() {
 
 # Os merges em homolog e main entram por merge commit: squash ou rebase quebram o histórico comum
 # entre a branch de trabalho, homolog e main e geram conflitos no PR seguinte.
-aplicar "Fluxo: main" main '["merge"]'
-aplicar "Fluxo: homolog" homolog '["merge"]'
-aplicar "Fluxo: develop" develop '["merge","squash"]'
+#
+# O quarto parâmetro é "branch atualizada em relação à base" (strict). Só a main o exige. Na develop e na homolog
+# ele fica false: a develop só concatena merges da fábrica paralela, e exigir a branch atualizada faria cada PR
+# esperar o anterior ser mergeado para poder entrar, o que serializa tudo. A validação da develop e da homolog é
+# por commit de merge (skill validar), então não depende de a branch estar em dia com a base.
+aplicar "Fluxo: main" main '["merge"]' true
+aplicar "Fluxo: homolog" homolog '["merge"]' false
+aplicar "Fluxo: develop" develop '["merge","squash"]' false
