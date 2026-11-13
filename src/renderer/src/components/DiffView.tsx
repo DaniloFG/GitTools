@@ -605,6 +605,7 @@ export function DiffView({ file, selection, onSelectionChange, fileNav, panelAct
             keyOf={keyOf}
             isVariable={alwaysVariable}
             overscan={OVERSCAN}
+            anchorTop
             renderItem={renderItem}
           />
         )}
