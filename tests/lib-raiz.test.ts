@@ -86,27 +86,67 @@ describe('marcador_da_raiz e raiz_de_trabalho', () => {
   })
 })
 
-// O macOS traz o bash 3.2: os hooks rodam em quem usa macOS e não podem usar construção do bash 4+ (`${x,,}` falhava lá
-// e devolvia vazio). Cada padrão abaixo é do bash 4 ou posterior.
+// O macOS traz o bash 3.2: os hooks rodam em quem usa macOS e não podem usar construção do bash 4 ou posterior (`${x,,}`
+// falhava lá e devolvia vazio). Cada padrão abaixo é de uma versão acima da 3.2; `${!x}` (bash 2) e `printf -v` (3.1) são
+// aceitos pelo 3.2 e ficam de fora.
+const proibidos: [string, RegExp][] = [
+  ['${x,,} ${x^^} ${x,} ${x^} (caixa)', /\$\{[A-Za-z_0-9]+(,,|\^\^|,|\^)[^}]*\}/],
+  ['${x@Q|E|P|A|a|U|u|L|K} (transformação)', /\$\{[A-Za-z_0-9]+@[A-Za-z]\}/],
+  ['declare/local/typeset -A -l -u -n', /\b(declare|local|typeset)\s+-[a-zA-Z]*[Alun]/],
+  ['mapfile / readarray', /\b(mapfile|readarray)\b/],
+  ['read -N / read -i', /\bread\s+(-[a-zA-Z]+\s+)*-[a-zA-Z]*[Ni]\b/],
+  ['wait -n', /\bwait\s+-n\b/],
+  ['$BASHPID $EPOCHSECONDS $EPOCHREALTIME $SRANDOM', /\$\{?(BASHPID|EPOCHSECONDS|EPOCHREALTIME|SRANDOM)\b/],
+  ['${arr[-1]} (índice negativo)', /\$\{[A-Za-z_0-9]+\[-[0-9]/],
+  ['{1..9..2} (incremento em chaves)', /\{[0-9A-Za-z]+\.\.[0-9A-Za-z]+\.\.-?[0-9]+\}/],
+  ['shopt -s globstar|lastpipe|autocd|dirspell|direxpand|checkjobs|compatNN', /\bshopt\s+-s\s+[^\n]*\b(globstar|lastpipe|autocd|dirspell|direxpand|checkjobs|compat\d+)\b/],
+  ['|& e &>>', /\|&|&>>/],
+  ['coproc', /\bcoproc\b/],
+  ['[[ -v x ]]', /\[\[\s+-v\s/],
+  ['case com ;& ou ;;&', /;;&|;&\s*$/m],
+]
+
+// Tira o comentário da linha: `#` no começo de palavra e fora de aspas (aspas simples e duplas contadas na ordem). Limite
+// conhecido: não entende `\#`, `$#` nem heredoc; os hooks não os usam em linha que traga construção proibida.
+function semComentario(linha: string): string {
+  let aspa = ''
+  for (let i = 0; i < linha.length; i++) {
+    const c = linha[i]
+    if (aspa) {
+      if (c === aspa) aspa = ''
+    } else if (c === "'" || c === '"') {
+      aspa = c
+    } else if (c === '#' && (i === 0 || /\s/.test(linha[i - 1]))) {
+      return linha.slice(0, i)
+    }
+  }
+  return linha
+}
+
 describe('hooks em bash 3.2 (macOS)', () => {
   const pasta = fileURLToPath(new URL('../.claude/hooks/', import.meta.url))
-  const proibidos: [string, RegExp][] = [
-    ['${x,,} ${x^^} ${x,} ${x^}', /\$\{[A-Za-z_0-9]+(,,|\^\^|,|\^)\}/],
-    ['declare -A / local -A', /\b(declare|local|typeset) -[a-zA-Z]*A/],
-    ['mapfile / readarray', /\b(mapfile|readarray)\b/],
-    ['|& e &>>', /\|&|&>>/],
-    ['coproc', /\bcoproc\b/],
-    ['${!x} indireta e ${x@U}', /\$\{![A-Za-z_]|\$\{[A-Za-z_0-9]+@[UuLlQ]\}/],
-    ['[[ -v x ]] e printf -v', /\[\[ -v |printf -v /],
-    ['case com ;& ou ;;&', /;;&|;&\s*$/m],
-  ]
+  const acha = (codigo: string) => proibidos.filter(([, re]) => re.test(codigo)).map(([nome]) => nome)
+
+  it('o guarda reprova cada construção proibida e aceita as do bash 3.2', () => {
+    for (const ruim of [
+      'x=${d,,}', 'x=${d^^}', 'x=${d,}', 'x=${d@Q}', 'x=${d@a}', 'declare -A m', 'local -n r=x', 'declare -l v', 'mapfile -t a',
+      'read -N 3 x', 'read -r -i abc x', 'wait -n', 'echo $BASHPID', 'echo "$EPOCHSECONDS"', 'echo "${a[-1]}"', 'for i in {1..9..2}; do :; done',
+      'shopt -s globstar', 'shopt -s nocasematch lastpipe', 'a |& b', 'a &>> f', 'coproc x { :; }', '[[ -v v ]]',
+    ]) {
+      expect(acha(semComentario(ruim)), ruim).not.toEqual([])
+    }
+    for (const bom of [
+      'x=${!nome}', 'printf -v x "%s" y', 'shopt -s nocasematch', 'read -r -d "" x', 'local -r y=1', 'x=${a:-b,c}', 'declare -a arr',
+      'cmd # |& ${d,,} mapfile', 'echo "a # b" # ${d,,}', 'echo ${#x}', 'for i in {1..9}; do :; done',
+    ]) {
+      expect(acha(semComentario(bom)), bom).toEqual([])
+    }
+  })
+
   for (const arquivo of readdirSync(pasta).filter((f) => f.endsWith('.sh'))) {
     it(`${arquivo} não usa construção do bash 4+`, () => {
-      const codigo = readFileSync(join(pasta, arquivo), 'utf8')
-        .split('\n')
-        .filter((l) => !l.trimStart().startsWith('#'))
-        .join('\n')
-      for (const [nome, re] of proibidos) expect(codigo, nome).not.toMatch(re)
+      const codigo = readFileSync(join(pasta, arquivo), 'utf8').split('\n').map(semComentario).join('\n')
+      expect(acha(codigo)).toEqual([])
     })
   }
 })
