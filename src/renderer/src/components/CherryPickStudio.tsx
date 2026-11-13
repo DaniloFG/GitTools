@@ -4,7 +4,7 @@ import { currentBranch, useAppActions, useBusy, useRepoData, type StudioRequest 
 import { errorMessage, relativeDate, shortSha, statusLabel } from '../format'
 import { t, type MessageKey } from '../i18n'
 import { gitFor, markChanged } from '../git'
-import { COMMIT_BATCH, MAX_SHOWN, batchSlice, checkAll, countChecked, filterCommits, growBatch, uncheckAll } from '../commitSearch'
+import { COMMIT_BATCH, MAX_SHOWN, batchSlice, checkAll, countChecked, filterCommits, growBatch, initialChecked, uncheckAll } from '../commitSearch'
 import { DiffView, useFullFile } from './DiffView'
 import { useDiffUncapped } from '../diffLimit'
 import { Modal } from './Modal'
@@ -157,9 +157,8 @@ export function CherryPickStudio({ request, onClose }: { request: StudioRequest;
         if (cancelled) return
         setCommits(list)
         const preset = request.commits?.length && !cross ? new Set(request.commits) : null
-        setChecked(
-          cross ? new Set() : new Set(list.filter((c) => (preset ? preset.has(c.sha) : !c.alreadyApplied)).map((c) => c.sha))
-        )
+        // Sem pré-seleção do histórico, nada vem marcado (#197).
+        setChecked(cross ? new Set() : initialChecked(list, preset))
       },
       (e) => {
         if (cancelled) return
