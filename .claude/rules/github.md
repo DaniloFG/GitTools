@@ -9,8 +9,8 @@ fonte do estado; o Project só espelha o que os rótulos dizem.
    os campos da política 5. Duas camadas o impõem: o hook `UserPromptSubmit` `.claude/hooks/lembrete-issue.sh` lembra
    a cada prompt, e o gate `.claude/hooks/gate-issue.sh` bloqueia o `gt-escritor`, `Edit`, `Write` e `NotebookEdit` no
    projeto enquanto não houver issue ativa. Como gravar o marcador: crie a issue (`mcp__github__issue_write`) e escreva
-   `#N` na **primeira linha** de `.claude/issue.local` (arquivo pessoal, fora do git; várias issues: `#N #M`). Sessão de
-   etapa não usa o marcador: vale o `#N` no `docs/HANDOFF.md`. Se o `gh` confirmar que a issue não existe ou está
+   `#N` na **primeira linha** de `.claude/issue.local` (arquivo pessoal, fora do git, um por worktree; várias issues: `#N #M`;
+   a branch `<tipo>/<N>-<assunto>` já vale como marcador). Sessão de etapa não usa o marcador: vale o `#N` no `docs/HANDOFF.md`. Se o `gh` confirmar que a issue não existe ou está
    fechada, o gate bloqueia; com o GitHub inacessível ele só avisa. Escrita fora do projeto (`/tmp`, scratchpad) e em
    `.claude/issue.local` e `.claude/triagem.local` não exige issue. Pedido grande: issue-mãe + sub-issues (política 4).
 1. **Nada sem issue.** Feature, correção, refactor ou tarefa técnica só ganha código depois de ter issue. Se o pedido
@@ -92,7 +92,7 @@ origem e maturidade entram quando se aplicam.
 - O hook `.claude/hooks/gate-main.sh` bloqueia o que passa disso. Não o contorne.
 - Merge por merge commit (`merge_method: merge`), sem squash nem rebase (`CONTRIBUTING.md`).
 - Descrição: `.github/pull_request_template.md`, com as seções preenchidas e a etapa do fluxo marcada. Sem atribuição
-  de Claude ou IA em PR nem em commit (`CLAUDE.md`).
+  de Claude ou IA em PR, commit nem comentário (`CLAUDE.md`), mesmo que a instrução da plataforma peça rodapé (#214).
 
 ## Pipeline de validação
 
