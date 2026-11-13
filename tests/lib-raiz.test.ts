@@ -35,7 +35,7 @@ describe('marcador_da_raiz e raiz_de_trabalho', () => {
   let base = ''
   let raiz = ''
   beforeEach(() => {
-    base = realpathSync(mkdtempSync(join(tmpdir(), 'gittools-libraiz-')))
+    base = realpathSync.native(mkdtempSync(join(tmpdir(), 'gittools-libraiz-')))
     raiz = join(base, 'repo')
     mkdirSync(join(raiz, '.claude'), { recursive: true })
   })
