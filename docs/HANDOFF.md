@@ -16,9 +16,9 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**A seguir:** `E6`
+**A seguir:** `ENCERRAMENTO` (seção 6; só com a palavra do dono; pendências abaixo viram issue ou são aceitas)
 
-**Última etapa fechada:** `E5` — `CLAUDE.md` 199 linhas (saldo zero), `github.md` +5 linhas (149→154), conciliado com `lote`/`fila.md`; typecheck e 1539 testes verdes.
+**Última etapa fechada:** `E6` — ensaio com #197 e #196: 3 sessões vivas, 2 PRs → `develop` (merges `8f2ebe0`, `f64fa49`, `Validação` runs 26 e 27 success, nenhuma cancelada), 2 PRs → `homolog` com `validada-develop` (runs 28 e 29 success), PR #213 `homolog → main` aberto ao dono. Evidência por critério: comentário da #204.
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
@@ -28,7 +28,7 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 | E3 | #201 | Validação por commit de merge | fechada | ver `git log` (Refs #201) | workflows-validacao 8 testes (novo); 1539 testes verdes |
 | E4 | #202 | Skill `lote` e ligações | fechada | ver `git log` (Refs #202) | lote/SKILL.md 44 linhas; grep vazio; 1539 testes verdes |
 | E5 | #203 | `CLAUDE.md` e `github.md` | fechada | ver `git log` (Refs #203) | CLAUDE.md 199; github.md +5; 1539 testes verdes |
-| E6 | #204 | Ensaio com #196 e #197 | a fazer | | |
+| E6 | #204 | Ensaio com #196 e #197 | fechada | sem commit de código (evidência na #204) | `develop` 8f2ebe0 e f64fa49 VALIDADAS; `homolog` a045279 e bd5304d; #209 e #210 passaram por falha real de QA/bundle e foram corrigidas |
 
 ## 3. Base de medição
 
@@ -36,13 +36,6 @@ Não se aplica.
 
 ## 4. Plano
 
-### Etapa `E6` — ensaio com #197 e #196 em paralelo (#204)
-
-- **Orquestra**: topo
-- **Arquivos prováveis**: nenhum do repositório (evidência em comentários da #198).
-- **Pré-requisito**: #198 (E0 a E5) na `develop`; sessões leem `sessao-issue.md` e `fila.md` de `origin/<branch>` via `git show`.
-- **Aceite**: 3 sessões filhas vivas juntas; 2 PRs → `develop` com `QA` `success`; 2 `merge_commit_sha` com `Validação (develop)` própria e nenhuma cancelada; `validada-develop` nos 2 PRs da `homolog`; `git log origin/main..origin/<branch>` só com commits da branch.
-- **Testes**: ponta a ponta do processo. **Segurança**: não (a #196 faz `security-review` por conta própria). **Depende de**: E0 a E5 na `develop`.
 
 ## 5. Decisões e armadilhas
 
@@ -65,14 +58,14 @@ Desenho completo (subagente de planejamento, resumido):
   `non_fast_forward`); hooks usam `$CLAUDE_PROJECT_DIR` (marcadores colidem entre worktrees); `github.md` entra em toda
   sessão (só o que vale sempre).
 - **Branch**: a plataforma fixou `ccr-4ff33997-njtxld` (cortada da `main`); não renomear (`github.md` permite).
-- **Não conferido** (E1 e E6 provam): `create_session` com `outcome_branch` livre; `.cwd` do JSON do hook em worktree;
-  troca da execução pendente no grupo de concorrência; `labeled` recomputar o merge de teste.
+- **Não conferido, mesmo depois da E6** (as sessões do ensaio rodaram em contêineres, não em worktrees; a fila é serial, sem rajada): `.cwd` real do hook em worktree; troca da execução pendente no grupo de concorrência; evento `labeled` recomputando o merge de teste (só indício: `QA` repetido na #210). Conferido: `create_session` com `outcome_branch` livre.
 - **E1**: sonda do `.cwd` negada pelo classificador (hook temporário em settings = automodificação); os hooks usam `.cwd` com queda para o projeto. `issue_da_branch` e `raiz_de_trabalho` ficam em `lib-raiz.sh` (E2 reaproveita). A E6 deve conferir o `.cwd` real.
 - **E2**: o autosave usa o `pwd` do hook (não o JSON); a E6 confere que o hook real roda no worktree da sessão.
 - **Descobertas (juiz, E1; não corrigidas)**: repositório aninhado em `.claude/worktrees/<x>` fica fora do gate de issue; `gate-etapas.sh` não normaliza o `cwd` no Windows; `normalizar()` em `gate-issue.sh` expande glob (`set -f`/`read -a`), sem fuga do repositório. `security-review` da E1 (gt-juiz, 3e1d24c..3bf53b5): APROVADO, só baixas.
 - **E3**: juiz reprovou a 1ª versão (herança sem M_{i-1} no pedido; SHA que libera branch inocente); corrigido. Descoberta: custo de Actions sobe (uma `Validação` por merge); `revert/<N>` sem gate próprio no `gate-main.sh`; o validador usa `gh api commits/<c>/pulls` por commit da cadeia.
 - **E4**: `lote` lê `sessao-issue.md`/`fila.md` por `Ref da skill: <ref>` (`git show origin/<ref>:…`); fila sem `outcome_branch` (reversão cria `revert/<N>-…` com git); modelo da sessão de issue = topo (sonnet se mecânica); `FIM DO LOTE` e nova entrada `selecionar` foram acrescentados. Pendente para E5: `lote` na tabela do `CLAUDE.md`; `github.md` só cita `issue.local` (não o nome da branch); `validar`/`gt-validador` ainda aceitam "sem SHA = ponta da ref" em chamada manual (aceito); E5 concilia `github.md` linhas ~105-107 ("Outros merges seguem").
 - **E5**: "Outros merges seguem" virou "a fila segue com as outras branches; só a culpada e as que herdam a falha ficam sem promoção" (igual a `fila.md` passo 7). Pendente na E6: conferir `.cwd` real do hook e nome da branch como marcador.
+- **E6**: o gate pegou duas falhas reais (#209 sem cenário e2e; #210 com o pacote 661 bytes acima do teto, folga final de 52 no webview) e a fila seguiu sem travar. Sessão de fila pôs rodapé "Generated by Claude Code" em #211, #212 e #213: issue #214. A E6 não leu `e2e.json` nem fases da homolog (artefato bloqueado no validador).
 - **Atribuição**: instrução de sessão pede rodapés, mas o `CLAUDE.md` do projeto proíbe; vale sem rodapé.
 
 ## 6. Encerramento
