@@ -73,6 +73,8 @@ export interface Settings {
   statusLetters: boolean
   /** O diff abre mostrando o arquivo inteiro (true) ou só os trechos alterados (false). */
   diffFullFile: boolean
+  /** O código longo do diff quebra de linha (true) ou segue numa linha só, com barra de rolagem horizontal (false). */
+  wrapLines: boolean
   /** Assistente de git no editor: balão ao final da linha do cursor dizendo quem a alterou, quando e o que o commit fez. */
   inlineBlame: boolean
   /** Detectar vários repositórios no workspace do VS Code e acompanhar novos dinamicamente. */
@@ -89,7 +91,7 @@ export interface Settings {
   shortcuts: Record<string, string>
 }
 
-export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', dateFormat: 'iso', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, inlineBlame: true, multiRepoDetection: false, autoContinueConflicts: false, conflictSummary: 'keep', conflictStartup: 'open', tourOffer: 'pending', toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
+export const DEFAULT_SETTINGS: Settings = { language: 'system', theme: 'system', zoom: 1, dividerWidth: 2, paneButtonScale: 1.25, diffLayout: 'inline', dateFormat: 'iso', editor: '', fileIcons: true, statusLetters: true, diffFullFile: false, wrapLines: true, inlineBlame: true, multiRepoDetection: false, autoContinueConflicts: false, conflictSummary: 'keep', conflictStartup: 'open', tourOffer: 'pending', toast: { horizontal: 'right', vertical: 'bottom', width: 380, height: 240 }, shortcuts: {} }
 
 export const ZOOM_LEVELS = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6]
 export const DIVIDER_WIDTHS = [1, 2, 3, 4, 6, 8]
@@ -129,6 +131,8 @@ export function normalizeSettings(value: unknown): Settings {
     fileIcons: raw.fileIcons !== false,
     statusLetters: raw.statusLetters !== false,
     diffFullFile: raw.diffFullFile === true,
+    // Só `false` literal desliga: o comportamento de sempre (quebrar) é o que vale para qualquer outro valor.
+    wrapLines: raw.wrapLines !== false,
     inlineBlame: raw.inlineBlame !== false,
     // Só `true` literal liga: valor de outro tipo (ex.: 'sim') não liga a varredura do workspace.
     multiRepoDetection: raw.multiRepoDetection === true,

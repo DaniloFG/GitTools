@@ -303,6 +303,7 @@ export const hi: Messages = {
     inlineHelp: 'हटाई और जोड़ी गई लाइनें एक के नीचे एक',
     split: 'अगल-बगल',
     splitHelp: 'पुराना संस्करण बाईं ओर, नया दाईं ओर',
+    wrapLines: 'लंबी पंक्तियाँ लपेटें',
     truncated: {
       message: 'यह diff बड़ा है और {size} पर काट दिया गया: फ़ाइल का आख़िरी हिस्सा नहीं दिख रहा।',
       showAll: 'फिर भी दिखाएँ'
@@ -796,6 +797,10 @@ export const hi: Messages = {
       diffContentLabel: 'Diff दिखाता है',
       diffContentChanges: 'केवल बदला हुआ हिस्सा',
       diffContentFull: 'पूरी फ़ाइल',
+      wrapLines: 'Diff में लंबी पंक्तियाँ',
+      wrapLinesHelp: 'चुनें कि लंबी पंक्तियाँ अगली पंक्ति में लपेटी जाएँ या क्षैतिज स्क्रॉल बार के साथ एक ही पंक्ति में रहें। diff के ⋯ मेनू का "लंबी पंक्तियाँ लपेटें" विकल्प इसे केवल उस diff के खुले रहने तक बदलता है।',
+      wrapLinesOn: 'लपेटें',
+      wrapLinesOff: 'न लपेटें',
       inlineBlame: 'संपादक में Git सहायक',
       inlineBlameHelp: 'GitTools संपादक में फ़ाइल संपादित करते समय, कर्सर वाली पंक्ति के अंत में एक बुलबुला दिखता है: उसे किसने, कब बदला और commit ने क्या किया।',
       inlineBlameLabel: 'कर्सर वाली पंक्ति का लेखक, तारीख और commit दिखाएँ',

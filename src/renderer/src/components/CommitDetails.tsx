@@ -164,7 +164,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
   }
 
   const openWindow = (file: ChangedFile) =>
-    openDiffWindow({ source: { kind: 'commit', sha }, path: file.path, title: `${file.path} · ${shortSha(sha)}` })
+    openDiffWindow({ source: { kind: 'commit', sha, oldPath: file.oldPath }, path: file.path, title: `${file.path} · ${shortSha(sha)}` })
 
   const fileMenu = (e: React.MouseEvent, file: ChangedFile) =>
     showMenu(e, [
@@ -194,7 +194,7 @@ function SingleCommit({ sha, focus }: { sha: string; focus: FileFocus | null }) 
     if (!active) return
     // Diff atrasado de um arquivo ou commit anterior não sobrescreve o atual.
     let cancelled = false
-    git.diff({ kind: 'commit', sha, path: active.path, fullFile, uncapped }).then(
+    git.diff({ kind: 'commit', sha, path: active.path, oldPath: active.oldPath, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
         setDiff(files.find((f) => f.path === active.path) ?? files[0] ?? null)

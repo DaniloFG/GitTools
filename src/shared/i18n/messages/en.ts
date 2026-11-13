@@ -300,6 +300,7 @@ export const en: Messages = {
     inlineHelp: 'Removed and added lines one below the other',
     split: 'Side by side',
     splitHelp: 'Old version on the left, new version on the right',
+    wrapLines: 'Wrap long lines',
     truncated: {
       message: 'This diff is large and was cut at {size}: the end of the file is not shown.',
       showAll: 'Show anyway'
@@ -793,6 +794,10 @@ export const en: Messages = {
       diffContentLabel: 'The diff shows',
       diffContentChanges: 'Only the changed part',
       diffContentFull: 'Whole file',
+      wrapLines: 'Long lines in the diff',
+      wrapLinesHelp: 'Choose whether long lines wrap onto the next line or stay on a single line, with a horizontal scroll bar. The "Wrap long lines" item in the diff ⋯ menu switches it only while that diff is open.',
+      wrapLinesOn: 'Wrap',
+      wrapLinesOff: 'Do not wrap',
       inlineBlame: 'Git assistant in the editor',
       inlineBlameHelp: 'When you edit a file in the GitTools editor, a bubble at the end of the cursor line shows who changed it, when, and what the commit did.',
       inlineBlameLabel: 'Show author, date and commit of the cursor line',

@@ -754,7 +754,11 @@ export class GitRepository implements RepoApi {
   }
 
   async diff(source: DiffSource): Promise<FileDiff[]> {
-    const pathArgs = source.path ? ['--', source.path] : ['--']
+    // Com o caminho antigo no pathspec, o git acha a renomeação; só com o novo, o arquivo sai como adição inteira.
+    // Sem -M (unstaged) o git não procura renomeação, então o caminho antigo fica de fora.
+    const pathArgs = source.path
+      ? ['--', source.path, ...(source.kind !== 'unstaged' && source.oldPath && source.oldPath !== source.path ? [source.oldPath] : [])]
+      : ['--']
     const args = diffArgs(source.fullFile)
     // Teto de saída do git: sem ele, um commit de milhares de arquivos passa inteiro pelo IPC.
     // "Mostrar mesmo assim" (uncapped) tira o teto; a chave de cache muda junto, pois o pedido é outro.

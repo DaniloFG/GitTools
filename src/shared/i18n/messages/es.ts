@@ -300,6 +300,7 @@ export const es: Messages = {
     inlineHelp: 'Líneas eliminadas y añadidas una debajo de la otra',
     split: 'Lado a lado',
     splitHelp: 'Versión anterior a la izquierda y nueva a la derecha',
+    wrapLines: 'Ajustar líneas largas',
     truncated: {
       message: 'Este diff es grande y se cortó en {size}: no se muestra el final del archivo.',
       showAll: 'Mostrar de todos modos'
@@ -793,6 +794,10 @@ export const es: Messages = {
       diffContentLabel: 'El diff muestra',
       diffContentChanges: 'Solo el fragmento modificado',
       diffContentFull: 'Archivo completo',
+      wrapLines: 'Líneas largas en el diff',
+      wrapLinesHelp: 'Elige si las líneas largas se parten en la línea siguiente o siguen en una sola línea, con barra de desplazamiento horizontal. El elemento "Ajustar líneas largas" del menú ⋯ del diff lo cambia solo mientras ese diff está abierto.',
+      wrapLinesOn: 'Ajustar',
+      wrapLinesOff: 'No ajustar',
       inlineBlame: 'Asistente de git en el editor',
       inlineBlameHelp: 'Al editar un archivo en el editor de GitTools, un globo al final de la línea del cursor muestra quién la cambió, cuándo y qué hizo el commit.',
       inlineBlameLabel: 'Mostrar autor, fecha y commit de la línea del cursor',

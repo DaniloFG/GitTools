@@ -107,6 +107,18 @@ export function EditorSection({ draft, update }: SettingsSectionProps) {
         />
       </SettingRow>
 
+      <SettingRow title={t('settings.editor.wrapLines')} description={t('settings.editor.wrapLinesHelp')} modified={draft.wrapLines !== DEFAULT_SETTINGS.wrapLines}>
+        <SettingSegmented
+          ariaLabel={t('settings.editor.wrapLines')}
+          value={draft.wrapLines ? 'on' : 'off'}
+          options={[
+            { value: 'on', label: t('settings.editor.wrapLinesOn') },
+            { value: 'off', label: t('settings.editor.wrapLinesOff') }
+          ]}
+          onChange={(v) => update({ wrapLines: v === 'on' })}
+        />
+      </SettingRow>
+
       <SettingRow title={t('settings.editor.diffLayout')} description={t('settings.editor.diffLayoutHelp')} modified={draft.diffLayout !== DEFAULT_SETTINGS.diffLayout}>
         <SettingSegmented
           ariaLabel={t('settings.editor.diffLayout')}

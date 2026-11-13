@@ -90,7 +90,7 @@ describe('telas do topo que podem ser escondidas', () => {
     expect(original).toEqual(['files'])
   })
 
-  it('a tela aberta agora continua à vista mesmo escondida', () => {
+  it('tela ativa oculta ainda aparece (a aberta agora continua à vista mesmo escondida)', () => {
     const hidden: TopScreenId[] = ['changes', 'dashboards']
     expect(isScreenShown(hidden, 'changes', 'changes')).toBe(true)
     expect(isScreenShown(hidden, 'dashboards', 'dashboards')).toBe(true)
