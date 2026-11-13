@@ -16,11 +16,11 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 
 ## 2. Estado
 
-**A seguir:** `E0`
+**A seguir:** `E1`
 
 | Etapa | Issue | Objetivo | Estado | Commit | Número que importa |
 | --- | --- | --- | --- | --- | --- |
-| E0 | #198 | Base: trazer a regra da #133 para a branch | a fazer | | |
+| E0 | #198 | Base: trazer a regra da #133 para a branch | fechada | merge de 8a28fea | CLAUDE.md 199 linhas; grep vazio |
 | E1 | #199 | Marcadores de issue e triagem por worktree/branch | a fazer | | |
 | E2 | #200 | Autosave por worktree | a fazer | | |
 | E3 | #201 | Validação por commit de merge | a fazer | | |
@@ -33,16 +33,6 @@ reprova o PR que o contenha, e ele sai (`git rm`) no commit de encerramento. Tet
 Não se aplica.
 
 ## 4. Plano
-
-### Etapa `E0` — trazer a regra "branch nasce da main" (#133) para a branch
-
-- **Orquestra**: sonnet
-- **Arquivos prováveis**: só o merge e este HANDOFF.
-- **Ler antes**: nada; `git fetch origin docs/133-branch-nasce-da-main`.
-- **Aceite**: `git merge-base --is-ancestor 8a28fea HEAD` sai 0; `grep -rn 'nasce de .develop' CLAUDE.md .claude CONTRIBUTING.md` vazio; `wc -l CLAUDE.md` = 199.
-- **Testes**: não se aplica (merge de documentação). **Segurança**: não. **Depende de**: nada.
-- Observação: a `main` ainda tem "nasce de develop"; o texto novo está na `develop`/PR #194. Se o merge conflitar, resolva
-  mantendo o texto da #133 e registre em "Decisões".
 
 ### Etapa `E1` — marcadores de issue e triagem por worktree/branch (#199)
 
