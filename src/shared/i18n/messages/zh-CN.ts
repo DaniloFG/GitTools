@@ -88,6 +88,7 @@ export const zhCN: Messages = {
     reset: '正在重置',
     resolving: '正在解决',
     restoring: '正在恢复',
+    restoringFile: '正在恢复文件',
     reverting: '正在还原',
     rewriting: '正在改写历史',
     savingResolution: '正在保存解决结果',
@@ -242,6 +243,8 @@ export const zhCN: Messages = {
       help: '点击查看差异 · 拖到分支上即可带走该文件',
       openDiff: '查看差异',
       take: '将此文件带到 {target}…',
+      revertThis: '还原此文件',
+      revertBefore: '还原到此文件之前',
       copyPath: '复制路径'
     },
     menu: {
@@ -451,6 +454,11 @@ export const zhCN: Messages = {
       title: '还原提交',
       message: '创建一个新提交来撤销“{subject}”（{sha}）？',
       confirm: '还原'
+    },
+    restoreFile: {
+      title: '覆盖本地更改？',
+      message: '“{path}”有本地更改（已暂存、未暂存或未跟踪）。还原该文件会替换这些更改，且无法撤销。',
+      confirm: '覆盖'
     },
     reset: {
       title: '将 {branch} 移到 {sha}',
@@ -995,6 +1003,7 @@ export const zhCN: Messages = {
     },
     noChangesIn: '“{path}”中没有更改。',
     noLinesSelected: '没有选择任何更改的行。',
+    rootCommitNoParent: '这是根提交：它没有可用来恢复文件的父提交。',
     lines: {
       stage: { other: '已暂存 {count} 行。' },
       unstage: { other: '已取消暂存 {count} 行。' },

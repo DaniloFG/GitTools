@@ -90,6 +90,7 @@ export const ptBR = {
     reset: 'Reset',
     resolving: 'Resolvendo',
     restoring: 'Restaurando',
+    restoringFile: 'Restaurando arquivo',
     reverting: 'Revertendo',
     rewriting: 'Reescrevendo histórico',
     savingResolution: 'Salvando resolução',
@@ -244,6 +245,8 @@ export const ptBR = {
       help: 'Clique para ver o diff · arraste para uma branch para levar o arquivo',
       openDiff: 'Ver diff',
       take: 'Levar este arquivo para {target}…',
+      revertThis: 'Reverter este arquivo',
+      revertBefore: 'Reverter para antes deste arquivo',
       copyPath: 'Copiar caminho'
     },
     menu: {
@@ -459,6 +462,11 @@ export const ptBR = {
       title: 'Reverter commit',
       message: 'Criar um novo commit que desfaz "{subject}" ({sha})?',
       confirm: 'Reverter'
+    },
+    restoreFile: {
+      title: 'Sobrescrever alterações locais?',
+      message: '"{path}" tem alterações locais (em stage, fora do stage ou não rastreadas). Reverter o arquivo as substitui e isso não pode ser desfeito.',
+      confirm: 'Sobrescrever'
     },
     reset: {
       title: 'Mover {branch} para {sha}',
@@ -1027,6 +1035,7 @@ export const ptBR = {
     },
     noChangesIn: 'Não há alterações em "{path}".',
     noLinesSelected: 'Nenhuma linha alterada foi selecionada.',
+    rootCommitNoParent: 'Este é o commit raiz: ele não tem pai de onde restaurar o arquivo.',
     lines: {
       stage: { one: '{count} linha adicionada ao stage.', other: '{count} linhas adicionadas ao stage.' },
       unstage: { one: '{count} linha removida do stage.', other: '{count} linhas removidas do stage.' },

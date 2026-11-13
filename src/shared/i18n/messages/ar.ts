@@ -97,6 +97,7 @@ export const ar: Messages = {
     reset: 'جارٍ إعادة التعيين',
     resolving: 'جارٍ الحل',
     restoring: 'جارٍ الاستعادة',
+    restoringFile: 'جارٍ استعادة الملف',
     reverting: 'جارٍ التراجع',
     rewriting: 'جارٍ إعادة كتابة السجل',
     savingResolution: 'جارٍ حفظ الحل',
@@ -251,6 +252,8 @@ export const ar: Messages = {
       help: 'انقر لعرض الفروق · اسحب إلى فرع لنقل الملف',
       openDiff: 'عرض الفروق',
       take: 'نقل هذا الملف إلى {target}…',
+      revertThis: 'التراجع عن هذا الملف',
+      revertBefore: 'التراجع إلى ما قبل هذا الملف',
       copyPath: 'نسخ المسار'
     },
     menu: {
@@ -467,6 +470,11 @@ export const ar: Messages = {
       title: 'التراجع عن الإيداع',
       message: 'إنشاء إيداع جديد يتراجع عن "{subject}" ({sha})؟',
       confirm: 'تراجع'
+    },
+    restoreFile: {
+      title: 'استبدال التغييرات المحلية؟',
+      message: 'يحتوي "{path}" على تغييرات محلية (في منطقة التجهيز أو خارجها أو غير متتبَّعة). سيؤدي التراجع عن الملف إلى استبدالها ولا يمكن التراجع عن ذلك.',
+      confirm: 'استبدال'
     },
     reset: {
       title: 'نقل {branch} إلى {sha}',
@@ -1038,6 +1046,7 @@ export const ar: Messages = {
     },
     noChangesIn: 'لا توجد تغييرات في "{path}".',
     noLinesSelected: 'لم يُحدَّد أي سطر معدَّل.',
+    rootCommitNoParent: 'هذا هو الـ commit الجذري: ليس له أصل لاستعادة الملف منه.',
     lines: {
       stage: { one: 'تم تجهيز سطر واحد.', two: 'تم تجهيز سطرين.', other: 'الأسطر المجهزة: {count}.' },
       unstage: { one: 'تم إلغاء تجهيز سطر واحد.', two: 'تم إلغاء تجهيز سطرين.', other: 'الأسطر الملغى تجهيزها: {count}.' },

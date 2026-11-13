@@ -160,6 +160,11 @@ export interface RepoApi {
   blame(path: string, rev?: string): Promise<BlameResult>
   fileHistory(path: string, limit?: number): Promise<FileHistoryEntry[]>
   restoreFile(sha: string, path: string): Promise<void>
+  /**
+   * Põe o arquivo, na pasta de trabalho e no stage, como estava em `sha` ou no pai dele. Com alteração local e sem
+   * `overwrite`, não altera nada e devolve 'dirty'.
+   */
+  restoreFileFromCommit(sha: string, path: string, which: 'this' | 'before', oldPath?: string, overwrite?: boolean): Promise<'restored' | 'dirty'>
 
   // Rebase interativo
   rebasePlan(fromSha: string): Promise<RebasePlan>
@@ -230,6 +235,7 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'blame',
   'fileHistory',
   'restoreFile',
+  'restoreFileFromCommit',
   'rebasePlan',
   'interactiveRebase'
 ]

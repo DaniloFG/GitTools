@@ -89,6 +89,7 @@ export const es: Messages = {
     reset: 'Reset',
     resolving: 'Resolviendo',
     restoring: 'Restaurando',
+    restoringFile: 'Restaurando archivo',
     reverting: 'Revirtiendo',
     rewriting: 'Reescribiendo historial',
     savingResolution: 'Guardando resolución',
@@ -243,6 +244,8 @@ export const es: Messages = {
       help: 'Haz clic para ver el diff · arrastra a una rama para llevar el archivo',
       openDiff: 'Ver diff',
       take: 'Llevar este archivo a {target}…',
+      revertThis: 'Revertir este archivo',
+      revertBefore: 'Revertir a antes de este archivo',
       copyPath: 'Copiar ruta'
     },
     menu: {
@@ -458,6 +461,11 @@ export const es: Messages = {
       title: 'Revertir commit',
       message: '¿Crear un nuevo commit que deshaga "{subject}" ({sha})?',
       confirm: 'Revertir'
+    },
+    restoreFile: {
+      title: '¿Sobrescribir los cambios locales?',
+      message: '"{path}" tiene cambios locales (en el stage, fuera del stage o sin seguimiento). Revertir el archivo los reemplaza y no se puede deshacer.',
+      confirm: 'Sobrescribir'
     },
     reset: {
       title: 'Mover {branch} a {sha}',
@@ -1026,6 +1034,7 @@ export const es: Messages = {
     },
     noChangesIn: 'No hay cambios en "{path}".',
     noLinesSelected: 'No se seleccionó ninguna línea modificada.',
+    rootCommitNoParent: 'Este es el commit raíz: no tiene padre desde el cual restaurar el archivo.',
     lines: {
       stage: { one: '{count} línea añadida al stage.', other: '{count} líneas añadidas al stage.' },
       unstage: { one: '{count} línea quitada del stage.', other: '{count} líneas quitadas del stage.' },

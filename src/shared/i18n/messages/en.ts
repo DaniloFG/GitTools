@@ -89,6 +89,7 @@ export const en: Messages = {
     reset: 'Resetting',
     resolving: 'Resolving',
     restoring: 'Restoring',
+    restoringFile: 'Restoring file',
     reverting: 'Reverting',
     rewriting: 'Rewriting history',
     savingResolution: 'Saving resolution',
@@ -243,6 +244,8 @@ export const en: Messages = {
       help: 'Click to see the diff · drag onto a branch to take the file',
       openDiff: 'Show diff',
       take: 'Take this file to {target}…',
+      revertThis: 'Revert this file',
+      revertBefore: 'Revert before this file',
       copyPath: 'Copy path'
     },
     menu: {
@@ -458,6 +461,11 @@ export const en: Messages = {
       title: 'Revert commit',
       message: 'Create a new commit that undoes "{subject}" ({sha})?',
       confirm: 'Revert'
+    },
+    restoreFile: {
+      title: 'Overwrite local changes?',
+      message: '"{path}" has local changes (staged, unstaged or untracked). Reverting the file replaces them and this cannot be undone.',
+      confirm: 'Overwrite'
     },
     reset: {
       title: 'Move {branch} to {sha}',
@@ -1026,6 +1034,7 @@ export const en: Messages = {
     },
     noChangesIn: 'There are no changes in "{path}".',
     noLinesSelected: 'No changed line was selected.',
+    rootCommitNoParent: 'This is the root commit: it has no parent to restore the file from.',
     lines: {
       stage: { one: '{count} line staged.', other: '{count} lines staged.' },
       unstage: { one: '{count} line unstaged.', other: '{count} lines unstaged.' },
