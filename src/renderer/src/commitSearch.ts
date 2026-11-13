@@ -94,3 +94,13 @@ export function uncheckAll(checked: ReadonlySet<string>, shown: readonly BranchC
   for (const c of shown) next.delete(c.sha)
   return next
 }
+
+/**
+ * Seleção inicial do Cherry-pick Studio ao carregar a lista: nada vem marcado (nada é trazido sem ser escolhido).
+ * Só a pré-seleção explícita de quem abriu o Studio (`preset`, os commits escolhidos no histórico) é mantida.
+ * Devolve um Set novo.
+ */
+export function initialChecked(list: readonly BranchCommit[], preset: ReadonlySet<string> | null): Set<string> {
+  if (!preset) return new Set()
+  return new Set(list.filter((c) => preset.has(c.sha)).map((c) => c.sha))
+}
