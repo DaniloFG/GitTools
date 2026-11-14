@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
@@ -186,6 +186,57 @@ describe('autosave.sh', () => {
       escrever(arvore, 'so-no-worktree.ts', 'x\n')
       await rodarEm(clone, clone)
       expect(await contagem(arvore)).toBe(1)
+    })
+
+    // git de mentira: cada chamada acrescenta uma linha ao arquivo de contagem e segue para o git real. O caminho do git
+    // real sai de `command -v git` (no Git Bash do Windows é um caminho POSIX que o exec aceita). Só vale no `extra`
+    // do rodarEm, para não tocar no PATH dos outros testes.
+    async function gitContado(): Promise<{ extra: NodeJS.ProcessEnv; contador: string }> {
+      const real = (await executar('bash', ['-c', 'command -v git'])).stdout.trim()
+      const dir = mkdtempSync(join(base, 'falso-'))
+      const contador = join(dir, 'contagem.txt')
+      const aspas = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
+      const falso = join(dir, 'git')
+      writeFileSync(falso, `#!/usr/bin/env bash\necho x >> ${aspas(contador)}\nexec ${aspas(real)} "$@"\n`)
+      chmodSync(falso, 0o755)
+      const original = process.env.PATH ?? process.env.Path ?? ''
+      // `Path` (Windows) sai do ambiente: sem isso o `PATH` novo disputaria com ele. Undefined não vai ao processo filho.
+      return { extra: { PATH: `${dir}${delimiter}${original}`, Path: undefined }, contador }
+    }
+
+    const processosGit = (contador: string) =>
+      existsSync(contador) ? readFileSync(contador, 'utf8').split('\n').filter(Boolean).length : 0
+    const carimboDoWorktree = () => join(arvore, '.claude', 'autosave.stamp')
+    const gravarCarimboNo = (dir: string, segundosAtras: number) => {
+      mkdirSync(join(dir, '.claude'), { recursive: true })
+      writeFileSync(join(dir, '.claude', 'autosave.stamp'), `${Math.floor(Date.now() / 1000) - segundosAtras}\n`)
+    }
+
+    // #208: com o carimbo do worktree fresco, o --limitado sai antes de qualquer git (o custo medido era 3 processos).
+    it('--limitado com carimbo fresco no worktree não roda nenhum processo git', async () => {
+      const { extra, contador } = await gitContado()
+      gravarCarimboNo(arvore, 60)
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEm(clone, arvore, extra, '--limitado')
+      expect(processosGit(contador), 'processos git disparados pelo hook').toBe(0)
+      expect(await contagem(arvore)).toBe(1)
+    })
+
+    it('--limitado com carimbo velho no worktree salva na branch dele e renova o carimbo', async () => {
+      gravarCarimboNo(arvore, 700)
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEm(clone, arvore, {}, '--limitado')
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+      expect(Math.floor(Date.now() / 1000) - Number(readFileSync(carimboDoWorktree(), 'utf8'))).toBeLessThan(60)
+    })
+
+    // O carimbo é por worktree: um carimbo fresco só na raiz não pode segurar o salvamento do worktree.
+    it('carimbo fresco só na raiz não impede o worktree de salvar', async () => {
+      gravarCarimboNo(clone, 60)
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEm(clone, arvore, {}, '--limitado')
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
     })
   })
 

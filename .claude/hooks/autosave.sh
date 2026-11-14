@@ -20,6 +20,33 @@ raiz="${CLAUDE_PROJECT_DIR:-}"
 [ -z "$raiz" ] && raiz=$(git rev-parse --show-toplevel 2>/dev/null)
 [ -n "$raiz" ] && [ -d "$raiz" ] || exit 0
 
+# Carimbo fresco (código 0): o arquivo existe, a primeira linha são só dígitos e faz menos de LIMITE_SEGUNDOS. `read` é
+# builtin, então a checagem não abre processo. $agora é calculado uma vez, antes de qualquer uso.
+agora=$(date +%s)
+carimbo_fresco() {
+  local ultimo=
+  [ -f "$1" ] || return 1
+  read -r ultimo < "$1" 2>/dev/null
+  [[ $ultimo =~ ^[0-9]+$ ]] && [ $((agora - ultimo)) -lt "$LIMITE_SEGUNDOS" ]
+}
+
+# Pré-limitador do worktree (#208): no --limitado, o topo provável do worktree da sessão sai de expansão do bash, e o
+# carimbo dele decide ANTES da resolução da raiz (que abria 3 processos git). Ele só pode fazer o hook PULAR, nunca salvar
+# em outro lugar: se o topo presumido não for um worktree de verdade, o pior caso é adiar o salvamento por até
+# LIMITE_SEGUNDOS. O custo que sobra são `date` e os subshells de $(...), não git. Nome vazio (sessão dentro de
+# .claude/worktrees/ sem nome de worktree) não tem topo presumido: segue para a resolução normal.
+atual=$(pwd -P 2>/dev/null) || atual=
+raiz_projeto=$(cd "$raiz" 2>/dev/null && pwd -P)
+if [ "$limitado" = 1 ] && [ -n "$atual" ] && [ -n "$raiz_projeto" ]; then
+  case "$atual/" in
+    "$raiz_projeto"/.claude/worktrees/*)
+      resto=${atual#"$raiz_projeto"/.claude/worktrees/}
+      nome=${resto%%/*}
+      [ -n "$nome" ] && carimbo_fresco "$raiz_projeto/.claude/worktrees/$nome/.claude/autosave.stamp" && exit 0
+      ;;
+  esac
+fi
+
 # Fábrica paralela (#200): com um worktree por issue, a pendência é do worktree da sessão (o diretório em que o hook
 # roda), não da raiz do projeto. Sem isto o `wip:` sairia na branch da raiz e o trabalho do worktree ficaria solto.
 # Só vale se o diretório for do mesmo repositório (lib-raiz.sh); senão fica a raiz do projeto, como antes.
@@ -34,8 +61,6 @@ case "$caminho_script" in
 esac
 if [ -f "$dir_hooks/lib-raiz.sh" ]; then
   . "$dir_hooks/lib-raiz.sh"
-  atual=$(pwd -P 2>/dev/null) || atual=
-  raiz_projeto=$(cd "$raiz" 2>/dev/null && pwd -P)
   RAIZ_DIAGNOSTICO=
   if [ -n "$atual" ] && [ -n "$raiz_projeto" ] && trabalho=$(raiz_de_trabalho "$atual" "$raiz_projeto"); then
     [ -d "$trabalho" ] && raiz=$trabalho
@@ -55,13 +80,10 @@ fi
 carimbo="$raiz/.claude/autosave.stamp"
 registro="$raiz/.claude/autosave.log"
 
-# Limitador primeiro, antes de qualquer chamada ao git: no PostToolUse isto roda a cada ferramenta e precisa ser barato.
-agora=$(date +%s)
-if [ "$limitado" = 1 ] && [ -f "$carimbo" ]; then
-  ultimo=$(head -n 1 "$carimbo" 2>/dev/null)
-  if [[ $ultimo =~ ^[0-9]+$ ]] && [ $((agora - ultimo)) -lt "$LIMITE_SEGUNDOS" ]; then
-    exit 0
-  fi
+# Limitador com a raiz de trabalho já resolvida, então o carimbo é o dela. Dentro do projeto e fora de worktree, a
+# resolução não chama git (caminho rápido de lib-raiz.sh). No worktree, o pré-limitador acima já tratou o caso comum.
+if [ "$limitado" = 1 ] && carimbo_fresco "$carimbo"; then
+  exit 0
 fi
 
 # Log curto: acima de ~200 linhas guarda só as 100 últimas, para nunca crescer sem fim.
