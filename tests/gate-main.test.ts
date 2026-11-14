@@ -1818,6 +1818,82 @@ describe('gate-main: limites fechados na issue #226', () => {
   })
 })
 
+// Issue #198 (fábrica paralela): várias branches em worktrees simultâneos. O gate resolve o branch atual pelo diretório em
+// que o hook roda (ou pelo `-C`), sem estado entre uma chamada e outra: cada worktree é decidido pelo seu próprio branch.
+describe('gate-main: vários worktrees simultâneos do mesmo repositório', () => {
+  const msgMain = 'GATE DA MAIN: bloqueado.'
+  let base = ''
+  let raiz = ''
+  let wtA = ''
+  let wtB = ''
+  let wtMain = ''
+  const barra = (p: string) => p.replace(/\\/g, '/')
+
+  const git = (cwd: string, ...args: string[]) => {
+    const r = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd, encoding: 'utf8' })
+    expect(r.status, args.join(' ')).toBe(0)
+  }
+
+  beforeAll(() => {
+    base = mkdtempSync(join(tmpdir(), 'gittools-gatemain-wt-'))
+    raiz = join(base, 'raiz')
+    mkdirSync(raiz)
+    git(raiz, 'init', '-q')
+    git(raiz, 'symbolic-ref', 'HEAD', 'refs/heads/main')
+    git(raiz, 'commit', '-q', '--allow-empty', '-m', 'x')
+    // Duas branches de issues diferentes, cada uma no seu worktree, e um terceiro worktree com HEAD destacado na main.
+    wtA = join(base, 'wt-a')
+    wtB = join(base, 'wt-b')
+    wtMain = join(base, 'wt-destacado')
+    git(raiz, 'worktree', 'add', '-q', '-b', 'feature/198-a', wtA)
+    git(raiz, 'worktree', 'add', '-q', '-b', 'fix/199-b', wtB)
+    git(raiz, 'worktree', 'add', '-q', '--detach', wtMain, 'main')
+  })
+
+  afterAll(() => {
+    rmSync(base, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  })
+
+  it('cada worktree é decidido pelo seu branch: a raiz na main bloqueia, os de feature passam', async () => {
+    const r = await bash('git push', raiz)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain(msgMain)
+    expect(r.stderr).toContain('checkout na main')
+    expect((await bash('git push', wtA)).code).toBe(0)
+    expect((await bash('git push origin HEAD', wtB)).code).toBe(0)
+    // HEAD destacado (mesmo apontando para a main) não é a main.
+    expect((await bash('git push origin HEAD', wtMain)).code).toBe(0)
+  })
+
+  it('a ordem das chamadas não vaza estado: depois de passar num worktree, a raiz na main continua bloqueando', async () => {
+    for (const cwd of [wtA, raiz, wtB, raiz, wtMain, wtA, raiz]) {
+      const bloqueia = cwd === raiz
+      expect((await bash('git push', cwd)).code, cwd).toBe(bloqueia ? 2 : 0)
+    }
+  })
+
+  it('chamadas simultâneas de worktrees diferentes dão cada uma o seu veredito', async () => {
+    const alvos = [raiz, wtA, wtB, wtMain, raiz, wtA, wtB, wtMain]
+    const rs = await Promise.all(alvos.map((cwd) => bash('git push origin HEAD', cwd)))
+    expect(rs.map((r) => r.code)).toEqual(alvos.map((cwd) => (cwd === raiz ? 2 : 0)))
+  })
+
+  it('git -C aponta para o worktree certo, qualquer que seja o diretório do hook', async () => {
+    expect((await bash(`git -C ${barra(raiz)} push`, wtA)).code).toBe(2)
+    expect((await bash(`git -C ${barra(wtA)} push`, raiz)).code).toBe(0)
+    expect((await bash(`git -C ${barra(wtB)} push origin HEAD`, raiz)).code).toBe(0)
+    expect((await bash(`git -C ${barra(raiz)} push origin HEAD`, wtB)).code).toBe(2)
+  })
+
+  it('destino explícito na main bloqueia em qualquer worktree, sem depender do branch atual', async () => {
+    for (const cwd of [raiz, wtA, wtB, wtMain]) {
+      const r = await bash('git push origin HEAD:main', cwd)
+      expect(r.code, cwd).toBe(2)
+      expect(r.stderr).toContain(msgMain)
+    }
+  })
+})
+
 describe('gate-main: caminho comum', () => {
   it('outra ferramenta passa', async () => {
     expect((await rodar('Read', { file_path: '/tmp/x' })).code).toBe(0)
