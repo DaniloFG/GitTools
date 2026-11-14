@@ -162,16 +162,16 @@ export const RULES = [
   palavra('merge-request', 'merge\\s+requests?'),
   palavra('mr-numero', 'mr[-_\\s]?\\d+'),
   // Rastreador de tarefas: chamado, tracker.
-  palavra('chamado', 'chamados?\\s*(?:#|n[º°o]\\.?\\s*)?\\d+'),
+  palavra('chamado', 'chamados?[\\s_/-]*(?:#|n[º°o]\\.?\\s*)?\\d+'),
   palavra('rastreador', 'rastreador(?:es)?|(?:issue\\s+)?trackers?'),
   // Mais ferramentas de IA e agentes de código.
-  palavra('genai', 'gen-?ai'),
+  palavra('genai', 'gen[\\s_-]?ai'),
   palavra('xai', 'xai'),
   palavra('ai-generated', 'ai[-_\\s]generated'),
   palavra('mistral', 'mistral'),
   palavra('llama', 'llama'),
   palavra('grok', 'grok'),
-  palavra('deepseek', 'deep[-_]?seek'),
+  palavra('deepseek', 'deep[\\s_-]?seek'),
   palavra('cursor', 'cursor'),
   palavra('devin', 'devin'),
   palavra('windsurf', 'windsurf'),
@@ -189,7 +189,7 @@ export const RULES = [
   palavra('npm-ci', 'npm\\s+ci'),
   palavra('npx', 'npx'),
   palavra('ubuntu-latest', 'ubuntu[-_\\s]?latest'),
-  palavra('autosave', 'auto[-_]?save'),
+  palavra('autosave', 'auto[\\s_-]?save'),
   palavra('automation', 'automation'),
   palavra('id-numerico', '(?:runs?|jobs?|ids?)[\\s_/:#-]*\\d{8,}'),
   palavra('producao', 'production\\s+environment'),
@@ -208,6 +208,14 @@ export const RULES = [
   palavra('refactor-interno', 'internal\\s+refactor(?:ing)?|refatora[çc][ãa]o\\s+interna'),
   palavra('context-window', 'context\\s+windows?'),
   palavra('conversa', 'as\\s+discussed|conforme\\s+a\\s+conversa'),
+  // Rotinas e cerimônias do projeto: job noturno, Renovate, sprint, épico, kanban, re-run, sign-off.
+  palavra('nightly', 'nightly[\\s_/-]+(?:jobs?|builds?)'),
+  palavra('renovate', 'renovate(?:bot)?'),
+  palavra('sprint', 'sprints?[\\s_/-]*\\d+'),
+  palavra('epico', '[ée]picos?|epics?'),
+  palavra('kanban', 'kanban'),
+  palavra('re-run', 're[-_\\s]?runs?'),
+  palavra('sign-off', 'sign[-_\\s]?offs?'),
   // Dependabot: título de PR de atualização de dependência.
   padrao('bump', 'Bump\\s+\\S+\\s+from\\s+\\S+\\s+to\\s+\\S+', 'giu'),
   // Infraestrutura de entrega.
@@ -272,7 +280,7 @@ export const RULES = [
   palavra('vitest', 'vitest'),
   palavra('typecheck', 'type[-\\s]?check(?:s|ing)?'),
   palavra('playwright', 'playwright'),
-  palavra('lint', 'lint(?:ers?|ing)?'),
+  palavra('lint', 'lint[\\p{L}\\p{N}]*'),
   palavra('tsconfig', 'tsconfigs?'),
   palavra('tsc', 'tsc'),
   palavra('runGit', 'runGit'),
@@ -311,7 +319,7 @@ export const RULES = [
   palavra('refs-numero', '(?:refs?|closes?|closed|fix(?:es|ed)?|resolves?|resolved)\\s+(?:gh[-_\\s]?)?#?\\d+'),
   // "GH-198" e "ticket 198": outros jeitos de apontar para um item do rastreador.
   palavra('gh-numero', 'gh[-_\\s]?#?\\d+'),
-  palavra('ticket-numero', 'tickets?\\s*(?:#|number\\s+)?\\d+'),
+  palavra('ticket-numero', 'tickets?[\\s_/-]*(?:#|number\\s+)?\\d+'),
   // "@nome": menção de pessoa (também pega e-mail, o que é bom: contato pessoal não vai para o changelog).
   padrao('mencao', '@[\\p{L}\\d_-]+'),
   // Identificador de sessão do assistente ("session_018B...").
