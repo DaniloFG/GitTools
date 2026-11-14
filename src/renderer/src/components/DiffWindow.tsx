@@ -26,7 +26,7 @@ import { installCopy } from '../copy'
 import { useUnhandledErrors } from '../useUnhandledErrors'
 import { ContextMenu, type MenuItem, type MenuState } from './ContextMenu'
 import { Toasts } from './Toasts'
-import { DiffView, useFullFile } from './DiffView'
+import { DiffView, useFullFileOf } from './DiffView'
 import { useDiffUncapped } from '../diffLimit'
 import { LoaderPane } from './Loader'
 
@@ -53,7 +53,8 @@ export function DiffWindowApp({ request }: { request: DiffWindowRequest }) {
     setToasts((list) => addToast(list, { kind, text }, Date.now(), id))
   }, [])
   useUnhandledErrors(toast)
-  const [fullFile] = useFullFile()
+  // O provider de configurações é montado mais abaixo, por esta mesma função: `useFullFile` leria o padrão de fábrica (#162).
+  const [fullFile] = useFullFileOf(settings.diffFullFile)
   const { source, path } = request
   const uncapped = useDiffUncapped(path)
   const title = request.title ?? path
