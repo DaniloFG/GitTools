@@ -810,9 +810,11 @@ campos=$(printf '%s' "$entrada" | jq -r '
 # DIAGNÓSTICO TEMPORÁRIO (#224, CRLF no Windows): com GATE_MAIN_DIAG=1 despeja em stderr os bytes que o hook vê. Opt-in.
 diag_crlf() {
   [ "${GATE_MAIN_DIAG:-}" = 1 ] || return 0
-  local rotulo=$1 c=$2 v
+  local rotulo=$1 c=$2 v jqv temcr=nao cr=$'\r'
+  jqv=$(jq --version 2>&1)
+  case $c in *"$cr"*) temcr=sim ;; esac
   {
-    echo "=== DIAG $rotulo | BASH_VERSION=$BASH_VERSION | jq=$(jq --version 2>&1) | tem CR: $([[ $c == *$'\r'* ]] && echo sim || echo nao)"
+    echo "=== DIAG $rotulo | BASH_VERSION=$BASH_VERSION | jq=$jqv | tem CR: $temcr"
     echo "-- comando (od -c)"; printf '%s' "$c" | od -c | head -8
     v=${c//$'\r\n'/$'\n'}; echo "-- A: CRLF->LF"; printf '%s' "$v" | od -c | head -8
     v=${c//$'\r'/}; echo "-- B: remove CR"; printf '%s' "$v" | od -c | head -8
