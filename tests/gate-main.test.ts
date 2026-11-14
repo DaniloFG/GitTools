@@ -200,10 +200,20 @@ beforeAll(() => {
   ghLog = join(dir, 'gh.log')
   writeFileSync(join(dir, 'gh'), ghFalso)
   chmodSync(join(dir, 'gh'), 0o755)
+  if (process.platform !== 'win32') {
+    const real = spawnSync('bash', ['-c', 'command -v jq'], { encoding: 'utf8' }).stdout.trim()
+    jqDir = mkdtempSync(join(tmpdir(), 'gittools-jqwin-'))
+    writeFileSync(
+      join(jqDir, 'jq'),
+      `#!/usr/bin/env bash\nset -o pipefail\ncase "$*" in\n  *u001f*) "${real}" "$@" | awk '{ printf "%s\\r\\n", $0 }' ;;\n  *) exec "${real}" "$@" ;;\nesac\n`,
+    )
+    chmodSync(join(jqDir, 'jq'), 0o755)
+  }
 })
 
 afterAll(() => {
   rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  if (jqDir) rmSync(jqDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
 })
 
 beforeEach(() => {
@@ -219,6 +229,14 @@ async function rodar(toolName: string, toolInput: Record<string, unknown>, cwd?:
     cwd,
   })
   return { code: r.status, stderr: r.stderr }
+}
+
+// `jq` que se comporta como o do Windows (stdout em modo texto: cada LF vira CR+LF), só para a chamada do hook que lê a
+// entrada (o filtro tem \u001f); o jq dos `--jq` do gh falso segue o de verdade. No Windows o jq já é assim.
+let jqDir = ''
+function jqWindows(command: string, cwd?: string) {
+  const path = process.platform === 'win32' ? process.env.PATH ?? '' : `${jqDir}${delimiter}${process.env.PATH ?? ''}`
+  return rodar('Bash', { command }, cwd, { PATH: `${dir}${delimiter}${path}` })
 }
 
 const bash = (command: string, cwd?: string, extraEnv?: Record<string, string>) => rodar('Bash', { command }, cwd, extraEnv)
@@ -1389,29 +1407,48 @@ describe('gate-main: git push sem destino explícito resolve o branch atual', ()
     expect((await bash('gh api -X PUT \\\n repos/o/r/pulls/30/merge \\\n -f merge_method=squash -f sha=abc0030')).code).toBe(2)
   })
 
-  it('fim de linha CRLF (jq do Windows) não esconde a continuação nem o destino na main', async () => {
-    const r = await bash('git push origin \\\r\n main', naFeature)
+  // Issue #224, medido no windows-latest: o jq do Windows escreve CR+LF no lugar de cada LF. O `jq` falso (`jqWindows`)
+  // faz o mesmo no Linux, então estes casos reprovam sem o hook trocar CR/LF por marcadores no jq. Como o hook vê os
+  // bytes exatos do comando, ele segue o bash de verdade: `\`+LF continua a linha; `\`+CR+LF NÃO (o `\` só escapa o CR e
+  // o LF encerra o comando), então o que vem depois é outro comando e é analisado à parte.
+  it('o jq do Windows (LF vira CRLF) não esconde a continuação com `\\` nem o destino na main', async () => {
+    const r = await jqWindows('git push origin \\\n main', naFeature)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('destino na main')
-    expect((await bash('git push origin main\r\n', naFeature)).code).toBe(2)
-    expect((await bash('git push origin \\\r\n feature/x', naFeature)).code).toBe(0)
-    expect((await bash('gh pr merge 30 \\\r\n --squash \\\r\n --match-head-commit abc0030')).code).toBe(2)
-    expect((await bash('gh pr merge 30 \\\r\n --merge \\\r\n --match-head-commit abc0030')).code).toBe(0)
+    expect((await jqWindows('git push origin main\n', naFeature)).code).toBe(2)
+    expect((await jqWindows('git push origin \\\n feature/x', naFeature)).code).toBe(0)
+    expect((await jqWindows('gh pr merge 30 \\\n --squash \\\n --match-head-commit abc0030')).code).toBe(2)
+    expect((await jqWindows('gh pr merge 30 \\\n --merge \\\n --match-head-commit abc0030')).code).toBe(0)
   })
 
-  // Medido no windows-latest (issue #224): o jq do Windows troca cada LF por CR+LF, então o `\`+CR+LF do comando chega
-  // ao hook como `\`+CR+CR+LF. No Linux o teste simula o mesmo (CR repetido antes do LF) e reprova sem o colapso.
-  it('CR repetido antes do LF (jq do Windows sobre CRLF) ainda junta a continuação e bloqueia a main', async () => {
-    for (const quebra of ['\r\r\n', '\r\r\r\n']) {
-      const r = await bash(`git push origin \\${quebra} main`, naFeature)
-      expect(r.code).toBe(2)
-      expect(r.stderr).toContain('destino na main')
-      expect((await bash(`git push origin \\${quebra} feature/x`, naFeature)).code).toBe(0)
-      expect((await bash(`gh pr merge 30 \\${quebra} --squash \\${quebra} --match-head-commit abc0030`)).code).toBe(2)
-      expect((await bash(`gh pr merge 30 \\${quebra} --merge \\${quebra} --match-head-commit abc0030`)).code).toBe(0)
+  it('`\\` seguida de CR não continua a linha: o push na main da linha seguinte é analisado, com ou sem jq do Windows', async () => {
+    // O bash de verdade executa `echo x \<CR>` e depois `git push origin main`; juntar as linhas esconderia o push.
+    for (const quebra of ['\r\n', '\r\r\n', '\r\r\r\n']) {
+      const comando = `echo x \\${quebra}git push origin main`
+      for (const via of [bash, jqWindows]) {
+        const r = await via(comando, naFeature)
+        expect(r.code).toBe(2)
+        expect(r.stderr).toContain('destino na main')
+      }
+      expect((await bash(`echo x \\${quebra}git push origin feature/x`, naFeature)).code).toBe(0)
     }
-    // CR solto (sem LF) separa palavras: o destino na main continua visível.
-    expect((await bash('git push origin\rmain', naFeature)).code).toBe(2)
+  })
+
+  // Os marcadores do jq (0x1d, 0x1e) e o separador de campos (0x1f) são reservados: se o comando já os traz, o hook
+  // bloqueia em vez de ver linhas que o bash não vê (`git -c x.y=<0x1d> push origin main` é UMA linha para o bash).
+  it.each(['\u001d', '\u001e', '\u001f'])('byte reservado %j já no comando bloqueia, no Windows e fora dele', async (byte) => {
+    for (const via of [bash, jqWindows]) {
+      const r = await via(`git -c x.y=${byte} push origin main`, naFeature)
+      expect(r.code).toBe(2)
+      expect(r.stderr).toContain('bytes de controle')
+    }
+  })
+
+  it('CR e LF do comando chegam exatos ao hook: `git push origin \\`+CR+LF+`main` é outro comando, não destino', async () => {
+    for (const via of [bash, jqWindows]) {
+      expect((await via('git push origin \\\r\n main', naFeature)).code).toBe(0)
+      expect((await via('git push origin\rmain', naFeature)).code).toBe(0)
+    }
   })
 
   // `git push -o x origin`: o valor de -o contava como refspec (npos 2), então o push sem destino passava na main.

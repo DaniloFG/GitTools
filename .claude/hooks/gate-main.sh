@@ -802,24 +802,24 @@ analisar_comando() {
 command -v jq >/dev/null 2>&1 || bloquear "o jq não está instalado; sem ele não dá para inspecionar a chamada."
 
 # Um jq só: campos separados por \u001f (não é espaço, então campo vazio é preservado); o comando vai por último.
+# O jq do Windows escreve o stdout em modo texto e troca cada LF por CR+LF (medido no CI, issue #224: `\`+LF chega como
+# `\`+CR+LF). Não dá para saber qual CR veio do jq e qual estava no comando, e adivinhar errado abre falso negativo
+# (`\`+CR+LF não é continuação no bash de verdade). Por isso o jq troca CR (\u001e) e LF (\u001d) por marcadores, a saída
+# não tem quebra nenhuma, e o hook restaura os bytes exatos do comando, no Windows e no Linux. split/join, sem regex.
+# Os marcadores (e o separador \u001f) são bytes de controle reservados: se o próprio comando já os traz, o jq falha e o hook
+# bloqueia (falha fechada), senão o 0x1d do comando viraria LF e o hook veria linhas que o bash não vê.
 campos=$(printf '%s' "$entrada" | jq -r '
-  def s: (. // "") | tostring;
+  def s: (. // "") | tostring
+    | if contains("\u001d") or contains("\u001e") or contains("\u001f") then error("byte reservado") else . end
+    | split("\r") | join("\u001e") | split("\n") | join("\u001d");
   [ (.tool_name | s), (.tool_input.owner | s), (.tool_input.repo | s), (.tool_input.pullNumber | s),
     (.tool_input.branch | s), (.tool_input.base | s), (.tool_input.command | s) ] | join("\u001f")') \
-  || bloquear "não foi possível ler a chamada da ferramenta (JSON inválido)."
-# Fim de linha do Windows: o jq do Windows escreve o stdout em modo texto e troca cada `\n` por CR+LF. Medido no CI
-# (bash 5.3 / jq 1.8.2 do windows-latest, issue #224): `\`+CR+LF chega como `\`+CR+CR+LF, e uma passada de CRLF->LF deixava
-# `\`+CR+LF, que o passo seguinte (CR solto -> espaço) estragava em `\`+espaço+LF: a continuação não era juntada e o push
-# com `\` e quebra antes de main passava. Por isso o CR que antecede um LF é colapsado até estabilizar (cada volta encurta
-# o texto, então termina), e só depois o CR solto vira espaço (separa palavras: o excesso só gera falso positivo, nunca
-# falso negativo). Só entra quando há CR (caso comum: nenhuma volta, nenhum processo). Sem construção bash 4+ e sem `$'..'`
-# dentro de `$(...)` (o bash do Windows não faz o parse).
-case $campos in
-  *$'\r'*)
-    while [[ $campos == *$'\r\n'* ]]; do campos=${campos//$'\r\n'/$'\n'}; done
-    campos=${campos//$'\r'/ }
-    ;;
-esac
+  || bloquear "não foi possível ler a chamada da ferramenta (JSON inválido ou com os bytes de controle 0x1d a 0x1f)."
+# Todo CR que sobrou na saída do jq é do modo texto dele (os do comando viraram marcadores): sai. Depois os marcadores
+# voltam a ser LF e CR. Sem construção bash 4+ e sem `$'..'` dentro de `$(...)` (o bash do Windows não faz o parse).
+case $campos in *$'\r'*) campos=${campos//$'\r'/} ;; esac
+campos=${campos//$'\x1d'/$'\n'}
+campos=${campos//$'\x1e'/$'\r'}
 IFS=$'\x1f' read -r -d '' ferramenta dono repo numero ramo base_nova comando <<<"$campos"
 
 case "$ferramenta" in
