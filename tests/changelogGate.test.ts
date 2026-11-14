@@ -982,6 +982,61 @@ describe('textsOfFile e scanTextFiles: README, manifesto e nome do release', () 
   })
 })
 
+// Checkout no Windows traz CRLF: o gate trata "\r\n" como "\n" em todas as funções, sem deixar "\r" no texto.
+describe('CRLF: o mesmo resultado que LF', () => {
+  const crlf = (texto: string) => texto.replace(/\n/g, '\r\n')
+  const SUJO = CHANGELOG.replace('- Tour of the interface.', '- Tour of the interface (#12).').replace(
+    'saved language.',
+    'saved language, via the pipeline.',
+  )
+
+  it('releaseNotes devolve o mesmo corpo, sem "\\r", na seção da versão e na queda para Unreleased', () => {
+    for (const versao of ['0.13.0', '0.13.1']) {
+      const comCrlf = releaseNotes(crlf(CHANGELOG), versao)
+      expect(comCrlf).toBe(releaseNotes(CHANGELOG, versao))
+      expect(comCrlf).not.toContain('\r')
+    }
+  })
+
+  it('releaseNotes neutro e erro de seção vazia valem também com CRLF', () => {
+    expect(releaseNotes(crlf(SO_NOTHING), '0.13.1', { neutro: true })).toBe(NEUTRAL_NOTE)
+    expect(() => releaseNotes(crlf(SO_NOTHING), '0.13.1')).toThrow(/nenhuma mudança/)
+  })
+
+  it('sectionBody devolve o mesmo texto, sem "\\r"', () => {
+    for (const titulo of ['Unreleased', '0.13.0', '0.12.0']) {
+      expect(sectionBody(crlf(CHANGELOG), titulo)).toBe(sectionBody(CHANGELOG, titulo))
+      expect(sectionBody(crlf(CHANGELOG), titulo)).not.toContain('\r')
+    }
+  })
+
+  it('findForbidden dá os mesmos achados e números de linha', () => {
+    const lf = findForbidden(SUJO)
+    expect(lf.length).toBeGreaterThan(0)
+    expect(findForbidden(crlf(SUJO))).toEqual(lf)
+  })
+
+  it('gateProblems reprova o texto sujo com CRLF igual ao com LF, e passa o limpo', () => {
+    const corpoSujo = '- Fixed (#12)\n- Plano 4\n'
+    const lf = gateProblems(SUJO, '0.13.0', corpoSujo)
+    expect(lf.length).toBeGreaterThan(0)
+    expect(gateProblems(crlf(SUJO), '0.13.0', crlf(corpoSujo))).toEqual(lf)
+    expect(gateProblems(crlf(CHANGELOG), '0.13.0', crlf(releaseNotes(CHANGELOG, '0.13.0')))).toEqual([])
+  })
+
+  it('scanTextFiles: README, nls e package.json com CRLF dão o mesmo resultado que com LF', () => {
+    const arquivos: Record<string, string> = {
+      'extension/README.md': '# GitTools\n\nTudo no mesmo workflow.\n\nSem problema aqui.\n',
+      'extension/package.nls.json': '{\n  "gittools.description": "Use o pipeline",\n  "gittools.cmd.open": "Abrir"\n}\n',
+      'extension/package.json': '{\n  "displayName": "GitTools",\n  "description": "Feito com Claude",\n  "keywords": ["git"]\n}\n',
+    }
+    const nomes = Object.keys(arquivos)
+    const lf = scanTextFiles(nomes, { ler: (c) => arquivos[c] })
+    expect(lf).toHaveLength(3)
+    expect(scanTextFiles(nomes, { ler: (c) => crlf(arquivos[c]) })).toEqual(lf)
+  })
+})
+
 describe('prova de mutação: sem as regras, o texto sujo passaria', () => {
   it.each(CORPOS_SUJOS)('com a lista de regras esvaziada, passa: %s', (_descricao, corpo) => {
     expect(findForbidden(corpo)).not.toEqual([])

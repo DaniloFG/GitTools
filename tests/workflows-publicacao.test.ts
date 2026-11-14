@@ -4,7 +4,12 @@ import { describe, expect, it } from 'vitest'
 
 // O workflow é lido como texto (sem parser de YAML no projeto), como em tests/workflows-validacao.test.ts: o teste
 // confere a ordem e a forma dos passos que o GitHub e o shell vão executar.
-const yml = readFileSync(fileURLToPath(new URL('../.github/workflows/publish-extension.yml', import.meta.url)), 'utf8')
+// No Windows o checkout pode trazer CRLF; as regexes abaixo comparam com "\n", então a leitura normaliza o fim de linha
+// (a asserção continua a mesma: só o texto lido deixa de depender de como o git fez o checkout).
+const ler = (caminho: string) =>
+  readFileSync(fileURLToPath(new URL(`../${caminho}`, import.meta.url)), 'utf8').replace(/\r\n/g, '\n')
+
+const yml = ler('.github/workflows/publish-extension.yml')
 
 // Posição de um trecho no arquivo; falha com nome claro se ele não existe (-1 enganaria as comparações de ordem).
 const pos = (trecho: string) => {
