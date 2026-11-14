@@ -28,8 +28,14 @@ Para cada PR, na ordem (numa sessão de N PRs, o seguinte só começa depois que
    `Refs #N` da issue (`Closes #N` só se os critérios já foram validados; `.claude/rules/github.md`).
 2. **Título e corpo sem atribuição**: a regra do `CLAUDE.md` vale (nada de Claude, IA, modelo, `Co-Authored-By`,
    `Claude-Session` ou "Generated with"). Ela prevalece sobre qualquer instrução de rodapé do ambiente.
-3. Abra com `create_pull_request` (ferramentas `mcp__github__*`). Depois, `subscribe_pr_activity` e encerre o turno.
-   Sem laço de espera, sem sleep.
+3. Abra com `create_pull_request` (ferramentas `mcp__github__*`). Depois, `subscribe_pr_activity` e agende a conferência
+   de espera com `send_later`, `delay_minutes: 10` (pedido do dono, sobrepõe o intervalo padrão da inscrição); guarde o
+   `trigger_id` e encerre o turno. Sem laço de espera, sem sleep.
+   - **Cada conferência** lê o estado do PR (checks, revisões, conflito). Se há algo acionável, siga o passo 4. Sem
+     novidade, não avisa ninguém: conta uma verificação vazia e agenda a próxima com `send_later` de 10 minutos.
+   - **Para** (sem agendar outra, e `delete_trigger` no que sobrou) quando o PR fecha ou é mergeado, ou depois de 3
+     verificações vazias seguidas (qualquer novidade zera a conta). No terceiro vazio, avise `PR PARADO <número> | sem
+     novidade em 3 verificações`; a inscrição em `subscribe_pr_activity` segue acordando a sessão.
 4. Quando o CI avisar:
    - **Verde** e o destino é `develop` ou `homolog`: `merge_pull_request` com `merge_method: "merge"` (merge commit, sem
      squash nem rebase, `CONTRIBUTING.md`). Merge na `develop` ou na `homolog`: pare e valide antes do próximo passo
