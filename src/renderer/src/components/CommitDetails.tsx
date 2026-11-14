@@ -457,7 +457,7 @@ function WipPanes({ focus }: { focus: WipFocus }) {
     git.diff({ kind: active.area, path: active.path, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
-        const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
+        const next = files[0] ?? null
         setDiff((prev) => (prev && next && sameDiff(prev, next) ? prev : next))
       },
       (e) => !cancelled && toast('error', errorMessage(e))

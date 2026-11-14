@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import * as os from 'node:os'
+import * as path from 'node:path'
 import { t } from '../shared/i18n'
 import type { GitCommandEntry } from '../shared/types'
 import { ARG_BUDGET, MAX_COMMAND_CHARS, commandChars } from './chunk'
@@ -68,8 +69,9 @@ export interface RunOptions {
    */
   stopAtLimit?: boolean
   /**
-   * Cancelamento. Sinal já abortado: rejeita sem abrir processo. Abortado durante a execução: o git é
-   * encerrado e a promessa rejeita com `GitError.aborted`. Abortado enquanto espera na fila: sai da fila.
+   * Cancelamento. Sinal já abortado: rejeita sem abrir processo. Abortado durante a execução: o git e os
+   * processos que ele abriu (hooks, aliases com `!`, credential helpers) são encerrados e a promessa rejeita
+   * com `GitError.aborted`. Abortado enquanto espera na fila: sai da fila.
    */
   signal?: AbortSignal
   /** Prioridade na fila de processos (padrão: 'normal'). */
@@ -210,6 +212,75 @@ function newEntry(cwd: string, args: string[]): GitCommandEntry {
   return { id: nextCommandId++, args, cwd, startedAt: Date.now() }
 }
 
+// Quantas árvores de processos o abort mandou encerrar. Só para os testes provarem que o caminho normal
+// (sucesso, erro, tempo limite, sinal já abortado, abort na fila) não custa nada a mais.
+let treeKills = 0
+
+/** Só para testes: quantas vezes um abort durante a execução pediu o encerramento da árvore do git. */
+export function treeKillsForTest() {
+  return treeKills
+}
+
+/** Teto de espera pelo `taskkill`: se ele travar, o cancelamento não pode travar junto. */
+const TASKKILL_TIMEOUT_MS = 2000
+
+/**
+ * Encerra o git e os processos que ele abriu. `child.kill` mata só o git: o alias com `!`, o hook e o
+ * credential helper sobrevivem e, no Windows, seguram a pasta do repositório (EBUSY ao apagar ou mover).
+ * A promessa resolve quando a árvore foi pedida para morrer e nunca rejeita.
+ *
+ * POSIX: com `detached` o git é líder do próprio grupo e um sinal para `-pid` alcança o grupo todo. Sem `detached`
+ * o grupo é o do próprio app, então `-pid` não é usado (o git recebe o sinal sozinho). Mesmo com o git já morto o
+ * sinal ao grupo vale: o pgid não é reaproveitado enquanto um neto vivo o usa, e esse é justamente o caso útil.
+ * Windows: `taskkill /T` percorre os filhos a partir do pai, então o git continua vivo até o taskkill terminar
+ * (matá-lo antes faria o `/T` perder a árvore). Programa e argumentos são fixos e sem shell; só o pid varia.
+ */
+function killTree(child: ChildProcessWithoutNullStreams, detached: boolean): Promise<void> {
+  treeKills++
+  const pid = child.pid
+  if (pid === undefined) {
+    child.kill('SIGTERM')
+    return Promise.resolve()
+  }
+  if (process.platform !== 'win32') {
+    try {
+      if (!detached) throw new Error('git fora de um grupo próprio')
+      process.kill(-pid, 'SIGTERM')
+    } catch {
+      // O grupo não existe (ESRCH) ou não foi permitido: ao menos o git recebe o sinal.
+      child.kill('SIGTERM')
+    }
+    return Promise.resolve()
+  }
+  // Git já encerrado: o pid pode ter sido reaproveitado por outro processo, e o `/T` mataria uma árvore alheia.
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve()
+  return new Promise<void>((resolve) => {
+    let settled = false
+    let guard: ReturnType<typeof setTimeout> | null = null
+    // Reserva: se o taskkill falhou ou demorou, o git ainda recebe o sinal (inofensivo se já morreu).
+    const settle = () => {
+      if (settled) return
+      settled = true
+      if (guard) clearTimeout(guard)
+      child.kill('SIGTERM')
+      resolve()
+    }
+    guard = setTimeout(settle, TASKKILL_TIMEOUT_MS)
+    guard.unref()
+    try {
+      const taskkill = spawn(
+        path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'taskkill.exe'),
+        ['/T', '/F', '/PID', String(pid)],
+        { windowsHide: true, stdio: 'ignore' }
+      )
+      taskkill.on('error', settle)
+      taskkill.on('exit', settle)
+    } catch {
+      settle()
+    }
+  })
+}
+
 function abortedError(args: string[]): GitError {
   return new GitError(t('core.gitCanceled'), args, -1, '', '', false, true)
 }
@@ -286,11 +357,19 @@ function execute(
   const log = traceCommand(entry, options.silent)
   log.start()
 
+  const detached = process.platform !== 'win32' && options.signal !== undefined
   let child: ChildProcessWithoutNullStreams
   try {
     child = spawn('git', [...BASE_ARGS, ...args], {
       cwd,
       windowsHide: true,
+      // No POSIX o git vira líder de um grupo de processos, para o abort alcançar também os processos que ele
+      // abre (killTree). Só quem passa `signal` pode abortar, então só ele paga o custo: o git sai do grupo do
+      // terminal, e Ctrl+C no terminal que abriu o app não chega a ele (o app abre o git sem terminal e
+      // GIT_TERMINAL_PROMPT=0 já impede prompt) nem ele recebe SIGHUP quando o terminal fecha. Sem `signal` o
+      // caminho é idêntico ao de antes. Sem `unref`: a saída continua em pipe e o app espera o git como antes.
+      // No Windows `detached` abriria um console novo, então lá a árvore é encerrada pelo taskkill.
+      detached,
       env: {
         ...process.env,
         GIT_TERMINAL_PROMPT: '0',
@@ -326,15 +405,26 @@ function execute(
   let stoppedAtLimit = false
   let stopping = false
   let finished = false
+  // Pedido de encerrar a árvore (só no abort); a rejeição espera por ele para sair com a árvore já encerrada.
+  let treeDone: Promise<void> | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
   let graceTimer: ReturnType<typeof setTimeout> | null = null
 
   // Pede ao git que pare, uma vez. Quem chama guarda o motivo em uma flag. Parar também cancela o tempo
   // limite, para ele não disparar depois e trocar o motivo do fim.
-  const stop = () => {
+  // Só o abort encerra a árvore (`tree`); tempo limite e teto de saída seguem matando só o git, como sempre.
+  // Se o tempo limite já parou o git, o abort ainda encerra a árvore, uma única vez.
+  const stop = (tree = false) => {
     if (timer) {
       clearTimeout(timer)
       timer = null
+    }
+    if (tree) {
+      if (!treeDone) {
+        stopping = true
+        treeDone = killTree(child, detached)
+      }
+      return
     }
     if (stopping) return
     stopping = true
@@ -343,7 +433,7 @@ function execute(
 
   const onAbort = () => {
     aborted = true
-    stop()
+    stop(true)
   }
 
   // Fecha o pedido uma só vez: para o tempo limite, tira o ouvinte de cancelamento e devolve a vaga.
@@ -424,17 +514,22 @@ function execute(
   // Tempo limite ou teto de saída: o git foi morto de propósito, e um processo neto pode manter os canais
   // abertos, o que impediria o `close` de chegar. Por isso espera EXIT_GRACE_MS por um `close` normal e só
   // então responde. `complete` é idempotente: o `close` que chegar depois não faz nada, e `end()` limpa o timer.
+  // No abort, `exit` e `close` só concluem depois do killTree: a rejeição sai com a árvore já encerrada.
+  const completeAfterKill = (code: number | null) => {
+    if (aborted && treeDone) void treeDone.then(() => complete(code))
+    else complete(code)
+  }
   child.on('exit', (code) => {
     if (aborted) {
-      complete(code)
+      completeAfterKill(code)
       return
     }
     if (timedOut || stoppedAtLimit) {
-      graceTimer = setTimeout(() => complete(code), EXIT_GRACE_MS)
+      graceTimer = setTimeout(() => completeAfterKill(code), EXIT_GRACE_MS)
       graceTimer.unref()
     }
   })
-  child.on('close', (code) => complete(code))
+  child.on('close', completeAfterKill)
   child.stdin.on('error', () => {
     // O git pode fechar a entrada antes de lermos tudo; o erro real aparece no código de saída.
   })

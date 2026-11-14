@@ -4,6 +4,7 @@
 # para `origin`. A retomada lê o último commit `wip:` (hora, commit anterior e arquivos pendentes no corpo).
 #   autosave.sh             Stop, SubagentStop, PreCompact e SessionEnd: salva sempre que houver o que salvar.
 #   autosave.sh --limitado  PostToolUse: no máximo uma tentativa a cada 10 minutos (carimbo em .claude/autosave.stamp).
+# Diretório da sessão (worktree por issue, #200): o `.cwd` do JSON do stdin; o `pwd` do processo é só a reserva.
 # NUNCA bloqueia o Claude: sai sempre com 0; o motivo de não ter salvado vai para .claude/autosave.log.
 # Nunca usa --force nem --no-verify, nunca age em develop/homolog/main nem no meio de merge/rebase, não leva arquivo
 # sensível nem grande, respeita o .gitignore e jamais mexe em docs/HANDOFF.md (só commita o que já está pendente).
@@ -20,8 +21,75 @@ raiz="${CLAUDE_PROJECT_DIR:-}"
 [ -z "$raiz" ] && raiz=$(git rev-parse --show-toplevel 2>/dev/null)
 [ -n "$raiz" ] && [ -d "$raiz" ] || exit 0
 
-# Fábrica paralela (#200): com um worktree por issue, a pendência é do worktree da sessão (o diretório em que o hook
-# roda), não da raiz do projeto. Sem isto o `wip:` sairia na branch da raiz e o trabalho do worktree ficaria solto.
+# Carimbo fresco (código 0): o arquivo existe, a primeira linha são só dígitos e faz menos de LIMITE_SEGUNDOS. `read` é
+# builtin, então a checagem não abre processo. $agora é calculado uma vez, antes de qualquer uso.
+agora=$(date +%s)
+carimbo_fresco() {
+  local ultimo=
+  [ -f "$1" ] || return 1
+  read -r ultimo < "$1" 2>/dev/null
+  [[ $ultimo =~ ^[0-9]+$ ]] && [ $((agora - ultimo)) -lt "$LIMITE_SEGUNDOS" ]
+}
+
+# Diretório da sessão (#200): vem do `.cwd` do JSON que o Claude Code manda no stdin; o `pwd` do processo é só a reserva,
+# porque o harness pode rodar o hook com o cwd do processo na raiz do projeto, e aí o `wip:` sairia na branch da raiz.
+# Só builtins (sem jq nem processo novo: isto roda a cada PostToolUse, antes do limitador, e o pré-limitador não pode abrir
+# git). Lê só o começo do stdin (2048 bytes): o `.cwd` vem nos primeiros ~300 bytes, antes de tool_input/tool_response, que
+# podem ter megabytes, e o `read` de pipe lê byte a byte, então ler mais custaria caro a cada PostToolUse. Não ler o resto
+# é o que o hook já fazia (nunca leu o stdin) e o harness tolera. Em terminal não lê (nada a esperar). O status do `read`
+# é não zero no EOF: ignorado de propósito.
+entrada=
+[ -t 0 ] || IFS= read -r -d '' -n 2048 -t 1 entrada 2>/dev/null
+cwd_sessao=
+# Só o `cwd` de TOPO vale: procura-se apenas antes do segundo `{` (o primeiro objeto aninhado, como tool_input, que poderia
+# trazer um "cwd" qualquer). Um `{` dentro de uma string antes do cwd só faz o valor se perder: vale a reserva (lado seguro).
+cabeca=
+case "$entrada" in
+  *\{*) cabeca=${entrada#*\{}; cabeca=${cabeca%%\{*} ;;
+esac
+regex_cwd='"cwd"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)"'
+if [[ $cabeca =~ $regex_cwd ]]; then
+  cwd_sessao=${BASH_REMATCH[1]}
+  # Desescapa só `\\`, `\"` e `\/`; o marcador evita que `\\` seguido de `"` ou `/` vire escape de outro. Qualquer outra
+  # sequência (`\u`, `\n`, `\t`...) descarta o valor: vale a reserva.
+  marcador=$'\001'
+  cwd_sessao=${cwd_sessao//\\\\/$marcador}
+  cwd_sessao=${cwd_sessao//\\\"/\"}
+  cwd_sessao=${cwd_sessao//\\\//\/}
+  case "$cwd_sessao" in *\\*) cwd_sessao= ;; esac
+  cwd_sessao=${cwd_sessao//$marcador/\\}
+  # Só caminho absoluto: POSIX (`/`, o `\` fica como está) ou drive do Windows com separador (`C:\x` ou `C:/x`; o `\`
+  # vira `/` só neste ramo, e o Git Bash aceita `C:/x`). Relativo, inclusive `a:b`, cai na reserva.
+  case "$cwd_sessao" in
+    /*) ;;
+    [A-Za-z]:[/\\]*) cwd_sessao=${cwd_sessao//\\//} ;;
+    *) cwd_sessao= ;;
+  esac
+fi
+# O valor do stdin nunca é usado cru: passa pelo `cd` + `pwd -P`; falhou ou não veio, vale o pwd do processo. `CDPATH=`
+# vazio: com CDPATH definido o `cd` imprime o destino e `atual` ganharia duas linhas.
+atual=
+[ -n "$cwd_sessao" ] && atual=$(CDPATH= cd -- "$cwd_sessao" 2>/dev/null && pwd -P)
+[ -n "$atual" ] || atual=$(pwd -P 2>/dev/null) || atual=
+
+# Pré-limitador do worktree (#208): no --limitado, o topo provável do worktree da sessão sai de expansão do bash, e o
+# carimbo dele decide ANTES da resolução da raiz (que abria 3 processos git). Ele só pode fazer o hook PULAR, nunca salvar
+# em outro lugar: se o topo presumido não for um worktree de verdade, o pior caso é adiar o salvamento por até
+# LIMITE_SEGUNDOS. O custo que sobra são `date` e os subshells de $(...), não git. Nome vazio (sessão dentro de
+# .claude/worktrees/ sem nome de worktree) não tem topo presumido: segue para a resolução normal.
+raiz_projeto=$(cd "$raiz" 2>/dev/null && pwd -P)
+if [ "$limitado" = 1 ] && [ -n "$atual" ] && [ -n "$raiz_projeto" ]; then
+  case "$atual/" in
+    "$raiz_projeto"/.claude/worktrees/*)
+      resto=${atual#"$raiz_projeto"/.claude/worktrees/}
+      nome=${resto%%/*}
+      [ -n "$nome" ] && carimbo_fresco "$raiz_projeto/.claude/worktrees/$nome/.claude/autosave.stamp" && exit 0
+      ;;
+  esac
+fi
+
+# Fábrica paralela (#200): com um worktree por issue, a pendência é do worktree da sessão (o `.cwd` do stdin, com o
+# diretório do processo como reserva), não da raiz do projeto. Sem isto o `wip:` sairia na branch da raiz e o trabalho do worktree ficaria solto.
 # Só vale se o diretório for do mesmo repositório (lib-raiz.sh); senão fica a raiz do projeto, como antes.
 # shellcheck source=lib-raiz.sh
 # O diretório do script sai de expansão pura do bash (sem processo: isto roda a cada PostToolUse, antes do limitador). Não
@@ -34,8 +102,6 @@ case "$caminho_script" in
 esac
 if [ -f "$dir_hooks/lib-raiz.sh" ]; then
   . "$dir_hooks/lib-raiz.sh"
-  atual=$(pwd -P 2>/dev/null) || atual=
-  raiz_projeto=$(cd "$raiz" 2>/dev/null && pwd -P)
   RAIZ_DIAGNOSTICO=
   if [ -n "$atual" ] && [ -n "$raiz_projeto" ] && trabalho=$(raiz_de_trabalho "$atual" "$raiz_projeto"); then
     [ -d "$trabalho" ] && raiz=$trabalho
@@ -55,13 +121,10 @@ fi
 carimbo="$raiz/.claude/autosave.stamp"
 registro="$raiz/.claude/autosave.log"
 
-# Limitador primeiro, antes de qualquer chamada ao git: no PostToolUse isto roda a cada ferramenta e precisa ser barato.
-agora=$(date +%s)
-if [ "$limitado" = 1 ] && [ -f "$carimbo" ]; then
-  ultimo=$(head -n 1 "$carimbo" 2>/dev/null)
-  if [[ $ultimo =~ ^[0-9]+$ ]] && [ $((agora - ultimo)) -lt "$LIMITE_SEGUNDOS" ]; then
-    exit 0
-  fi
+# Limitador com a raiz de trabalho já resolvida, então o carimbo é o dela. Dentro do projeto e fora de worktree, a
+# resolução não chama git (caminho rápido de lib-raiz.sh). No worktree, o pré-limitador acima já tratou o caso comum.
+if [ "$limitado" = 1 ] && carimbo_fresco "$carimbo"; then
+  exit 0
 fi
 
 # Log curto: acima de ~200 linhas guarda só as 100 últimas, para nunca crescer sem fim.
@@ -199,7 +262,11 @@ if [ -n "${ficaram:-}" ]; then
   log "aviso: fora do commit: ${ficaram%; }"
 fi
 
-if ! saida=$(git add -A -- . ':(exclude,literal).claude/autosave.log' ':(exclude,literal).claude/autosave.stamp' "${excluir[@]}" 2>&1); then
+# Exclusão dos arquivos próprios com colchete (`[l]`): o git acusa "paths are ignored ... Use -f" (e sai com 1) quando um
+# pathspec casa EXATAMENTE um arquivo do .gitignore, até sendo de exclusão ou literal. O colchete faz do pathspec um
+# curinga, que o git não acusa, e ele continua casando só esses arquivos. Os sensíveis (`excluir`) vêm do `git status`,
+# que não lista ignorados.
+if ! saida=$(git add -A -- . ':(exclude,glob).claude/autosave.[l]og' ':(exclude,glob).claude/autosave.[l]og.tmp' ':(exclude,glob).claude/autosave.[s]tamp' "${excluir[@]}" 2>&1); then
   log "erro no git add: $saida"
   exit 0
 fi
@@ -219,7 +286,7 @@ fi
 
 anterior=$(git log -1 --format='%h %s' 2>/dev/null)
 [ -n "$anterior" ] || anterior="(nenhum)"
-resumo=$(git status --short -- . ':(exclude,literal).claude/autosave.log' ':(exclude,literal).claude/autosave.stamp' 2>/dev/null)
+resumo=$(git status --short -- . ':(exclude,glob).claude/autosave.[l]og' ':(exclude,glob).claude/autosave.[l]og.tmp' ':(exclude,glob).claude/autosave.[s]tamp' 2>/dev/null)
 total=$(printf '%s\n' "$resumo" | wc -l | tr -d ' ')
 lista=$(printf '%s\n' "$resumo" | head -n 30)
 if [ "$total" -gt 30 ]; then

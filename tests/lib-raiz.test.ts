@@ -149,15 +149,35 @@ describe('hooks em bash 3.2 (macOS)', () => {
     }
   })
 
-  // O autosave roda a cada PostToolUse e o limitador (`# Limitador primeiro`) tem de vir antes de qualquer comando externo:
-  // nada de dirname/basename/sed/awk/tr/cut/head/tail/cat/readlink/realpath/date na parte que vem antes dele, só expansão do bash
-  // (`pwd`/`cd` embutidos e o `git rev-parse` do caminho sem CLAUDE_PROJECT_DIR, que já existia). Limite do guarda: texto, não execução.
+  // O autosave roda a cada PostToolUse e o limitador de carimbo (a linha `if ... carimbo_fresco "$carimbo"`) tem de vir antes
+  // de qualquer comando externo de texto: nada de dirname/basename/sed/awk/tr/cut/head/tail/cat/readlink/realpath/date na
+  // parte que vem antes dele, só expansão do bash (`pwd`/`cd` embutidos e o `git rev-parse` do caminho sem CLAUDE_PROJECT_DIR,
+  // que já existia). A ÚNICA exceção é `agora=$(date +%s)`: bash 3.2 não tem relógio sem processo e o limitador precisa dele.
+  // Qualquer outro `date` ou comando de texto reprova. Limite do guarda: texto, não execução.
+  const ancoraLimitador = 'if [ "$limitado" = 1 ] && carimbo_fresco "$carimbo"'
+  const relogio = 'agora=$(date +%s)'
   it('autosave.sh não chama comando externo de texto antes do limitador', () => {
-    const codigo = readFileSync(join(pasta, 'autosave.sh'), 'utf8')
-    const antes = codigo.slice(0, codigo.indexOf('# Limitador primeiro')).split('\n').map(semComentario).join('\n')
+    // CRLF (checkout do Windows) não pode quebrar a igualdade de linha com o relógio.
+    const codigo = readFileSync(join(pasta, 'autosave.sh'), 'utf8').replace(/\r\n/g, '\n')
+    const ancora = codigo.indexOf(ancoraLimitador)
+    // Sem a âncora, o slice pegaria o arquivo inteiro em silêncio: a guarda reprova antes de medir.
+    expect(ancora, 'âncora do limitador sumiu do autosave.sh').toBeGreaterThan(0)
+    const linhas = codigo.slice(0, ancora).split('\n').map(semComentario)
+    expect(linhas.filter((l) => l === relogio), 'linhas do relógio antes do limitador').toHaveLength(1)
+    const antes = linhas.filter((l) => l !== relogio).join('\n')
     expect(antes.length).toBeGreaterThan(200)
     expect(antes).not.toMatch(/\b(dirname|basename|sed|awk|tr|cut|head|tail|cat|readlink|realpath|date)\b/)
     expect(antes).not.toMatch(/`/)
+  })
+
+  // O pré-limitador do worktree (#208) tem de rodar ANTES da resolução da raiz, que é o que abria os processos git.
+  it('autosave.sh tem o pré-limitador do worktree antes da resolução da raiz', () => {
+    const codigo = readFileSync(join(pasta, 'autosave.sh'), 'utf8').replace(/\r\n/g, '\n').split('\n').map(semComentario).join('\n')
+    const preLimitador = codigo.indexOf('carimbo_fresco "$raiz_projeto/.claude/worktrees/')
+    const resolucao = codigo.indexOf('raiz_de_trabalho "$atual"')
+    expect(preLimitador).toBeGreaterThanOrEqual(0)
+    expect(resolucao).toBeGreaterThanOrEqual(0)
+    expect(preLimitador).toBeLessThan(resolucao)
   })
 
   // Windows: o Node chama `bash C:\x\autosave.sh`, sem `/`. No Linux um arquivo cujo NOME tem `\` reproduz o mesmo

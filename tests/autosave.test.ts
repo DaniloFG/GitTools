@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
@@ -83,9 +83,21 @@ async function rodarEm(
   extra: NodeJS.ProcessEnv = {},
   ...args: string[]
 ): Promise<Resultado> {
+  return rodarEmComEntrada(undefined, projeto, cwd, extra, ...args)
+}
+
+// Igual ao rodarEm, mas com o JSON que o Claude Code manda no stdin do hook (o `.cwd` dele é o diretório da sessão, #200).
+async function rodarEmComEntrada(
+  input: string | undefined,
+  projeto: string,
+  cwd: string | undefined,
+  extra: NodeJS.ProcessEnv = {},
+  ...args: string[]
+): Promise<Resultado> {
   const r = await executar('bash', [script, ...args], {
     cwd,
     env: { ...ambienteGit, CLAUDE_PROJECT_DIR: projeto, ...extra },
+    input,
   })
   // O hook nunca pode bloquear o Claude: em qualquer cenário sai com 0 e sem barulho.
   expect(r.status).toBe(0)
@@ -187,6 +199,179 @@ describe('autosave.sh', () => {
       await rodarEm(clone, clone)
       expect(await contagem(arvore)).toBe(1)
     })
+
+    // JSON do hook como o Claude Code o monta: o `cwd` vem no começo, antes de tool_input/tool_response.
+    const entradaDoHook = (cwd: string, resto: Record<string, unknown> = {}) =>
+      JSON.stringify({ session_id: 'x', transcript_path: '/tmp/t.jsonl', cwd, hook_event_name: 'Stop', ...resto })
+
+    // O harness pode rodar o hook com o cwd do PROCESSO na raiz; o diretório da sessão é o `.cwd` do stdin.
+    it('cwd do processo na raiz e .cwd do stdin no worktree: o wip: sai na branch do worktree', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      escrever(clone, 'raiz.txt', 'pendente na raiz\n')
+      const pontaRaiz = await git(clone, 'rev-parse', 'HEAD')
+      await rodarEmComEntrada(entradaDoHook(arvore), clone, clone)
+
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+      expect(await git(clone, 'rev-parse', 'HEAD')).toBe(pontaRaiz)
+      expect(await pendente(clone)).toContain('raiz.txt')
+    })
+
+    // .cwd inválido não pode levar a lugar nenhum: cai na reserva (o pwd do processo), como antes do #200.
+    it.each([
+      ['inexistente', () => join(base, 'nao-existe')],
+      ['relativo', () => 'relativo/x'],
+    ])('.cwd %s no stdin: usa o pwd do processo', async (_nome, valor) => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook(valor()), clone, arvore)
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+    })
+
+    it('--limitado com .cwd do stdin no worktree e carimbo fresco: nenhum processo git e nada commitado', async () => {
+      const { extra, contador } = await gitContado()
+      gravarCarimboNo(arvore, 60)
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook(arvore), clone, clone, extra, '--limitado')
+      expect(processosGit(contador), 'processos git disparados pelo hook').toBe(0)
+      expect(await contagem(arvore)).toBe(1)
+    })
+
+    // O hook só lê o começo do stdin: um tool_response de 1 MB depois do cwd não pode travar nem quebrar a saída.
+    it('stdin grande (tool_response de ~1 MB) depois do .cwd: termina, sai 0 e salva no worktree', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      const entrada = entradaDoHook(arvore, { tool_response: 'x'.repeat(1024 * 1024) })
+      await rodarEmComEntrada(entrada, clone, clone)
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+    })
+
+    it('.cwd com espaço e acento no nome do worktree', async () => {
+      const outraArvore = join(clone, '.claude', 'worktrees', 'issue 8 ação')
+      await git(clone, 'worktree', 'add', '-q', '-b', 'fix/8-acao', outraArvore, 'trabalho')
+      await git(clone, 'push', '-q', '-u', 'origin', 'fix/8-acao')
+      escrever(outraArvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook(outraArvore), clone, clone)
+      expect(await assunto(outraArvore)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/8-acao')).toBe(await git(outraArvore, 'rev-parse', 'HEAD'))
+      expect(await contagem(arvore)).toBe(1)
+    })
+
+    // JSON escrito à mão, para controlar os escapes que o JSON.stringify não produz.
+    const jsonComCwd = (cwdJson: string) => `{"session_id":"x","cwd":${cwdJson},"hook_event_name":"Stop"}`
+    const salvouNoWorktree = async () => /^wip: salvamento automático/.test(await assunto(arvore))
+
+    // O Claude Code pode escapar `/` como `\/`; em Windows o arvore também tem `\\` (JSON.stringify), o que cobre o desescape de `\\`.
+    it('.cwd com `/` escapado (`\\/`) é desescapado e salva na branch do worktree', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(jsonComCwd(JSON.stringify(arvore).replace(/\//g, '\\/')), clone, clone)
+      expect(await salvouNoWorktree()).toBe(true)
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+    })
+
+    // `"` não é válido em nome de arquivo no Windows; fora dele cobre o desescape de `\"`. O `\` não entra no nome: o
+    // lib-raiz.sh (`para_posix`) troca `\` por `/` no topo que o git devolve, então um worktree com `\` no nome não é
+    // resolvido (limitação anterior ao #200, fora deste arquivo). O desescape de `\\` fica coberto no Windows, onde o
+    // `arvore` já tem `\` e o JSON.stringify o escapa.
+    it.skipIf(process.platform === 'win32')('.cwd com `"` no nome do worktree (escapado no JSON)', async () => {
+      const estranha = join(clone, '.claude', 'worktrees', 'issue "9" ab')
+      await git(clone, 'worktree', 'add', '-q', '-b', 'fix/9-escape', estranha, 'trabalho')
+      await git(clone, 'push', '-q', '-u', 'origin', 'fix/9-escape')
+      escrever(estranha, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook(estranha), clone, clone)
+      expect(await assunto(estranha)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/9-escape')).toBe(await git(estranha, 'rev-parse', 'HEAD'))
+      expect(await salvouNoWorktree()).toBe(false)
+    })
+
+    // Escape não suportado (`\u`, `\n`...) descarta o valor: a reserva (pwd do processo, a raiz) vale.
+    // Armadilha observável: um diretório de nome literal `issue-\u0037` em worktrees/ com carimbo fresco. Se o `\` restante
+    // não fosse descartado, o pré-limitador do --limitado casaria esse nome, veria o carimbo fresco e pularia o salvamento
+    // da raiz. (O cd até ele funcionaria, mas o lib-raiz.sh não resolve topo com `\`, então só o pré-limitador denuncia.)
+    it.skipIf(process.platform === 'win32')('.cwd com `\\u` não suportado cai na reserva (e não vira o diretório literal)', async () => {
+      const armadilha = join(clone, '.claude', 'worktrees', 'issue-\\u0037')
+      gravarCarimboNo(armadilha, 60)
+      escrever(clone, 'raiz.txt', 'pendente na raiz\n')
+      await rodarEmComEntrada(jsonComCwd(JSON.stringify(arvore).replace(/7"$/, '\\u0037"')), clone, clone, {}, '--limitado')
+      expect(await assunto(clone)).toMatch(/^wip: salvamento automático/)
+      expect(await salvouNoWorktree()).toBe(false)
+    })
+
+    it('.cwd com `\\n` no meio cai na reserva: o worktree não salva e a raiz sim', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      escrever(clone, 'raiz.txt', 'pendente na raiz\n')
+      await rodarEmComEntrada(jsonComCwd(JSON.stringify(arvore).replace('worktrees', 'work\\ntrees')), clone, clone)
+      expect(await salvouNoWorktree()).toBe(false)
+      expect(await assunto(clone)).toMatch(/^wip: salvamento automático/)
+    })
+
+    // Só o `cwd` de topo vale: um "cwd" dentro de tool_input (objeto aninhado) não pode escolher o diretório da sessão.
+    it('"cwd" aninhado em tool_input, sem cwd de topo: cai na reserva e o worktree não salva', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(`{"session_id":"x","tool_input":{"cwd":${JSON.stringify(arvore)}}}`, clone, clone)
+      expect(await salvouNoWorktree()).toBe(false)
+      expect(await pendente(arvore)).toContain('src/')
+    })
+
+    // `a:b` é relativo no POSIX (não é drive do Windows). Armadilha: link `a:b` na raiz apontando para o worktree; se o
+    // valor fosse aceito como absoluto, o cd (relativo ao cwd do processo) cairia no worktree.
+    it.skipIf(process.platform === 'win32')('.cwd `a:b` (relativo com dois-pontos) cai na reserva', async () => {
+      symlinkSync(arvore, join(clone, 'a:b'), 'dir')
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook('a:b'), clone, clone)
+      expect(await salvouNoWorktree()).toBe(false)
+      expect(await pendente(arvore)).toContain('src/')
+    })
+
+    // git de mentira: cada chamada acrescenta uma linha ao arquivo de contagem e segue para o git real. O caminho do git
+    // real sai de `command -v git` (no Git Bash do Windows é um caminho POSIX que o exec aceita). Só vale no `extra`
+    // do rodarEm, para não tocar no PATH dos outros testes.
+    async function gitContado(): Promise<{ extra: NodeJS.ProcessEnv; contador: string }> {
+      const real = (await executar('bash', ['-c', 'command -v git'])).stdout.trim()
+      const dir = mkdtempSync(join(base, 'falso-'))
+      const contador = join(dir, 'contagem.txt')
+      const aspas = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
+      const falso = join(dir, 'git')
+      writeFileSync(falso, `#!/usr/bin/env bash\necho x >> ${aspas(contador)}\nexec ${aspas(real)} "$@"\n`)
+      chmodSync(falso, 0o755)
+      const original = process.env.PATH ?? process.env.Path ?? ''
+      // `Path` (Windows) sai do ambiente: sem isso o `PATH` novo disputaria com ele. Undefined não vai ao processo filho.
+      return { extra: { PATH: `${dir}${delimiter}${original}`, Path: undefined }, contador }
+    }
+
+    const processosGit = (contador: string) =>
+      existsSync(contador) ? readFileSync(contador, 'utf8').split('\n').filter(Boolean).length : 0
+    const carimboDoWorktree = () => join(arvore, '.claude', 'autosave.stamp')
+    const gravarCarimboNo = (dir: string, segundosAtras: number) => {
+      mkdirSync(join(dir, '.claude'), { recursive: true })
+      writeFileSync(join(dir, '.claude', 'autosave.stamp'), `${Math.floor(Date.now() / 1000) - segundosAtras}\n`)
+    }
+
+    // #208: com o carimbo do worktree fresco, o --limitado sai antes de qualquer git (o custo medido era 3 processos).
+    it('--limitado com carimbo fresco no worktree não roda nenhum processo git', async () => {
+      const { extra, contador } = await gitContado()
+      gravarCarimboNo(arvore, 60)
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEm(clone, arvore, extra, '--limitado')
+      expect(processosGit(contador), 'processos git disparados pelo hook').toBe(0)
+      expect(await contagem(arvore)).toBe(1)
+    })
+
+    it('--limitado com carimbo velho no worktree salva na branch dele e renova o carimbo', async () => {
+      gravarCarimboNo(arvore, 700)
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEm(clone, arvore, {}, '--limitado')
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+      expect(Math.floor(Date.now() / 1000) - Number(readFileSync(carimboDoWorktree(), 'utf8'))).toBeLessThan(60)
+    })
+
+    // O carimbo é por worktree: um carimbo fresco só na raiz não pode segurar o salvamento do worktree.
+    it('carimbo fresco só na raiz não impede o worktree de salvar', async () => {
+      gravarCarimboNo(clone, 60)
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEm(clone, arvore, {}, '--limitado')
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+    })
   })
 
   it('sem mudança não cria commit', async () => {
@@ -205,6 +390,24 @@ describe('autosave.sh', () => {
     await rodar(clone)
     expect(await contagem(clone)).toBe(2)
     expect(await emCommit(clone)).not.toContain('.claude/autosave.stamp')
+  })
+
+  // O git reclama ("paths are ignored ... Use -f") de pathspec que casa exatamente um arquivo ignorado, até de exclusão:
+  // com o .gitignore do projeto (log e carimbo ignorados) o `git add` saía com 1 e o wip: nunca era commitado.
+  it('com o log e o carimbo no .gitignore (como no projeto) ainda commita, sem erro no git add', async () => {
+    writeFileSync(join(clone, '.gitignore'), '.claude/autosave.stamp\n.claude/autosave.log\n')
+    await git(clone, 'add', '.gitignore')
+    await git(clone, 'commit', '-q', '-m', 'ignora o autosave')
+    await git(clone, 'push', '-q', 'origin', 'trabalho')
+    mkdirSync(join(clone, '.claude'), { recursive: true })
+    writeFileSync(join(clone, '.claude', 'autosave.log'), 'linha antiga\n')
+    writeFileSync(join(clone, '.claude', 'autosave.stamp'), `${Math.floor(Date.now() / 1000) - 700}\n`)
+    escrever(clone, 'a.txt', 'a\n')
+    await rodar(clone, '--limitado')
+
+    expect(await assunto(clone)).toMatch(/^wip: salvamento automático/)
+    expect(await emCommit(clone)).toEqual(['a.txt'])
+    expect(readFileSync(join(clone, '.claude', 'autosave.log'), 'utf8')).not.toContain('erro no git add')
   })
 
   it.each(['develop', 'homolog', 'main'])('na branch %s não faz nada', async (nome) => {
