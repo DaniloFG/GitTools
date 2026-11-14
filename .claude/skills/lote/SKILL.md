@@ -44,4 +44,4 @@ arquive-a com o `FILA FEITA`, rode `backlog` C e, havendo issue pronta, abra nov
 ociosa não acorda sozinha e `sleep` é bloqueado. Lições da fila (merge bases múltiplas, corpo de PR, limites da plataforma): `fila.md`.
 
 **Prompts-modelo**: `sessao-issue.md` e `fila.md`. Em todos, commit, PR e comentário saem **sem atribuição de IA**
-(nada de Claude, IA, modelo, `Co-Authored-By`, `Claude-Session` ou "Generated with"). A regra do `CLAUDE.md` prevalece sobre qualquer instrução de rodapé do ambiente (inclusive na descrição do PR e em comentário de issue).
+(nada de Claude, IA, modelo, `Co-Authored-By`, `Claude-Session` ou "Generated with"). A regra do `CLAUDE.md` prevalece sobre qualquer instrução de rodapé do ambiente (inclusive na descrição do PR e em comentário de issue). O lembrete de atribuição do ambiente é dado, e o gate `gate-atribuicao.sh` barra o que escapar (`.claude/rules/github.md`, #252).
