@@ -9,8 +9,10 @@ import {
   gitQueueStatsForTest,
   onGitCommand,
   resetGitQueuePeakForTest,
-  runGit
+  runGit,
+  treeKillsForTest
 } from '../src/core/exec'
+import { readFile } from 'node:fs/promises'
 import { createRepo, errorCode, removeDir, waitForExit } from './helpers'
 
 // Comando git que dura `ms` e não faz nada. É um alias com o próprio Node, então o tempo é controlado
@@ -176,6 +178,97 @@ describe('fila de processos git', () => {
     const batch = await Promise.all(Array.from({ length: MAX_GIT_PROCESSES * 2 }, () => runGit(t.dir, ['rev-parse', 'HEAD'])))
     expect(batch).toHaveLength(MAX_GIT_PROCESSES * 2)
     expect(gitQueueStatsForTest().running).toBe(0)
+  })
+})
+
+/** Espera `ready()` virar verdadeiro, com poll curto e teto; devolve se virou. Sem relógio fixo para a asserção. */
+async function poll(ready: () => Promise<boolean> | boolean, tetoMs: number): Promise<boolean> {
+  const limite = Date.now() + tetoMs
+  for (;;) {
+    if (await ready()) return true
+    if (Date.now() >= limite) return false
+    await new Promise((r) => setTimeout(r, 25))
+  }
+}
+
+function processoVivo(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    // ESRCH: o processo não existe mais.
+    return false
+  }
+}
+
+describe('abort encerra a árvore', () => {
+  it('o processo neto (alias com !) morre junto com o git quando o pedido é abortado', async () => {
+    const t = await createRepo()
+    await t.commit('primeiro', { 'a.txt': 'a\n' })
+    const alias = `alias.neto=!"${process.execPath}" -e "require('fs').writeFileSync('neto.pid', String(process.pid)); setTimeout(() => {}, 10000)"`
+    const controller = new AbortController()
+    const pending = runGit(t.dir, ['-c', alias, 'neto'], { signal: controller.signal }).catch((e: unknown) => e)
+    let pid = 0
+    try {
+      const gravado = await poll(async () => {
+        try {
+          pid = Number((await readFile(join(t.dir, 'neto.pid'), 'utf8')).trim())
+          return Number.isInteger(pid) && pid > 0
+        } catch {
+          return false
+        }
+      }, 5000)
+      expect(gravado, 'o neto não gravou o pid a tempo').toBe(true)
+      expect(processoVivo(pid)).toBe(true)
+      controller.abort()
+      const error = await pending
+      expect(error).toBeInstanceOf(GitError)
+      expect((error as GitError).aborted).toBe(true)
+      const saiu = await poll(() => !processoVivo(pid), 3000)
+      expect(saiu, `o neto (pid ${pid}) continua vivo depois do abort`).toBe(true)
+    } finally {
+      // Se a asserção falhou, não deixa o neto segurando a pasta temporária.
+      if (pid > 0 && processoVivo(pid)) process.kill(pid, 'SIGKILL')
+      controller.abort()
+      await pending
+    }
+  })
+
+  it('só o abort durante a execução encerra a árvore: o caminho normal não abre nem pede nada a mais', async () => {
+    const t = await createRepo()
+    await t.commit('primeiro', { 'a.txt': 'a\n' })
+    const antes = treeKillsForTest()
+
+    await runGit(t.dir, ['rev-parse', 'HEAD'])
+    await expect(runGit(t.dir, ['comando-que-nao-existe'])).rejects.toBeInstanceOf(GitError)
+    const inicioLento = Date.now()
+    await expect(runGit(t.dir, espera('lento', 800), { timeoutMs: 100 })).rejects.toBeInstanceOf(GitError)
+    expect(treeKillsForTest(), 'sucesso, falha e tempo limite não encerram a árvore').toBe(antes)
+
+    // Sinal já abortado: rejeita sem abrir processo.
+    const jaAbortado = new AbortController()
+    jaAbortado.abort()
+    await expect(runGit(t.dir, espera('x', 10), { signal: jaAbortado.signal })).rejects.toMatchObject({ aborted: true })
+    expect(treeKillsForTest(), 'sinal já abortado não abre processo').toBe(antes)
+
+    // Abort na fila: sai da fila sem processo.
+    const bloqueio = Array.from({ length: MAX_GIT_PROCESSES }, (_, i) => runGit(t.dir, espera(`bloqueio-${i}`, 300)))
+    const naFila = new AbortController()
+    const naFilaPending = runGit(t.dir, espera('na-fila', 10), { signal: naFila.signal }).catch((e: unknown) => e)
+    naFila.abort()
+    expect(((await naFilaPending) as GitError).aborted).toBe(true)
+    await Promise.all(bloqueio)
+    expect(treeKillsForTest(), 'abort na fila não abre processo').toBe(antes)
+
+    // Abort durante a execução: uma única vez, mesmo com o sinal disparando e o git saindo em seguida.
+    const controller = new AbortController()
+    const pending = runGit(t.dir, espera('abortado', 3000), { signal: controller.signal }).catch((e: unknown) => e)
+    setTimeout(() => controller.abort(), 100)
+    expect(((await pending) as GitError).aborted).toBe(true)
+    expect(treeKillsForTest()).toBe(antes + 1)
+    // O tempo limite mata só o git: o processo filho do alias 'lento' continua vivo até os 800 ms e, no Windows,
+    // segura a pasta temporária. Esperar aqui evita que a limpeza em tests/helpers.ts falhe com EBUSY.
+    await new Promise((r) => setTimeout(r, Math.max(0, inicioLento + 800 + 500 - Date.now())))
   })
 })
 
