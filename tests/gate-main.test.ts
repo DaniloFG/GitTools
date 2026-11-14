@@ -1399,6 +1399,13 @@ describe('gate-main: git push sem destino explícito resolve o branch atual', ()
     expect((await bash('gh pr merge 30 \\\r\n --merge \\\r\n --match-head-commit abc0030')).code).toBe(0)
   })
 
+  // DIAGNÓSTICO TEMPORÁRIO (#224): só no Windows; imprime os bytes que o hook vê.
+  it.skipIf(process.platform !== 'win32')('diagnóstico CRLF: bytes que o hook vê no Windows', async () => {
+    const r = await bash('git push origin \\\r\n main', naFeature, { GATE_MAIN_DIAG: '1' })
+    console.error(`DIAG_CODE=${r.code}\n${r.stderr}`)
+    expect(true).toBe(true)
+  })
+
   // `git push -o x origin`: o valor de -o contava como refspec (npos 2), então o push sem destino passava na main.
   it.each([
     'git push -o ci.skip origin',
