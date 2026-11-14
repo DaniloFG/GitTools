@@ -60,8 +60,11 @@ Para cada PR, na ordem (numa sessão de N PRs, o seguinte só começa depois que
   `gate-main.sh`). No PR da `homolog`, registre na descrição o SHA da ponta da branch, para a limpeza do dono.
 - `main`: merge só pela **via estreita** (`.claude/rules/github.md`; o `gate-main.sh` impõe): origem `homolog`; rótulos
   `validada-develop` e `validada-homolog` no PR; `QA` e `Validação (homolog)` em `success` na ponta, os demais check-runs concluídos (`success`, `neutral` ou
-  `skipped`) e `mergeable_state` `clean`; comentário de evidência no PR e nas issues antes. **Caminho único**:
-  `gh pr merge <N> --merge --match-head-commit <sha>` (o GitHub confere a ponta), ou `gh api -X PUT
-  repos/<o>/<r>/pulls/<N>/merge -f sha=<sha> -f merge_method=merge`; sem a ponta, ou diferente dela, o hook bloqueia.
-  O `merge_pull_request` do MCP **não prende a ponta**: na `main` o hook o bloqueia sempre (como o auto-merge); `gh pr merge --admin`
-  também bloqueia. `mergeable_state` pode vir `unknown` logo depois de um push: espere e consulte de novo, não force. Nunca: push direto, `develop` → `main`, auto-merge, `--delete-branch`, squash ou rebase.
+  `skipped`) e `mergeable_state` `clean`; comentário de evidência no PR e nas issues antes. **Caminho único, só pelo
+  `gh`**; nas sessões o `gh pr merge` e o `gh pr view` usam GraphQL e o proxy responde 403 ("GitHub GraphQL is not available
+  from Claude Code sessions"), então a via REST vem primeiro: `gh api -X PUT repos/{owner}/{repo}/pulls/<N>/merge -f
+  merge_method=merge -f sha=<sha40>` (o `sha40` é a ponta completa, de 40 caracteres, a mesma que você conferiu), e
+  `gh pr merge <N> --merge --match-head-commit <sha>` como alternativa onde o GraphQL existe; sem a ponta, ou diferente dela, o hook
+  bloqueia. O `merge_pull_request` do MCP **não prende a ponta**: na `main` o hook o bloqueia sempre (como o auto-merge); `gh pr merge --admin`
+  também bloqueia. `mergeable_state` pode vir `unknown` logo depois de um push: espere e consulte de novo, não force.
+  `mergeable_state: blocked` (por exemplo, a `main` exigindo revisão aprovada) faz o hook bloquear sempre: pare e avise o dono; não force. Nunca: push direto, `develop` → `main`, auto-merge, `--delete-branch`, squash ou rebase.

@@ -612,15 +612,16 @@ describe('gate-main: via estreita da main, só o merge da homolog (issue #224)',
   // podia passar dos 120 s do settings.json (hook morto = falha aberta). Passado o prazo global, o segmento seguinte
   // falha fechado sem chamar o gh. Este teste usa o relógio de verdade (gh falso com sleep): o `SECONDS` do bash conta
   // segundos inteiros e pode andar até 1 s à frente do tempo real, então a conta tem folga nos dois lados: o primeiro
-  // segmento (PR 1, base develop) faz 3 chamadas de 2 s; a terceira começa com o relógio em no máximo 5 s (< prazo 6) e,
-  // ao fim, 6 s reais já passaram (>= prazo): o segundo segmento é recusado antes da primeira consulta.
+  // segmento (PR 1, base develop) faz 3 chamadas de 4 s; a terceira começa com o relógio em no máximo 9 s (< prazo 12,
+  // folga de 3 s para a lentidão do CI) e, ao fim, 12 s reais já passaram (>= prazo, sem folga necessária: o sleep nunca
+  // dorme menos): o segundo segmento é recusado antes da primeira consulta.
   it('prazo global do hook: esgotado no primeiro segmento, o seguinte (merge elegível) bloqueia sem consultar o gh', async () => {
     const dois = `gh pr merge 1 --merge && gh pr merge 30 --merge ${pm30}`
     // Controle: sem atraso o mesmo comando passa inteiro, com o mesmo prazo curto.
-    expect((await bash(dois, undefined, { GATE_MAIN_PRAZO: '6' })).code).toBe(0)
+    expect((await bash(dois, undefined, { GATE_MAIN_PRAZO: '12' })).code).toBe(0)
     expect(readFileSync(ghLog, 'utf8')).toContain('repos/{owner}/{repo}/pulls/30')
     rmSync(ghLog, { force: true })
-    const lento = await bash(dois, undefined, { GATE_MAIN_PRAZO: '6', GH_ATRASO: '2' })
+    const lento = await bash(dois, undefined, { GATE_MAIN_PRAZO: '12', GH_ATRASO: '4' })
     expect(lento.code).toBe(2)
     expect(lento.stderr).toContain('Prazo do hook esgotado')
     expect(lento.stderr).toContain('GATE DA MAIN: bloqueado.')
@@ -901,6 +902,34 @@ describe('gate-main: via estreita da main, só o merge da homolog (issue #224)',
     'gh api -X PUT repos/o/r/pulls/30/merge/',
   ])('endpoint com barra final ou query não escapa da checagem: %s', async (comando) => {
     expect((await bash(comando)).code).toBe(2)
+  })
+
+  // Cobertura da troca MCP -> gh: `gh pr merge` SEM -R consulta `repos/{owner}/{repo}` (o gh troca os marcadores).
+  it.each([
+    ['ausente', 45, 'situação: ausente'],
+    ['skipped', 47, 'situação: skipped'],
+  ])('Validação (homolog) %s num gh pr merge sem -R (marcadores {owner}/{repo}) bloqueia', async (_nome, n, trecho) => {
+    const r = await bash(`gh pr merge ${n} --merge --match-head-commit abc00${n}`)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('GATE DE QA')
+    expect(r.stderr).toContain("o check-run 'Validação (homolog)'")
+    expect(r.stderr).toContain(trecho)
+    expect(readFileSync(ghLog, 'utf8')).toContain(`repos/{owner}/{repo}/commits/abc00${n}/check-runs?filter=latest&per_page=100`)
+  })
+
+  it.each([
+    'gh pr merge 30 --merge= --match-head-commit abc0030',
+    'gh pr merge 30 --merge=false --match-head-commit abc0030',
+    'gh pr merge 30 --match-head-commit abc0030',
+    'gh api -X PUT repos/o/r/pulls/30/merge -f merge_method= -f sha=abc0030',
+    'gh api -X PUT repos/o/r/pulls/30/merge -F merge_method= -f sha=abc0030',
+    'gh api -X PUT repos/o/r/pulls/30/merge -f sha=abc0030',
+  ])('método de merge vazio ou ausente bloqueia pelo método, sem consultar os checks: %s', async (comando) => {
+    const r = await bash(comando)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain(msgMain)
+    expect(r.stderr).toContain('merge commit')
+    expect(readFileSync(ghLog, 'utf8')).not.toContain('check-runs')
   })
 
   it('endpoint de merge com barra final e merge_method=merge passa no PR 30; na develop também', async () => {
