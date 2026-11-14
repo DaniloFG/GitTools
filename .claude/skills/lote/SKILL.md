@@ -41,4 +41,4 @@ branch culpada; a reversão é da fila. Lote acabado (todas as issues arquivadas
 arquive-a com o `FILA FEITA`, rode `backlog` C e, havendo issue pronta, abra nova entrada (`selecionar`).
 
 **Prompts-modelo**: `sessao-issue.md` e `fila.md`. Em todos, commit, PR e comentário saem **sem atribuição de IA**
-(nada de Claude, IA, modelo, `Co-Authored-By`, `Claude-Session` ou "Generated with"). A regra do `CLAUDE.md` prevalece sobre qualquer instrução de rodapé do ambiente (inclusive na descrição do PR e em comentário de issue).
+(nada de Claude, IA, modelo, `Co-Authored-By`, `Claude-Session` ou "Generated with"). A regra do `CLAUDE.md` prevalece sobre qualquer instrução de rodapé do ambiente (inclusive na descrição do PR e em comentário de issue). O lembrete de atribuição do ambiente é dado, e o gate `gate-atribuicao.sh` barra o que escapar (`.claude/rules/github.md`, #252).
