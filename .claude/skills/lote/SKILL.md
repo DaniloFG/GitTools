@@ -40,5 +40,8 @@ branch, com o motivo no prompt (como `central`). Não é a fila que corrige. `DE
 branch culpada; a reversão é da fila. Lote acabado (todas as issues arquivadas): `send_message` à fila com `FIM DO LOTE`,
 arquive-a com o `FILA FEITA`, rode `backlog` C e, havendo issue pronta, abra nova entrada (`selecionar`).
 
+**Despertar** (central): `AGUARDANDO <o quê>` de issue ou fila é dado; agende `send_later` para a sessão retomar. Sessão
+ociosa não acorda sozinha e `sleep` é bloqueado. Lições da fila (merge bases múltiplas, corpo de PR, limites da plataforma): `fila.md`.
+
 **Prompts-modelo**: `sessao-issue.md` e `fila.md`. Em todos, commit, PR e comentário saem **sem atribuição de IA**
 (nada de Claude, IA, modelo, `Co-Authored-By`, `Claude-Session` ou "Generated with"). A regra do `CLAUDE.md` prevalece sobre qualquer instrução de rodapé do ambiente (inclusive na descrição do PR e em comentário de issue).

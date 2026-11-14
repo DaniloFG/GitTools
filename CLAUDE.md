@@ -100,7 +100,7 @@ Antes de fazer à mão, veja se a skill citada existe na lista da sessão; se n�
 | Permissões, hooks, variáveis de ambiente | `update-config`; menos pedidos de permissão: `fewer-permission-prompts` |
 | Abrir, acompanhar ou fazer merge de PR | skill `pr`: Haiku, `low`. Depois de todo merge na `develop` e na `homolog`: `validar` o commit do merge (`gt-validador`, pipeline com integração e e2e) antes do passo seguinte; sem as duas verdes, nada de merge na `main` |
 | Repetir ou vigiar algo | `loop` |
-| Fila de issues Pequenas/Médias em paralelo, uma branch por issue | `lote` (`.claude/rules/github.md`) |
+| Fila de issues Pequenas/Médias em paralelo, uma branch por issue | `lote` (`.claude/rules/github.md`); limites da plataforma (rodapé de PR, release 403): `fila.md` |
 | Abre muitos agentes ou gasta crédito: `batch` (um PR por unidade, fora do fluxo de branches), `code-review` nos níveis `max` e `ultra` | Só com a palavra do dono: sugira e espere |
 
 Comandos só do dono (sugira em uma linha): `/clear` ao mudar de assunto; `/context`, `/compact <o que manter>` em
