@@ -151,6 +151,10 @@ As duas passagens dependem dela, então ela fica de pé até o fim do plano: nã
 Quando a sessão só puder empurrar para a branch designada (`ccr-*`), o trabalho segue nela; o corte da `main` vale quando a
 branch puder ser escolhida.
 
+- **Branch por etapa: não agora** (decisão da #113). Hoje cada sessão de etapa empurra para a própria branch de trabalho
+  (`outcome_branch`) e as etapas rodam em sequência, então o isolamento por etapa (`<branch>/E<n>`, mergeada pela central) só
+  traria um merge a mais por etapa, conflito no `docs/HANDOFF.md` e mais branches para o dono limpar. Reavalie se houver duas
+  etapas realmente paralelas na mesma branch, ou uma etapa descartada que precise sair sem reescrever histórico.
 - **O Claude não apaga branches.** A sessão recebe 403 ao tentar (git e `gh api` são bloqueados pelo proxy). Apagar é do
   dono; fica proibido tentar por qualquer caminho.
 - **`delete_branch_on_merge` não é ligado.** Com ele ligado, a branch sumiria antes do PR para a `homolog`.
