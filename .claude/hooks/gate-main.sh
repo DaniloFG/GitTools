@@ -807,33 +807,20 @@ campos=$(printf '%s' "$entrada" | jq -r '
   [ (.tool_name | s), (.tool_input.owner | s), (.tool_input.repo | s), (.tool_input.pullNumber | s),
     (.tool_input.branch | s), (.tool_input.base | s), (.tool_input.command | s) ] | join("\u001f")') \
   || bloquear "não foi possível ler a chamada da ferramenta (JSON inválido)."
-# DIAGNÓSTICO TEMPORÁRIO (#224, CRLF no Windows): com GATE_MAIN_DIAG=1 despeja em stderr os bytes que o hook vê. Opt-in.
-diag_crlf() {
-  [ "${GATE_MAIN_DIAG:-}" = 1 ] || return 0
-  local rotulo=$1 c=$2 v jqv temcr=nao cr=$'\r'
-  jqv=$(jq --version 2>&1)
-  case $c in *"$cr"*) temcr=sim ;; esac
-  {
-    echo "=== DIAG $rotulo | BASH_VERSION=$BASH_VERSION | jq=$jqv | tem CR: $temcr"
-    echo "-- comando (od -c)"; printf '%s' "$c" | od -c | head -8
-    v=${c//$'\r\n'/$'\n'}; echo "-- A: CRLF->LF"; printf '%s' "$v" | od -c | head -8
-    v=${c//$'\r'/}; echo "-- B: remove CR"; printf '%s' "$v" | od -c | head -8
-    v=$(printf '%s' "$c" | tr -d '\r'); echo "-- C: tr -d CR"; printf '%s' "$v" | od -c | head -8
-    v=${c//\\$'\n'/ }; echo "-- D: junta backslash+LF (cru)"; printf '%s' "$v" | od -c | head -8
-    v=${c//$'\r'/}; v=${v//\\$'\n'/ }; echo "-- E: B depois D"; printf '%s' "$v" | od -c | head -8
-    v=$(printf 'a\r\nb\r'); echo "-- \$(printf a CR LF b CR)"; printf '%s' "$v" | od -c | head -3
-    echo "-- entrada bruta (od -c)"; printf '%s' "$entrada" | od -c | head -12
-    echo "-- jq -r .tool_input.command direto (od -c)"; printf '%s' "$entrada" | jq -r '.tool_input.command' | od -c | head -8
-  } >&2
-}
-# Fim de linha do Windows: o jq do Windows escreve CRLF no lugar de cada `\n`, então `\` + quebra chega como `\`+CR+LF e
-# a continuação não era juntada (o push com `\` e quebra antes de main passava). CRLF vira LF e CR solto vira espaço
-# (separa palavras: o excesso só gera falso positivo, nunca falso negativo). Sem construção bash 4+.
-diag_crlf antes "${campos##*$'\x1f'}"
-campos=${campos//$'\r\n'/$'\n'}
-campos=${campos//$'\r'/ }
+# Fim de linha do Windows: o jq do Windows escreve o stdout em modo texto e troca cada `\n` por CR+LF. Medido no CI
+# (bash 5.3 / jq 1.8.2 do windows-latest, issue #224): `\`+CR+LF chega como `\`+CR+CR+LF, e uma passada de CRLF->LF deixava
+# `\`+CR+LF, que o passo seguinte (CR solto -> espaço) estragava em `\`+espaço+LF: a continuação não era juntada e o push
+# com `\` e quebra antes de main passava. Por isso o CR que antecede um LF é colapsado até estabilizar (cada volta encurta
+# o texto, então termina), e só depois o CR solto vira espaço (separa palavras: o excesso só gera falso positivo, nunca
+# falso negativo). Só entra quando há CR (caso comum: nenhuma volta, nenhum processo). Sem construção bash 4+ e sem `$'..'`
+# dentro de `$(...)` (o bash do Windows não faz o parse).
+case $campos in
+  *$'\r'*)
+    while [[ $campos == *$'\r\n'* ]]; do campos=${campos//$'\r\n'/$'\n'}; done
+    campos=${campos//$'\r'/ }
+    ;;
+esac
 IFS=$'\x1f' read -r -d '' ferramenta dono repo numero ramo base_nova comando <<<"$campos"
-diag_crlf depois-do-read "$comando"
 
 case "$ferramenta" in
   # Na main, o MCP é bloqueado sempre (modo mcp em exigir_metodo_main); em develop e homolog segue como antes.

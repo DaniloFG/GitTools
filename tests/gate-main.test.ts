@@ -1399,11 +1399,19 @@ describe('gate-main: git push sem destino explícito resolve o branch atual', ()
     expect((await bash('gh pr merge 30 \\\r\n --merge \\\r\n --match-head-commit abc0030')).code).toBe(0)
   })
 
-  // DIAGNÓSTICO TEMPORÁRIO (#224): só no Windows; imprime os bytes que o hook vê.
-  it.skipIf(process.platform !== 'win32')('diagnóstico CRLF: bytes que o hook vê no Windows', async () => {
-    const r = await bash('git push origin \\\r\n main', naFeature, { GATE_MAIN_DIAG: '1' })
-    console.error(`DIAG_CODE=${r.code}\n${r.stderr}`)
-    expect(true).toBe(true)
+  // Medido no windows-latest (issue #224): o jq do Windows troca cada LF por CR+LF, então o `\`+CR+LF do comando chega
+  // ao hook como `\`+CR+CR+LF. No Linux o teste simula o mesmo (CR repetido antes do LF) e reprova sem o colapso.
+  it('CR repetido antes do LF (jq do Windows sobre CRLF) ainda junta a continuação e bloqueia a main', async () => {
+    for (const quebra of ['\r\r\n', '\r\r\r\n']) {
+      const r = await bash(`git push origin \\${quebra} main`, naFeature)
+      expect(r.code).toBe(2)
+      expect(r.stderr).toContain('destino na main')
+      expect((await bash(`git push origin \\${quebra} feature/x`, naFeature)).code).toBe(0)
+      expect((await bash(`gh pr merge 30 \\${quebra} --squash \\${quebra} --match-head-commit abc0030`)).code).toBe(2)
+      expect((await bash(`gh pr merge 30 \\${quebra} --merge \\${quebra} --match-head-commit abc0030`)).code).toBe(0)
+    }
+    // CR solto (sem LF) separa palavras: o destino na main continua visível.
+    expect((await bash('git push origin\rmain', naFeature)).code).toBe(2)
   })
 
   // `git push -o x origin`: o valor de -o contava como refspec (npos 2), então o push sem destino passava na main.
