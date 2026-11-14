@@ -100,7 +100,7 @@ export function CompareView({ request, onRequest }: Props) {
     setSelection(new Set())
     if (!source || !active) return
     let cancelled = false
-    git.diff({ ...source, path: active.path, uncapped }).then(
+    git.diff({ ...source, path: active.path, oldPath: active.oldPath, uncapped }).then(
       (files) => !cancelled && setDiff(files.find((f) => f.path === active.path) ?? files[0] ?? null),
       (e) => !cancelled && toast('error', errorMessage(e))
     )
@@ -130,7 +130,7 @@ export function CompareView({ request, onRequest }: Props) {
     try {
       let files: FileDiff[]
       try {
-        files = await git.diff({ ...source, path: file.path, uncapped: true })
+        files = await git.diff({ ...source, path: file.path, oldPath: file.oldPath, uncapped: true })
       } catch (e) {
         toast('error', errorMessage(e))
         return
