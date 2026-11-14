@@ -1389,6 +1389,16 @@ describe('gate-main: git push sem destino explícito resolve o branch atual', ()
     expect((await bash('gh api -X PUT \\\n repos/o/r/pulls/30/merge \\\n -f merge_method=squash -f sha=abc0030')).code).toBe(2)
   })
 
+  it('fim de linha CRLF (jq do Windows) não esconde a continuação nem o destino na main', async () => {
+    const r = await bash('git push origin \\\r\n main', naFeature)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('destino na main')
+    expect((await bash('git push origin main\r\n', naFeature)).code).toBe(2)
+    expect((await bash('git push origin \\\r\n feature/x', naFeature)).code).toBe(0)
+    expect((await bash('gh pr merge 30 \\\r\n --squash \\\r\n --match-head-commit abc0030')).code).toBe(2)
+    expect((await bash('gh pr merge 30 \\\r\n --merge \\\r\n --match-head-commit abc0030')).code).toBe(0)
+  })
+
   // `git push -o x origin`: o valor de -o contava como refspec (npos 2), então o push sem destino passava na main.
   it.each([
     'git push -o ci.skip origin',

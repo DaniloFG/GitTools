@@ -807,6 +807,11 @@ campos=$(printf '%s' "$entrada" | jq -r '
   [ (.tool_name | s), (.tool_input.owner | s), (.tool_input.repo | s), (.tool_input.pullNumber | s),
     (.tool_input.branch | s), (.tool_input.base | s), (.tool_input.command | s) ] | join("\u001f")') \
   || bloquear "não foi possível ler a chamada da ferramenta (JSON inválido)."
+# Fim de linha do Windows: o jq do Windows escreve CRLF no lugar de cada `\n`, então `\` + quebra chega como `\`+CR+LF e
+# a continuação não era juntada (o push com `\` e quebra antes de main passava). CRLF vira LF e CR solto vira espaço
+# (separa palavras: o excesso só gera falso positivo, nunca falso negativo). Sem construção bash 4+.
+campos=${campos//$'\r\n'/$'\n'}
+campos=${campos//$'\r'/ }
 IFS=$'\x1f' read -r -d '' ferramenta dono repo numero ramo base_nova comando <<<"$campos"
 
 case "$ferramenta" in
