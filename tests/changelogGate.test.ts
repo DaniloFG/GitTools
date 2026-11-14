@@ -4,6 +4,7 @@ import {
   gateProblems,
   NEUTRAL_NOTE,
   releaseNotes,
+  EXCECOES,
   RULES,
   scanTextFiles,
   sectionBody,
@@ -277,6 +278,106 @@ const RUINS: [regra: string, texto: string][] = [
   ['rastreador', '- Registrado no rastreador.'],
   ['rastreador', '- Filed in the issue tracker.'],
   ['rastreador', '- Filed in the tracker.'],
+
+  // --- rodada 5: separadores (espaço, _, -, /) ---
+  ['pull-request', '- Opened a pull_request for it.'],
+  ['pull-request', '- Opened a pull-request for it.'],
+  ['pull-request', '- Runs on pull_request_target.'],
+  ['pull-request', '- Opened a pull/request for it.'],
+  ['revisao-codigo', '- After the code-review.'],
+  ['revisao-codigo', '- After the code_review.'],
+  ['integracao-continua', '- Moved to continuous-integration.'],
+  ['ia-extenso', '- Uses artificial-intelligence.'],
+  ['ia-extenso', '- Uses machine-learning.'],
+  ['ia-extenso', '- Uses machine_learning.'],
+  ['github-actions', '- Runs on github-actions.'],
+  ['github-actions', '- Runs on github_actions.'],
+  ['branch-protection', '- Turned on branch-protection.'],
+  ['branch-protection', '- Turned on branch_protection.'],
+  ['merge-request', '- Opened a merge-request.'],
+  ['merge-request', '- Opened a merge_request.'],
+  ['limite-uso', '- Hit the rate-limit.'],
+  ['limite-uso', '- Hit the rate_limit.'],
+  ['teste-unitario', '- Added unit-tests.'],
+  ['teste-unitario', '- Added unit_tests.'],
+  ['check-obrigatorio', '- A new status-check.'],
+  ['check-obrigatorio', '- A new status_check.'],
+  ['issue-numero', '- Fixed issue/123.'],
+  ['co-authored-by', 'Co_Authored_By: alguém'],
+  ['npm-run', '- Run npm-run build.'],
+  // --- rodada 5: novas palavras ---
+  ['sandbox', '- Runs in a sandbox.'],
+  ['container', '- Runs in a container.'],
+  ['container', '- Runs in containers.'],
+  ['proxy', '- Goes through a proxy.'],
+  ['token', '- A new token is stored.'],
+  ['token', '- The tokens are stored.'],
+  ['secret', '- A new secret is stored.'],
+  ['secret', '- The secrets are stored.'],
+  ['webhook', '- Calls a webhook.'],
+  ['webhook', '- Calls the webhooks.'],
+  ['cron', '- Runs from a cron.'],
+  ['scheduled-job', '- Added a scheduled job.'],
+  ['scheduled-job', '- Added a scheduled_job.'],
+  ['generated', '- A generated file.'],
+  ['generated', '- Generated text.'],
+  ['notas-agora-vem', '- Release notes now come from the file.'],
+  ['publicando-em', '- Publishing to Open VSX.'],
+  ['publicando-em', '- Publishing to Marketplace.'],
+  ['publicando-em', '- Publishing to VS Marketplace.'],
+  ['genai', '- Uses GenAI.'],
+  ['xai', '- Uses xAI.'],
+  ['ai-generated', '- An ai-generated text.'],
+  ['mistral', '- Uses Mistral.'],
+  ['llama', '- Uses Llama.'],
+  ['grok', '- Uses Grok.'],
+  ['deepseek', '- Uses DeepSeek.'],
+  ['cursor', '- Works in Cursor.'],
+  ['devin', '- Written by Devin.'],
+  ['windsurf', '- Works in Windsurf.'],
+  ['id-numerico', '- See run 12345678.'],
+  ['id-numerico', '- See job 123456789.'],
+  ['id-numerico', '- See id 12345678.'],
+  ['autosave', '- The autosave saved it.'],
+  ['review-comments', '- Addressed the review comments.'],
+  ['after-review', '- Changed after review.'],
+  ['segunda-revisao', '- Feito na segunda revisão.'],
+  ['acceptance-criteria', '- Met the acceptance criteria.'],
+  ['acceptance-criteria', '- Cumpriu os critérios de aceite.'],
+  ['tech-debt', '- Paid some tech debt.'],
+  ['tech-debt', '- Pagou débito técnico.'],
+  ['fase-numero', '- Phase 2 done.'],
+  ['fase-numero', '- Fase 2 feita.'],
+  ['test-suite', '- A faster test suite.'],
+  ['added-tests', '- Added tests.'],
+  ['fixed-build', '- Fixed the build.'],
+  ['refactor-interno', '- An internal refactor.'],
+  ['refactor-interno', '- Uma refatoração interna.'],
+  ['context-window', '- Fits the context window.'],
+  ['conversa', '- As discussed, changed it.'],
+  ['conversa', '- Conforme a conversa, mudou.'],
+  ['branch-nome', '- Work from bugfix/tour.'],
+  ['branch-nome', '- Work from release/1.0.'],
+  ['branch-nome', '- Work from wip/tour.'],
+  ['branch-nome', '- Work from hotfix/tour.'],
+  ['origin-ref', '- Compared with origin/main.'],
+  ['staging', '- Tested on staging.'],
+  ['staging', '- A staging build.'],
+  ['staging', '- Tested in the staging environment.'],
+  ['producao', '- Checked in the production environment.'],
+  ['sigla-qa', '- Passed qa.'],
+  ['sigla-qa', '- Passed Q.A.'],
+  ['npm-ci', '- Run npm ci first.'],
+  ['npx', '- Run npx vitest.'],
+  ['ubuntu-latest', '- Runs on ubuntu-latest.'],
+  ['bump', '- Bump left-pad from 1.0.0 to 1.0.1'],
+  ['automation', '- New automation.'],
+  // --- rodada 5: exceções por frase exata não abrem a regra ---
+  ['assistente', '- Thanks to the git assistant.'],
+  ['assistente', '- The git assistant wrote the code.'],
+  ['assistente', '- Moved the media/readme/inline-assistant.png file.'],
+  ['assistente', '- Moved the inline-assistant-new.gif file.'],
+  ['bot', '- Hide bots wrote it, the bots did.'],
 ]
 
 // Texto que o usuário lê sem problema, inclusive palavras que contêm um termo proibido sem serem ele.
@@ -310,6 +411,12 @@ const BONS = [
   '- Wow! The merge finished.',
   '- Hide bots in the Dashboards filters.',
   '- Edit files with a git assistant.',
+  '- Line-by-line staging, straight from the diff.',
+  '- Settings: staging por linha.',
+  '- hide bots and ocultar bots are filters.',
+  '- The editor with the git assistant bubble at the end of the current line.',
+  '- Batch actions stay on the Conflicts footer.',
+  '- Queue of pending lines is kept.',
   '- Colon after a word: nothing else here.',
 ]
 
@@ -352,8 +459,9 @@ describe('findForbidden: textos de usuário passam', () => {
     expect(findForbidden(texto)).toEqual([])
   })
 
-  it('IA, AI e QA só valem em MAIÚSCULAS e palavra inteira', () => {
-    expect(findForbidden('mais, ai, ia e qa em minúsculas ficam de fora')).toEqual([])
+  it('IA e AI só valem em MAIÚSCULAS e palavra inteira (QA vale em qualquer caixa)', () => {
+    expect(findForbidden('mais, ai e ia em minúsculas ficam de fora')).toEqual([])
+    expect(findForbidden('qa Qa Q.A. q.a.').map((a) => a.rule)).toEqual(['sigla-qa', 'sigla-qa', 'sigla-qa', 'sigla-qa'])
     expect(findForbidden('PRIMEIRO, CIDADE, AIRBAG e QAT não são siglas')).toEqual([])
   })
 
@@ -375,6 +483,27 @@ describe('findForbidden: textos de usuário passam', () => {
     expect(findForbidden('\uFF30\uFF32 em largura total').map((a) => a.rule)).toContain('pr')
     expect(findForbidden('pipe\u200Bline').map((a) => a.rule)).toEqual(['invisivel', 'pipeline'])
     expect(findForbidden('pipe\u200Bline')[0].match).toBe('U+200B')
+  })
+})
+
+describe('EXCECOES: só a frase exata do produto passa', () => {
+  it.each(EXCECOES.map((e) => [e.frase] as const))('a frase "%s" passa sozinha', (frase) => {
+    expect(findForbidden(frase)).toEqual([])
+  })
+
+  it('cada exceção diz de onde vem', () => {
+    for (const { frase, onde } of EXCECOES) expect(onde.length, frase).toBeGreaterThan(5)
+  })
+
+  it('a exceção não esconde o que está ao lado dela', () => {
+    expect(findForbidden('git assistant bubble and the pipeline').map((a) => a.rule)).toEqual(['pipeline'])
+    expect(findForbidden('Hide bots, then ask the assistant').map((a) => a.rule)).toEqual(['assistente'])
+  })
+
+  it('variações da frase que não são exatamente ela reprovam', () => {
+    for (const texto of ['Thanks to the git assistant', 'the git assistant wrote the code', 'inline-assistant.png']) {
+      expect(findForbidden(texto), texto).not.toEqual([])
+    }
   })
 })
 

@@ -49,7 +49,15 @@ paths:
   runs"; "pull request" vira "merge request on the host". Termos de git como branch, merge, commit, rebase,
   cherry-pick, worktree e staging passam.
 - **O portão é uma lista de bloqueio, não prova de que o texto é de usuário**: a revisão do PR confere a regra positiva
-  (cada bullet descreve o que o usuário vê, usa ou ganha).
+  (cada bullet descreve o que o usuário vê, usa ou ganha; o checklist do PR cobra isso). Uma pessoa aprova o
+  `## [Unreleased]` antes de uma minor ou de uma tag: a decisão de publicar a minor é do dono.
+- **Palavra do produto que o portão barra** (`cursor`, `token`, `assistant`, `staging`, `bots`): reescreva descrevendo
+  o efeito ("the line you are on", não "the cursor line"). Só entra em `EXCECOES` (frase exata, com a origem
+  comentada) o que o README, a interface ou uma seção já publicada do CHANGELOG exigem: "git assistant bubble" passa,
+  "Thanks to the git assistant" não. Termo composto aceita espaço, `_`, `-` e `/` entre as palavras
+  (`pull_request_target` e `code-review` reprovam como `pull request`).
+- **Não barrados de propósito**: `batch` e `queue` (o produto tem "batch actions" e filas de operações) e a
+  palavra `issue` sozinha (só "issue + número" e "sub-issue" reprovam).
 - **Patch automático não ganha seção**: o release dele usa o texto de `## [Unreleased]`. Sem seção da versão e com o
   `Unreleased` vazio (sem bullet, ou só `- Nothing yet.`), o push na branch publica a nota fixa
   `- Maintenance release: stability improvements.` (modo `neutro`, ligado só por `github.event_name == 'push'` e

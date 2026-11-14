@@ -30,8 +30,16 @@ const VERSION = /^\d+\.\d+\.\d+$/
 const ANTES = '(?<![\\p{L}\\p{N}])'
 const DEPOIS = '(?![\\p{L}\\p{N}])'
 
-/** Palavra inteira sem diferença de caixa: "Pipeline", "PIPELINES" e "pipeline" casam. */
-const palavra = (rule, fonte) => ({ rule, re: new RegExp(`${ANTES}(?:${fonte})${DEPOIS}`, 'giu') })
+// Separador entre as palavras de um termo composto: espaço, `_`, `-` ou `/`. Quem escreve "pull_request_target",
+// "code-review" ou "rate/limit" não escapa de uma regra escrita com um espaço só.
+const SEP = '[\\s_/-]'
+
+/** Escreve o termo composto com SEP: `\s+` vira SEP+ e as classes `[-\s]`/`[-_\s]` ganham `_` e `/`. */
+const separar = (fonte) =>
+  fonte.replaceAll('\\s+', `${SEP}+`).replaceAll('[-\\s]', SEP).replaceAll('[-_\\s]', SEP)
+
+/** Palavra inteira sem diferença de caixa: "Pipeline", "PIPELINES" e "pipeline" casam. Termos compostos usam SEP. */
+const palavra = (rule, fonte) => ({ rule, re: new RegExp(`${ANTES}(?:${separar(fonte)})${DEPOIS}`, 'giu') })
 
 /** Palavra inteira só com a caixa escrita: siglas em MAIÚSCULAS, para não pegar "ia" (verbo) ou "ai" de outras palavras. */
 const sigla = (rule, fonte) => ({ rule, re: new RegExp(`${ANTES}(?:${fonte})${DEPOIS}`, 'gu') })
@@ -93,7 +101,8 @@ export const RULES = [
   // "IA"/"AI"/"QA": só MAIÚSCULAS, porque "ia" é verbo em português e "ai" aparece em outras línguas.
   sigla('sigla-ia', 'IA'),
   sigla('sigla-ai', 'AI'),
-  sigla('sigla-qa', 'QA'),
+  // "QA" e "Q.A." em qualquer caixa: "qa" não é palavra comum em inglês nem em português.
+  palavra('sigla-qa', 'q\\.?a\\.?'),
   // "A.I.": a mesma sigla escrita com pontos.
   palavra('sigla-a-i', 'a\\.\\s?i\\.?'),
   // "CI" e "PR(s)" em qualquer caixa: não existem como palavra comum e "pr 12" ou "ci" minúsculo também vazam.
@@ -126,13 +135,13 @@ export const RULES = [
   // IA por extenso e robôs: o jeito de falar de IA sem usar a sigla.
   palavra('ia-extenso', 'intelig[êe]ncia\\s+artificial|artificial\\s+intelligence|machine\\s+learning|aprendizado\\s+de\\s+m[áa]quina'),
   palavra('chatbot', 'chat-?bots?'),
-  // "Hide bots" é o nome do filtro do Dashboards no produto (README e interface); só ele passa.
-  palavra('bot', '(?<!(?:hide|ocultar) )bots?'),
+  // "Hide bots" (filtro do Dashboards) passa só pela frase exata em EXCECOES.
+  palavra('bot', 'bots?'),
   palavra('robo', 'rob[ôo]s?|robots?'),
   palavra('bot-publicacao', 'bot\\s+de\\s+publica[çc][ãa]o|publishing\\s+bot|release\\s+bot'),
-  // Assistente em geral. "git assistant" (o assistente do editor, "inline git assistant" no 0.7.0 já publicado) é um
-  // recurso do produto (e o nome do arquivo de mídia "inline-assistant.gif" do README); qualquer outro assistente reprova, porque costuma ser o assistente de código que escreveu o texto.
-  palavra('assistente', '(?<!git |inline-)assistants?|assistentes?'),
+  // Assistente em geral: costuma ser o assistente de código que escreveu o texto. O recurso "git assistant" do produto
+  // passa só pelas frases exatas de EXCECOES.
+  palavra('assistente', 'assistants?|assistentes?'),
   // Verificação ponta a ponta e seus nomes: é a rotina de teste do projeto.
   palavra('ponta-a-ponta', 'ponta\\s+a\\s+ponta|end[-\\s]to[-\\s]end'),
   palavra('smoke-test', 'smoke[-\\s]?tests?'),
@@ -155,6 +164,52 @@ export const RULES = [
   // Rastreador de tarefas: chamado, tracker.
   palavra('chamado', 'chamados?\\s*(?:#|n[º°o]\\.?\\s*)?\\d+'),
   palavra('rastreador', 'rastreador(?:es)?|(?:issue\\s+)?trackers?'),
+  // Mais ferramentas de IA e agentes de código.
+  palavra('genai', 'gen-?ai'),
+  palavra('xai', 'xai'),
+  palavra('ai-generated', 'ai[-_\\s]generated'),
+  palavra('mistral', 'mistral'),
+  palavra('llama', 'llama'),
+  palavra('grok', 'grok'),
+  palavra('deepseek', 'deep[-_]?seek'),
+  palavra('cursor', 'cursor'),
+  palavra('devin', 'devin'),
+  palavra('windsurf', 'windsurf'),
+  // "generated" em qualquer uso: texto gerado, arquivo gerado... é como o trabalho interno descreve o que a máquina fez.
+  palavra('generated', 'generated'),
+  // Infraestrutura e segurança do ambiente de build: o usuário não vê nada disso.
+  palavra('sandbox', 'sandbox(?:es|ed)?'),
+  palavra('container', 'containers?'),
+  palavra('proxy', 'prox(?:y|ies)'),
+  palavra('token', 'tokens?'),
+  palavra('secret', 'secrets?'),
+  palavra('webhook', 'web[-_]?hooks?'),
+  palavra('cron', 'cron(?:jobs?)?'),
+  palavra('scheduled-job', 'scheduled\\s+jobs?'),
+  palavra('npm-ci', 'npm\\s+ci'),
+  palavra('npx', 'npx'),
+  palavra('ubuntu-latest', 'ubuntu[-_\\s]?latest'),
+  palavra('autosave', 'auto[-_]?save'),
+  palavra('automation', 'automation'),
+  palavra('id-numerico', '(?:runs?|jobs?|ids?)[\\s_/:#-]*\\d{8,}'),
+  palavra('producao', 'production\\s+environment'),
+  palavra('publicando-em', 'publish(?:ing|ed)?\\s+(?:to|on)\\s+(?:open\\s+vsx|(?:vs\\s+(?:code\\s+)?)?marketplace)'),
+  palavra('notas-agora-vem', 'release\\s+notes\\s+now\\s+come'),
+  // Revisão e planejamento do trabalho.
+  palavra('review-comments', 'review\\s+comments?'),
+  palavra('after-review', 'after\\s+review'),
+  palavra('segunda-revisao', 'segunda\\s+revis[ãa]o'),
+  palavra('acceptance-criteria', 'acceptance\\s+criteria|crit[ée]rios?\\s+de\\s+aceite'),
+  palavra('tech-debt', 'tech(?:nical)?\\s+debt|d[ée]bitos?\\s+t[ée]cnicos?'),
+  palavra('fase-numero', '(?:phase|fase)[\\s_/-]*\\d+'),
+  palavra('test-suite', 'test\\s+suites?'),
+  palavra('added-tests', 'added\\s+tests?'),
+  palavra('fixed-build', 'fixed\\s+the\\s+build'),
+  palavra('refactor-interno', 'internal\\s+refactor(?:ing)?|refatora[çc][ãa]o\\s+interna'),
+  palavra('context-window', 'context\\s+windows?'),
+  palavra('conversa', 'as\\s+discussed|conforme\\s+a\\s+conversa'),
+  // Dependabot: título de PR de atualização de dependência.
+  padrao('bump', 'Bump\\s+\\S+\\s+from\\s+\\S+\\s+to\\s+\\S+', 'giu'),
   // Infraestrutura de entrega.
   palavra('pipeline', 'pipelines?'),
   palavra('workflow', 'workflows?'),
@@ -166,9 +221,8 @@ export const RULES = [
   palavra('deploy', 'deploy(?:s|ed|ing|ments?)?'),
   palavra('runner', 'runners?'),
   palavra('dependabot', 'dependabot'),
-  // "staging" sozinho é vocabulário do produto (staging por linha, área de staging do git); só o ambiente de testes
-  // do projeto ("staging environment", "ambiente de staging") é interno.
-  palavra('staging', 'staging\\s+(?:environment|env|server|branch|deploys?)|(?:ambiente|servidor|branch)\\s+de\\s+staging'),
+  // "staging" é também vocabulário do produto (staging por linha); os usos do produto passam por frase exata em EXCECOES.
+  palavra('staging', 'staging'),
   palavra('branch-protection', 'branch\\s+protections?'),
   palavra('ruleset', 'rulesets?'),
   // Agentes (em inglês e em português); "subagent" não casa "agent" por ser uma palavra só, então tem regra própria.
@@ -250,7 +304,7 @@ export const RULES = [
   // "!42": número de merge request (GitLab) com exclamação.
   padrao('bang-numero', '!\\d+'),
   // "issue 198", "issue #198", "issue number 198": o número escrito por extenso, sem o "#".
-  palavra('issue-numero', 'issues?[\\s_-]*(?:#|number\\s+|no\\.?\\s*)?\\d+'),
+  palavra('issue-numero', 'issues?[\\s_/-]*(?:#|number\\s+|no\\.?\\s*)?\\d+'),
   // Issue filha: palavra do rastreador do projeto.
   palavra('sub-issue', 'sub[-\\s]?issues?'),
   // "Refs 228", "Closes GH 228", "Fixes #228": o rodapé de commit que aponta para a issue.
@@ -271,7 +325,9 @@ export const RULES = [
   // Branch de sessão remota (ccr-...).
   padrao('branch-ccr', `${ANTES}ccr-[\\w-]+`, 'giu'),
   // Nome de branch de trabalho: tipo/assunto.
-  padrao('branch-nome', `${ANTES}(?:feature|feat|fix|chore|docs|refactor|revert|hotfix|perf|test|build|ci)/[\\w.-]+`, 'giu'),
+  padrao('branch-nome', `${ANTES}(?:feature|feat|fix|chore|docs|refactor|revert|hotfix|bugfix|release|wip|perf|test|build|ci)/[\\w.-]+`, 'giu'),
+  // Referência remota do git (origin/main, origin/develop).
+  padrao('origin-ref', `${ANTES}origin/\\S`, 'giu'),
   // Commit convencional no começo do bullet ou da linha: "feat: ...", "fix(core)!: ...".
   // Vale depois de bullet, de lista numerada ("1. fix: z"), de citação ("> fix: z") e de marcação (**, `), com ou sem
   // espaço antes do escopo ("Fix (core): x").
@@ -286,16 +342,47 @@ export const RULES = [
   // O que o release gerado pelo GitHub escreve sozinho (títulos de PR e autores).
   padrao('notas-geradas', "What'?s Changed|Full Changelog|New Contributors", 'giu'),
   // Plano numerado de trabalho ("Plano 4").
-  padrao('plano-numerado', `${ANTES}Plan(?:o)?\\s+\\d+`, 'giu'),
+  padrao('plano-numerado', `${ANTES}${separar('Plan(?:o)?\\s+\\d+')}`, 'giu'),
   // Rótulos do rastreador do projeto: status:, prioridade:, area:, precisa-refinamento, wip:, "label status".
   padrao('rotulo-status', `${ANTES}(?:status|prioridade|priority|area|[áa]rea):[a-z][a-z-]*`, 'giu'),
-  padrao('rotulo-palavra', `${ANTES}(?:labels?|r[óo]tulos?)\\s+(?:status|prioridade|priority|area|[áa]rea)`, 'giu'),
-  padrao('precisa-refinamento', `${ANTES}(?:precisa[-\\s]refinamento|needs[-\\s]refinement)`, 'giu'),
+  padrao('rotulo-palavra', `${ANTES}${separar('(?:labels?|r[óo]tulos?)\\s+(?:status|prioridade|priority|area|[áa]rea)')}`, 'giu'),
+  padrao('precisa-refinamento', `${ANTES}${separar('(?:precisa[-\\s]refinamento|needs[-\\s]refinement)')}`, 'giu'),
   padrao('wip', `${ANTES}wip\\s*:`, 'giu'),
   // Rodapés de atribuição de commit.
-  padrao('co-authored-by', 'Co[-\\s]?Authored[-\\s]?By', 'giu'),
-  padrao('generated-with', 'Generated\\s+with', 'giu'),
+  padrao('co-authored-by', separar('Co[-\\s]?Authored[-\\s]?By'), 'giu'),
+  padrao('generated-with', separar('Generated\\s+with'), 'giu'),
 ]
+
+/**
+ * Frases EXATAS do produto que contêm uma palavra barrada. Cada uma é apagada do texto (vira "·") antes da busca,
+ * e só ela: "git assistant bubble" passa, "Thanks to the git assistant" e "the git assistant wrote the code" não.
+ * Entra aqui só o que o README, a interface ou uma seção JÁ PUBLICADA do CHANGELOG (que não se reescreve) exigem;
+ * texto novo se reescreve em vez de entrar na tabela. Sem diferença de caixa.
+ */
+export const EXCECOES = [
+  // README: o recurso "git assistant" do editor (bolha no fim da linha com quem, quando e o quê).
+  { frase: 'Edit files with a git assistant', onde: 'README, lista de recursos' },
+  { frase: 'with a git assistant at the end of the line', onde: 'README, título da seção do editor' },
+  { frase: 'The **inline git assistant** shows a bubble', onde: 'README, parágrafo do editor' },
+  { frase: 'Git assistant in the editor', onde: 'README, fim do parágrafo do editor' },
+  { frase: 'The inline git assistant following the cursor while editing a file', onde: 'README, texto alternativo do GIF' },
+  { frase: 'media/readme/inline-assistant.gif', onde: 'README, arquivo do GIF (o nome do arquivo de mídia não muda)' },
+  { frase: 'git assistant bubble', onde: 'README, texto alternativo da imagem do editor' },
+  // CHANGELOG 0.7.0, seção já publicada.
+  { frase: 'File editor with an inline git assistant', onde: 'CHANGELOG [0.7.0], seção já publicada' },
+  // Filtro do Dashboards ("Hide bots") na interface, no README e no catálogo em inglês.
+  { frase: 'hide bots', onde: 'README e interface (filtro do Dashboards)' },
+  { frase: 'ocultar bots', onde: 'interface em português (filtro do Dashboards)' },
+  // Staging por linha: recurso central do produto (README e descrição do manifesto, nos dois idiomas).
+  { frase: 'Line-by-line staging', onde: 'README, lista de recursos' },
+  { frase: 'line-level staging', onde: 'package.nls.json, descrição da extensão' },
+  { frase: 'staging por linha', onde: 'package.nls.pt-br.json, descrição da extensão' },
+]
+
+const EXCECOES_RE = EXCECOES.map(({ frase }) => new RegExp(frase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu'))
+
+/** Apaga as frases de EXCECOES (troca por "·", que não é letra) para a busca não as ver. */
+const semExcecoes = (texto) => EXCECOES_RE.reduce((t, re) => t.replace(re, (m) => '·'.repeat(m.length)), texto)
 
 /** "U+200B" para o caractere invisível aparecer legível na mensagem. */
 const codigo = (texto) =>
@@ -314,7 +401,7 @@ export function findForbidden(text, rules = RULES) {
     .split(/\r?\n/)
     .forEach((content, index) => {
       const cru = content.normalize('NFKC')
-      const limpo = desconfundir(cru.replace(INVISIVEIS_RE, ''))
+      const limpo = semExcecoes(desconfundir(cru.replace(INVISIVEIS_RE, '')))
       for (const { rule, re, cru: usaCru } of rules) {
         for (const m of (usaCru ? cru : limpo).matchAll(re)) {
           found.push({ line: index + 1, rule, match: rule === 'invisivel' ? codigo(m[0]) : m[0] })

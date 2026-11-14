@@ -16,6 +16,7 @@ export interface TextoDeArquivo {
 }
 
 export const RULES: RegraProibida[]
+export const EXCECOES: { frase: string; onde: string }[]
 export const NEUTRAL_NOTE: string
 export function findForbidden(text: string, rules?: RegraProibida[]): AchadoProibido[]
 export function sectionBody(changelog: string, titulo: string): string | null

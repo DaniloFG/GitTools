@@ -13,6 +13,7 @@
 - [ ] Check `QA` verde (gate de cobertura e pipeline)
 - [ ] Para PR → `main`: a mudança foi validada na `homolog`
 - [ ] Documentação e README atualizados, se necessário
+- [ ] Se o PR toca `extension/CHANGELOG.md`: cada bullet descreve o que o usuário do app vê; nada de pipeline, Claude, IA, issue/PR, branch, configuração interna
 - [ ] Nenhum segredo, `.env` ou arquivo gerado no diff
 
 ## Observações para revisão

@@ -102,7 +102,7 @@ sends nothing anywhere.
 - 🎨 **Looks native**: follows your VS Code theme, fonts and the same colors VS Code uses for modified, added and deleted files, with file-type icons (can be turned off in Settings → Appearance).
 - 🧩 **Arrange the workspace your way**: every panel is independent — drag any panel to any side of any other panel.
 - ☑️ **Focus on a few branches**: tick the checkboxes in the branch sidebar and the history shows only those branches — the branch list itself stays put.
-- ✏️ **Edit files with a git assistant**: edit any file in a built-in editor; a bubble at the end of the cursor line tells you *who* changed it, *when* and *what the commit did*.
+- ✏️ **Edit files with a git assistant**: edit any file in a built-in editor; a bubble at the end of the line you are on tells you *who* changed it, *when* and *what the commit did*.
 - 💾 **Save your layouts**: name the arrangement you like and bring it back whenever you want.
 - 📜 **Live git log**: see every command GitTools runs, in real time.
 - 🌍 **6 languages** (English, Português, Español, 中文, हिन्दी, العربية) and a theme that follows VS Code.
@@ -181,14 +181,14 @@ Click a file in **Files** to edit it right there: line numbers, `Tab` indents (u
 Line endings (LF / CRLF) and BOM are preserved, and the editor warns you if the file changes on disk meanwhile.
 Double-click a panel's tab (or press ⤢) to maximize it.
 
-The **inline git assistant** shows a bubble at the end of the line your cursor is on: **who** changed it, **when**
+The **inline git assistant** shows a bubble at the end of the line you are on: **who** changed it, **when**
 and **what the commit did** — click it to open the commit. Lines you just wrote read *You · editing now*, and saved
 but uncommitted ones *You · saved, not committed yet*. It is on by default; turn it off in **Settings → Editor and diff →
 Git assistant in the editor**.
 
 ![The inline git assistant following the cursor while editing a file](media/readme/inline-assistant.gif)
 
-![The editor with the git assistant bubble at the end of the cursor line](media/readme/editor-inline.png)
+![The editor with the git assistant bubble at the end of the current line](media/readme/editor-inline.png)
 
 ## Focus on a few branches
 
