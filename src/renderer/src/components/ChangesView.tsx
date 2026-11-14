@@ -142,10 +142,10 @@ export function ChangesView() {
       return
     }
     let cancelled = false
-    git.diff({ kind: active.area, path: active.path, oldPath: active.area === 'staged' ? status.staged.find((f) => f.path === active.path)?.origPath : undefined, fullFile, uncapped }).then(
+    git.diff({ kind: active.area, path: active.path, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
-        showDiff(files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null)
+        showDiff(files[0] ?? null)
       },
       (e) => !cancelled && toast('error', errorMessage(e))
     )
@@ -429,7 +429,7 @@ export function ChangesView() {
               {
                 label: `⧉ ${t('diffExtra.openWindow')}`,
                 hint: t('diffExtra.openWindowHelp'),
-                onClick: () => openDiffWindow({ source: { kind: active.area, oldPath: active.area === 'staged' ? status.staged.find((f) => f.path === active.path)?.origPath : undefined }, path: active.path, title: `${active.path} · ${t(active.area === 'staged' ? 'changes.staged' : 'changes.unstaged')}` })
+                onClick: () => openDiffWindow({ source: { kind: active.area }, path: active.path, title: `${active.path} · ${t(active.area === 'staged' ? 'changes.staged' : 'changes.unstaged')}` })
               },
               ...(active.area === 'unstaged'
                 ? [

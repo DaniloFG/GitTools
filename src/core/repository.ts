@@ -438,6 +438,8 @@ async function readFileHead(full: string, bytes: number): Promise<Buffer> {
 
 export class GitRepository implements RepoApi {
   private emptyTreeSha: string | null = null
+  /** Renomeados no stage (caminho novo → antigo), da última leitura de `status()`. */
+  private stagedRenames = new Map<string, string>()
   /** Pasta .git, resolvida uma vez (no `open` já vem junto, com o mesmo processo que acha a raiz). */
   private gitDirPath: Promise<string> | null = null
   /** Caminhos de MERGE_HEAD, rebase-merge etc.: não mudam enquanto o repositório está aberto. */
@@ -555,6 +557,9 @@ export class GitRepository implements RepoApi {
   async status(includeStats = false): Promise<RepoStatus> {
     const { stdout } = await this.git(['status', '--porcelain=v2', '-z', '--branch', '--untracked-files=all'])
     const status = parseStatus(stdout)
+    // Guarda o nome antigo dos renomeados no stage: o diff de um deles acha a renomeação sem o chamador passar
+    // `oldPath` e sem processo git a mais (#161).
+    this.stagedRenames = new Map(status.staged.flatMap((f) => (f.origPath ? [[f.path, f.origPath] as const] : [])))
     if (!includeStats) return status
     const [unstaged, staged] = await Promise.all([
       this.git(['diff', '--numstat', '-z', '--no-color', '--no-ext-diff', '--']).then((r) => parseNumstat(r.stdout)),
@@ -756,8 +761,9 @@ export class GitRepository implements RepoApi {
   async diff(source: DiffSource): Promise<FileDiff[]> {
     // Com o caminho antigo no pathspec, o git acha a renomeação; só com o novo, o arquivo sai como adição inteira.
     // Sem -M (unstaged) o git não procura renomeação, então o caminho antigo fica de fora.
+    const oldPath = source.oldPath ?? (source.kind === 'staged' && source.path ? this.stagedRenames.get(source.path) : undefined)
     const pathArgs = source.path
-      ? ['--', source.path, ...(source.kind !== 'unstaged' && source.oldPath && source.oldPath !== source.path ? [source.oldPath] : [])]
+      ? ['--', source.path, ...(source.kind !== 'unstaged' && oldPath && oldPath !== source.path ? [oldPath] : [])]
       : ['--']
     const args = diffArgs(source.fullFile)
     // Teto de saída do git: sem ele, um commit de milhares de arquivos passa inteiro pelo IPC.

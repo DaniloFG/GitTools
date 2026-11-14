@@ -395,7 +395,8 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
     setSelection(new Set())
     if (!active) return
     git.diff({ kind: 'commit', sha: active.sha, path: active.path, oldPath: active.oldPath, fullFile, uncapped }).then(
-      (files) => setDiff(files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null),
+      // O pedido já leva o caminho (e o antigo): a resposta tem só esse arquivo, sem precisar procurá-lo na lista.
+      (files) => setDiff(files[0] ?? null),
       (e) => toast('error', errorMessage(e))
     )
   }, [active, toast, fullFile, uncapped])

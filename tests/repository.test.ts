@@ -670,6 +670,10 @@ describe('commitDetails e diff de commit: iguais ao caminho anterior', () => {
     // Staged: com o caminho antigo (origPath do status) a renomeação é achada; sem ele, o arquivo todo é adição.
     const semAntigo = await t.repo.diff({ kind: 'staged', path: 'b.txt' })
     expect(semAntigo[0]).toMatchObject({ changeType: 'added', additions: 10 })
+    // Depois de um status(), o core lembra o nome antigo e o chamador nem precisa passá-lo.
+    await t.repo.status()
+    const [semPassar] = await t.repo.diff({ kind: 'staged', path: 'b.txt' })
+    expect(semPassar).toMatchObject({ changeType: 'renamed', oldPath: 'a.txt', additions: 1, deletions: 1 })
     const [staged] = await t.repo.diff({ kind: 'staged', path: 'b.txt', oldPath: 'a.txt' })
     expect(staged).toMatchObject({ changeType: 'renamed', oldPath: 'a.txt', additions: 1, deletions: 1 })
 
