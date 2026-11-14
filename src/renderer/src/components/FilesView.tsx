@@ -394,7 +394,7 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
     setDiff(null)
     setSelection(new Set())
     if (!active) return
-    git.diff({ kind: 'commit', sha: active.sha, path: active.path, fullFile, uncapped }).then(
+    git.diff({ kind: 'commit', sha: active.sha, path: active.path, oldPath: active.oldPath, fullFile, uncapped }).then(
       (files) => setDiff(files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null),
       (e) => toast('error', errorMessage(e))
     )
@@ -464,7 +464,7 @@ function FileHistoryLoaded({ path, onBlameAt }: { path: string; onBlameAt(sha: s
                   {
                     label: `⧉ ${t('diffExtra.openWindow')}`,
                     hint: t('diffExtra.openWindowHelp'),
-                    onClick: () => openDiffWindow({ source: { kind: 'commit', sha: active.sha }, path: active.path, title: `${active.path} · ${shortSha(active.sha)}` })
+                    onClick: () => openDiffWindow({ source: { kind: 'commit', sha: active.sha, oldPath: active.oldPath }, path: active.path, title: `${active.path} · ${shortSha(active.sha)}` })
                   },
                   { label: t('files.viewCommit'), onClick: () => selectCommit(active.sha) },
                   { label: t('files.blameThisVersion'), onClick: () => onBlameAt(active.sha) },

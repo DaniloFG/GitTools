@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- A renamed file with a small edit now shows only the changed lines, not the whole file as new, in Changes (staged), Compare and the file history.
+
 - Clicking "Uncommitted changes" in History updates the file panel.
 - A button clicked twice no longer runs its action twice.
 - Switching files in the conflict editor keeps the choices made per hunk.

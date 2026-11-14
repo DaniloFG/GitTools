@@ -1951,6 +1951,11 @@ export class GitRepository implements RepoApi {
       const commit = parseCommitFields(header.split(FS))
       entries.push({ ...commit, ...stats.get(commit.sha), path: currentPath })
     }
+    // O --follow lista do mais novo ao mais antigo: o nome do commit seguinte é o de antes da renomeação.
+    // Sem processo git a mais.
+    for (let i = 0; i < entries.length - 1; i++) {
+      if (entries[i + 1].path !== entries[i].path) entries[i].oldPath = entries[i + 1].path
+    }
     return entries
   }
 

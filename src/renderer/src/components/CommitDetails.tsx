@@ -454,7 +454,7 @@ function WipPanes({ focus }: { focus: WipFocus }) {
       return
     }
     let cancelled = false
-    git.diff({ kind: active.area, path: active.path, fullFile, uncapped }).then(
+    git.diff({ kind: active.area, path: active.path, oldPath: active.area === 'staged' ? status.staged.find((f) => f.path === active.path)?.origPath : undefined, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
         const next = files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null
@@ -478,7 +478,7 @@ function WipPanes({ focus }: { focus: WipFocus }) {
     }
   }
   const both = !!active && status.unstaged.some((f) => f.path === active.path) && status.staged.some((f) => f.path === active.path)
-  const openWindow = (path: string, area: Area) => openDiffWindow({ source: { kind: area }, path, title: `${path} · ${t('history.wip.title')}` })
+  const openWindow = (path: string, area: Area) => openDiffWindow({ source: { kind: area, oldPath: area === 'staged' ? status.staged.find((f) => f.path === path)?.origPath : undefined }, path, title: `${path} · ${t('history.wip.title')}` })
   const codeOf = (e: ChangeEntry) => (e.unstaged ? (e.unstaged.untracked ? '?' : e.unstaged.worktree) : e.staged!.index)
 
   const files = (

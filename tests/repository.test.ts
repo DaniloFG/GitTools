@@ -659,4 +659,29 @@ describe('commitDetails e diff de commit: iguais ao caminho anterior', () => {
     expect(semOldPath.map((f) => f.path)).toEqual(['b.txt'])
     expect(await t.repo.diff({ kind: 'unstaged', path: 'b.txt', oldPath: 'c.txt' })).toEqual(semOldPath)
   })
+  it('renomeação com uma linha mudada sai +1 −1 no staged, no range e no histórico de arquivo (#161)', async () => {
+    const t = await createRepo()
+    await t.commit('base', { 'a.txt': BASE, 'c.txt': 'c\n' })
+    const base = (await t.git('rev-parse', 'HEAD')).trim()
+    await t.git('mv', 'a.txt', 'b.txt')
+    t.write('b.txt', lines('a', 'b', 'c', 'd', 'E', 'f', 'g', 'h', 'i', 'j'))
+    await t.git('add', '-A')
+
+    // Staged: com o caminho antigo (origPath do status) a renomeação é achada; sem ele, o arquivo todo é adição.
+    const semAntigo = await t.repo.diff({ kind: 'staged', path: 'b.txt' })
+    expect(semAntigo[0]).toMatchObject({ changeType: 'added', additions: 10 })
+    const [staged] = await t.repo.diff({ kind: 'staged', path: 'b.txt', oldPath: 'a.txt' })
+    expect(staged).toMatchObject({ changeType: 'renamed', oldPath: 'a.txt', additions: 1, deletions: 1 })
+
+    await t.git('commit', '-q', '-m', 'renomeia')
+    const head = (await t.git('rev-parse', 'HEAD')).trim()
+    const [range] = await t.repo.diff({ kind: 'range', from: base, to: head, path: 'b.txt', oldPath: 'a.txt' })
+    expect(range).toMatchObject({ changeType: 'renamed', additions: 1, deletions: 1 })
+
+    // Histórico de arquivo: só o commit da renomeação leva oldPath, e com ele o diff sai +1 −1.
+    const history = await t.repo.fileHistory('b.txt')
+    expect(history.map((e) => [e.path, e.oldPath])).toEqual([['b.txt', 'a.txt'], ['a.txt', undefined]])
+    const [viaHistory] = await t.repo.diff({ kind: 'commit', sha: history[0].sha, path: history[0].path, oldPath: history[0].oldPath })
+    expect(viaHistory).toMatchObject({ changeType: 'renamed', additions: 1, deletions: 1 })
+  })
 })
