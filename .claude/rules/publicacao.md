@@ -4,6 +4,7 @@ paths:
   - "extension/CHANGELOG.md"
   - "package.json"
   - "scripts/extension-version.mjs"
+  - "scripts/changelog-gate.mjs"
   - "scripts/apply-branch-protection.sh"
   - ".github/**/*"
   - "CONTRIBUTING.md"
@@ -32,6 +33,42 @@ paths:
   curto e concreto; sem número de issue, nome de pessoa nem termo interno.
 - **Ao subir minor ou major** em `extension/package.json`, o mesmo PR troca `## [Unreleased]` pela seção
   `## [x.y.z] - AAAA-MM-DD` e abre um `## [Unreleased]` novo no topo, com `- Nothing yet.`.
+- **O changelog de usuário (o arquivo e o corpo do release) só tem assunto do app**: o que o usuário vê, usa ou ganha.
+  O que é interno (pipeline, CI, workflow, hook, gate, fila, lote, HANDOFF, skill, agente, Claude, IA, modelo, sessão,
+  dúvida, número de issue ou de PR, nome de branch, validação ou QA) vai para commit, PR e issue, nunca para ele.
+  Termo de jargão técnico que o usuário não entende também sai: escreva o efeito, não o mecanismo.
+- **O corpo do release vem da seção do CHANGELOG, nunca gerado de PR ou de commit** (`generate_release_notes` fica
+  `false`). `scripts/changelog-gate.mjs` grava as notas (`notes`), as confere (`check`) e confere também o README,
+  `displayName`, `description` e `keywords` do `package.json`, os `package.nls*.json` e o nome do release (`files`),
+  tudo no workflow de publicação, antes de empacotar e de publicar: se achar termo interno, nada é publicado
+  (Marketplace, Open VSX e release). A busca normaliza o texto (NFKC), ignora caracteres invisíveis (que reprovam por
+  si) e trata `_` como separador.
+- **Falso positivo do portão**: ele é largo de propósito (falso negativo é o que não pode). Termo barrado que é
+  vocabulário do produto (`hook`, `agent`, `pull request`, `model`, `session`) se resolve descrevendo o efeito sem a
+  palavra, nunca afrouxando a regra: "this working session" vira "this window"; "git hooks" vira "scripts that git
+  runs"; "pull request" vira "the proposed change" (os três exemplos passam no portão; há teste). Termos de git como
+  branch, merge, commit, rebase, cherry-pick e worktree passam; `staging` só passa nas frases exatas de `EXCECOES`.
+- **O portão é uma lista de bloqueio, não prova de que o texto é de usuário**: a revisão do PR confere a regra positiva
+  (cada bullet descreve o que o usuário vê, usa ou ganha; o checklist do PR cobra isso). Uma pessoa aprova o
+  `## [Unreleased]` antes de uma minor ou de uma tag: a decisão de publicar a minor é do dono.
+- **Palavra do produto que o portão barra** (`cursor`, `token`, `assistant`, `staging`, `bots`): reescreva descrevendo
+  o efeito ("the line you are on", não "the cursor line"). Só entra em `EXCECOES` (frase exata, com a origem
+  comentada) o que o README, a interface ou uma seção já publicada do CHANGELOG exigem: "git assistant bubble" passa,
+  "Thanks to the git assistant" não. Termo composto aceita qualquer caractere que não seja letra nem dígito entre as palavras
+  (`pull_request_target`, `code-review` e `pipe.line` reprovam); palavra de processo vale como radical (`queued`,
+  `hooking`, `gatekeeper`, `questionable`). A busca roda com e sem acentos ("Cláude" reprova; "gateway" passa).
+- **`batch`, `queue` e `lot` são barrados** (são "lote" e "fila" em inglês). A única exceção é a frase exata
+  "batch actions" (a tela de conflitos tem ações em lote no rodapé), na tabela `EXCECOES`. A palavra `issue` sozinha
+  não é barrada (só "issue + número" e "sub-issue"). `v0` só reprova sozinho; "v0.13.0" (versão) passa.
+- **O que o portão não pega** (a revisão humana é a defesa): "upstream", "stand-up notes", "roadmap item",
+  "validation run", "Release notes now built from the changelog", "Merged from dev branch", "Publishing runs an
+  automatic check first", hash de commit de 6 hexadecimais (o limiar é 7) e qualquer jargão novo. Lista de bloqueio nunca é completa.
+- **Patch automático não ganha seção**: o release dele usa o texto de `## [Unreleased]`. Sem seção da versão e com o
+  `Unreleased` vazio (sem bullet, ou só `- Nothing yet.`), o push na branch publica a nota fixa
+  `- Maintenance release: stability improvements.` (modo `neutro`, ligado só por `github.event_name == 'push'` e
+  `ref_type == 'branch'`); tag e disparo manual falham de propósito (modo `estrito`): escreva o que mudou antes.
+- **Permissões do workflow de publicação**: `contents: read` no topo; `contents: write` só no job `publish`.
 - **`tests/extensionChangelog.test.ts` confere** a seção da versão do `package.json`, o `Unreleased` com bullet, a
-  ordem decrescente das versões e bullet em cada seção. O patch que o workflow publica sozinho não sobe o arquivo e
-  não ganha seção; o teste não o cobre.
+  ordem decrescente das versões, bullet em cada seção e a ausência de termo interno no arquivo inteiro.
+  O mesmo teste confere README, manifesto e `package.nls*.json`. `tests/changelogGate.test.ts` cobre cada regra do
+  portão e `tests/workflows-publicacao.test.ts`, a ordem dos passos e as permissões do workflow. O patch que o workflow publica sozinho não sobe o arquivo e não ganha seção.
