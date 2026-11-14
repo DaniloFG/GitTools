@@ -34,14 +34,21 @@ carimbo_fresco() {
 # Diretório da sessão (#200): vem do `.cwd` do JSON que o Claude Code manda no stdin; o `pwd` do processo é só a reserva,
 # porque o harness pode rodar o hook com o cwd do processo na raiz do projeto, e aí o `wip:` sairia na branch da raiz.
 # Só builtins (sem jq nem processo novo: isto roda a cada PostToolUse, antes do limitador, e o pré-limitador não pode abrir
-# git). Lê só o começo do stdin: o `.cwd` vem antes de tool_input/tool_response, que podem ter megabytes, e o `read` de
-# pipe lê byte a byte, então ler tudo custaria caro. Não ler o resto é o que o hook já fazia (nunca leu o stdin) e o
-# harness tolera. Em terminal não lê (nada a esperar). O status do `read` é não zero no EOF: ignorado de propósito.
+# git). Lê só o começo do stdin (2048 bytes): o `.cwd` vem nos primeiros ~300 bytes, antes de tool_input/tool_response, que
+# podem ter megabytes, e o `read` de pipe lê byte a byte, então ler mais custaria caro a cada PostToolUse. Não ler o resto
+# é o que o hook já fazia (nunca leu o stdin) e o harness tolera. Em terminal não lê (nada a esperar). O status do `read`
+# é não zero no EOF: ignorado de propósito.
 entrada=
-[ -t 0 ] || IFS= read -r -d '' -n 4096 -t 1 entrada 2>/dev/null
+[ -t 0 ] || IFS= read -r -d '' -n 2048 -t 1 entrada 2>/dev/null
 cwd_sessao=
+# Só o `cwd` de TOPO vale: procura-se apenas antes do segundo `{` (o primeiro objeto aninhado, como tool_input, que poderia
+# trazer um "cwd" qualquer). Um `{` dentro de uma string antes do cwd só faz o valor se perder: vale a reserva (lado seguro).
+cabeca=
+case "$entrada" in
+  *\{*) cabeca=${entrada#*\{}; cabeca=${cabeca%%\{*} ;;
+esac
 regex_cwd='"cwd"[[:space:]]*:[[:space:]]*"(([^"\\]|\\.)*)"'
-if [[ $entrada =~ $regex_cwd ]]; then
+if [[ $cabeca =~ $regex_cwd ]]; then
   cwd_sessao=${BASH_REMATCH[1]}
   # Desescapa só `\\`, `\"` e `\/`; o marcador evita que `\\` seguido de `"` ou `/` vire escape de outro. Qualquer outra
   # sequência (`\u`, `\n`, `\t`...) descarta o valor: vale a reserva.
@@ -51,15 +58,18 @@ if [[ $entrada =~ $regex_cwd ]]; then
   cwd_sessao=${cwd_sessao//\\\//\/}
   case "$cwd_sessao" in *\\*) cwd_sessao= ;; esac
   cwd_sessao=${cwd_sessao//$marcador/\\}
-  # Só caminho absoluto (POSIX ou drive do Windows, que vira `C:/x`, aceito pelo Git Bash).
+  # Só caminho absoluto: POSIX (`/`, o `\` fica como está) ou drive do Windows com separador (`C:\x` ou `C:/x`; o `\`
+  # vira `/` só neste ramo, e o Git Bash aceita `C:/x`). Relativo, inclusive `a:b`, cai na reserva.
   case "$cwd_sessao" in
-    /* | [A-Za-z]:*) cwd_sessao=${cwd_sessao//\\//} ;;
+    /*) ;;
+    [A-Za-z]:[/\\]*) cwd_sessao=${cwd_sessao//\\//} ;;
     *) cwd_sessao= ;;
   esac
 fi
-# O valor do stdin nunca é usado cru: passa pelo `cd` + `pwd -P`; falhou ou não veio, vale o pwd do processo.
+# O valor do stdin nunca é usado cru: passa pelo `cd` + `pwd -P`; falhou ou não veio, vale o pwd do processo. `CDPATH=`
+# vazio: com CDPATH definido o `cd` imprime o destino e `atual` ganharia duas linhas.
 atual=
-[ -n "$cwd_sessao" ] && atual=$(cd -- "$cwd_sessao" 2>/dev/null && pwd -P)
+[ -n "$cwd_sessao" ] && atual=$(CDPATH= cd -- "$cwd_sessao" 2>/dev/null && pwd -P)
 [ -n "$atual" ] || atual=$(pwd -P 2>/dev/null) || atual=
 
 # Pré-limitador do worktree (#208): no --limitado, o topo provável do worktree da sessão sai de expansão do bash, e o

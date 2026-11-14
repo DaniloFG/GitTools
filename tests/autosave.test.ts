@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -254,6 +254,72 @@ describe('autosave.sh', () => {
       expect(await assunto(outraArvore)).toMatch(/^wip: salvamento automático/)
       expect(await git(remoto, 'rev-parse', 'fix/8-acao')).toBe(await git(outraArvore, 'rev-parse', 'HEAD'))
       expect(await contagem(arvore)).toBe(1)
+    })
+
+    // JSON escrito à mão, para controlar os escapes que o JSON.stringify não produz.
+    const jsonComCwd = (cwdJson: string) => `{"session_id":"x","cwd":${cwdJson},"hook_event_name":"Stop"}`
+    const salvouNoWorktree = async () => /^wip: salvamento automático/.test(await assunto(arvore))
+
+    // O Claude Code pode escapar `/` como `\/`; em Windows o arvore também tem `\\` (JSON.stringify), o que cobre o desescape de `\\`.
+    it('.cwd com `/` escapado (`\\/`) é desescapado e salva na branch do worktree', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(jsonComCwd(JSON.stringify(arvore).replace(/\//g, '\\/')), clone, clone)
+      expect(await salvouNoWorktree()).toBe(true)
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+    })
+
+    // `"` não é válido em nome de arquivo no Windows; fora dele cobre o desescape de `\"`. O `\` não entra no nome: o
+    // lib-raiz.sh (`para_posix`) troca `\` por `/` no topo que o git devolve, então um worktree com `\` no nome não é
+    // resolvido (limitação anterior ao #200, fora deste arquivo). O desescape de `\\` fica coberto no Windows, onde o
+    // `arvore` já tem `\` e o JSON.stringify o escapa.
+    it.skipIf(process.platform === 'win32')('.cwd com `"` no nome do worktree (escapado no JSON)', async () => {
+      const estranha = join(clone, '.claude', 'worktrees', 'issue "9" ab')
+      await git(clone, 'worktree', 'add', '-q', '-b', 'fix/9-escape', estranha, 'trabalho')
+      await git(clone, 'push', '-q', '-u', 'origin', 'fix/9-escape')
+      escrever(estranha, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook(estranha), clone, clone)
+      expect(await assunto(estranha)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/9-escape')).toBe(await git(estranha, 'rev-parse', 'HEAD'))
+      expect(await salvouNoWorktree()).toBe(false)
+    })
+
+    // Escape não suportado (`\u`, `\n`...) descarta o valor: a reserva (pwd do processo, a raiz) vale.
+    // Armadilha observável: um diretório de nome literal `issue-\u0037` em worktrees/ com carimbo fresco. Se o `\` restante
+    // não fosse descartado, o pré-limitador do --limitado casaria esse nome, veria o carimbo fresco e pularia o salvamento
+    // da raiz. (O cd até ele funcionaria, mas o lib-raiz.sh não resolve topo com `\`, então só o pré-limitador denuncia.)
+    it.skipIf(process.platform === 'win32')('.cwd com `\\u` não suportado cai na reserva (e não vira o diretório literal)', async () => {
+      const armadilha = join(clone, '.claude', 'worktrees', 'issue-\\u0037')
+      gravarCarimboNo(armadilha, 60)
+      escrever(clone, 'raiz.txt', 'pendente na raiz\n')
+      await rodarEmComEntrada(jsonComCwd(JSON.stringify(arvore).replace(/7"$/, '\\u0037"')), clone, clone, {}, '--limitado')
+      expect(await assunto(clone)).toMatch(/^wip: salvamento automático/)
+      expect(await salvouNoWorktree()).toBe(false)
+    })
+
+    it('.cwd com `\\n` no meio cai na reserva: o worktree não salva e a raiz sim', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      escrever(clone, 'raiz.txt', 'pendente na raiz\n')
+      await rodarEmComEntrada(jsonComCwd(JSON.stringify(arvore).replace('worktrees', 'work\\ntrees')), clone, clone)
+      expect(await salvouNoWorktree()).toBe(false)
+      expect(await assunto(clone)).toMatch(/^wip: salvamento automático/)
+    })
+
+    // Só o `cwd` de topo vale: um "cwd" dentro de tool_input (objeto aninhado) não pode escolher o diretório da sessão.
+    it('"cwd" aninhado em tool_input, sem cwd de topo: cai na reserva e o worktree não salva', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(`{"session_id":"x","tool_input":{"cwd":${JSON.stringify(arvore)}}}`, clone, clone)
+      expect(await salvouNoWorktree()).toBe(false)
+      expect(await pendente(arvore)).toContain('src/')
+    })
+
+    // `a:b` é relativo no POSIX (não é drive do Windows). Armadilha: link `a:b` na raiz apontando para o worktree; se o
+    // valor fosse aceito como absoluto, o cd (relativo ao cwd do processo) cairia no worktree.
+    it.skipIf(process.platform === 'win32')('.cwd `a:b` (relativo com dois-pontos) cai na reserva', async () => {
+      symlinkSync(arvore, join(clone, 'a:b'), 'dir')
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook('a:b'), clone, clone)
+      expect(await salvouNoWorktree()).toBe(false)
+      expect(await pendente(arvore)).toContain('src/')
     })
 
     // git de mentira: cada chamada acrescenta uma linha ao arquivo de contagem e segue para o git real. O caminho do git
