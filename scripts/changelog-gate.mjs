@@ -73,8 +73,13 @@ const HOMOGLIFOS = new Map(
   }),
 )
 
-/** Troca os homóglifos pela letra latina parecida. */
-const desconfundir = (texto) => [...texto].map((letra) => HOMOGLIFOS.get(letra) ?? letra).join('')
+// Hifens e travessões tipográficos (U+2010 a U+2015) e o sinal de menos (U+2212): parecem "-" e escapariam das regras
+// que usam o hífen como separador ("Co‐Authored‐By", "claude‐code"). Viram o hífen comum antes da busca.
+const HIFENS_RE = /[\u2010-\u2015\u2212]/gu
+
+/** Troca os homóglifos pela letra latina parecida e os hifens tipográficos pelo hífen. */
+const desconfundir = (texto) =>
+  [...texto.replace(HIFENS_RE, '-')].map((letra) => HOMOGLIFOS.get(letra) ?? letra).join('')
 
 /**
  * Tabela das regras. Cada uma tem `rule` (nome estável, usado nas mensagens e nos testes) e `re` (com flag `g` e `u`).
@@ -100,13 +105,18 @@ export const RULES = [
   // --- Siglas internas -------------------------------------------------------------------------------------------
   // "IA"/"AI"/"QA": só MAIÚSCULAS, porque "ia" é verbo em português e "ai" aparece em outras línguas.
   sigla('sigla-ia', 'IA'),
-  sigla('sigla-ai', 'AI'),
+  // "ai" em qualquer caixa e palavra inteira ("Ai-powered", "built with ai"); "ia" só maiúsculo, porque é verbo em português.
+  palavra('sigla-ai', 'ai'),
+  palavra('ia-sufixo', '(?:ai|ia)[\\s_/-]*(?:powered|assisted|driven|based|generated|written)'),
   // "QA" e "Q.A." em qualquer caixa: "qa" não é palavra comum em inglês nem em português.
   palavra('sigla-qa', 'q\\.?a\\.?'),
   // "A.I.": a mesma sigla escrita com pontos.
   palavra('sigla-a-i', 'a\\.\\s?i\\.?'),
+  // C.I., P.R., I.A., A.I., Q.A.: letras separadas por ponto (e "C I", "P R" em maiúsculas separadas por espaço).
+  palavra('sigla-pontuada', '(?:c\\.\\s?i|p\\.\\s?r|i\\.\\s?a|a\\.\\s?i|q\\.\\s?a)\\.?s?'),
+  sigla('sigla-espacada', '(?:C\\s+I|P\\s+R|I\\s+A|A\\s+I|Q\\s+A)s?'),
   // "CI" e "PR(s)" em qualquer caixa: não existem como palavra comum e "pr 12" ou "ci" minúsculo também vazam.
-  palavra('ci', 'ci'),
+  palavra('ci', 'cis?'),
   sigla('sigla-ci-cd', 'CI/CD'),
   palavra('pr', 'prs?'),
   // "PR42", "PR-42", "pr_42", "P.R. 42": o número colado à sigla tira a palavra inteira, então tem regra própria.
@@ -175,6 +185,18 @@ export const RULES = [
   palavra('cursor', 'cursor'),
   palavra('devin', 'devin'),
   palavra('windsurf', 'windsurf'),
+  palavra('aider', 'aider'),
+  palavra('tabnine', 'tabnine'),
+  palavra('codeium', 'codeium'),
+  palavra('cody', 'cody'),
+  palavra('qwen', 'qwen'),
+  palavra('codewhisperer', 'codewhisperer'),
+  palavra('amazon-q', 'amazon\\s+q'),
+  palavra('replit', 'replit'),
+  palavra('lovable', 'lovable'),
+  palavra('bolt', 'bolt'),
+  // "v0" sozinho é o gerador de interface; "v0.13.0" é versão e não pode reprovar.
+  palavra('v0', 'v0(?!\\.?\\d)'),
   // "generated" em qualquer uso: texto gerado, arquivo gerado... é como o trabalho interno descreve o que a máquina fez.
   palavra('generated', 'generated'),
   // Infraestrutura e segurança do ambiente de build: o usuário não vê nada disso.
@@ -191,6 +213,9 @@ export const RULES = [
   palavra('ubuntu-latest', 'ubuntu[-_\\s]?latest'),
   palavra('autosave', 'auto[\\s_-]?save'),
   palavra('automation', 'automation'),
+  palavra('qa-extenso', 'quality[\\s_/-]+assurance|garantia[\\s_/-]+de[\\s_/-]+qualidade'),
+  // Execução de CI com número curto ("Job 7", "run 4521", "build 1234"). O id longo (8+ dígitos) tem regra própria abaixo.
+  palavra('execucao-numero', '(?:run|job|build)[\\s_#/-]*\\d+'),
   palavra('id-numerico', '(?:runs?|jobs?|ids?)[\\s_/:#-]*\\d{8,}'),
   palavra('producao', 'production\\s+environment'),
   palavra('publicando-em', 'publish(?:ing|ed)?\\s+(?:to|on)\\s+(?:open\\s+vsx|(?:vs\\s+(?:code\\s+)?)?marketplace)'),
@@ -219,10 +244,10 @@ export const RULES = [
   // Dependabot: título de PR de atualização de dependência.
   padrao('bump', 'Bump\\s+\\S+\\s+from\\s+\\S+\\s+to\\s+\\S+', 'giu'),
   // Infraestrutura de entrega.
-  palavra('pipeline', 'pipelines?'),
-  palavra('workflow', 'workflows?'),
-  palavra('hook', 'hooks?'),
-  palavra('gate', 'gates?'),
+  palavra('pipeline', 'pipe[\\s_/-]*lin[\\p{L}\\p{N}]*'),
+  palavra('workflow', 'work[\\s_/-]*flows?'),
+  palavra('hook', 'hooks?|hooked'),
+  palavra('gate', 'gates?|gated|gating'),
   palavra('github-actions', 'github\\s+actions?'),
   palavra('pull-request', 'pull\\s+requests?'),
   palavra('esteira', 'esteiras?'),
@@ -239,10 +264,14 @@ export const RULES = [
   // "orquestr" e "orchestr" como trecho: Orchestrator, Orquestração, orquestrador(es).
   padrao('orquestrador', 'orquestr|orchestr', 'giu'),
   palavra('planejador', 'planejad(?:or|ora)(?:es|as)?|planners?'),
-  palavra('skill', 'skills?'),
+  palavra('skill', 'skill(?:s|sets?)?'),
   palavra('prompt', 'prompts?'),
   // Organização do trabalho: lote, fila, handoff, backlog, etapa, sessão, fábrica, triagem, escada, juiz.
   palavra('lote', 'lotes?'),
+  // "lote" e "fila" em inglês; "batch actions" (recurso do produto) passa só pela frase exata em EXCECOES.
+  palavra('batch', 'batch(?:es)?'),
+  palavra('queue', 'queues?'),
+  palavra('lot', 'lots?'),
   palavra('fila', 'filas?'),
   palavra('handoff', 'hand[-\\s]?offs?'),
   palavra('backlog', 'backlogs?'),
@@ -308,7 +337,7 @@ export const RULES = [
 
   // --- Padrões que denunciam o histórico do repositório ----------------------------------------------------------
   // "#123": número de issue ou de PR.
-  padrao('numero-issue-pr', '#\\d+'),
+  padrao('numero-issue-pr', '#\\s*\\d+'),
   // "!42": número de merge request (GitLab) com exclamação.
   padrao('bang-numero', '!\\d+'),
   // "issue 198", "issue #198", "issue number 198": o número escrito por extenso, sem o "#".
@@ -327,6 +356,11 @@ export const RULES = [
   // Hash de commit: 7 a 64 hexadecimais seguidos, com ao menos um dígito e uma letra a-f (assim "added" e "deface",
   // que são só letras, e números puros, como datas, não casam).
   padrao('hash-commit', `${ANTES}(?=[0-9a-f]*\\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,64}${DEPOIS}`, 'giu'),
+  // Arquivo de workflow ou de configuração YAML do projeto (validacao.yml, qa.yml...).
+  padrao('arquivo-yaml', '[\\w.-]+\\.ya?ml(?![\\p{L}\\p{N}])', 'giu'),
+  // "pull/228" sem o domínio, e o arquivo de donos do repositório.
+  padrao('pull-numero', `${ANTES}pull[/\\\\]\\d+`, 'giu'),
+  palavra('codeowners', 'code[-_]?owners?'),
   // Caminho de pasta do repositório: o usuário não conhece a estrutura do código.
   // Barra comum ou invertida (caminho do Windows).
   padrao('caminho-repo', `${ANTES}(?:src|tests|scripts)[/\\\\]|\\.github[/\\\\]|\\.claude[/\\\\]`, 'giu'),
@@ -379,6 +413,8 @@ export const EXCECOES = [
   // CHANGELOG 0.7.0, seção já publicada.
   { frase: 'File editor with an inline git assistant', onde: 'CHANGELOG [0.7.0], seção já publicada' },
   // Filtro do Dashboards ("Hide bots") na interface, no README e no catálogo em inglês.
+  // Telas de conflitos: ações em lote do rodapé (CHANGELOG [Unreleased]).
+  { frase: 'batch actions', onde: 'CHANGELOG [Unreleased], "applies batch actions from a footer"' },
   { frase: 'hide bots', onde: 'README e interface (filtro do Dashboards)' },
   { frase: 'ocultar bots', onde: 'interface em português (filtro do Dashboards)' },
   // Staging por linha: recurso central do produto (README e descrição do manifesto, nos dois idiomas).

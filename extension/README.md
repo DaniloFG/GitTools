@@ -270,7 +270,7 @@ The tool turned out great, right?! Then give me a hand to keep improving it and 
 Any amount helps — one-time or monthly, through [GitHub Sponsors](https://github.com/sponsors/DaniloFG).
 You'll also find the **♥** button inside GitTools (toolbar, welcome screen and **Settings → About**) and a
 **Sponsor** button on this extension's page in VS Code. It only opens the page in your browser; GitTools still makes no
-network calls of its own. Can't sponsor right now? A Marketplace review helps a lot too.
+network calls of its own. Can't sponsor right now? A Marketplace review helps greatly too.
 
 ## Links
 

@@ -412,6 +412,66 @@ const RUINS: [regra: string, texto: string][] = [
   ['mr-numero', '- Merged in MR/42.'],
   ['gh-numero', '- Fixed GH_228.'],
   ['issue-numero', '- Fixed issue_42.'],
+
+  // --- rodada 7 ---
+  ['batch', '- Processed in a batch.'],
+  ['batch', '- Run the batches.'],
+  ['queue', '- Added to the queue.'],
+  ['queue', '- Cleared the queues.'],
+  ['lot', '- Processed a lot of issues.'],
+  ['lot', '- The lots are done.'],
+  ['batch', '- Batch actions, then a batch of PRs.'],
+  ['sigla-ai', '- Built with ai assistance.'],
+  ['sigla-ai', '- Ai-powered suggestions.'],
+  ['ia-sufixo', '- Sugestões ia-powered.'],
+  ['ia-sufixo', '- Texto ia written.'],
+  ['ia-sufixo', '- Texto ai_assisted.'],
+  ['ia-sufixo', '- Texto ia-based.'],
+  ['ia-sufixo', '- Texto ia driven.'],
+  ['numero-issue-pr', '- Fixed # 228.'],
+  ['sigla-pontuada', '- Passou no C.I.'],
+  ['sigla-pontuada', '- Passou no P.R.'],
+  ['sigla-pontuada', '- Feito com I.A.'],
+  ['sigla-pontuada', '- Feito com Q.A.'],
+  ['sigla-espacada', '- Passou no C I.'],
+  ['sigla-espacada', '- Feito com I A.'],
+  ['ci', '- Both CIs failed.'],
+  ['pipeline', '- Fixed the pipe-line.'],
+  ['pipeline', '- Fixed the pipe line.'],
+  ['pipeline', '- Fixed the pipelined step.'],
+  ['workflow', '- Fixed the work flow.'],
+  ['workflow', '- Fixed the work-flow.'],
+  ['hook', '- It was hooked.'],
+  ['gate', '- It was gated.'],
+  ['gate', '- Gating is on.'],
+  ['skill', '- A new skillset.'],
+  ['qa-extenso', '- Passed quality assurance.'],
+  ['qa-extenso', '- Passou na garantia de qualidade.'],
+  ['execucao-numero', '- See job 7.'],
+  ['execucao-numero', '- See run 4521.'],
+  ['execucao-numero', '- See build 1234.'],
+  ['execucao-numero', '- See build #12.'],
+  ['co-authored-by', 'Co‐Authored‐By: alguém'],
+  ['claude', '- Built with claude‐code.'],
+  ['gt-agente', '- Reviewed by gt‑juiz.'],
+  ['aider', '- Written with Aider.'],
+  ['tabnine', '- Written with Tabnine.'],
+  ['codeium', '- Written with Codeium.'],
+  ['cody', '- Written with Cody.'],
+  ['qwen', '- Written with Qwen.'],
+  ['codewhisperer', '- Written with CodeWhisperer.'],
+  ['amazon-q', '- Written with Amazon Q.'],
+  ['replit', '- Written with Replit.'],
+  ['lovable', '- Written with Lovable.'],
+  ['bolt', '- Written with Bolt.'],
+  ['v0', '- Written with v0.'],
+  ['arquivo-yaml', '- Edited validacao.yml.'],
+  ['arquivo-yaml', '- Edited branch-flow.yml.'],
+  ['arquivo-yaml', '- Edited qa.yml.'],
+  ['arquivo-yaml', '- Edited publish-extension.yml.'],
+  ['arquivo-yaml', '- Edited config.yaml.'],
+  ['pull-numero', '- See pull/228.'],
+  ['codeowners', '- Updated CODEOWNERS.'],
 ]
 
 // Texto que o usuário lê sem problema, inclusive palavras que contêm um termo proibido sem serem ele.
@@ -429,7 +489,6 @@ const BONS = [
   '- The sidebar list only draws the rows you can see.',
   '- Compare: "Apply whole file" in the menu.',
   '- Dashboards at 320 px wide no longer scroll sideways.',
-  '- The pipelining of requests stays as it was.',
   '- Fix the colour of the ruler.',
   '- Open the file at the given path and see 3 items.',
   '- Form validation shows the error under the field.',
@@ -450,7 +509,9 @@ const BONS = [
   '- hide bots and ocultar bots are filters.',
   '- The editor with the git assistant bubble at the end of the current line.',
   '- Batch actions stay on the Conflicts footer.',
-  '- Queue of pending lines is kept.',
+  '- Applies batch actions from a footer.',
+  '- Fixed the colour in version v0.13.0.',
+  '- Opens the 3rd file, about 5 files in all.',
   '- Colon after a word: nothing else here.',
 ]
 
@@ -493,9 +554,10 @@ describe('findForbidden: textos de usuário passam', () => {
     expect(findForbidden(texto)).toEqual([])
   })
 
-  it('IA e AI só valem em MAIÚSCULAS e palavra inteira (QA vale em qualquer caixa)', () => {
-    expect(findForbidden('mais, ai e ia em minúsculas ficam de fora')).toEqual([])
-    expect(findForbidden('qa Qa Q.A. q.a.').map((a) => a.rule)).toEqual(['sigla-qa', 'sigla-qa', 'sigla-qa', 'sigla-qa'])
+  it('IA só vale em MAIÚSCULAS e AI em qualquer caixa, sempre como palavra inteira', () => {
+    expect(findForbidden('mais, ia fazer e ia embora ficam de fora')).toEqual([])
+    expect(findForbidden('ai Ai AI').map((a) => a.rule)).toEqual(['sigla-ai', 'sigla-ai', 'sigla-ai'])
+    expect(findForbidden('qa Qa Q.A. q.a.').filter((a) => a.rule === 'sigla-qa')).toHaveLength(4)
     expect(findForbidden('PRIMEIRO, CIDADE, AIRBAG e QAT não são siglas')).toEqual([])
   })
 
