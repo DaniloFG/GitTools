@@ -349,6 +349,8 @@ export interface FileContent {
 export interface FileHistoryEntry extends CommitInfo, LineStats {
   /** Caminho do arquivo neste commit (muda quando o arquivo foi renomeado). */
   path: string
+  /** Nome anterior, só no commit que renomeou o arquivo: vai ao pathspec para o git achar a renomeação. */
+  oldPath?: string
 }
 
 // --------------------------------------------------- rebase interativo

@@ -145,7 +145,7 @@ export function ChangesView() {
     git.diff({ kind: active.area, path: active.path, fullFile, uncapped }).then(
       (files) => {
         if (cancelled) return
-        showDiff(files.find((f) => f.path === active.path || f.oldPath === active.path) ?? files[0] ?? null)
+        showDiff(files[0] ?? null)
       },
       (e) => !cancelled && toast('error', errorMessage(e))
     )
