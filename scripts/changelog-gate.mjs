@@ -40,13 +40,14 @@ const NS = '[^\\p{L}\\p{N}]'
 const numero = (min = 1) => `${NS}*(?:(?:n[º°o.]*|№|number|id)${NS}*)?\\d{${min},}`
 
 /**
- * Escreve o termo composto com NS: `\s+` vira NS+, `\s*` e `\s?` viram NS*, e as classes feitas só de separadores
+ * Escreve o termo composto com NS: `\s+`, `\s*` e `\s?` viram NS*, e as classes feitas só de separadores
  * (`[-\s]`, `[\s_/-]`, `[\s_/:#-]`...) viram NS (com o `?` ou `*` que vierem depois virando NS*).
  */
 const separar = (fonte) =>
   fonte
     .replace(/\[(?:-|\\s|_|\/|:|#)+\]([?*]?)/g, (_, q) => (q ? `${NS}*` : NS))
-    .replace(/\\s\+/g, `${NS}+`)
+    // Opcional: "PullRequest", "pullrequest" e "GeneratedWith" (formas coladas ou em camelCase) também reprovam.
+    .replace(/\\s\+/g, `${NS}*`)
     .replace(/\\s[?*]/g, `${NS}*`)
 
 /** Palavra inteira sem diferença de caixa: "Pipeline", "PIPELINES" e "pipeline" casam. Termos compostos usam SEP. */
@@ -124,16 +125,16 @@ export const RULES = [
 
   // --- Siglas internas -------------------------------------------------------------------------------------------
   // "IA"/"AI"/"QA": só MAIÚSCULAS, porque "ia" é verbo em português e "ai" aparece em outras línguas.
-  sigla('sigla-ia', 'IA'),
+  sigla('sigla-ia', 'IAs?'),
   // "ai" em qualquer caixa e palavra inteira ("Ai-powered", "built with ai"); "ia" só maiúsculo, porque é verbo em português.
-  palavra('sigla-ai', 'ai'),
+  palavra('sigla-ai', 'ais?'),
   palavra('ia-sufixo', '(?:ai|ia)\\s*(?:powered|assisted|driven|based|generated|written)'),
   // "QA" e "Q.A." em qualquer caixa: "qa" não é palavra comum em inglês nem em português.
-  palavra('sigla-qa', 'q\\.?a\\.?s?'),
+  palavra('sigla-qa', 'q\\.?a\\.?(?:s|ed|ing)?'),
   // "A.I.": a mesma sigla escrita com pontos.
-  palavra('sigla-a-i', 'a\\.\\s?i\\.?'),
+  palavra('sigla-a-i', 'a(?:\\.\\s?|(?:-|_))i\\.?s?'),
   // C.I., P.R., I.A., A.I., Q.A.: letras separadas por ponto (e "C I", "P R" em maiúsculas separadas por espaço).
-  palavra('sigla-pontuada', '(?:c\\.\\s?i|p\\.\\s?r|i\\.\\s?a|a\\.\\s?i|q\\.\\s?a)\\.?s?'),
+  palavra('sigla-pontuada', '(?:c(?:\\.\\s?|(?:-|_))i|p(?:\\.\\s?|(?:-|_))r|i(?:\\.\\s?|(?:-|_))a|a(?:\\.\\s?|(?:-|_))i|q(?:\\.\\s?|(?:-|_))a)\\.?s?'),
   sigla('sigla-espacada', '(?:C\\s+I|P\\s+R|I\\s+A|A\\s+I|Q\\s+A)s?'),
   // "CI" e "PR(s)" em qualquer caixa: não existem como palavra comum e "pr 12" ou "ci" minúsculo também vazam.
   palavra('ci', 'cis?'),
@@ -201,8 +202,12 @@ export const RULES = [
   palavra('genai', 'gen[\\s_-]?ai'),
   palavra('xai', 'xai'),
   palavra('ai-generated', 'ai[-_\\s]generated'),
-  palavra('mistral', 'mistral'),
-  palavra('llama', 'llama'),
+  radical('mistral', 'mistral'),
+  radical('llama', 'llama'),
+  radical('bard', 'bard'),
+  radical('perplexity', 'perplexity'),
+  radical('mixtral', 'mixtral'),
+  radical('gemma', 'gemma'),
   palavra('grok', 'grok'),
   palavra('deepseek', 'deep[\\s_-]?seek'),
   palavra('cursor', 'cursor'),
@@ -212,7 +217,7 @@ export const RULES = [
   palavra('tabnine', 'tabnine'),
   palavra('codeium', 'codeium'),
   palavra('cody', 'cody'),
-  palavra('qwen', 'qwen'),
+  radical('qwen', 'qwen'),
   palavra('codewhisperer', 'codewhisperer'),
   palavra('amazon-q', 'amazon\\s+q'),
   palavra('replit', 'replit'),
@@ -316,7 +321,13 @@ export const RULES = [
   palavra('develop', 'develop'),
   // Dúvidas e perguntas do processo de trabalho (do assistente ao dono).
   palavra('duvida', 'd[úu]vidas?'),
-  palavra('pergunta', 'perguntas?'),
+  radical('pergunta', 'pergunt'),
+  radical('enfileirar', 'enfileir'),
+  palavra('gerado-automatico', 'gerad[oa]s?\\s*automaticamente'),
+  palavra('fluxo-trabalho', 'fluxos?\\s*de\\s*trabalho'),
+  palavra('gancho', 'ganchos?'),
+  palavra('portao', 'port[ãa]o|port[õo]es'),
+  palavra('passou-validacao', '(?:passou|passa|passam)\\s*(?:na|nos)\\s*(?:valida[çc][ãa]o|valida[çc][õo]es|testes|checks)'),
   radical('question', 'question|quest(?:[ãa]o|[õo]es)'),
   // Dúvida em inglês ("doubt"): mesma origem do processo de trabalho.
   palavra('doubt', 'doubts?'),
@@ -353,7 +364,8 @@ export const RULES = [
   palavra('internal-validation', 'internal\\s+validation'),
   // "internal config", "internal settings" e variações (configuration, setting...): radical depois do segundo termo.
   radical('internal-config', 'internal\\s*(?:config|setting)'),
-  radical('configuracao-interna', 'configura[çc](?:[ãa]o|[õo]es)\\s*internas?'),
+  // "config interna", "configs internas", "configuração interna": config* seguido de intern*.
+  padrao('configuracao-interna', `${ANTES}config[\\p{L}\\p{N}]*${NS}*intern[\\p{L}\\p{N}]*`, 'giu'),
   palavra('internal-check', 'internal\\s+(?:qa|tests?|checks?)'),
   // "Validação da pipeline/homolog/develop": é a validação do projeto, não de um formulário do app.
   palavra('validacao-pipeline', 'valida[çc][ãa]o\\s+(?:do|da)\\s+(?:pipeline|homolog\\w*|develop)'),
@@ -377,6 +389,15 @@ export const RULES = [
     rule: 'refs-numero',
     re: new RegExp(`${ANTES}(?:refs?|closes?|closed|fix(?:es|ed)?|resolves?|resolved)${NS}*(?:gh${NS}*)?${numero()}${DEPOIS}`, 'giu'),
   },
+  // "nº 228", "no. 228", "number 228": três ou mais dígitos depois de nº/number, mesmo sem a palavra do rastreador.
+  padrao('numero-solto', `${ANTES}(?:n[º°o.]+|number|№)${NS}*\\d{3,}${DEPOIS}`, 'giu'),
+  // Chave de rastreador no estilo JIRA ("GIT-228", "ABC-12"): 2+ letras maiúsculas, hífen e 2+ dígitos. Padrões
+  // técnicos comuns (UTF-8, ISO-8859, SHA-256, RFC-..., CVE-...) ficam de fora.
+  padrao(
+    'chave-rastreador',
+    `${ANTES}(?!(?:UTF|ISO|SHA|RFC|CVE|IEEE|ECMA|TLS|SSL|AES|MD|COVID|WIN|IBM|BIG|EUC|KOI|GB)-)[A-Z]{2,6}-\\d{2,}${DEPOIS}`,
+    'gu',
+  ),
   // "GH-198" e "ticket 198": outros jeitos de apontar para um item do rastreador.
   { rule: 'gh-numero', re: new RegExp(`${ANTES}gh${numero()}${DEPOIS}`, 'giu') },
   { rule: 'ticket-numero', re: new RegExp(`${ANTES}tickets?${numero()}${DEPOIS}`, 'giu') },
@@ -394,9 +415,9 @@ export const RULES = [
   palavra('codeowners', 'code[-_]?owners?'),
   // Caminho de pasta do repositório: o usuário não conhece a estrutura do código.
   // Barra comum ou invertida (caminho do Windows).
-  padrao('caminho-repo', `${ANTES}(?:src|tests|scripts)[/\\\\]|\\.github[/\\\\]|\\.claude[/\\\\]`, 'giu'),
+  padrao('caminho-repo', `${ANTES}(?:src|tests|scripts|extension|out|dist|docs|node_modules)[/\\\\][\\w.-]|\\.github[/\\\\]|\\.claude[/\\\\]`, 'giu'),
   // Branch de sessão remota (ccr-...).
-  padrao('branch-ccr', `${ANTES}ccr-[\\w-]+`, 'giu'),
+  padrao('branch-ccr', `${ANTES}ccr[_-][\\w-]+`, 'giu'),
   // Nome de branch de trabalho: tipo/assunto.
   padrao('branch-nome', `${ANTES}(?:feature|feat|fix|chore|docs|refactor|revert|hotfix|bugfix|release|wip|perf|test|build|ci)[/\\\\][\\w.-]+`, 'giu'),
   // Referência remota do git (origin/main, origin/develop).
