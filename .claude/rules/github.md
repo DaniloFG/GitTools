@@ -86,9 +86,26 @@ origem e maturidade entram quando se aplicam.
   `develop`, da validação VALIDADO da `develop` e com a branch já sem `docs/HANDOFF.md` (saiu antes do PR para a `develop`).
   A `develop` **nunca** é promovida para a `homolog` (pode ter mistura): a `homolog` leva só o que a branch fez. Merge
   feito: a mesma validação completa na `homolog`.
-- `homolog` → `main`: o Claude pode **abrir** o PR com o checklist do template e as duas evidências. Ele **nunca** faz merge, auto-merge,
-  push direto nem `gh pr merge` ou `merge_pull_request` na `main`. Quem faz o merge é o dono ou o aprovador. O Claude
-  para aí e segue o resto do trabalho.
+- `homolog` → `main`: o Claude **abre** o PR com o checklist do template e as duas evidências e **pode fazer o merge**
+  (issue #224), só por esta via estreita, que o hook `.claude/hooks/gate-main.sh` impõe (falha fechada):
+  1. a origem é a `homolog` do próprio repositório (não de fork), nunca a `develop`;
+  2. as duas validações completas deram VALIDADO (a da `develop` e a da `homolog`, com SHA e link), e o PR tem os rótulos
+     `validada-develop` **e** `validada-homolog` (a skill `validar` põe os dois; o segundo só depois da validação da `homolog`);
+  3. os check-runs `QA` e `Validação (homolog)` estão em `success` na ponta do PR (só `success`: `skipped` e `neutral` não
+     valem para eles; o rótulo sozinho não basta, a evidência fica presa ao SHA), os demais check-runs da ponta estão
+     concluídos (`success`, `neutral` ou `skipped`) e o `mergeable_state` é limpo (`clean`);
+  4. merge por merge commit, nunca squash nem rebase, e só pelo `gh`, com a ponta conferida igual à consultada. Nas
+     sessões o `gh pr merge` e o `gh pr view` usam GraphQL e o proxy responde 403, então a via REST vem primeiro:
+     `gh api -X PUT repos/{owner}/{repo}/pulls/<N>/merge -f merge_method=merge -f sha=<sha40>` (sha completo, de 40
+     caracteres), e `gh pr merge <N> --merge --match-head-commit <sha>` como alternativa onde o GraphQL existe; sem a
+     ponta, ou defasada, bloqueia, e `--admin` também. O `merge_pull_request` do MCP não prende a ponta: na `main` ele é
+     sempre bloqueado;
+  5. o comentário de evidência está no PR e nas issues **antes** do merge.
+
+  Continua bloqueado: push direto na `main`, `develop` → `main`, auto-merge, `--delete-branch`, squash ou rebase, check
+  vermelho, cancelado ou pendente, e consulta que falha. Force push, `--no-verify` e reescrita de histórico seguem
+  proibidos. Feito o merge, acompanhe os workflows que ele dispara (seção "Efeitos de um merge na `main`"), registre o
+  resultado no PR e avise o dono em uma linha.
 - O hook `.claude/hooks/gate-main.sh` bloqueia o que passa disso. Não o contorne.
 - Merge por merge commit (`merge_method: merge`), sem squash nem rebase (`CONTRIBUTING.md`).
 - Descrição: `.github/pull_request_template.md`, com as seções preenchidas e a etapa do fluxo marcada. Sem atribuição
@@ -101,7 +118,8 @@ origem e maturidade entram quando se aplicam.
   `validacao.yml` ou local. Quem roda é o agente `gt-validador`, pela skill `validar`; unidade verde não basta.
 - Verde na `develop`: evidência (commit, árvore, fases, tempos, link) nas issues do PR e `status:validada`; a skill
   `validar` põe o rótulo `validada-develop` no PR da `homolog`. Na `homolog` roda o mesmo pipeline completo, com a sua
-  própria validação. Só com as duas verdes o PR `homolog → main` é aberto, com as duas evidências, e fica ao dono.
+  própria validação, e a skill `validar` põe `validada-homolog` no PR `homolog → main`. Só com as duas verdes esse PR é
+  aberto, com as duas evidências, e só então pode ser mergeado pela via estreita da seção "Fluxo de PR".
 - Vermelho: issue de correção (`bug`, ligada à mãe), sem promover. Develop quebrada: reexecutar a fase; uma tentativa de
   conserto na branch culpada (commit de merge que começou a falha); senão reversão por PR (`revert/<N>-…`, exceção ao
   corte da main; nunca vai à homolog). A fila segue com as outras branches; só a culpada, e as que herdam a falha dela,
@@ -111,9 +129,9 @@ origem e maturidade entram quando se aplicam.
   esse SHA. Issue que depende de outra recebe o merge da branch dela, nunca de `origin/develop`. Issue Pequena ou
   Média de lote dispensa o `docs/HANDOFF.md`; o estado fica nos rótulos, no comentário de evidência e no PR.
 - O `gate-main.sh` só deixa o merge na `homolog` se a ponta do PR está na história da `develop`, o PR tem o rótulo
-  `validada-develop` e a origem não é a `develop`.
+  `validada-develop` e a origem não é a `develop`. Na `main`, vale a via estreita da seção "Fluxo de PR".
 - O check obrigatório de PR se chama `QA` (workflow `qa.yml`, job `QA`): gate de cobertura de cenários e pipeline. O
-  `gate-main.sh` só deixa o merge em `develop` e `homolog` com o check-run `QA` em `success` na ponta do PR (consulta
+  `gate-main.sh` só deixa o merge em `develop`, `homolog` e `main` com o check-run `QA` em `success` na ponta do PR (consulta
   que falha bloqueia). A proteção de branch que o exige no GitHub é do dono (#101).
   O que o `QA` confere (cenário de ponta a ponta por tela, `sem-e2e`, tetos) está em `.claude/rules/qa.md`; o
   procedimento, na skill `qa`.
@@ -139,13 +157,24 @@ branch puder ser escolhida.
 - **Exclusão é do dono, depois da `main`**: a branch só é apagada pelo dono depois do merge na `main`, com os pipelines
   verdes e o trabalho totalmente finalizado. A central só LISTA as candidatas (branches de trabalho já na história da
   `main`: `git branch -r --merged origin/main`, sem `develop`, `homolog` e `main`) com o SHA da ponta de cada uma, no
-  relatório ou na issue-mãe. Com o PR `homolog → main` ainda aberto, a lista sai vazia. Branch com PR aberto fica de fora.
+  relatório ou na issue-mãe. Com o PR `homolog → main` ainda aberto, a lista sai vazia; feito o merge na `main` pela via
+  estreita, ela pode sair cheia. Branch com PR aberto fica de fora.
   `develop`, `homolog` e `main` nunca são apagadas: o ruleset do GitHub bloqueia, e o `gate-main.sh` é a defesa em profundidade.
 - **Apagar não perde trabalho nem quebra a verificação.** Leia a branch pelo SHA, não pelo nome: `compare/BASE...SHA` no
   lugar do nome, e `refs/pull/N/head` para a ponta de um PR cuja branch sumiu. As duas formas foram provadas na B1 (issue
   #114). O pipeline (`validacao.yml`, `qa.yml`, `pipeline.mjs`) usa o nome da branch só como rótulo e concorrência.
 - **Registre o SHA da ponta antes de pedir a limpeza**: na descrição do PR para a `homolog` (o `docs/HANDOFF.md` já saiu
   nesse ponto) e, enquanto ele existir, no próprio HANDOFF.
+
+## Efeitos de um merge na `main`
+
+O merge na `main` dispara workflows com efeito fora do repositório; acompanhe-os e registre o resultado no PR.
+
+- `publish-extension.yml` (gatilho `on.push.branches: [main]`, com filtro de `paths` em `publish-extension.yml:13-26`): se o
+  merge mexe no que vai para o `.vsix`, a versão sai automática (`scripts/extension-version.mjs`), a extensão é publicada
+  no VS Code Marketplace e no Open VSX, e o `.vsix` é anexado ao release com a tag `vX.Y.Z`. Publicado não se desfaz.
+- `ci.yml` (`ci.yml:5`, `push` na `main`): roda o CI completo nos três sistemas operacionais.
+- `qa.yml` (`qa.yml:17`, `push` em `develop`, `homolog` e `main`): roda o `QA` no commit de merge.
 
 ## Tamanho
 
