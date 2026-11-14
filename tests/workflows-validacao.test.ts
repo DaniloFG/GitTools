@@ -1,10 +1,10 @@
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { lerTextoLF } from './support/lerTexto'
 
 // Os arquivos do veredito por commit são lidos como texto: o teste confere a forma que o GitHub e o shell vão
 // interpretar. Não há parser de YAML no projeto, e não se acrescenta dependência só para isto.
-const ler = (caminho: string) => readFileSync(fileURLToPath(new URL(`../${caminho}`, import.meta.url)), 'utf8')
+// A leitura normaliza CRLF (checkout no Windows) para LF: as asserções seguem as mesmas.
+const ler = lerTextoLF
 
 // Bloco `concurrency:` de um workflow: do cabeçalho até o próximo bloco de topo (`jobs:`).
 const concorrencia = (yml: string) => {
