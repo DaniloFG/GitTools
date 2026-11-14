@@ -1,6 +1,6 @@
 ---
 name: validar
-description: Validação do GitTools (issues #103 e #104). Depois de todo merge na develop, e de novo depois do merge da mesma branch na homolog, dispara o gt-validador (pipeline completo com integração e ponta a ponta) para o commit de merge de cada PR, um veredito por commit; registra a evidência nas issues e põe o rótulo validada-develop no PR da homolog. Use depois de qualquer merge na develop ou na homolog, antes do passo seguinte.
+description: Validação do GitTools (issues #103 e #104). Depois de todo merge na develop, e de novo depois do merge da mesma branch na homolog, dispara o gt-validador (pipeline completo com integração e ponta a ponta) para o commit de merge de cada PR, um veredito por commit; registra a evidência nas issues e põe o rótulo validada-develop no PR da homolog e, depois da validação da homolog, validada-homolog no PR homolog → main (os dois liberam o merge na main). Use depois de qualquer merge na develop ou na homolog, antes do passo seguinte.
 argument-hint: "<develop|homolog> <sha>[, <sha>…]"
 ---
 
@@ -66,8 +66,12 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
      inocente, em Regras).
 4. **Merge na homolog feito**: repita exatamente a mesma validação completa, agora para `homolog` (`merge_commit_sha` do
    PR da homolog), com a sua própria evidência. Não há comparação de árvore com a develop (ela pode conter mistura de outros).
-5. **Só com as duas validações verdes** abra o PR `homolog → main`, com as duas evidências na descrição (commit,
-   árvore, fases, tempos e links da `develop` e da `homolog`). Deixe-o ao dono: nunca merge nem auto-merge na `main`.
+5. **Só com as duas validações verdes** abra o PR `homolog → main` (ou reaproveite o aberto), com as duas evidências na
+   descrição (commit, árvore, fases, tempos e links da `develop` e da `homolog`), e ponha nele os rótulos `validada-develop`
+   e `validada-homolog` (este só depois do `VALIDADO` da homolog e do comentário de evidência). Se o rótulo
+   `validada-homolog` não existir, crie-o: `gh api -X POST repos/{owner}/{repo}/labels -f name=validada-homolog`. O PR pode
+   então ser mergeado pela sessão de PR, só pela via estreita de `.claude/rules/github.md` (o `gate-main.sh` confere os
+   dois rótulos, os checks e o merge commit); nunca auto-merge.
 
 ## Regras
 
@@ -82,5 +86,5 @@ em push para `develop` e `homolog` e em `workflow_dispatch`. Relatório: `valida
   limpo do SHA; o veredito vale igual, e a evidência diz "pipeline local".
 - Não afrouxe nem pule fase para "passar". Fase instável é issue de correção, não motivo de promover.
 - O veredito `VALIDADO` exige também o check `QA` do SHA validado em `success` (o `qa.yml` roda em push para `develop` e
-  `homolog`, então cada commit de merge já tem o seu). Check ausente ou não `success` é `REPROVADO QA`. Sem workflow
+  `homolog` e `main`, então cada commit de merge já tem o seu). Check ausente ou não `success` é `REPROVADO QA`. Sem workflow
   (pipeline local), o check não existe: rode `node scripts/validacao/gate-cobertura.mjs` e registre o resultado no lugar.

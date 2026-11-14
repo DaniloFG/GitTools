@@ -164,7 +164,7 @@ palavra do dono. Você não faz git nem PR: delega à sessão de PR.
 
 A branch de trabalho (nascida da `main`) é a **mesma** nos dois primeiros PRs, qualquer nome serve (`ccr-*` inclusive); a `develop` nunca é
 promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esforço em "Quem pede" da skill); ela avisa
-`PR FEITO`, `PR ABERTO <n> (aguarda dono)` ou `PR PARADO` (não avance; é caso de juiz, seção acima). Em ordem:
+`PR FEITO` ou `PR PARADO` (não avance; é caso de juiz, seção acima). Em ordem:
 
 1. **HANDOFF**: sai antes do PR para a `develop`, para a remoção chegar à `develop` junto com a branch. Confira em
    `origin/<branch>` que o `docs/HANDOFF.md` saiu: a etapa ENCERRAMENTO faz o `git rm`; se ainda estiver lá, a sessão de
@@ -175,18 +175,23 @@ promovida para a `homolog`. Cada PR é uma sessão da skill `pr` (modelo e esfor
 4. **Branch → `homolog`**: PR da mesma branch, já sem o HANDOFF (a `homolog` e a `main` barram o arquivo); com o
    `VALIDADO` da `develop` e o comentário de evidência, a skill `validar` põe o rótulo `validada-develop` (o gate
    exige). Merge após CI verde.
-5. **Validar a `homolog`**: mesma validação completa, com o `gt-validador`.
-6. **`homolog → main`**: só com as duas verdes, a sessão de PR **abre** o PR com as duas evidências e o deixa ao dono.
+5. **Validar a `homolog`**: mesma validação completa, com o `gt-validador`; com o `VALIDADO`, a skill `validar` põe
+   `validada-homolog` no PR `homolog → main`.
+6. **`homolog → main`**: só com as duas verdes (rótulos `validada-develop` e `validada-homolog`), a sessão de PR **abre** o
+   PR com as duas evidências, confere `QA` e demais checks verdes e `mergeable_state` limpo, comenta a evidência no PR e
+   nas issues e **faz o merge** por merge commit, pela via estreita de `.claude/rules/github.md`. Depois acompanha os
+   workflows que o merge dispara (publicação da extensão, CI) e relata o resultado.
 7. **Issues**: para cada sub-issue cujos critérios foram conferidos na evidência da etapa (e na do `gt-validador`),
    comente a evidência final, troque para `status:validada` e feche com `state_reason: completed`. A issue-mãe fecha
    por último, com a mesma regra.
 8. **Limpeza das branches** (`.claude/rules/github.md`, "Ciclo de vida"): só LISTA e pede ao dono; nunca apaga (403, e o
    `gate-main.sh` barra `develop`, `homolog` e `main`). `git fetch origin`; candidatas = branches de trabalho já na história
    da `main` (`git branch -r --merged origin/main`, sem `develop`, `homolog`, `main`), com pipelines verdes na `main` e o
-   SHA da ponta de cada uma (registrado na descrição do PR da `homolog`). O merge na `main` é do dono: com o PR
-   `homolog → main` aberto, a lista sai vazia e a central diz isso. Ponha a lista e os SHAs no relatório e na issue-mãe,
-   pedindo ao dono que as apague. Branch com PR aberto ou fora da `main` não entra na lista.
-9. **Fim**: avise o dono em uma linha, com o `PR ABERTO <n> (aguarda dono)` e a lista do passo 8. Você não faz merge na `main`.
+   SHA da ponta de cada uma (registrado na descrição do PR da `homolog`). Com o PR `homolog → main` ainda aberto (ou
+   parado), a lista sai vazia e a central diz isso; feito o merge na `main`, ela pode sair cheia. Ponha a lista e os SHAs
+   no relatório e na issue-mãe, pedindo ao dono que as apague. Branch com PR aberto ou fora da `main` não entra na lista.
+9. **Fim**: avise o dono em uma linha, com o `PR FEITO` (merge na `main` e resultado dos workflows) e a lista do passo 8.
+   Você não faz o merge: ele é da sessão de PR, pela via estreita.
 10. **Próximo plano**: com o encerramento feito, rode `backlog` C. Havendo backlog pronto, a triagem de tamanho decide
    (Grande: `planejar` e nova central); sem backlog pronto, `backlog` A nas `precisa-refinamento` mais prioritárias.
 
