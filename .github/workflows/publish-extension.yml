@@ -30,8 +30,9 @@ on:
         description: 'Versão a publicar (ex.: 0.5.1). Em branco, a automática: a do extension/package.json se for maior que a última tag v*, senão a última tag + 1 no último número.'
         required: false
 
+# Mínimo no topo; a escrita (anexar o .vsix ao release) é só do job de publicação.
 permissions:
-  contents: write # anexar o .vsix ao release
+  contents: read
 
 # Uma publicação de cada vez (dois merges seguidos não disputam a mesma versão).
 concurrency:
@@ -41,6 +42,8 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # anexar o .vsix ao release
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,18 +80,29 @@ jobs:
           fi
           echo "version=$(node -p "require('./extension/package.json').version")" >> "$GITHUB_OUTPUT"
 
-      # Portão do changelog de usuário. O corpo do release sai da seção do CHANGELOG (nunca de títulos de PR ou de
-      # commit) e é conferido ANTES de empacotar e de publicar. Falha aqui fecha tudo: os passos seguintes (Marketplace,
-      # Open VSX e release) não rodam. Por isso nada neste trecho usa continue-on-error.
+      # Portão do texto de usuário. O corpo do release sai da seção do CHANGELOG (nunca de títulos de PR ou de
+      # commit) e é conferido ANTES de empacotar e de publicar, junto com o README, o manifesto da extensão e o nome
+      # do release. Falha aqui fecha tudo: os passos seguintes (Marketplace, Open VSX e release) não rodam. Por isso
+      # nada neste trecho usa continue-on-error.
+      # Só o push na branch (patch automático) aceita a nota neutra quando o Unreleased está vazio; tag e disparo
+      # manual sem texto continuam falhando. A decisão entra por env (ALLOW_NEUTRAL), nunca dentro do run.
       - name: Notas do release (do CHANGELOG)
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: node scripts/changelog-gate.mjs notes extension/CHANGELOG.md "$VERSION" "$RUNNER_TEMP/release-notes.md"
+          ALLOW_NEUTRAL: ${{ github.event_name == 'push' && github.ref_type == 'branch' && 'true' || 'false' }}
+        run: |
+          if [ "$ALLOW_NEUTRAL" = "true" ]; then MODO=neutro; else MODO=estrito; fi
+          node scripts/changelog-gate.mjs notes extension/CHANGELOG.md "$VERSION" "$RUNNER_TEMP/release-notes.md" "$MODO"
 
       - name: Gate do changelog de usuário
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: node scripts/changelog-gate.mjs check extension/CHANGELOG.md "$VERSION" "$RUNNER_TEMP/release-notes.md"
+
+      - name: Gate dos textos da extensão (README, manifesto, nome do release)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: node scripts/changelog-gate.mjs files "$VERSION" extension/README.md extension/package.json extension/package.nls*.json
 
       - run: npm run package:extension
         env:

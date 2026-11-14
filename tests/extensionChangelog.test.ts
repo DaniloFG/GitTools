@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { findForbidden, gateProblems } from '../scripts/changelog-gate.mjs'
+import { findForbidden, gateProblems, scanTextFiles } from '../scripts/changelog-gate.mjs'
 
 // Formato Keep a Changelog. Cada `## ` abre uma seção: `## [x.y.z] - data` é uma versão e `## [Unreleased]` é o que
 // ainda não saiu. Bullet é linha que começa com "- " dentro da seção; `### Added` não conta.
@@ -157,5 +157,14 @@ describe('extension/CHANGELOG.md', () => {
 
   it('o Unreleased e a seção da versão do package.json passam no portão de publicação', () => {
     expect(gateProblems(texto, pacote.version, '')).toEqual([])
+  })
+
+  // Os outros textos que o usuário lê no Marketplace: README, nome e descrição do manifesto e as frases traduzidas.
+  it('README, package.json (displayName, description, keywords), package.nls*.json e o nome do release não têm termo interno', () => {
+    const pasta = fileURLToPath(new URL('../extension/', import.meta.url))
+    const nls = readdirSync(pasta).filter((nome) => /^package\.nls(\..+)?\.json$/.test(nome))
+    expect(nls.length).toBeGreaterThan(0)
+    const arquivos = ['README.md', 'package.json', ...nls].map((nome) => `${pasta}${nome}`)
+    expect(scanTextFiles(arquivos, { version: pacote.version })).toEqual([])
   })
 })

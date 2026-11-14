@@ -38,11 +38,22 @@ paths:
   dúvida, número de issue ou de PR, nome de branch, validação ou QA) vai para commit, PR e issue, nunca para ele.
   Termo de jargão técnico que o usuário não entende também sai: escreva o efeito, não o mecanismo.
 - **O corpo do release vem da seção do CHANGELOG, nunca gerado de PR ou de commit** (`generate_release_notes` fica
-  `false`). `scripts/changelog-gate.mjs` grava as notas (`notes`) e as confere (`check`) no workflow de publicação,
-  antes de empacotar e de publicar: se achar termo interno, nada é publicado (Marketplace, Open VSX e release).
+  `false`). `scripts/changelog-gate.mjs` grava as notas (`notes`), as confere (`check`) e confere também o README,
+  `displayName`, `description` e `keywords` do `package.json`, os `package.nls*.json` e o nome do release (`files`),
+  tudo no workflow de publicação, antes de empacotar e de publicar: se achar termo interno, nada é publicado
+  (Marketplace, Open VSX e release). A busca normaliza o texto (NFKC), ignora caracteres invisíveis (que reprovam por
+  si) e trata `_` como separador.
+- **Falso positivo do portão**: ele é largo de propósito (falso negativo é o que não pode). Termo barrado que é
+  vocabulário do produto (`hook`, `agent`, `pull request`, `model`, `session`) se resolve descrevendo o efeito sem a
+  palavra, nunca afrouxando a regra: "this working session" vira "this window"; "git hooks" vira "scripts that git
+  runs"; "pull request" vira "merge request on the host". Termos de git como branch, merge, commit, rebase,
+  cherry-pick, worktree e staging passam.
 - **Patch automático não ganha seção**: o release dele usa o texto de `## [Unreleased]`. Sem seção da versão e com o
-  `Unreleased` vazio (sem bullet, ou só `- Nothing yet.`), o publish falha de propósito: escreva o que mudou antes.
+  `Unreleased` vazio (sem bullet, ou só `- Nothing yet.`), o push na branch publica a nota fixa
+  `- Maintenance release: stability improvements.` (modo `neutro`, ligado só por `github.event_name == 'push'` e
+  `ref_type == 'branch'`); tag e disparo manual falham de propósito (modo `estrito`): escreva o que mudou antes.
+- **Permissões do workflow de publicação**: `contents: read` no topo; `contents: write` só no job `publish`.
 - **`tests/extensionChangelog.test.ts` confere** a seção da versão do `package.json`, o `Unreleased` com bullet, a
   ordem decrescente das versões, bullet em cada seção e a ausência de termo interno no arquivo inteiro.
-  `tests/changelogGate.test.ts` cobre cada regra do portão e `tests/workflows-publicacao.test.ts`, a ordem dos passos
-  do workflow. O patch que o workflow publica sozinho não sobe o arquivo e não ganha seção.
+  O mesmo teste confere README, manifesto e `package.nls*.json`. `tests/changelogGate.test.ts` cobre cada regra do
+  portão e `tests/workflows-publicacao.test.ts`, a ordem dos passos e as permissões do workflow. O patch que o workflow publica sozinho não sobe o arquivo e não ganha seção.

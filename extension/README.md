@@ -35,7 +35,7 @@
 - 🧩 **A workspace your way**: move panels and tabs wherever you want, like in a modern editor.
 - 🔒 **No account, no cloud, no telemetry.** It uses the git you already have installed. Open source (MIT).
 
-*One tool. The whole Git workflow. No more switching windows.*
+*One tool. All of Git in one place. No more switching windows.*
 
 - [Dashboards](#-dashboards--your-repositorys-history-in-numbers)
 - [Highlights](#highlights)
