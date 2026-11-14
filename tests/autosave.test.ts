@@ -83,9 +83,21 @@ async function rodarEm(
   extra: NodeJS.ProcessEnv = {},
   ...args: string[]
 ): Promise<Resultado> {
+  return rodarEmComEntrada(undefined, projeto, cwd, extra, ...args)
+}
+
+// Igual ao rodarEm, mas com o JSON que o Claude Code manda no stdin do hook (o `.cwd` dele é o diretório da sessão, #200).
+async function rodarEmComEntrada(
+  input: string | undefined,
+  projeto: string,
+  cwd: string | undefined,
+  extra: NodeJS.ProcessEnv = {},
+  ...args: string[]
+): Promise<Resultado> {
   const r = await executar('bash', [script, ...args], {
     cwd,
     env: { ...ambienteGit, CLAUDE_PROJECT_DIR: projeto, ...extra },
+    input,
   })
   // O hook nunca pode bloquear o Claude: em qualquer cenário sai com 0 e sem barulho.
   expect(r.status).toBe(0)
@@ -188,6 +200,62 @@ describe('autosave.sh', () => {
       expect(await contagem(arvore)).toBe(1)
     })
 
+    // JSON do hook como o Claude Code o monta: o `cwd` vem no começo, antes de tool_input/tool_response.
+    const entradaDoHook = (cwd: string, resto: Record<string, unknown> = {}) =>
+      JSON.stringify({ session_id: 'x', transcript_path: '/tmp/t.jsonl', cwd, hook_event_name: 'Stop', ...resto })
+
+    // O harness pode rodar o hook com o cwd do PROCESSO na raiz; o diretório da sessão é o `.cwd` do stdin.
+    it('cwd do processo na raiz e .cwd do stdin no worktree: o wip: sai na branch do worktree', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      escrever(clone, 'raiz.txt', 'pendente na raiz\n')
+      const pontaRaiz = await git(clone, 'rev-parse', 'HEAD')
+      await rodarEmComEntrada(entradaDoHook(arvore), clone, clone)
+
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+      expect(await git(clone, 'rev-parse', 'HEAD')).toBe(pontaRaiz)
+      expect(await pendente(clone)).toContain('raiz.txt')
+    })
+
+    // .cwd inválido não pode levar a lugar nenhum: cai na reserva (o pwd do processo), como antes do #200.
+    it.each([
+      ['inexistente', () => join(base, 'nao-existe')],
+      ['relativo', () => 'relativo/x'],
+    ])('.cwd %s no stdin: usa o pwd do processo', async (_nome, valor) => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook(valor()), clone, arvore)
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/7-assunto')).toBe(await git(arvore, 'rev-parse', 'HEAD'))
+    })
+
+    it('--limitado com .cwd do stdin no worktree e carimbo fresco: nenhum processo git e nada commitado', async () => {
+      const { extra, contador } = await gitContado()
+      gravarCarimboNo(arvore, 60)
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook(arvore), clone, clone, extra, '--limitado')
+      expect(processosGit(contador), 'processos git disparados pelo hook').toBe(0)
+      expect(await contagem(arvore)).toBe(1)
+    })
+
+    // O hook só lê o começo do stdin: um tool_response de 1 MB depois do cwd não pode travar nem quebrar a saída.
+    it('stdin grande (tool_response de ~1 MB) depois do .cwd: termina, sai 0 e salva no worktree', async () => {
+      escrever(arvore, 'src/novo.ts', 'export {}\n')
+      const entrada = entradaDoHook(arvore, { tool_response: 'x'.repeat(1024 * 1024) })
+      await rodarEmComEntrada(entrada, clone, clone)
+      expect(await assunto(arvore)).toMatch(/^wip: salvamento automático/)
+    })
+
+    it('.cwd com espaço e acento no nome do worktree', async () => {
+      const outraArvore = join(clone, '.claude', 'worktrees', 'issue 8 ação')
+      await git(clone, 'worktree', 'add', '-q', '-b', 'fix/8-acao', outraArvore, 'trabalho')
+      await git(clone, 'push', '-q', '-u', 'origin', 'fix/8-acao')
+      escrever(outraArvore, 'src/novo.ts', 'export {}\n')
+      await rodarEmComEntrada(entradaDoHook(outraArvore), clone, clone)
+      expect(await assunto(outraArvore)).toMatch(/^wip: salvamento automático/)
+      expect(await git(remoto, 'rev-parse', 'fix/8-acao')).toBe(await git(outraArvore, 'rev-parse', 'HEAD'))
+      expect(await contagem(arvore)).toBe(1)
+    })
+
     // git de mentira: cada chamada acrescenta uma linha ao arquivo de contagem e segue para o git real. O caminho do git
     // real sai de `command -v git` (no Git Bash do Windows é um caminho POSIX que o exec aceita). Só vale no `extra`
     // do rodarEm, para não tocar no PATH dos outros testes.
@@ -256,6 +324,24 @@ describe('autosave.sh', () => {
     await rodar(clone)
     expect(await contagem(clone)).toBe(2)
     expect(await emCommit(clone)).not.toContain('.claude/autosave.stamp')
+  })
+
+  // O git reclama ("paths are ignored ... Use -f") de pathspec que casa exatamente um arquivo ignorado, até de exclusão:
+  // com o .gitignore do projeto (log e carimbo ignorados) o `git add` saía com 1 e o wip: nunca era commitado.
+  it('com o log e o carimbo no .gitignore (como no projeto) ainda commita, sem erro no git add', async () => {
+    writeFileSync(join(clone, '.gitignore'), '.claude/autosave.stamp\n.claude/autosave.log\n')
+    await git(clone, 'add', '.gitignore')
+    await git(clone, 'commit', '-q', '-m', 'ignora o autosave')
+    await git(clone, 'push', '-q', 'origin', 'trabalho')
+    mkdirSync(join(clone, '.claude'), { recursive: true })
+    writeFileSync(join(clone, '.claude', 'autosave.log'), 'linha antiga\n')
+    writeFileSync(join(clone, '.claude', 'autosave.stamp'), `${Math.floor(Date.now() / 1000) - 700}\n`)
+    escrever(clone, 'a.txt', 'a\n')
+    await rodar(clone, '--limitado')
+
+    expect(await assunto(clone)).toMatch(/^wip: salvamento automático/)
+    expect(await emCommit(clone)).toEqual(['a.txt'])
+    expect(readFileSync(join(clone, '.claude', 'autosave.log'), 'utf8')).not.toContain('erro no git add')
   })
 
   it.each(['develop', 'homolog', 'main'])('na branch %s não faz nada', async (nome) => {
