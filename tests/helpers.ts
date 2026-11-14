@@ -1,5 +1,5 @@
 import { setLocale } from '../src/shared/i18n'
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, type TestContext } from 'vitest'
@@ -24,10 +24,88 @@ async function waitForGit(limitMs = 60_000) {
   while (running.size && Date.now() - start < limitMs) await new Promise((r) => setTimeout(r, 50))
 }
 
+/** O `code` de um erro do sistema (EBUSY, ESRCH...), ou undefined se o erro não traz um `code` em texto. */
+export function errorCode(e: unknown): string | undefined {
+  if (typeof e !== 'object' || e === null || !('code' in e)) return undefined
+  return typeof e.code === 'string' ? e.code : undefined
+}
+
+/** Códigos em que vale tentar de novo: no Windows, quem segura a pasta costuma soltá-la em instantes. */
+const RETRYABLE_RM_CODES = new Set(['EBUSY', 'EPERM', 'ENOTEMPTY', 'EACCES', 'EMFILE', 'ENFILE'])
+
+/**
+ * Apaga a pasta temporária de um teste. No Windows, um processo vivo (um neto do git, por exemplo, que tem o
+ * repositório como diretório atual) trava a pasta com EBUSY, e o antivírus e a indexação também a seguram por um
+ * tempo. Por isso tenta de novo a cada `delayMs`, mas só nesses erros e por no máximo `limitMs` contados do início:
+ * a espera é limitada, nunca infinita, e esgotado o prazo o último erro sobe. Qualquer outro erro sobe na hora.
+ * O `rm` padrão ainda leva as tentativas próprias do `rmSync`, como antes.
+ */
+export async function removeDir(
+  dir: string,
+  opts: { limitMs?: number; delayMs?: number; rm?: (dir: string) => void } = {}
+): Promise<void> {
+  const {
+    limitMs = 30_000,
+    delayMs = 100,
+    rm = (d: string) => rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  } = opts
+  const start = Date.now()
+  for (;;) {
+    try {
+      rm(dir)
+      return
+    } catch (error) {
+      const code = errorCode(error)
+      if (code === undefined || !RETRYABLE_RM_CODES.has(code) || Date.now() - start >= limitMs) throw error
+      await new Promise((r) => setTimeout(r, delayMs))
+    }
+  }
+}
+
+/**
+ * Espera o processo cujo PID está em `pidPath` sair. Primeiro sonda (a cada 50 ms) até o arquivo existir; depois
+ * sonda `process.kill(pid, 0)` até lançar ESRCH (EPERM conta como vivo). O prazo total é `limitMs`. A fase de esperar
+ * o arquivo tem prazo próprio, de no máximo `fileLimitMs`: se o abort chega antes de o node subir, o arquivo nunca
+ * aparece e não há processo para travar a pasta, então não vale gastar o prazo todo. Se o arquivo não aparecer ou o
+ * processo não sair a tempo, retorna sem erro, porque `removeDir` ainda tenta de novo na limpeza.
+ */
+export async function waitForExit(pidPath: string, limitMs = 15_000, fileLimitMs = 5_000): Promise<void> {
+  const start = Date.now()
+  const sleep = () => new Promise((r) => setTimeout(r, 50))
+  const fileDeadline = Math.min(limitMs, fileLimitMs)
+  let pid = NaN
+  while (Date.now() - start < fileDeadline) {
+    if (existsSync(pidPath)) {
+      // O arquivo pode estar ainda vazio no instante em que aparece: só vale quando traz um número.
+      pid = Number(readFileSync(pidPath, 'utf8').trim())
+      if (Number.isInteger(pid) && pid > 0) break
+    }
+    await sleep()
+  }
+  if (!Number.isInteger(pid) || pid <= 0) return
+  while (Date.now() - start < limitMs) {
+    try {
+      process.kill(pid, 0)
+    } catch (error) {
+      // Só EPERM conta como vivo; ESRCH (ou qualquer outro erro) quer dizer que o processo saiu.
+      if (errorCode(error) !== 'EPERM') return
+    }
+    await sleep()
+  }
+}
+
 afterEach(async () => {
   await waitForGit()
-  // O Windows pode demorar a soltar o diretório (antivírus, indexação): tenta de novo antes de desistir.
-  while (created.length) rmSync(created.pop()!, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  // Tenta apagar todas as pastas mesmo que uma falhe, para não deixar lixo; no fim relança o primeiro erro.
+  const errors: unknown[] = []
+  while (created.length) {
+    try {
+      await removeDir(created.pop()!)
+    } catch (error) {
+      errors.push(error)
+    }
+  }
+  if (errors.length) throw errors[0]
 })
 
 export interface TestRepo {
