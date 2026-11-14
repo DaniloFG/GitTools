@@ -116,7 +116,11 @@ origem e maturidade entram quando se aplicam.
   escreve e as ferramentas `mcp__github__*` que gravam texto) barra commit, PR e comentário com o trailer, o rodapé ou o
   link; leitura (`git log | grep`, `gh pr list`) passa. Para citar a regra em prosa, o trailer vai entre crases e sem
   dois-pontos; rodapé e link se parafraseiam. O rodapé que a PLATAFORMA acrescenta sozinha depois do envio está fora do
-  alcance do código: é limite conhecido, não tente contorná-lo nem edite o corpo para removê-lo.
+  alcance do código: é limite conhecido, não tente contorná-lo nem edite o corpo para removê-lo. O check "Validar fluxo
+  de branches" (`scripts/atribuicao-gate.mjs`, #254) confere no CI as mensagens dos commits do PR (`base..head`) e o corpo
+  do PR com as mesmas regras, cobrindo o que o hook não vê (`-m "$(cat f)"`, `--amend`, `cherry-pick`); a linha do rodapé
+  automático da plataforma, com ou sem o caminho da sessão, é ignorada só no corpo do PR (em commit, reprova), e a
+  identidade git (autor e committer) não é avaliada.
 
 ## Pipeline de validação
 

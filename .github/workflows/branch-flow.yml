@@ -7,6 +7,9 @@ name: Fluxo de branches
 
 on:
   pull_request:
+    # `edited` existe para reconferir o corpo do PR quando ele é editado (o check de atribuição de IA lê o corpo); só
+    # este workflow, que é barato, roda de novo. Nunca `pull_request_target`: o código do PR roda sem segredo.
+    types: [opened, synchronize, reopened, edited]
     branches: [develop, homolog, main]
 
 permissions:
@@ -60,6 +63,9 @@ jobs:
 
       - name: Fazer checkout do código do PR
         uses: actions/checkout@v4
+        with:
+          # O passo de atribuição de IA lê as mensagens de base..head, e isso pede a história inteira.
+          fetch-depth: 0
 
       - name: Garantir que a memória de trabalho não entre na homolog nem na main
         env:
@@ -77,3 +83,16 @@ jobs:
           fi
 
           echo "Memória de trabalho conferida para o destino $DESTINO."
+
+      - name: Barrar atribuição de IA em commits e no corpo do PR
+        # Defesa em profundidade do hook local .claude/hooks/gate-atribuicao.sh (#254): pega o que ele não vê (texto
+        # montado na execução, --amend, cherry-pick). Só os commits de base..head são avaliados: o que já está na base
+        # não é reavaliado, porque a main tem trailers antigos. A identidade git (autor e committer) não é avaliada
+        # (limite do ambiente). A linha do rodapé automático da plataforma, com ou sem o caminho da sessão, é ignorada
+        # só no corpo do PR, porque o próprio PR a recebe; em mensagem de commit ela reprova. O texto de fora (corpo do
+        # PR, shas) entra só por variável de ambiente, nunca dentro do `run:`.
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node scripts/atribuicao-gate.mjs "$BASE_SHA" "$HEAD_SHA"
