@@ -9,13 +9,18 @@
 # base; no `gh pr view`, isCrossRepository false); (2) rótulos `validada-develop` e `validada-homolog`; (3) mergeable_state
 # `clean` (no `gh pr view`, mergeStateStatus CLEAN); (4) check-run `QA` da ponta em success e todos os check-runs da
 # ponta completos com success/neutral/skipped (total_count > 0 e dentro da primeira página, senão bloqueia);
-# (5) método explícito merge commit (MCP merge_method=merge, `gh pr merge --merge`, `gh api -f merge_method=merge`);
+# (5) método explícito merge commit (`gh pr merge --merge`, `gh api -f merge_method=merge`);
 # (6) auto-merge e `gh pr merge --delete-branch` na main bloqueiam sempre (também com `=valor`). `gh api --input` na
 # main bloqueia (o corpo do arquivo decide o método). Consulta que falha bloqueia.
 # Ainda na via estreita: o check-run `Validação (homolog)` precisa existir na ponta com success (QA e ele: só success);
-# o merge traz a ponta conferida (MCP expectedHeadSha, `--match-head-commit`, `-f sha=`) igual à ponta atual do PR;
-# `gh pr merge --admin` bloqueia em qualquer base.
-# Escrita direta: `git push` com destino `heads/main`; `gh api` em /merges (base main, de arquivo ou ausente) e em
+# o merge traz a ponta conferida (`--match-head-commit`, `-f sha=`) igual à ponta atual do PR; `gh pr merge --admin`
+# bloqueia em qualquer base. O GitHub MCP não prende a ponta: `merge_pull_request` e `enable_pr_auto_merge` com base
+# `main` bloqueiam sempre (em develop e homolog seguem como antes); o caminho único é o gh com a ponta.
+# Tempo: o hook roda no máximo 4 `gh` de 15 s na via da main; o `.claude/settings.json` dá 120 s às duas entradas do
+# gate-main (hook morto por tempo deixa a ferramenta seguir: falha aberta).
+# Escrita direta: `git push` com destino `heads/main`, sem refspec ou com destino `HEAD`/`@`/vazio estando na main (um
+# `git symbolic-ref -q --short HEAD` no diretório do hook, ou no do `-C`; falha da consulta bloqueia, HEAD destacado
+# passa), com refspec curinga ou `:`; `\` no fim da linha é juntado antes de segmentar; `gh api` em /merges (base main, de arquivo ou ausente) e em
 # /contents (PUT/DELETE sem `branch=` ou com `branch=` main ou de arquivo); GraphQL createCommitOnBranch, updateRef(s)
 # e createRef.
 # Promoção (issues #103 e #104): a homolog recebe a branch de trabalho, nunca a develop. Merge de PR com base
@@ -32,15 +37,36 @@
 # Apagar com destino em variável é bloqueado (issue #124), porque o valor não dá para conferir: `git push origin
 # :$VAR` (com `+` opcional), qualquer argumento com `$` num `git push --delete`/`-d` e `gh api -X DELETE` cujo
 # endpoint de branch (`/git/refs/heads`) tem `$`.
-# Limites conhecidos (heurística sobre texto, não um parser de shell): `git push` sem destino com a main
-# já checada fora e `gh pr edit --base main` não são inspecionados (`gh api --input` na main bloqueia).
-# Também fora: continuação de linha com `\`, `\gh`, wrappers raros (nice, stdbuf) e a corrida entre a checagem e o
-# merge (a sessão de PR passa `sha` no merge_pull_request / `--match-head-commit`, ver skill `pr`). Também fora, por
-# serem evasão deliberada: `curl` com `$(gh auth token)` na API, `gh alias`/`git alias`, `GH_REPO=` ou `cd` para outro
-# clone antes de `gh pr merge` sem número, `git -c remote.origin.push=...` e `//` no meio do endpoint.
+# Limites conhecidos (heurística sobre texto, não um parser de shell): `gh pr edit --base main` não é inspecionado
+# (`gh api --input` na main bloqueia). Também fora: `\gh`, wrappers raros (nice, stdbuf), `push.default=upstream` ou
+# `branch.<x>.merge` apontando para a main com o checkout em outro branch, e a corrida entre a checagem e o merge (a
+# sessão de PR passa `--match-head-commit`, ver skill `pr`). Também fora, por serem evasão deliberada: `curl` com
+# `$(gh auth token)` na API, `gh alias`/`git alias`, `GH_REPO=` ou `cd` para outro clone antes de `gh pr merge` sem
+# número, `git -c remote.origin.push=...` e `//` no meio do endpoint.
 # Também não são verificados, porque o valor da variável não é lido: `git push origin "$SRC:$DST"` (apaga DST se
 # SRC estiver vazio, sem `--delete`), destino em variável que não apaga (`git push origin $BRANCH`, `HEAD:$X`),
 # `git update-ref -d $VAR` e `git branch -D $VAR`. Um `refs/remotes/origin/<outra>` apagado por update-ref passa.
+# Também fora, vistos na revisão: `cd <checkout na main> && git push` e `git --git-dir=`/`--work-tree` (o branch atual é
+# resolvido no diretório em que o hook roda, ou no do `-C`; um `cd` ou `--git-dir` no mesmo comando não é seguido, então
+# um `git push` sem destino passa se o checkout do hook não for a main). O valor de `-o`/`--push-option` (também em
+# opções curtas agrupadas, `-uo x`; e de `--repo`, `--receive-pack`, `--exec`) é pulado antes de contar refspecs; antes
+# disso `git push -o x origin` contava `origin`
+# como refspec e deixava passar um push sem destino com o checkout na main.
+# Prazo global (falha aberta se o hook estourar o `timeout` de 120 s do settings.json): o relógio (`SECONDS`) corre desde
+# o início; passados `GATE_MAIN_PRAZO` s (padrão e TETO de 90: valor maior, não numérico, vazio, zero ou negativo vira 90;
+# a variável existe para os testes), `gh_cmd` e `git_cmd` falham sem chamar o programa e todo chamador bloqueia ("prazo
+# do hook esgotado"). Antes disso, cada chamada tem min(15, prazo + 10 - SECONDS) s (piso 1), então o total nunca passa de
+# uns 100 s, qualquer que seja o número de segmentos (`a && b && c`). `GATE_MAIN_SECONDS_FAKE` soma segundos ao relógio
+# (só os testes o usam, para simular o tempo passado sem esperar; só pode deixar o hook mais restritivo).
+# Limite: o limite POR CHAMADA vem do binário `timeout` (coreutils). Sem ele (macOS sem coreutils) o gh/git roda sem
+# limite próprio: o prazo só vale ENTRE as chamadas, e um gh pendurado ainda pode estourar os 120 s do settings.json.
+SECONDS=0
+PRAZO=${GATE_MAIN_PRAZO:-90}
+if [[ $PRAZO =~ ^[0-9]{1,4}$ ]]; then PRAZO=$((10#$PRAZO)); else PRAZO=90; fi
+[ "$PRAZO" -ge 1 ] || PRAZO=90
+[ "$PRAZO" -le 90 ] || PRAZO=90
+ADIANTO=${GATE_MAIN_SECONDS_FAKE:-0}
+if [[ $ADIANTO =~ ^[0-9]{1,4}$ ]]; then ADIANTO=$((10#$ADIANTO)); else ADIANTO=0; fi
 entrada=$(cat)
 
 # Caminho comum: ferramenta que não é do GitHub MCP nem Bash sai aqui, sem abrir jq nem gh.
@@ -49,11 +75,19 @@ case "$entrada" in
   *) exit 0 ;;
 esac
 
+# Acrescenta à mensagem de bloqueio o motivo real quando o que falhou foi o prazo global (ver o cabeçalho).
+nota_prazo() {
+  if [ $((SECONDS + ADIANTO)) -ge "$PRAZO" ]; then
+    echo "Prazo do hook esgotado ($((SECONDS + ADIANTO)) s de $PRAZO s): as consultas seguintes não rodam e a chamada é bloqueada; divida o comando em chamadas menores."
+  fi
+}
+
 bloquear() {
   {
     printf 'GATE DA MAIN: bloqueado. %s\n' "$1"
     echo 'A main só recebe, pelo Claude, o merge da homolog com as duas validações e checks verdes; push direto, outra origem, squash/rebase e auto-merge ficam bloqueados.'
     echo 'Fora da via estreita (.claude/rules/github.md), a promoção para a main é feita pelo dono.'
+    nota_prazo
   } >&2
   exit 2
 }
@@ -64,15 +98,37 @@ bloquear_main_promocao() {
     printf 'GATE DA MAIN: bloqueado. %s\n' "$1"
     echo 'Via estreita da main (.claude/rules/github.md): só o merge da homolog, com validada-develop e validada-homolog, mergeable_state clean, checks verdes e merge commit.'
     echo 'Auto-merge, --delete-branch, squash, rebase e outra origem ficam bloqueados; fora dessa via, a promoção para a main é do dono.'
+    nota_prazo
   } >&2
   exit 2
 }
 
 eh_main() { [ "$1" = main ] || [ "$1" = refs/heads/main ]; }
 
-# gh pode travar na rede: com `timeout` (coreutils) o hook não fica pendurado; sem ele, roda direto.
+# Tempo que ainda cabe a UMA chamada: no máximo 15 s e, perto do fim do prazo, o que resta até prazo + 10 s (piso 1).
+# Assim a soma de todas as chamadas do hook, em qualquer número de segmentos, fica abaixo do `timeout` de 120 s das
+# duas entradas do gate-main no .claude/settings.json (hook morto por tempo deixa a ferramenta seguir: falha aberta).
+tempo_da_chamada() {
+  local t=$((PRAZO + 10 - SECONDS - ADIANTO))
+  [ "$t" -gt 15 ] && t=15
+  [ "$t" -lt 1 ] && t=1
+  echo "$t"
+}
+
+# gh pode travar na rede: com `timeout` (coreutils) o hook não fica pendurado. SEM o binário `timeout` (macOS sem
+# coreutils) o gh roda sem limite próprio: o prazo global só vale entre as chamadas (ver o cabeçalho). Esgotado o prazo
+# global, falha (status 124, como o timeout) sem chamar o gh, e todo chamador bloqueia. A via da main faz no máximo 4
+# chamadas por PR (base, origem/rótulos/estado, QA, todos os check-runs); um teste confere a conta.
 gh_cmd() {
-  if command -v timeout >/dev/null 2>&1; then timeout 20 gh "$@"; else gh "$@"; fi
+  if [ $((SECONDS + ADIANTO)) -ge "$PRAZO" ]; then return 124; fi
+  if command -v timeout >/dev/null 2>&1; then timeout "$(tempo_da_chamada)" gh "$@"; else gh "$@"; fi
+}
+
+# Mesmo cuidado para o git que resolve o branch atual (um processo só, local). O status 124 do prazo esgotado NÃO é o
+# 1 do HEAD destacado, então o chamador bloqueia em vez de deixar passar.
+git_cmd() {
+  if [ $((SECONDS + ADIANTO)) -ge "$PRAZO" ]; then return 124; fi
+  if command -v timeout >/dev/null 2>&1; then timeout "$(tempo_da_chamada)" git "$@"; else git "$@"; fi
 }
 
 # Nomes de dono/repo vão para um caminho de API: só caracteres de nome (e as chaves do marcador {owner}/{repo}).
@@ -83,6 +139,7 @@ bloquear_validacao() {
   {
     printf 'GATE DE PROMOÇÃO: bloqueado. %s\n' "$1"
     echo 'A homolog recebe a branch de trabalho, já mergeada e validada na develop (skill validar), nunca a própria develop.'
+    nota_prazo
   } >&2
   exit 2
 }
@@ -92,6 +149,7 @@ bloquear_qa() {
   {
     printf 'GATE DE QA: bloqueado. %s\n' "$1"
     echo 'O job `QA` do workflow precisa estar verde na ponta do PR antes do merge.'
+    nota_prazo
   } >&2
   exit 2
 }
@@ -142,11 +200,17 @@ exigir_qa() {
   esac
 }
 
-# Via estreita da main (issue #224), parte local: não consulta nada. Argumentos: modo(merge|auto) metodo apaga(0|1)
-# sha_esperado. Auto-merge e apagar a branch de origem (que seria a homolog) nunca passam; o método tem de ser
-# explicitamente merge; e o merge tem de trazer a ponta conferida (expectedHeadSha, --match-head-commit, sha=), para
-# que um push depois da conferência não entre sem checagem (a comparação com a ponta atual está em exigir_promocao_main).
+# Via estreita da main (issue #224), parte local: não consulta nada. Argumentos: modo(merge|auto|mcp) metodo
+# apaga(0|1) sha_esperado. Pelo MCP (modo mcp), auto-merge e apagar a branch de origem (que seria a homolog) nunca
+# passam; o método tem de ser explicitamente merge; e o merge tem de trazer a ponta conferida (--match-head-commit,
+# sha=), para que um push depois da conferência não entre sem checagem (a comparação com a ponta atual está em
+# exigir_promocao_main).
 exigir_metodo_main() {
+  # O merge_pull_request do servidor MCP do GitHub não prende a ponta (não existe um expectedHeadSha de verdade) e o
+  # enable_pr_auto_merge é auto-merge: pelo MCP, a main fica bloqueada sempre. O caminho único é o gh com a ponta.
+  if [ "$1" = mcp ]; then
+    bloquear_main_promocao "o merge na main não passa pelo GitHub MCP (ele não prende a ponta conferida): use gh pr merge <N> --merge --match-head-commit <sha> (ou gh api -X PUT repos/o/r/pulls/N/merge -f sha=<sha> -f merge_method=merge)."
+  fi
   if [ "$1" = auto ]; then
     bloquear_main_promocao "auto-merge em PR com a main como base é sempre bloqueado."
   fi
@@ -157,7 +221,7 @@ exigir_metodo_main() {
     bloquear_main_promocao "o merge na main exige o método explícito merge commit (recebido: ${2:-ausente})."
   fi
   if [ -z "$4" ]; then
-    bloquear_main_promocao "o merge na main exige informar a ponta do PR: passe a ponta conferida em expectedHeadSha (MCP), --match-head-commit (gh pr merge) ou -f sha= (gh api)."
+    bloquear_main_promocao "o merge na main exige informar a ponta do PR: passe a ponta conferida em --match-head-commit (gh pr merge) ou -f sha= (gh api)."
   fi
 }
 
@@ -233,7 +297,7 @@ exigir_promocao_main() {
   esperado=$(printf '%s' "${9:-}" | tr '[:upper:]' '[:lower:]')
   atual=$(printf '%s' "$4" | tr '[:upper:]' '[:lower:]')
   if [ -z "$esperado" ] || [ "$esperado" != "$atual" ]; then
-    bloquear_main_promocao "a ponta informada (${esperado:0:12}) não é a ponta atual do PR (${atual:0:12}); passe a ponta conferida (expectedHeadSha, --match-head-commit ou -f sha=)."
+    bloquear_main_promocao "a ponta informada (${esperado:0:12}) não é a ponta atual do PR (${atual:0:12}); passe a ponta conferida (--match-head-commit ou -f sha=)."
   fi
   exigir_qa "$1" "$2" "$4"
   exigir_checks_verdes "$1" "$2" "$4"
@@ -374,11 +438,13 @@ re_destino_main='^\+?([^:]*:)?(refs/heads/|heads/)?main$'
 re_base_json='(^|[^[:alnum:]_])base(RefName)?:[[:space:]]*(refs/heads/)?main([^[:alnum:]_./-]|$)'
 
 analisar_git() {
-  local a=("$@") j=0 tok
-  # Pula as opções globais (git -C dir push ...) até o subcomando.
+  local a=("$@") j=0 tok gc=()
+  # Pula as opções globais (git -C dir push ...) até o subcomando; os `-C dir` ficam guardados para o git que
+  # resolve o branch atual rodar no mesmo diretório que o push rodaria.
   while [ "$j" -lt "${#a[@]}" ]; do
     case "${a[j]}" in
-      -C|-c|--git-dir|--work-tree|--namespace) j=$((j + 2)) ;;
+      -C) gc+=(-C "${a[j+1]:-}"); j=$((j + 2)) ;;
+      -c|--git-dir|--work-tree|--namespace) j=$((j + 2)) ;;
       -*) j=$((j + 1)) ;;
       *) break ;;
     esac
@@ -435,6 +501,41 @@ analisar_git() {
         ;;
     esac
   done
+  # Destino que o texto não diz: sem refspec (`git push`, `git push origin`, `-u origin`) ou com destino `HEAD`, `@` ou
+  # vazio (`HEAD:`) o push vai para o branch atual, e com o checkout na main isso é push direto na main. Refspec com
+  # curinga (`refs/heads/*:refs/heads/*`) e `:` (todas as branches de mesmo nome) não dá para conferir e bloqueiam.
+  # O valor separado de `-o`/`--push-option`, `--repo`, `--receive-pack` e `--exec` não é refspec: é pulado (na forma
+  # `--opção=valor` ele já é um token só, que começa com `-`).
+  local npos=0 resolve=0 so_info=0 spec dest atual st k=0 b=("${a[@]:j+1}")
+  while [ "$k" -lt "${#b[@]}" ]; do
+    tok=${b[k]}
+    case "$tok" in
+      # `-o` também no fim de opções curtas agrupadas (`-uo x`): a letra `o` por último leva o valor seguinte.
+      -o|-[a-zA-Z]*o|--push-option|--repo|--receive-pack|--exec) k=$((k + 1)) ;;
+      --tags|--help|-h) so_info=1 ;;
+      -*) ;;
+      *)
+        npos=$((npos + 1))
+        if [[ $tok == *'*'* ]]; then bloquear "git push com refspec curinga ($tok): não dá para conferir se atinge a main."; fi
+        spec=${tok#+}
+        if [ "$spec" = : ]; then bloquear "git push com o refspec ':' (todas as branches de mesmo nome) pode atualizar a main."; fi
+        if [[ $spec == *:* ]]; then dest=${spec#*:}; else dest=$spec; fi
+        case "$dest" in HEAD|@|'') resolve=1 ;; esac
+        ;;
+    esac
+    k=$((k + 1))
+  done
+  if [ "$npos" -le 1 ] && [ "$apaga_push" = 0 ] && [ "$so_info" = 0 ]; then resolve=1; fi
+  if [ "$resolve" = 1 ]; then
+    # `-q`: HEAD destacado sai com status 1 e sem texto (não é a main, passa); qualquer outra falha (fora de um
+    # repositório, git ausente, tempo ou prazo global esgotado: status 124) é dúvida e bloqueia.
+    atual=$(git_cmd "${gc[@]}" symbolic-ref -q --short HEAD 2>/dev/null); st=$?
+    if [ "$st" = 0 ] && [ -n "$atual" ]; then
+      if eh_main "$atual"; then bloquear "git push com o checkout na main (destino implícito ou HEAD)."; fi
+    elif [ "$st" != 1 ] || [ -n "$atual" ]; then
+      bloquear "não foi possível resolver o branch atual para conferir o destino do git push; na dúvida, bloqueia."
+    fi
+  fi
 }
 
 analisar_gh() {
@@ -659,8 +760,11 @@ gh_api() { # endpoint metodo [campos...]
 
 # Cada segmento (separado por ; | & parênteses ou crase) é analisado à parte; aspas saem antes de separar.
 analisar_comando() {
-  local cmd=$1 t i n
+  local cmd=$1 t i n nl=$'\n'
   local segmentos
+  # `\` no fim da linha continua o comando na seguinte: junta antes de segmentar, senão `git push \<nl> origin main`
+  # vira dois segmentos e nenhum é visto inteiro.
+  cmd=${cmd//\\"$nl"/ }
   # O comando inteiro, antes de quebrar em segmentos: o gh_api confere as mutações GraphQL por ele.
   CMD_INTEIRO=$cmd
   segmentos=$(printf '%s\n' "$cmd" | tr -d "'\"" | tr '&;|()`' '\n')
@@ -701,17 +805,14 @@ command -v jq >/dev/null 2>&1 || bloquear "o jq não está instalado; sem ele n�
 campos=$(printf '%s' "$entrada" | jq -r '
   def s: (. // "") | tostring;
   [ (.tool_name | s), (.tool_input.owner | s), (.tool_input.repo | s), (.tool_input.pullNumber | s),
-    (.tool_input.branch | s), (.tool_input.base | s), (.tool_input.merge_method | s), (.tool_input.expectedHeadSha | s),
-    (.tool_input.command | s) ] | join("\u001f")') \
+    (.tool_input.branch | s), (.tool_input.base | s), (.tool_input.command | s) ] | join("\u001f")') \
   || bloquear "não foi possível ler a chamada da ferramenta (JSON inválido)."
-IFS=$'\x1f' read -r -d '' ferramenta dono repo numero ramo base_nova metodo_merge sha_esperado comando <<<"$campos"
+IFS=$'\x1f' read -r -d '' ferramenta dono repo numero ramo base_nova comando <<<"$campos"
 
 case "$ferramenta" in
-  mcp__github__merge_pull_request)
-    verificar_pr "$dono" "$repo" "$numero" merge "$metodo_merge" 0 "$sha_esperado"
-    ;;
-  mcp__github__enable_pr_auto_merge)
-    verificar_pr "$dono" "$repo" "$numero" auto "" 0 ""
+  # Na main, o MCP é bloqueado sempre (modo mcp em exigir_metodo_main); em develop e homolog segue como antes.
+  mcp__github__merge_pull_request|mcp__github__enable_pr_auto_merge)
+    verificar_pr "$dono" "$repo" "$numero" mcp "" 0 ""
     ;;
   mcp__github__create_or_update_file|mcp__github__push_files|mcp__github__delete_file)
     if eh_main "$ramo"; then bloquear "escrita direta na branch main pelo GitHub MCP."; fi

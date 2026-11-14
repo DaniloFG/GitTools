@@ -60,7 +60,8 @@ Para cada PR, na ordem (numa sessão de N PRs, o seguinte só começa depois que
   `gate-main.sh`). No PR da `homolog`, registre na descrição o SHA da ponta da branch, para a limpeza do dono.
 - `main`: merge só pela **via estreita** (`.claude/rules/github.md`; o `gate-main.sh` impõe): origem `homolog`; rótulos
   `validada-develop` e `validada-homolog` no PR; `QA` e `Validação (homolog)` em `success` na ponta, os demais check-runs concluídos (`success`, `neutral` ou
-  `skipped`) e `mergeable_state` `clean`; `merge_pull_request` com `merge_method: "merge"` explícito ou `gh pr merge
-  --merge`; comentário de evidência no PR e nas issues antes; **ponta conferida obrigatória**: `expectedHeadSha` no
-  `merge_pull_request`, ou `--match-head-commit <sha>` no `gh pr merge` (sem ela, ou diferente da ponta, o hook bloqueia);
-  `--admin` bloqueia. Nunca: push direto, `develop` → `main`, auto-merge, `--delete-branch`, squash ou rebase.
+  `skipped`) e `mergeable_state` `clean`; comentário de evidência no PR e nas issues antes. **Caminho único**:
+  `gh pr merge <N> --merge --match-head-commit <sha>` (o GitHub confere a ponta), ou `gh api -X PUT
+  repos/<o>/<r>/pulls/<N>/merge -f sha=<sha> -f merge_method=merge`; sem a ponta, ou diferente dela, o hook bloqueia.
+  O `merge_pull_request` do MCP **não prende a ponta**: na `main` o hook o bloqueia sempre (como o auto-merge); `gh pr merge --admin`
+  também bloqueia. `mergeable_state` pode vir `unknown` logo depois de um push: espere e consulte de novo, não force. Nunca: push direto, `develop` → `main`, auto-merge, `--delete-branch`, squash ou rebase.

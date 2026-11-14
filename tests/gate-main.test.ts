@@ -1,5 +1,5 @@
-import { spawn } from 'node:child_process'
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawn, spawnSync } from 'node:child_process'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -58,6 +58,7 @@ let ghLog = ''
 // Cada chamada fica no log.
 const ghFalso = `#!/usr/bin/env bash
 echo "$*" >> "$GH_LOG"
+[ -n "$GH_ATRASO" ] && sleep "$GH_ATRASO"
 a1=$1; a2=$2; a3=$3; todos="$*"; filtro=""
 while [ $# -gt 0 ]; do
   if [ "$1" = --jq ]; then filtro=$2; fi
@@ -209,29 +210,53 @@ beforeEach(() => {
   rmSync(ghLog, { force: true })
 })
 
-async function rodar(toolName: string, toolInput: Record<string, unknown>) {
+// `cwd` é o diretório em que o hook roda (o `git symbolic-ref` do push sem destino explícito usa o diretório atual).
+// `extraEnv` é para o prazo global do hook: GATE_MAIN_PRAZO (só dos testes) e GH_ATRASO (o gh falso dorme esse tanto).
+async function rodar(toolName: string, toolInput: Record<string, unknown>, cwd?: string, extraEnv: Record<string, string> = {}) {
   const r = await executar('bash', [script], {
     input: JSON.stringify({ tool_name: toolName, tool_input: toolInput }),
-    env: { ...process.env, PATH: `${dir}${delimiter}${process.env.PATH ?? ''}`, GH_LOG: ghLog },
+    env: { ...process.env, PATH: `${dir}${delimiter}${process.env.PATH ?? ''}`, GH_LOG: ghLog, ...extraEnv },
+    cwd,
   })
   return { code: r.status, stderr: r.stderr }
 }
 
-const bash = (command: string) => rodar('Bash', { command })
+const bash = (command: string, cwd?: string, extraEnv?: Record<string, string>) => rodar('Bash', { command }, cwd, extraEnv)
 const mcp = (nome: string, entrada: Record<string, unknown>) => rodar(`mcp__github__${nome}`, entrada)
 const pr = (numero: number) => ({ owner: 'o', repo: 'r', pullNumber: numero })
+// Merge na main só pelo gh, com a ponta conferida (todo PR de base main do gh falso tem ponta abc00NN).
+const viaGh = (n: number) => bash(`gh pr merge ${n} --merge -R o/r --match-head-commit abc00${n}`)
 
 describe('gate-main: GitHub MCP', () => {
   it.each([1, 2])('merge do PR %i (base develop/homolog) passa', async (n) => {
     expect((await mcp('merge_pull_request', pr(n))).code).toBe(0)
   })
 
-  it('merge do PR 3 (base main, origem fix/x) bloqueia pela origem, com mensagem em português', async () => {
-    const r = await mcp('merge_pull_request', { ...pr(3), merge_method: 'merge', expectedHeadSha: 'abc0003' })
+  it('merge do PR 3 (base main, origem fix/x) pelo gh bloqueia pela origem, com mensagem em português', async () => {
+    const r = await viaGh(3)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DA MAIN')
     expect(r.stderr).toContain('a main só recebe a homolog (origem do PR: fix/x)')
     expect(r.stderr).toContain('Via estreita da main')
+  })
+
+  it('merge de PR com base main pelo MCP bloqueia sempre, mesmo elegível, e aponta o caminho do gh', async () => {
+    for (const entrada of [pr(3), pr(30), { ...pr(30), merge_method: 'merge', expectedHeadSha: 'abc0030' }]) {
+      const r = await mcp('merge_pull_request', entrada)
+      expect(r.code).toBe(2)
+      expect(r.stderr).toContain('GATE DA MAIN: bloqueado.')
+      expect(r.stderr).toContain('não passa pelo GitHub MCP')
+      expect(r.stderr).toContain('gh pr merge <N> --merge --match-head-commit <sha>')
+      expect(r.stderr).toContain('gh api -X PUT repos/o/r/pulls/N/merge -f sha=<sha> -f merge_method=merge')
+    }
+    // O PR 30 só passa pelo gh, com a ponta (o mesmo PR, mesmo gate).
+    expect((await viaGh(30)).code).toBe(0)
+  })
+
+  it('o MCP segue liberado em develop e homolog, inclusive com squash e auto-merge', async () => {
+    expect((await mcp('merge_pull_request', { ...pr(1), merge_method: 'squash' })).code).toBe(0)
+    expect((await mcp('merge_pull_request', pr(2))).code).toBe(0)
+    expect((await mcp('enable_pr_auto_merge', pr(2))).code).toBe(0)
   })
 
   it('auto-merge do PR com base main bloqueia; com base develop passa', async () => {
@@ -465,7 +490,7 @@ describe('gate-main: a homolog recebe só a branch de trabalho, mergeada e valid
   })
 
   it('base main continua bloqueada pela regra da main, sem consultar a promoção da homolog', async () => {
-    const r = await mcp('merge_pull_request', { ...pr(3), merge_method: 'merge', expectedHeadSha: 'abc0003' })
+    const r = await viaGh(3)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DA MAIN')
     expect(readFileSync(ghLog, 'utf8')).not.toContain('compare')
@@ -544,7 +569,7 @@ describe('gate-main: o check QA precisa estar verde na ponta do PR', () => {
   })
 
   it('base main com origem errada continua bloqueada pela regra da main, sem consultar o check QA', async () => {
-    const r = await mcp('merge_pull_request', { ...pr(3), merge_method: 'merge', expectedHeadSha: 'abc0003' })
+    const r = await viaGh(3)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DA MAIN')
     expect(readFileSync(ghLog, 'utf8')).not.toContain('check-runs')
@@ -569,18 +594,106 @@ describe('gate-main: o check QA precisa estar verde na ponta do PR', () => {
 
 describe('gate-main: via estreita da main, só o merge da homolog (issue #224)', () => {
   // Todo PR de base main tem ponta abc00NN; o merge elegível traz a ponta conferida (issue #224, rodada 4).
-  const merge = (n: number) => ({ merge_method: 'merge', expectedHeadSha: `abc00${n}` })
   const msgMain = 'GATE DA MAIN: bloqueado.'
   const pm30 = '--match-head-commit abc0030'
 
-  it('PR 30 (homolog, os dois rótulos, clean, checks verdes, merge commit, ponta conferida) passa por MCP, gh pr merge e gh api', async () => {
-    expect((await mcp('merge_pull_request', { ...pr(30), ...merge(30) })).code).toBe(0)
+  it('PR 30 (homolog, os dois rótulos, clean, checks verdes, merge commit, ponta conferida) passa por gh pr merge e gh api', async () => {
     expect((await bash(`gh pr merge 30 --merge ${pm30}`)).code).toBe(0)
     expect((await bash(`gh pr merge 30 -m --match-head-commit=abc0030`)).code).toBe(0)
     expect((await bash('gh api -X PUT repos/o/r/pulls/30/merge -f merge_method=merge -f sha=abc0030')).code).toBe(0)
     const log = readFileSync(ghLog, 'utf8')
     expect(log).toContain('repos/o/r/commits/abc0030/check-runs?check_name=QA')
     expect(log).toContain('repos/o/r/commits/abc0030/check-runs?filter=latest&per_page=100')
+  })
+
+  // O settings.json dá 120 s às duas entradas do gate-main. Hook morto por tempo deixa a ferramenta seguir (falha
+  // aberta), então o pior caso do hook (chamadas gh da via da main x o timeout de cada uma) tem de caber com folga.
+  // O limite de tempo vale para o hook inteiro, não por segmento: `a && b && c` somava as chamadas de cada segmento e
+  // podia passar dos 120 s do settings.json (hook morto = falha aberta). Passado o prazo global, o segmento seguinte
+  // falha fechado sem chamar o gh. Este teste usa o relógio de verdade (gh falso com sleep): o `SECONDS` do bash conta
+  // segundos inteiros e pode andar até 1 s à frente do tempo real, então a conta tem folga nos dois lados: o primeiro
+  // segmento (PR 1, base develop) faz 3 chamadas de 2 s; a terceira começa com o relógio em no máximo 5 s (< prazo 6) e,
+  // ao fim, 6 s reais já passaram (>= prazo): o segundo segmento é recusado antes da primeira consulta.
+  it('prazo global do hook: esgotado no primeiro segmento, o seguinte (merge elegível) bloqueia sem consultar o gh', async () => {
+    const dois = `gh pr merge 1 --merge && gh pr merge 30 --merge ${pm30}`
+    // Controle: sem atraso o mesmo comando passa inteiro, com o mesmo prazo curto.
+    expect((await bash(dois, undefined, { GATE_MAIN_PRAZO: '6' })).code).toBe(0)
+    expect(readFileSync(ghLog, 'utf8')).toContain('repos/{owner}/{repo}/pulls/30')
+    rmSync(ghLog, { force: true })
+    const lento = await bash(dois, undefined, { GATE_MAIN_PRAZO: '6', GH_ATRASO: '2' })
+    expect(lento.code).toBe(2)
+    expect(lento.stderr).toContain('Prazo do hook esgotado')
+    expect(lento.stderr).toContain('GATE DA MAIN: bloqueado.')
+    const log = readFileSync(ghLog, 'utf8')
+    expect(log).toContain('repos/{owner}/{repo}/pulls/1 ')
+    expect(log).not.toContain('pulls/30')
+  })
+
+  it('prazo global: sem a variável de teste ou com valor inválido o prazo é 90 s e o comando passa', async () => {
+    const dois = `gh pr merge 1 --merge && gh pr merge 30 --merge ${pm30}`
+    expect((await bash(dois)).code).toBe(0)
+    expect((await bash(dois, undefined, { GATE_MAIN_PRAZO: 'abc' })).code).toBe(0)
+  })
+
+  // O prazo tem teto de 90 s: GATE_MAIN_PRAZO maior (que deixaria o hook passar dos 120 s do settings.json, falha
+  // aberta) é cortado. O relógio é simulado por GATE_MAIN_SECONDS_FAKE, sem esperar.
+  it.each([
+    ['1000', '90'],
+    ['91', '90'],
+    ['9999', '90'],
+    ['99999999999999999999', '90'],
+    ['0', '90'],
+    ['00', '90'],
+    ['-5', '90'],
+    ['', '90'],
+    ['abc', '90'],
+    ['1.5', '90'],
+    ['090', '90'],
+    ['08', '8'],
+  ])('GATE_MAIN_PRAZO=%j vale %s s, com teto de 90', async (valor, efetivo) => {
+    // Relógio em 95 s: o prazo efetivo (no máximo 90) já está esgotado e a primeira consulta é recusada.
+    const r = await bash(`gh pr merge 30 --merge ${pm30}`, undefined, { GATE_MAIN_PRAZO: valor, GATE_MAIN_SECONDS_FAKE: '95' })
+    expect(r.code).toBe(2)
+    // O relógio é o simulado (95 s) mais o `SECONDS` real do hook, que pode já ter virado 1.
+    expect(r.stderr).toMatch(new RegExp(`Prazo do hook esgotado \\((95|96) s de ${efetivo} s\\)`))
+    expect(existsSync(ghLog)).toBe(false)
+  })
+
+  it('GATE_MAIN_PRAZO=1000 não prolonga o prazo: com o relógio em 80 s ainda passa, em 90 s bloqueia', async () => {
+    const comando = `gh pr merge 30 --merge ${pm30}`
+    expect((await bash(comando, undefined, { GATE_MAIN_PRAZO: '1000', GATE_MAIN_SECONDS_FAKE: '80' })).code).toBe(0)
+    const r = await bash(comando, undefined, { GATE_MAIN_PRAZO: '1000', GATE_MAIN_SECONDS_FAKE: '90' })
+    expect(r.code).toBe(2)
+    expect(r.stderr).toMatch(/Prazo do hook esgotado \((90|91) s de 90 s\)/)
+  })
+
+  it('GATE_MAIN_SECONDS_FAKE inválido é ignorado (zero): o comando passa', async () => {
+    expect((await bash(`gh pr merge 30 --merge ${pm30}`, undefined, { GATE_MAIN_SECONDS_FAKE: 'abc' })).code).toBe(0)
+  })
+
+  it('o pior caso de tempo da via da main cabe no timeout das duas entradas do gate-main no settings.json', async () => {
+    const unico = await bash(`gh pr merge 30 --merge ${pm30}`)
+    expect(unico.code).toBe(0)
+    // O --jq de cada chamada tem várias linhas no log: contam-se só as linhas que abrem uma chamada (`api ...`).
+    const chamadas = (readFileSync(ghLog, 'utf8').match(/^api /gm) ?? []).length
+    expect(chamadas).toBe(4) // base, origem/rótulos/estado, QA e todos os check-runs
+    // Limites lidos do script: teto por chamada (`[ "$t" -gt 15 ]`), prazo global (`GATE_MAIN_PRAZO:-90`) e a folga
+    // de 10 s depois do prazo (`PRAZO + 10 - SECONDS`) que a última chamada ainda pode usar.
+    const fonte = readFileSync(script, 'utf8')
+    const porChamada = Number(/\[ "\$t" -gt (\d+) \] && t=\1/.exec(fonte)?.[1])
+    const prazo = Number(/GATE_MAIN_PRAZO:-(\d+)/.exec(fonte)?.[1])
+    const folga = Number(/PRAZO \+ (\d+) - SECONDS/.exec(fonte)?.[1])
+    expect(porChamada).toBeGreaterThan(0)
+    expect(prazo).toBeGreaterThan(0)
+    expect(folga).toBeGreaterThan(0)
+    // Um PR usa 4 chamadas no máximo: cabem no prazo; e o pior caso do hook inteiro (prazo + folga) cabe no timeout.
+    expect(chamadas * porChamada).toBeLessThanOrEqual(prazo)
+    const settings = JSON.parse(readFileSync(fileURLToPath(new URL('../.claude/settings.json', import.meta.url)), 'utf8')) as {
+      hooks: { PreToolUse: { matcher: string; hooks: { command: string; timeout?: number }[] }[] }
+    }
+    const entradas = settings.hooks.PreToolUse.flatMap((e) => e.hooks).filter((h) => h.command.includes('gate-main.sh'))
+    expect(entradas).toHaveLength(2)
+    for (const h of entradas) expect(h.timeout ?? 60).toBeGreaterThanOrEqual(prazo + folga + 10)
   })
 
   it('por seletor de ramo: homolog com CLEAN passa; origem fix/x bloqueia', async () => {
@@ -600,7 +713,7 @@ describe('gate-main: via estreita da main, só o merge da homolog (issue #224)',
     ['falta validada-homolog', 34, 'validada-homolog'],
     ['mergeable_state dirty', 35, 'mergeable_state: dirty'],
   ])('bloqueia por %s, sem consultar checks', async (_nome, n, trecho) => {
-    const r = await mcp('merge_pull_request', { ...pr(n), ...merge(n) })
+    const r = await viaGh(n)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain(msgMain)
     expect(r.stderr).toContain(trecho)
@@ -615,27 +728,25 @@ describe('gate-main: via estreita da main, só o merge da homolog (issue #224)',
     ['total_count maior que os itens retornados (paginação)', 40, 'não cabem numa página'],
     ['a consulta dos check-runs falha', 42, 'não foi possível consultar todos os check-runs'],
   ])('bloqueia com %s', async (_nome, n, trecho) => {
-    const r = await mcp('merge_pull_request', { ...pr(n), ...merge(n) })
+    const r = await viaGh(n)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DE QA')
     expect(r.stderr).toContain(trecho)
   })
 
   it('falha fechada: a consulta de origem, rótulos e estado falha (PR 41)', async () => {
-    const r = await mcp('merge_pull_request', { ...pr(41), ...merge(41) })
+    const r = await viaGh(41)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain(msgMain)
     expect(r.stderr).toContain('não foi possível obter origem, ponta, rótulos e estado')
   })
 
   it.each([
-    ['squash', 'squash'],
-    ['rebase', 'rebase'],
-    ['ausente', undefined],
-    ['vazio', ''],
-  ])('MCP com merge_method %s bloqueia, sem consultar os checks', async (_nome, metodo) => {
-    const base = { ...pr(30), expectedHeadSha: 'abc0030' }
-    const r = await mcp('merge_pull_request', metodo === undefined ? base : { ...base, merge_method: metodo })
+    ['--squash', 'gh pr merge 30 --squash --match-head-commit abc0030'],
+    ['--rebase', 'gh pr merge 30 --rebase --match-head-commit abc0030'],
+    ['sem método', 'gh pr merge 30 --match-head-commit abc0030'],
+  ])('gh pr merge %s bloqueia pelo método, sem consultar os checks', async (_nome, comando) => {
+    const r = await bash(comando)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('merge commit')
     expect(readFileSync(ghLog, 'utf8')).not.toContain('check-runs')
@@ -719,14 +830,11 @@ describe('gate-main: via estreita da main, só o merge da homolog (issue #224)',
     ['head.repo de fork com ref homolog', 43],
     ['head.repo null (fork apagado)', 44],
   ])('PR de outro repositório bloqueia, mesmo com ref homolog e tudo verde: %s', async (_nome, n) => {
-    const r = await mcp('merge_pull_request', { ...pr(n), ...merge(n) })
-    expect(r.code).toBe(2)
-    expect(r.stderr).toContain(msgMain)
-    expect(r.stderr).toContain('fork')
-    expect(readFileSync(ghLog, 'utf8')).not.toContain('check-runs')
-    const cli = await bash(`gh pr merge ${n} --merge --match-head-commit abc00${n}`)
+    const cli = await viaGh(n)
     expect(cli.code).toBe(2)
+    expect(cli.stderr).toContain(msgMain)
     expect(cli.stderr).toContain('fork')
+    expect(readFileSync(ghLog, 'utf8')).not.toContain('check-runs')
     const api = await bash(`gh api -X PUT repos/o/r/pulls/${n}/merge -f merge_method=merge -f sha=abc00${n}`)
     expect(api.code).toBe(2)
     expect(api.stderr).toContain('fork')
@@ -831,15 +939,12 @@ describe('gate-main: via estreita da main, só o merge da homolog (issue #224)',
     ['neutral (obrigatório não aceita neutral)', 49, 'situação: neutral'],
     ['duplicado: o de maior id (9) é failure, mesmo com success antigo (id 3)', 51, 'situação: failure'],
   ])('Validação (homolog) %s bloqueia', async (_nome, n, trecho) => {
-    const r = await mcp('merge_pull_request', { ...pr(n), ...merge(n) })
+    const r = await viaGh(n)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DE QA')
     expect(r.stderr).toContain("o check-run 'Validação (homolog)'")
     expect(r.stderr).toContain(trecho)
     expect(readFileSync(ghLog, 'utf8')).toContain(`repos/o/r/commits/abc00${n}/check-runs?filter=latest&per_page=100`)
-    const cli = await bash(`gh pr merge ${n} --merge --match-head-commit abc00${n}`)
-    expect(cli.code).toBe(2)
-    expect(cli.stderr).toContain('Validação (homolog)')
     expect((await bash(`gh api -X PUT repos/o/r/pulls/${n}/merge -f merge_method=merge -f sha=abc00${n}`)).code).toBe(2)
   })
 
@@ -847,33 +952,20 @@ describe('gate-main: via estreita da main, só o merge da homolog (issue #224)',
     ['duplicado: o de maior id (9) é success, o antigo (id 3) cancelled', 50],
     ['lint skipped e docs neutral (não obrigatórios aceitam), QA e Validação success', 53],
   ])('Validação (homolog) e demais checks passam: %s', async (_nome, n) => {
-    expect((await mcp('merge_pull_request', { ...pr(n), ...merge(n) })).code).toBe(0)
-    expect((await bash(`gh pr merge ${n} --merge --match-head-commit abc00${n}`)).code).toBe(0)
+    expect((await viaGh(n)).code).toBe(0)
     expect((await bash(`gh api -X PUT repos/o/r/pulls/${n}/merge -f merge_method=merge -f sha=abc00${n}`)).code).toBe(0)
   })
 
   it('QA skipped (obrigatório só success) bloqueia pelo check QA, mesmo com a Validação success', async () => {
-    const r = await mcp('merge_pull_request', { ...pr(52), ...merge(52) })
+    const r = await viaGh(52)
     expect(r.code).toBe(2)
     expect(r.stderr).toContain('GATE DE QA')
     expect(r.stderr).toContain('o check QA do commit')
   })
 
-  // A2: o merge só passa com a ponta conferida igual à ponta atual do PR.
+  // A2: o merge só passa com a ponta conferida igual à ponta atual do PR (só pelo gh: o MCP bloqueia sempre na main).
   it.each([
-    ['sem expectedHeadSha', {}, 'passe a ponta conferida'],
-    ['expectedHeadSha vazio', { expectedHeadSha: '' }, 'passe a ponta conferida'],
-    ['expectedHeadSha defasado', { expectedHeadSha: 'abc0029' }, 'não é a ponta atual do PR (abc0030)'],
-    ['expectedHeadSha abreviado', { expectedHeadSha: 'abc003' }, 'não é a ponta atual do PR (abc0030)'],
-  ])('MCP: %s bloqueia', async (_nome, extra, trecho) => {
-    const r = await mcp('merge_pull_request', { ...pr(30), merge_method: 'merge', ...extra })
-    expect(r.code).toBe(2)
-    expect(r.stderr).toContain(msgMain)
-    expect(r.stderr).toContain(trecho)
-    expect(readFileSync(ghLog, 'utf8')).not.toContain('check-runs')
-  })
-
-  it.each([
+    ['--match-head-commit abreviado', 'gh pr merge 30 --merge --match-head-commit abc003', 'não é a ponta atual'],
     ['sem --match-head-commit', 'gh pr merge 30 --merge', 'passe a ponta conferida'],
     ['--match-head-commit sem valor', 'gh pr merge 30 --merge --match-head-commit', 'passe a ponta conferida'],
     ['--match-head-commit defasado', 'gh pr merge 30 --merge --match-head-commit abc0029', 'não é a ponta atual'],
@@ -1137,17 +1229,173 @@ describe('gate-main: via estreita da main, só o merge da homolog (issue #224)',
     expect((await bash('gh api -X PUT https://api.github.com/repos/o/r/contents/a.txt -f message=m -f branch=feature/x')).code).toBe(0)
   })
 
-  it('auto-merge na main bloqueia sempre, mesmo com o PR 30 elegível; o método não importa', async () => {
+  it('auto-merge na main bloqueia sempre, mesmo com o PR 30 elegível: pelo MCP (caminho do gh na mensagem) e pelo gh', async () => {
     const r = await mcp('enable_pr_auto_merge', pr(30))
     expect(r.code).toBe(2)
-    expect(r.stderr).toContain('auto-merge')
-    expect((await mcp('enable_pr_auto_merge', { ...pr(30), ...merge(30) })).code).toBe(2)
+    expect(r.stderr).toContain('gh pr merge <N> --merge --match-head-commit <sha>')
+    expect((await mcp('enable_pr_auto_merge', { ...pr(30), merge_method: 'merge' })).code).toBe(2)
+    const cli = await bash(`gh pr merge 30 --merge --auto ${pm30}`)
+    expect(cli.code).toBe(2)
+    expect(cli.stderr).toContain('auto-merge')
   })
 
   it('a via estreita não afrouxa a develop nem a homolog: --delete-branch e squash continuam passando nelas', async () => {
     expect((await bash('gh pr merge 1 --squash --delete-branch')).code).toBe(0)
     expect((await bash('gh pr merge 2 --rebase')).code).toBe(0)
     expect((await mcp('merge_pull_request', { ...pr(1), merge_method: 'squash' })).code).toBe(0)
+  })
+})
+
+// `git push` sem destino explícito (ou com destino HEAD/@/vazio) vai para o branch atual: o hook resolve o branch com um
+// `git symbolic-ref` no diretório em que roda, então estes testes usam repositórios git de verdade como cwd.
+describe('gate-main: git push sem destino explícito resolve o branch atual', () => {
+  const msgMain = 'GATE DA MAIN: bloqueado.'
+  let base = ''
+  let naMain = ''
+  let naFeature = ''
+  let destacado = ''
+  let semRepo = ''
+
+  const git = (cwd: string, ...args: string[]) => {
+    const r = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], { cwd, encoding: 'utf8' })
+    expect(r.status, args.join(' ')).toBe(0)
+  }
+  const criar = (nome: string, ramo: string) => {
+    const pasta = join(base, nome)
+    mkdirSync(pasta)
+    git(pasta, 'init', '-q')
+    git(pasta, 'symbolic-ref', 'HEAD', `refs/heads/${ramo}`)
+    return pasta
+  }
+
+  beforeAll(() => {
+    base = mkdtempSync(join(tmpdir(), 'gittools-gatemain-push-'))
+    naMain = criar('na-main', 'main')
+    naFeature = criar('na-feature', 'feature/x')
+    destacado = criar('destacado', 'main')
+    git(destacado, 'commit', '-q', '--allow-empty', '-m', 'x')
+    git(destacado, 'checkout', '-q', '--detach')
+    semRepo = join(base, 'sem-repo')
+    mkdirSync(semRepo)
+  })
+
+  afterAll(() => {
+    rmSync(base, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  })
+
+  it.each([
+    'git push',
+    'git push origin',
+    'git push -u origin',
+    'git push origin HEAD',
+    'git push -u origin HEAD',
+    'git push origin @',
+    'git push origin HEAD:',
+    'git push origin +HEAD',
+    'git push --force-with-lease origin HEAD',
+    'git push \\\n  origin \\\n  HEAD',
+  ])('com o checkout na main bloqueia: %s', async (comando) => {
+    const r = await bash(comando, naMain)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain(msgMain)
+    expect(r.stderr).toContain('checkout na main')
+  })
+
+  it.each([
+    'git push',
+    'git push origin',
+    'git push -u origin HEAD',
+    'git push origin @',
+    'git push origin HEAD:',
+    'git push origin HEAD:feature/x',
+    'git push \\\n  origin \\\n  HEAD',
+  ])('com o checkout em feature/x passa: %s', async (comando) => {
+    expect((await bash(comando, naFeature)).code).toBe(0)
+  })
+
+  it('refspec explícito de outro branch passa mesmo com o checkout na main, sem consultar o git', async () => {
+    for (const comando of ['git push origin feature/x', 'git push -u origin feature/x', 'git push origin HEAD:feature/x', 'git push --tags', 'git push origin --delete feature/x']) {
+      expect((await bash(comando, naMain)).code, comando).toBe(0)
+    }
+  })
+
+  it('HEAD destacado não é a main: passa; fora de um repositório (a consulta falha) bloqueia', async () => {
+    expect((await bash('git push origin HEAD', destacado)).code).toBe(0)
+    expect((await bash('git push', destacado)).code).toBe(0)
+    const r = await bash('git push origin HEAD', semRepo)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('não foi possível resolver o branch atual')
+    expect((await bash('git push', semRepo)).code).toBe(2)
+    // Com destino explícito o git nem é consultado: fora de repositório também passa.
+    expect((await bash('git push origin feature/x', semRepo)).code).toBe(0)
+  })
+
+  it('git -C resolve o branch no diretório do -C, não no do hook', async () => {
+    expect((await bash(`git -C ${naMain} push`, naFeature)).code).toBe(2)
+    expect((await bash(`git -C ${naMain} push origin HEAD`, naFeature)).code).toBe(2)
+    expect((await bash(`git -C ${naFeature} push`, naMain)).code).toBe(0)
+  })
+
+  it.each([
+    'git push origin refs/heads/*:refs/heads/*',
+    'git push origin +refs/heads/*:refs/heads/*',
+    "git push origin 'refs/heads/*:refs/heads/*'",
+    'git push origin *:main',
+    'git push origin refs/heads/*:refs/heads/x*',
+    'git push origin :',
+    'git push origin +:',
+  ])('refspec com curinga ou ":" bloqueia, mesmo com o checkout em feature/x: %s', async (comando) => {
+    const r = await bash(comando, naFeature)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain(msgMain)
+  })
+
+  it('continuação de linha com `\\` é juntada antes de segmentar, para qualquer comando', async () => {
+    // Sem juntar, `git push origin \` (checkout em feature/x: passa) e `main` (não é comando) escapavam.
+    const r = await bash('git push origin \\\n main', naFeature)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('destino na main')
+    expect((await bash('gh pr merge 30 \\\n --squash \\\n --match-head-commit abc0030')).code).toBe(2)
+    expect((await bash('gh pr merge 30 \\\n --merge \\\n --match-head-commit abc0030')).code).toBe(0)
+    expect((await bash('gh api -X PUT \\\n repos/o/r/pulls/30/merge \\\n -f merge_method=squash -f sha=abc0030')).code).toBe(2)
+  })
+
+  // `git push -o x origin`: o valor de -o contava como refspec (npos 2), então o push sem destino passava na main.
+  it.each([
+    'git push -o ci.skip origin',
+    'git push --push-option ci.skip origin',
+    'git push --push-option=ci.skip origin',
+    'git push -o ci.skip -o b origin',
+    'git push -uo ci.skip origin',
+    'git push -fo ci.skip origin',
+    'git push --repo origin',
+    'git push --receive-pack x origin',
+  ])('o valor de opção que leva argumento não conta como refspec: bloqueia na main, passa em feature/x: %s', async (comando) => {
+    const r = await bash(comando, naMain)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('checkout na main')
+    expect((await bash(comando, naFeature)).code).toBe(0)
+  })
+
+  it('git push -o com refspec explícito de outro branch passa mesmo na main', async () => {
+    expect((await bash('git push -o ci.skip origin feature/x', naMain)).code).toBe(0)
+  })
+
+  // Prazo global: o git que resolve o branch também falha fechado (status 124, não o 1 do HEAD destacado).
+  it('prazo global esgotado antes do git push sem destino bloqueia, mesmo no checkout em feature/x', async () => {
+    const comando = 'gh pr merge 1 --merge && git push'
+    expect((await bash(comando, naFeature)).code).toBe(0)
+    // Relógio simulado (GATE_MAIN_SECONDS_FAKE): o prazo já passou quando o git seria consultado.
+    expect((await bash('git push', naFeature, { GATE_MAIN_SECONDS_FAKE: '80' })).code).toBe(0)
+    const lento = await bash('git push', naFeature, { GATE_MAIN_SECONDS_FAKE: '90' })
+    expect(lento.code).toBe(2)
+    expect(lento.stderr).toContain('Prazo do hook esgotado')
+    expect(lento.stderr).toContain('não foi possível resolver o branch atual')
+  })
+
+  it('--all e --mirror continuam barrados', async () => {
+    expect((await bash('git push --all origin', naFeature)).code).toBe(2)
+    expect((await bash('git push --mirror origin', naFeature)).code).toBe(2)
   })
 })
 

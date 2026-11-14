@@ -94,9 +94,10 @@ origem e maturidade entram quando se aplicam.
   3. os check-runs `QA` e `Validação (homolog)` estão em `success` na ponta do PR (só `success`: `skipped` e `neutral` não
      valem para eles; o rótulo sozinho não basta, a evidência fica presa ao SHA), os demais check-runs da ponta estão
      concluídos (`success`, `neutral` ou `skipped`) e o `mergeable_state` é limpo (`clean`);
-  4. merge por merge commit (`merge_method: "merge"` explícito; `gh pr merge --merge`), nunca squash nem rebase, com a
-     ponta conferida explícita e igual à consultada (`expectedHeadSha` no `merge_pull_request`, `--match-head-commit` no
-     `gh pr merge`, campo `sha` no `gh api`); sem ela, ou defasada, bloqueia; `--admin` bloqueia;
+  4. merge por merge commit, nunca squash nem rebase, e só pelo `gh`, com a ponta conferida igual à consultada:
+     `gh pr merge <N> --merge --match-head-commit <sha>` ou `gh api -X PUT .../pulls/<N>/merge -f sha=<sha> -f
+     merge_method=merge`; sem ela, ou defasada, bloqueia, e `--admin` também. O `merge_pull_request` do MCP não prende a
+     ponta: na `main` ele é sempre bloqueado;
   5. o comentário de evidência está no PR e nas issues **antes** do merge.
 
   Continua bloqueado: push direto na `main`, `develop` → `main`, auto-merge, `--delete-branch`, squash ou rebase, check
