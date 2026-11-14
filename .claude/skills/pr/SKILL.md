@@ -59,7 +59,8 @@ Para cada PR, na ordem (numa sessão de N PRs, o seguinte só começa depois que
 - **Branches**: depois do merge a branch fica; não tente apagá-la nem a `develop`, `homolog` ou `main` (403 e
   `gate-main.sh`). No PR da `homolog`, registre na descrição o SHA da ponta da branch, para a limpeza do dono.
 - `main`: merge só pela **via estreita** (`.claude/rules/github.md`; o `gate-main.sh` impõe): origem `homolog`; rótulos
-  `validada-develop` e `validada-homolog` no PR; `QA` e todos os check-runs da ponta concluídos (`success`, `neutral` ou `skipped`) e `mergeable_state`
-  `clean`; `merge_pull_request` com `merge_method: "merge"` explícito ou `gh pr merge --merge`; comentário de evidência no
-  PR e nas issues antes; passe `sha` (a ponta conferida) no `merge_pull_request`, ou `--match-head-commit` no `gh`, para
-  o merge não pegar uma ponta que mudou depois da checagem. Nunca: push direto, `develop` → `main`, auto-merge, `--delete-branch`, squash ou rebase.
+  `validada-develop` e `validada-homolog` no PR; `QA` e `Validação (homolog)` em `success` na ponta, os demais check-runs concluídos (`success`, `neutral` ou
+  `skipped`) e `mergeable_state` `clean`; `merge_pull_request` com `merge_method: "merge"` explícito ou `gh pr merge
+  --merge`; comentário de evidência no PR e nas issues antes; **ponta conferida obrigatória**: `expectedHeadSha` no
+  `merge_pull_request`, ou `--match-head-commit <sha>` no `gh pr merge` (sem ela, ou diferente da ponta, o hook bloqueia);
+  `--admin` bloqueia. Nunca: push direto, `develop` → `main`, auto-merge, `--delete-branch`, squash ou rebase.

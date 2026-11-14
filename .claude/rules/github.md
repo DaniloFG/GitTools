@@ -91,8 +91,12 @@ origem e maturidade entram quando se aplicam.
   1. a origem é a `homolog` do próprio repositório (não de fork), nunca a `develop`;
   2. as duas validações completas deram VALIDADO (a da `develop` e a da `homolog`, com SHA e link), e o PR tem os rótulos
      `validada-develop` **e** `validada-homolog` (a skill `validar` põe os dois; o segundo só depois da validação da `homolog`);
-  3. o check `QA` e todos os demais check-runs da ponta estão concluídos em `success` (o hook também aceita `neutral` e `skipped`), e o `mergeable_state` é limpo (`clean`);
-  4. merge por merge commit (`merge_method: "merge"` explícito; `gh pr merge --merge`), nunca squash nem rebase;
+  3. os check-runs `QA` e `Validação (homolog)` estão em `success` na ponta do PR (só `success`: `skipped` e `neutral` não
+     valem para eles; o rótulo sozinho não basta, a evidência fica presa ao SHA), os demais check-runs da ponta estão
+     concluídos (`success`, `neutral` ou `skipped`) e o `mergeable_state` é limpo (`clean`);
+  4. merge por merge commit (`merge_method: "merge"` explícito; `gh pr merge --merge`), nunca squash nem rebase, com a
+     ponta conferida explícita e igual à consultada (`expectedHeadSha` no `merge_pull_request`, `--match-head-commit` no
+     `gh pr merge`, campo `sha` no `gh api`); sem ela, ou defasada, bloqueia; `--admin` bloqueia;
   5. o comentário de evidência está no PR e nas issues **antes** do merge.
 
   Continua bloqueado: push direto na `main`, `develop` → `main`, auto-merge, `--delete-branch`, squash ou rebase, check
