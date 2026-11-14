@@ -1384,9 +1384,13 @@ describe('gate-main: git push sem destino explícito resolve o branch atual', ()
   })
 
   it('git -C resolve o branch no diretório do -C, não no do hook', async () => {
-    expect((await bash(`git -C ${naMain} push`, naFeature)).code).toBe(2)
-    expect((await bash(`git -C ${naMain} push origin HEAD`, naFeature)).code).toBe(2)
-    expect((await bash(`git -C ${naFeature} push`, naMain)).code).toBe(0)
+    // O hook e o bash tiram a `\` fora de aspas: o caminho nativo do Windows (`C:\Users\...`) chegaria como
+    // `C:Users...`, a consulta falharia e o hook bloquearia por falha, sem provar nada sobre a main. Barras normais
+    // (`C:/Users/...`) o git do Windows aceita e nenhum dos dois altera.
+    const barra = (p: string) => p.replace(/\\/g, '/')
+    expect((await bash(`git -C ${barra(naMain)} push`, naFeature)).code).toBe(2)
+    expect((await bash(`git -C ${barra(naMain)} push origin HEAD`, naFeature)).code).toBe(2)
+    expect((await bash(`git -C ${barra(naFeature)} push`, naMain)).code).toBe(0)
   })
 
   it.each([
