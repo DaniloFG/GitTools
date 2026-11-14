@@ -36,7 +36,8 @@ passo faz `git merge origin/develop` nem rebase sobre ela.
 9. Com `VALIDADO homolog` de uma branch: comente a evidência por critério (política 9 de `.claude/rules/github.md`, skill
    `backlog` D), troque para `status:validada` e feche com `state_reason: completed`. A issue-mãe fecha por último.
 10. Com todas as branches validadas em `develop` e `homolog`: skill `pr` passo 5 (`homolog → main`), reaproveitando o PR
-    já aberto (acrescente a evidência, não abra outro). Nunca merge na `main`.
+    já aberto (acrescente a evidência, não abra outro). O merge na `main` só pela via estreita de
+    `.claude/rules/github.md` (as duas validações e seus rótulos, checks verdes, merge commit; o hook confere).
 11. Limpeza: `git fetch origin` e liste (nunca apague) as branches de trabalho já na história da `main`
     (`git branch -r --merged origin/main`, sem `develop`, `homolog`, `main`), com o SHA da ponta de cada uma; PR aberto fica
     de fora. Ponha a lista no relatório.

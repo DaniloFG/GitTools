@@ -82,7 +82,7 @@ recurso (skill, agente, modelo) cada parte pede.
 - **Gate**: `.claude/hooks/gate-etapas.sh` (hook `PreToolUse`, `.claude/settings.json`) bloqueia o `gt-escritor` sem
   `docs/HANDOFF.md` ou sem a linha `pequena|media <assunto>` em `.claude/triagem.local` do worktree (fora do git). Não o contorne.
 - **GitHub** (`.claude/rules/github.md`): todo pedido do dono vira issue ANTES de agir (gate `gate-issue.sh` + lembrete a
-  cada prompt); número em `.claude/issue.local` do worktree ou no nome da branch `<tipo>/<N>-<assunto>`. Trabalho vira PR; merge só em `develop` e `homolog`, NUNCA em `main` (`gate-main.sh`).
+  cada prompt); número em `.claude/issue.local` do worktree ou no nome da branch `<tipo>/<N>-<assunto>`. Trabalho vira PR; merge na `main` só pela via estreita, nunca por outro caminho (`gate-main.sh`).
 
 ## Recursos certos para cada pedido
 
@@ -98,7 +98,7 @@ Antes de fazer à mão, veja se a skill citada existe na lista da sessão; se n�
 | IPC, execução do git, terminal, caminho de arquivo, webview, dependência, workflow | `security-review` e `.claude/rules/seguranca.md` |
 | Gráficos e dashboards (`src/renderer/src/analytics`) | `dataviz` |
 | Permissões, hooks, variáveis de ambiente | `update-config`; menos pedidos de permissão: `fewer-permission-prompts` |
-| Abrir, acompanhar ou fazer merge de PR | skill `pr` (merge só até a `homolog`): Haiku, `low`. Depois de todo merge na `develop` e na `homolog`: `validar` o commit do merge (`gt-validador`, pipeline com integração e e2e) antes do passo seguinte; sem as duas verdes, nada de PR para `main` |
+| Abrir, acompanhar ou fazer merge de PR | skill `pr`: Haiku, `low`. Depois de todo merge na `develop` e na `homolog`: `validar` o commit do merge (`gt-validador`, pipeline com integração e e2e) antes do passo seguinte; sem as duas verdes, nada de merge na `main` |
 | Repetir ou vigiar algo | `loop` |
 | Fila de issues Pequenas/Médias em paralelo, uma branch por issue | `lote` (`.claude/rules/github.md`) |
 | Abre muitos agentes ou gasta crédito: `batch` (um PR por unidade, fora do fluxo de branches), `code-review` nos níveis `max` e `ultra` | Só com a palavra do dono: sugira e espere |
@@ -183,7 +183,7 @@ Regra que impede o pedido não se contorna em silêncio: explique o custo, propo
   entra no `include` do `tsconfig.node.json`. Gerado (`fileIcons.generated.ts`, `npm run build:icons`) não se edita à mão.
 - **Git e branches**: cada trabalho novo nasce da `main`, numa branch própria (`feature/`, `fix/`, `docs/`, `chore/`, `refactor/`),
   porque `develop` e `homolog` podem ter o que a `main` não tem; assuntos diferentes correm em paralelo. Segue por PR branch → `develop`,
-  a mesma branch → `homolog` (nunca `develop` → `homolog`) e `homolog` → `main`; PR é obrigatório; merge na `main` é só do dono.
+  a mesma branch → `homolog` (nunca `develop` → `homolog`) e `homolog` → `main`; PR é obrigatório; o merge na `main` só pela via estreita de `.claude/rules/github.md` (homolog, as duas validações, checks verdes, merge commit; o hook confere).
   O Claude não apaga branches (`.claude/rules/github.md`). Ao fim, remova o worktree (`git worktree remove`, `git worktree prune`). Nada de force push,
   reescrita de histórico ou `--no-verify` em branch compartilhada. Versão automática: não suba o patch à mão. CHANGELOG da extensão: `publicacao.md`.
 - Branch, commit e PR: sem Claude, IA, modelo ou ferramenta, nem `Co-Authored-By`, `Claude-Session` ou "Generated with".
