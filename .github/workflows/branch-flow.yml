@@ -88,8 +88,9 @@ jobs:
         # Defesa em profundidade do hook local .claude/hooks/gate-atribuicao.sh (#254): pega o que ele não vê (texto
         # montado na execução, --amend, cherry-pick). Só os commits de base..head são avaliados: o que já está na base
         # não é reavaliado, porque a main tem trailers antigos. A identidade git (autor e committer) não é avaliada
-        # (limite do ambiente). O rodapé automático da plataforma no corpo do PR é ignorado, porque o próprio PR o
-        # recebe. O texto de fora (corpo do PR, shas) entra só por variável de ambiente, nunca dentro do `run:`.
+        # (limite do ambiente). A linha do rodapé automático da plataforma, com ou sem o caminho da sessão, é ignorada
+        # só no corpo do PR, porque o próprio PR a recebe; em mensagem de commit ela reprova. O texto de fora (corpo do
+        # PR, shas) entra só por variável de ambiente, nunca dentro do `run:`.
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
