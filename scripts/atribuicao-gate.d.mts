@@ -13,6 +13,6 @@ export interface CommitDoPr {
 }
 
 export const RULES: RegraAtribuicao[]
-export function findAttribution(text: string): AchadoAtribuicao[]
+export function findAttribution(text: string, opcoes?: { corpoPR?: boolean }): AchadoAtribuicao[]
 export function commitMessages(base: string, head: string, opcoes?: { cwd?: string }): Promise<CommitDoPr[]>
 export function gateProblems(entrada: { commits: CommitDoPr[]; body: string }): string[]
