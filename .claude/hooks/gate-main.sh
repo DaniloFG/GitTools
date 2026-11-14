@@ -37,29 +37,36 @@
 # Apagar com destino em variável é bloqueado (issue #124), porque o valor não dá para conferir: `git push origin
 # :$VAR` (com `+` opcional), qualquer argumento com `$` num `git push --delete`/`-d` e `gh api -X DELETE` cujo
 # endpoint de branch (`/git/refs/heads`) tem `$`.
-# Limites conhecidos (heurística sobre texto, não um parser de shell): `gh pr edit --base main` não é inspecionado
-# (`gh api --input` na main bloqueia). Também fora: `\gh`, wrappers raros (nice, stdbuf), `push.default=upstream` ou
-# `branch.<x>.merge` apontando para a main com o checkout em outro branch, e a corrida entre a checagem e o merge (a
-# sessão de PR passa `--match-head-commit`, ver skill `pr`). Também fora, por serem evasão deliberada: `curl` com
-# `$(gh auth token)` na API, `gh alias`/`git alias`, `GH_REPO=` ou `cd` para outro clone antes de `gh pr merge` sem
-# número, `git -c remote.origin.push=...` e `//` no meio do endpoint.
-# Também não são verificados, porque o valor da variável não é lido: `git push origin "$SRC:$DST"` (apaga DST se
-# SRC estiver vazio, sem `--delete`), destino em variável que não apaga (`git push origin $BRANCH`, `HEAD:$X`),
-# `git update-ref -d $VAR` e `git branch -D $VAR`. Um `refs/remotes/origin/<outra>` apagado por update-ref passa.
-# Também fora, vistos na revisão: `cd <checkout na main> && git push` e `git --git-dir=`/`--work-tree` (o branch atual é
-# resolvido no diretório em que o hook roda, ou no do `-C`; um `cd` ou `--git-dir` no mesmo comando não é seguido, então
-# um `git push` sem destino passa se o checkout do hook não for a main). O valor de `-o`/`--push-option` (também em
-# opções curtas agrupadas, `-uo x`; e de `--repo`, `--receive-pack`, `--exec`) é pulado antes de contar refspecs; antes
-# disso `git push -o x origin` contava `origin`
-# como refspec e deixava passar um push sem destino com o checkout na main.
+# Limites (issue #226; o hook é heurística sobre texto, não um parser de shell). O valor de `-o`/`--push-option` (também
+# agrupado, `-uo x`) e de `--repo`, `--receive-pack`, `--exec` é pulado antes de contar refspecs.
+# Coberto na #226, tudo em expansão de bash (sem processo novo no caminho comum): CR no fim da base do PR e do branch atual;
+# com CR no comando, uma segunda análise sem CR (bash com `igncr`); `\gh` e `\git`; wrappers nice, ionice e stdbuf;
+# endpoint do `gh api` com `//`, `/./` (colapsados) e `..` (bloqueia); `curl`/`wget` escrevendo na API do GitHub;
+# `gh alias set/import`, `git -c`, `--config-env`, `git config` e `GIT_CONFIG*=` em chaves de alias e de destino do push;
+# `cd`/`pushd`/`popd`, `--git-dir`, `--work-tree`, `GIT_DIR=` e `GIT_WORK_TREE=` antes de um push sem destino ou de um
+# `gh pr merge` sem `-R`; `builtin`, `env` com opções (`-i`, `-u X`, `--`, `-C`, `-S`) e aspas ou `\` no meio do token (`g\it`, `"gi"t`);
+# `GH_HOST=` bloqueia; com `GH_REPO=` no comando e sem `-R` o hook não sabe se a variável chega ao gh (atribuição solta,
+# `unset`, `env -u`), então confere os DOIS repositórios, o atual (`{owner}/{repo}`) e o do GH_REPO, e os dois passam
+# (vale também para `gh api` com `{owner}/{repo}`); valor vazio ou com `$` bloqueia.
+# Segue aceito, com o motivo (a defesa que fecha o resto é a proteção de branch do GitHub, issue #101):
+# - alias e configuração JÁ gravados (`push.default=upstream`, `branch.<x>.merge` na main, alias do git): o hook não lê a
+#   configuração persistida, e lê-la custaria um processo git em todo push.
+# - variáveis no destino (`${x}in`, `$DST`, `git push origin "$SRC:$DST"`, `update-ref -d $VAR`, `branch -D $VAR`): o valor
+#   não é lido. Um `refs/remotes/origin/<outra>` apagado por update-ref passa.
+# - script em outra linguagem fazendo HTTP (python, node); `gh pr edit --base main` não é inspecionado.
+# - a corrida entre a checagem e o merge: mitigada pela ponta exigida no merge da main (`--match-head-commit`, `-f sha=`).
+# - sem o binário `timeout` o limite por chamada não vale: exigi-lo bloquearia o fluxo do macOS sem coreutils; o prazo
+#   global segue valendo entre as chamadas.
+# - NUL no comando com jq 1.5/1.6: o Node recusa NUL ao lançar o processo, então o hook nem o recebe.
+# - `cd` cujo efeito vem de uma chamada anterior do Bash: o hook não sabe o diretório atual do shell.
 # Prazo global (falha aberta se o hook estourar o `timeout` de 120 s do settings.json): o relógio (`SECONDS`) corre desde
 # o início; passados `GATE_MAIN_PRAZO` s (padrão e TETO de 90: valor maior, não numérico, vazio, zero ou negativo vira 90;
 # a variável existe para os testes), `gh_cmd` e `git_cmd` falham sem chamar o programa e todo chamador bloqueia ("prazo
 # do hook esgotado"). Antes disso, cada chamada tem min(15, prazo + 10 - SECONDS) s (piso 1), então o total nunca passa de
 # uns 100 s, qualquer que seja o número de segmentos (`a && b && c`). `GATE_MAIN_SECONDS_FAKE` soma segundos ao relógio
 # (só os testes o usam, para simular o tempo passado sem esperar; só pode deixar o hook mais restritivo).
-# Limite: o limite POR CHAMADA vem do binário `timeout` (coreutils). Sem ele (macOS sem coreutils) o gh/git roda sem
-# limite próprio: o prazo só vale ENTRE as chamadas, e um gh pendurado ainda pode estourar os 120 s do settings.json.
+# Sem o binário `timeout` (coreutils; macOS sem ele) o gh/git roda sem limite próprio: o prazo só vale ENTRE as chamadas,
+# e um gh pendurado ainda pode estourar os 120 s do settings.json (decisão aceita, ver os limites acima).
 SECONDS=0
 PRAZO=${GATE_MAIN_PRAZO:-90}
 if [[ $PRAZO =~ ^[0-9]{1,4}$ ]]; then PRAZO=$((10#$PRAZO)); else PRAZO=90; fi
@@ -68,6 +75,8 @@ if [[ $PRAZO =~ ^[0-9]{1,4}$ ]]; then PRAZO=$((10#$PRAZO)); else PRAZO=90; fi
 ADIANTO=${GATE_MAIN_SECONDS_FAKE:-0}
 if [[ $ADIANTO =~ ^[0-9]{1,4}$ ]]; then ADIANTO=$((10#$ADIANTO)); else ADIANTO=0; fi
 entrada=$(cat)
+# CR definido aqui, fora de qualquer `$(...)`: o bash do Git Bash (Windows) não faz o parse de `$'..'` dentro de `$(...)`.
+CR=$'\r'
 
 # Caminho comum: ferramenta que não é do GitHub MCP nem Bash sai aqui, sem abrir jq nem gh.
 case "$entrada" in
@@ -314,6 +323,8 @@ verificar_pr() {
   if ! base=$(gh_cmd api "repos/$1/$2/pulls/$3" --jq .base.ref 2>/dev/null) || [ -z "$base" ]; then
     bloquear "não foi possível confirmar a base do PR #$3 (o gh falhou ou veio vazio); na dúvida, bloqueia."
   fi
+  # O gh do Windows pode devolver CRLF: `$(...)` só tira o LF, e `main`+CR não seria reconhecida como a main.
+  base=${base%"$CR"}
   if eh_main "$base"; then
     exigir_metodo_main "$4" "$5" "$6" "$7"
     # Uma consulta só para origem, ponta, os dois rótulos e o estado de merge (campos separados por tab; o jq troca
@@ -361,6 +372,7 @@ verificar_pr_por_seletor() {
   if ! base=$(gh_cmd "${args[@]}" --json baseRefName --jq .baseRefName 2>/dev/null) || [ -z "$base" ]; then
     bloquear "não foi possível confirmar a base do PR (o gh falhou ou veio vazio); na dúvida, bloqueia."
   fi
+  base=${base%"$CR"}  # mesmo cuidado com o CR do gh no Windows (ver verificar_pr)
   if eh_main "$base"; then
     exigir_metodo_main "$3" "$4" "$5" "$6"
     if [ -z "$2" ]; then
@@ -436,6 +448,30 @@ bloquear_apagar() {
 # Aceita o ref sem `refs/` (`heads/main`): o git expande `heads/main` para `refs/heads/main` no destino do push.
 re_destino_main='^\+?([^:]*:)?(refs/heads/|heads/)?main$'
 re_base_json='(^|[^[:alnum:]_])base(RefName)?:[[:space:]]*(refs/heads/)?main([^[:alnum:]_./-]|$)'
+# Issue #226: atribuições de ambiente que o hook procura no comando inteiro (prefixo do segmento, `export`, `env`).
+re_env_dir='(^|[^[:alnum:]_])GIT_(DIR|WORK_TREE)='
+re_env_git_config='(^|[^[:alnum:]_])GIT_CONFIG[[:alnum:]_]*='
+re_env_gh_host='(^|[^[:alnum:]_])GH_HOST='
+# Issue #226: `curl`/`wget` como palavra (também `/usr/bin/curl`, `curl.exe`; não `curl-config` nem `mycurl`) e a API do
+# GitHub (`api.github.com`, GHE em `/api/v3`, `/api/graphql`). Classes de caractere no lugar de `nocasematch`, porque o
+# `=~` do bash 3.2 pode não respeitá-lo.
+re_cli_http='(^|[^[:alnum:]_.-])([cC][uU][rR][lL]|[wW][gG][eE][tT])([^[:alnum:]_-]|$)'
+re_api_github='[aA][pP][iI]\.[gG][iI][tT][hH][uU][bB]\.[cC][oO][mM]|/[aA][pP][iI]/[vV]3|/[aA][pP][iI]/[gG][rR][aA][pP][hH][qQ][lL]'
+
+# Issue #226: chaves de configuração que criam atalho para um comando (alias) ou mudam para onde um push vai (destino
+# padrão, remoto, refspec, branch de upstream) ou que carregam outro arquivo de configuração. O git ignora a caixa da
+# seção e do nome (`Push.Default`), então o casamento também ignora (`nocasematch`, que o `case` respeita no bash 3.2;
+# o estado anterior é restaurado). Recebe `chave` ou `chave=valor`; status 0 = a chave é sensível.
+chave_muda_destino() {
+  local chave=${1%%=*} r=1 ligado=1
+  shopt -q nocasematch && ligado=0
+  shopt -s nocasematch
+  case $chave in
+    alias.*|remote.*.push|remote.*.mirror|remote.pushdefault|push.default|branch.*.merge|branch.*.remote|branch.*.pushremote|include.path|includeif.*) r=0 ;;
+  esac
+  [ "$ligado" = 0 ] || shopt -u nocasematch
+  return $r
+}
 
 analisar_git() {
   local a=("$@") j=0 tok gc=()
@@ -444,11 +480,47 @@ analisar_git() {
   while [ "$j" -lt "${#a[@]}" ]; do
     case "${a[j]}" in
       -C) gc+=(-C "${a[j+1]:-}"); j=$((j + 2)) ;;
-      -c|--git-dir|--work-tree|--namespace) j=$((j + 2)) ;;
+      # Issue #226: `-c chave=valor` e `--config-env` valem só neste comando, mas trocam alias e destino do push sem
+      # passar pela configuração gravada, então a chave sensível bloqueia (qualquer subcomando).
+      -c|--config-env)
+        if chave_muda_destino "${a[j+1]:-}"; then bloquear "git ${a[j]} ${a[j+1]}: configuração de alias ou de destino do push no próprio comando."; fi
+        j=$((j + 2)) ;;
+      --config-env=*)
+        if chave_muda_destino "${a[j]#*=}"; then bloquear "git ${a[j]}: configuração de alias ou de destino do push no próprio comando."; fi
+        j=$((j + 1)) ;;
+      # `--git-dir` e `--work-tree` trocam o repositório: o branch atual do diretório do hook deixa de valer.
+      --git-dir|--work-tree) MUDOU_DIR=1; j=$((j + 2)) ;;
+      --git-dir=*|--work-tree=*) MUDOU_DIR=1; j=$((j + 1)) ;;
+      --namespace) j=$((j + 2)) ;;
       -*) j=$((j + 1)) ;;
       *) break ;;
     esac
   done
+  # Issue #226: `git config` de ESCRITA numa chave sensível (forma antiga `config [opções] chave valor` e `config set
+  # chave valor`). Leituras (`--get*`, `-l`, `--list`, `get`, `list`) e `--unset*` passam; o valor das opções que levam
+  # valor separado (`--file x`, `--type bool`) não é tomado por chave.
+  if [ "${a[j]:-}" = config ]; then
+    local pos_c=() so_leitura=0 k_c=0 chave_c="" rest_c=("${a[@]:j+1}")
+    while [ "$k_c" -lt "${#rest_c[@]}" ]; do
+      tok=${rest_c[k_c]}
+      case "$tok" in
+        --get|--get-all|--get-regexp|--get-urlmatch|--get-color|--get-colorbool|-l|--list|--unset|--unset-all|--remove-section|--rename-section|-e|--edit) so_leitura=1 ;;
+        -f|--file|--blob|--default|--type|-t|--comment) k_c=$((k_c + 1)) ;;
+        -*) ;;
+        *) pos_c+=("$tok") ;;
+      esac
+      k_c=$((k_c + 1))
+    done
+    case "${pos_c[0]:-}" in
+      set) chave_c=${pos_c[1]:-} ;;
+      get|list|unset|edit|remove-section|rename-section) ;;
+      *) if [ "$so_leitura" = 0 ] && [ "${#pos_c[@]}" -ge 2 ]; then chave_c=${pos_c[0]}; fi ;;
+    esac
+    if [ -n "$chave_c" ] && chave_muda_destino "$chave_c"; then
+      bloquear "git config gravando a chave $chave_c: alias e destino do push não são alterados pelo Claude."
+    fi
+    return 0
+  fi
   if [ "${a[j]:-}" = branch ]; then
     local apaga=0
     for tok in "${a[@]:j+1}"; do
@@ -527,9 +599,15 @@ analisar_git() {
   done
   if [ "$npos" -le 1 ] && [ "$apaga_push" = 0 ] && [ "$so_info" = 0 ]; then resolve=1; fi
   if [ "$resolve" = 1 ]; then
+    # Issue #226: depois de `cd`, `pushd`, `popd`, `--git-dir`, `--work-tree`, `GIT_DIR=` ou `GIT_WORK_TREE=` o branch
+    # atual é o de OUTRO diretório, que o hook não conhece: sem destino explícito não há o que conferir.
+    if [ "$MUDOU_DIR" = 1 ]; then
+      bloquear "git push sem destino na linha depois de trocar o diretório ou o repositório (cd, pushd, popd, --git-dir, --work-tree, GIT_DIR, GIT_WORK_TREE): o branch atual não dá para conferir; passe o destino explícito (git push origin <branch>)."
+    fi
     # `-q`: HEAD destacado sai com status 1 e sem texto (não é a main, passa); qualquer outra falha (fora de um
     # repositório, git ausente, tempo ou prazo global esgotado: status 124) é dúvida e bloqueia.
     atual=$(git_cmd "${gc[@]}" symbolic-ref -q --short HEAD 2>/dev/null); st=$?
+    atual=${atual%"$CR"}  # o git do Windows pode devolver CRLF: `main`+CR não seria reconhecida como a main
     if [ "$st" = 0 ] && [ -n "$atual" ]; then
       if eh_main "$atual"; then bloquear "git push com o checkout na main (destino implícito ou HEAD)."; fi
     elif [ "$st" != 1 ] || [ -n "$atual" ]; then
@@ -590,10 +668,30 @@ analisar_gh() {
   done
 
   case "${pos[0]:-}" in
+    # Issue #226: um alias do gh pode virar `pr merge --squash` sem que o hook veja o texto; criar ou importar bloqueia.
+    alias)
+      case "${pos[1]:-}" in
+        set|import) bloquear "gh alias ${pos[1]}: um alias do gh esconde o comando real do hook; não crie nem importe alias." ;;
+      esac
+      ;;
     pr)
       if [ "${pos[1]:-}" = merge ]; then
         if [ "$f_admin" = 1 ]; then
           bloquear "gh pr merge --admin ignora as proteções da branch; o merge com --admin é bloqueado em qualquer base."
+        fi
+        # Issue #226: GH_HOST aponta o gh para outro servidor, e o hook consultaria o github.com.
+        if [ "$GH_HOST_DEFINIDO" = 1 ]; then
+          bloquear "GH_HOST no comando com gh pr merge: o gh falaria com outro servidor que não o consultado pelo hook."
+        fi
+        # Issue #226: sem -R o gh usa GH_REPO, mas o hook não sabe se a atribuição chega ao gh (solta num segmento, seguida
+        # de `unset GH_REPO`, `env -u GH_REPO gh ...`): confere os DOIS repositórios, o atual e o do GH_REPO, e os dois
+        # precisam passar (a segunda conferência vem depois da primeira, abaixo). Vazio ou com variável não dá para conferir.
+        # O -R vale mais que o GH_REPO, como no gh.
+        if [ -z "$repo" ] && [ "$GH_REPO_DEFINIDO" = 1 ]; then exigir_gh_repo_conferivel; fi
+        # Issue #226: depois de `cd`/`pushd`/`popd` o repositório atual do gh não é o do hook; sem -R (ou URL completa) não
+        # dá para saber qual PR é o `<N>`.
+        if [ -z "$repo" ] && [ "$MUDOU_DIR" = 1 ] && ! [[ ${pos[2]:-} =~ ^https?://[^/]+/[^/]+/[^/]+/pull/[0-9]+ ]]; then
+          bloquear "gh pr merge sem -R depois de trocar o diretório (cd, pushd, popd, GIT_DIR): o repositório atual não é o conferido; passe -R dono/repo ou a URL do PR."
         fi
         [ "$f_auto" = 1 ] && modo_pr=auto
         # Squash e rebase vencem o --merge: pedir os dois não é merge commit.
@@ -602,9 +700,16 @@ analisar_gh() {
         elif [ "$f_merge" = 1 ]; then metodo_pr=merge
         fi
         gh_pr_merge "${pos[2]:-}" "$repo" "$modo_pr" "$metodo_pr" "$f_apaga" "$match_sha"
+        # Segunda conferência, no repositório do GH_REPO (só neste caso raro há uma consulta a mais).
+        if [ -z "$repo" ] && [ "$GH_REPO_DEFINIDO" = 1 ]; then
+          gh_pr_merge "${pos[2]:-}" "$GH_REPO_VALOR" "$modo_pr" "$metodo_pr" "$f_apaga" "$match_sha"
+        fi
       fi
       ;;
     api)
+      if [ "$GH_HOST_DEFINIDO" = 1 ]; then
+        bloquear "GH_HOST no comando com gh api: o gh falaria com outro servidor, e o hook confere os endpoints do github.com."
+      fi
       # Sem -X, o gh api usa POST quando há campos ou corpo; é o que ele realmente enviaria.
       if [ -z "$metodo" ]; then
         if [ "${#campos[@]}" -gt 0 ] || [ "$tem_input" = 1 ]; then metodo=POST; else metodo=GET; fi
@@ -613,6 +718,13 @@ analisar_gh() {
       gh_api "${pos[1]:-}" "$metodo" "${campos[@]}"
       ;;
   esac
+}
+
+# Issue #226: o valor do GH_REPO vira o segundo repositório conferido; vazio ou com `$` não dá para conferir.
+exigir_gh_repo_conferivel() {
+  if [ -z "$GH_REPO_VALOR" ] || [[ $GH_REPO_VALOR == *'$'* ]]; then
+    bloquear "GH_REPO vazio ou com variável ('$GH_REPO_VALOR'): não dá para conferir em que repositório o gh age."
+  fi
 }
 
 gh_pr_merge() { # seletor repo modo metodo_de_merge apaga sha_esperado   (cobre `gh pr merge` com ou sem --auto)
@@ -647,6 +759,14 @@ gh_api() { # endpoint metodo [campos...]
   ep=${ep#api/v3/}
   while [[ $ep == /* || $ep == ./* ]]; do ep=${ep#/}; ep=${ep#./}; done
   while [[ $ep == */ ]]; do ep=${ep%/}; done
+  # Issue #226: `//` e `/./` no meio não mudam o destino (o servidor os normaliza), mas quebrariam os casamentos abaixo
+  # (`repos/o/r//pulls/N/merge`, `repos/o//r/merges`): colapsa até estabilizar. Um segmento `..` ou `.` final o hook não
+  # resolve (seria caminho relativo), então bloqueia: falha fechada.
+  local dupla='//' barra='/' ponto='/./'
+  while [[ $ep == *//* || $ep == */./* ]]; do ep=${ep//"$dupla"/"$barra"}; ep=${ep//"$ponto"/"$barra"}; done
+  if [[ $ep =~ ^\.\.(/|$) || $ep == */../* || $ep == */.. || $ep == */. ]]; then
+    bloquear "gh api com segmento '.' ou '..' no endpoint ($ep): o hook não resolve caminho relativo."
+  fi
   # GraphQL não expõe a base na linha de comando: as mutações são conferidas pelo texto do COMANDO INTEIRO (o
   # `analisar_comando` quebra em `(` e `)`, então `mutation($input: X!) { createRef(input: $input) }` não cabe num
   # segmento só), e o que o hook não consegue ler bloqueia.
@@ -752,22 +872,91 @@ gh_api() { # endpoint metodo [campos...]
       if [[ $ep_bruto == *merge_method* ]]; then mm_a=conflito; fi
       if [[ $ep_bruto == *sha=* ]]; then sha_a=conflito; fi
       verificar_pr "$dono_a" "$repo_a" "$num_a" "$modo_a" "$mm_a" 0 "$sha_a"
+      # Issue #226: o gh expande `{owner}`/`{repo}` com o GH_REPO, que o hook não sabe se chega ao gh: com GH_REPO no
+      # comando, confere também o repositório dele (os dois precisam passar).
+      if [ "$GH_REPO_DEFINIDO" = 1 ] && { [ "$dono_a" = '{owner}' ] || [ "$repo_a" = '{repo}' ]; }; then
+        exigir_gh_repo_conferivel
+        if [[ $GH_REPO_VALOR =~ ^([^/]+)/([^/]+)$ ]]; then
+          dono_a=${BASH_REMATCH[1]} repo_a=${BASH_REMATCH[2]}
+          verificar_pr "$dono_a" "$repo_a" "$num_a" "$modo_a" "$mm_a" 0 "$sha_a"
+        else
+          bloquear "GH_REPO '$GH_REPO_VALOR' fora do formato dono/repo: não dá para conferir o PR."
+        fi
+      fi
     else
       bloquear "não foi possível confirmar a base do PR em '$ep'."
     fi
   fi
 }
 
+# Issue #226: `curl`/`wget` escrevendo na API do GitHub escapam do gh, que é o que o hook sabe conferir. Confere o COMANDO
+# INTEIRO, não o segmento: o `$(gh auth token)` do cabeçalho de autorização quebra o curl em vários segmentos. Só
+# expansões de bash (nenhum processo): a palavra `curl`/`wget`, a API do GitHub e uma indicação de escrita (método que não
+# é GET/HEAD, ou dados, formulário, arquivo, JSON). Opções curtas agrupadas (`-sSX PUT`) são lidas letra a letra até a
+# primeira que leva valor; `-d`, `-F` e `-T` valem como escrita também no wget (falso positivo aceito: bloqueia).
+verificar_http_api() {
+  local q=$CMD_INTEIRO w=() k=0 tok v c i
+  [[ $q =~ $re_cli_http ]] || return 0
+  q=${q//\'/}
+  q=${q//\"/}
+  [[ $q =~ $re_api_github ]] || return 0
+  read -r -d '' -a w <<<"$q"
+  while [ "$k" -lt "${#w[@]}" ]; do
+    tok=${w[k]}
+    v=""
+    case "$tok" in
+      --request|--method) v=${w[k+1]:-} ;;
+      --request=*|--method=*) v=${tok#*=} ;;
+      --data*|--form*|--upload-file*|--json*|--post-data*|--post-file*|--body-data*|--body-file*)
+        bloquear "curl/wget escrevendo na API do GitHub ($tok): use o gh (gh api ...), que o hook consegue conferir." ;;
+      --*) ;;
+      -?*)
+        c=${tok#-}
+        i=0
+        while [ "$i" -lt "${#c}" ]; do
+          case "${c:i:1}" in
+            d|F|T) bloquear "curl/wget escrevendo na API do GitHub ($tok): use o gh (gh api ...), que o hook consegue conferir." ;;
+            X)
+              v=${c:i+1}
+              [ -n "$v" ] || v=${w[k+1]:-}
+              break ;;
+            [HouAebcwmrKxyzCDEQU]) break ;;
+          esac
+          i=$((i + 1))
+        done ;;
+    esac
+    if [ -n "$v" ]; then
+      case "$v" in
+        GET|HEAD|get|head) ;;
+        *) bloquear "curl/wget com o método $v na API do GitHub: use o gh (gh api ...), que o hook consegue conferir." ;;
+      esac
+    fi
+    k=$((k + 1))
+  done
+}
+
 # Cada segmento (separado por ; | & parênteses ou crase) é analisado à parte; aspas saem antes de separar.
+# Duas análises quando o comando tem CR (ver o caso Bash): por isso o estado do comando é zerado aqui, a cada chamada.
 analisar_comando() {
-  local cmd=$1 t i n nl=$'\n'
+  local cmd=$1 t i n nl=$'\n' prog tem_git=0
   local segmentos
+  # Estado do comando inteiro (issue #226). MUDOU_DIR: um `cd`/`pushd`/`popd`, `--git-dir`, `--work-tree`, `GIT_DIR=` ou
+  # `GIT_WORK_TREE=` (o branch atual ou o repositório atual do gh deixou de ser o do diretório do hook). GH_REPO_*: o
+  # último `GH_REPO=` visto (prefixo do segmento ou `export`). GH_HOST_DEFINIDO e GIT_CONFIG_VISTO: variável de ambiente
+  # que muda o servidor do gh ou a configuração do git, procuradas no comando inteiro.
+  MUDOU_DIR=0 GH_REPO_DEFINIDO=0 GH_REPO_VALOR="" GH_HOST_DEFINIDO=0 GIT_CONFIG_VISTO=0
   # `\` no fim da linha continua o comando na seguinte: junta antes de segmentar, senão `git push \<nl> origin main`
   # vira dois segmentos e nenhum é visto inteiro.
   cmd=${cmd//\\"$nl"/ }
   # O comando inteiro, antes de quebrar em segmentos: o gh_api confere as mutações GraphQL por ele.
   CMD_INTEIRO=$cmd
-  segmentos=$(printf '%s\n' "$cmd" | tr -d "'\"" | tr '&;|()`' '\n')
+  if [[ $cmd =~ $re_env_dir ]]; then MUDOU_DIR=1; fi
+  if [[ $cmd =~ $re_env_gh_host ]]; then GH_HOST_DEFINIDO=1; fi
+  if [[ $cmd =~ $re_env_git_config ]]; then GIT_CONFIG_VISTO=1; fi
+  verificar_http_api
+  # Aspas e `\` saem antes de separar: o bash tira a `\` sem aspas (`g\it`, `m\ain` são `git` e `main`); vem DEPOIS da
+  # junção de `\`+LF acima, que precisa da `\`.
+  segmentos=$(printf '%s\n' "$cmd" | tr -d "'\"\\\\" | tr '&;|()`' '\n')
   while IFS= read -r SEG; do
     read -ra t <<<"$SEG"
     n=${#t[@]}
@@ -787,16 +976,60 @@ analisar_comando() {
           done
           if [ "$i" -lt "$n" ] && [[ ${t[i]} =~ ^[0-9]+([.][0-9]+)?[smhd]?$ ]]; then i=$((i + 1)); fi
           ;;
-        *=*|sudo|command|env|time|nohup|exec|eval|bash|sh|zsh|-c|-lc|-ec|-e|-x|-xc|-ic|'{'|if|then|do|else|while|until|'!'|xargs|'$') i=$((i + 1)) ;;
+        nice|ionice|stdbuf)
+          # Issue #226: wrappers que só mudam prioridade ou buffer. Pula o wrapper, as opções (`-n5`, `-oL`, `-10`,
+          # `--adjustment=5` são um token só) e o valor das que levam valor separado (`nice -n N`, `ionice -c N -n N`,
+          # `stdbuf -o L`), no estilo do `timeout`.
+          prog=${t[i]}
+          i=$((i + 1))
+          while [ "$i" -lt "$n" ]; do
+            case "$prog ${t[i]}" in
+              "nice -n"|"nice --adjustment"|"ionice -c"|"ionice -n"|"ionice -p"|"ionice -P"|"ionice -u"|"ionice --class"|"ionice --classdata"|"ionice --pid"|"ionice --pgid"|"ionice --uid"|"stdbuf -i"|"stdbuf -o"|"stdbuf -e"|"stdbuf --input"|"stdbuf --output"|"stdbuf --error") i=$((i + 2)) ;;
+              *" -"*) i=$((i + 1)) ;;
+              *) break ;;
+            esac
+          done
+          ;;
+        env)
+          # Issue #226: `env [opções] [VAR=valor] comando`: pula as opções (`-i`, `--`, `-uX`) e o valor separado de
+          # `-u`/`--unset` (`-S` separado pula só a si: as aspas já saíram e o próximo token é o programa); `-C`/`--chdir` troca o diretório do comando (liga MUDOU_DIR). Os `VAR=valor` que vêm
+          # depois voltam ao laço de fora.
+          i=$((i + 1))
+          while [ "$i" -lt "$n" ]; do
+            case "${t[i]}" in
+              -C|--chdir) MUDOU_DIR=1; i=$((i + 2)) ;;
+              -C?*|--chdir=*) MUDOU_DIR=1; i=$((i + 1)) ;;
+              -u|--unset) i=$((i + 2)) ;;
+              # `-S` recebe o comando inteiro como um argumento só; as aspas já saíram, então o token seguinte é o próprio
+              # programa e o `-S` pula só a si mesmo. Colado (`-Sgit`, `--split-string=git`), o resto é o programa.
+              -S|--split-string) i=$((i + 1)) ;;
+              -S?*) t[i]=${t[i]#-S}; break ;;
+              --split-string=*) t[i]=${t[i]#--split-string=}; break ;;
+              -*) i=$((i + 1)) ;;
+              *) break ;;
+            esac
+          done
+          ;;
+        GH_REPO=*) GH_REPO_DEFINIDO=1; GH_REPO_VALOR=${t[i]#GH_REPO=}; i=$((i + 1)) ;;
+        *=*|export|builtin|sudo|command|time|nohup|exec|eval|bash|sh|zsh|-c|-lc|-ec|-e|-x|-xc|-ic|'{'|if|then|do|else|while|until|'!'|xargs|'$') i=$((i + 1)) ;;
         *) break ;;
       esac
     done
     [ "$i" -lt "$n" ] || continue
-    case "${t[i]##*/}" in
-      git) analisar_git "${t[@]:i+1}" ;;
+    # `\gh` e `\git` (barra invertida no começo) chamam o mesmo programa, só sem alias: o nome perde a `\`.
+    prog=${t[i]##*/}
+    while [[ $prog == \\* ]]; do prog=${prog#\\}; done
+    case "$prog" in
+      git) tem_git=1; analisar_git "${t[@]:i+1}" ;;
       gh) analisar_gh "${t[@]:i+1}" ;;
+      cd|pushd|popd) MUDOU_DIR=1 ;;
     esac
   done <<<"$segmentos"
+  # Issue #226: `GIT_CONFIG_COUNT/KEY_n/VALUE_n`, `GIT_CONFIG_GLOBAL` e afins trocam a configuração (alias, destino do
+  # push) só para este comando; qualquer atribuição `GIT_CONFIG*=` com git no comando bloqueia.
+  if [ "$GIT_CONFIG_VISTO" = 1 ] && [ "$tem_git" = 1 ]; then
+    bloquear "variável GIT_CONFIG* no comando com git: ela troca a configuração (alias, destino do push) que o hook não lê."
+  fi
 }
 
 command -v jq >/dev/null 2>&1 || bloquear "o jq não está instalado; sem ele não dá para inspecionar a chamada."
@@ -835,8 +1068,20 @@ case "$ferramenta" in
     ;;
   Bash)
     # Só entra no analisador (e só então no gh) quando o comando fala de git ou gh.
-    case "$comando" in
-      *git*|*gh*) analisar_comando "$comando" ;;
+    # Issue #226: com CR no comando, duas análises. Uma com os bytes exatos (bash normal: `\`+CR+LF não continua a
+    # linha) e outra com todo CR apagado (bash com `set -o igncr`, Cygwin/MSYS: `ma`+CR+`in` é `main` e `\`+CR+LF
+    # continua). Qualquer uma que bloqueia, bloqueia. Sem CR, uma análise só, sem custo.
+    sem_cr=$comando
+    case "$comando" in *"$CR"*) sem_cr=${comando//"$CR"/} ;; esac
+    # O filtro olha também o texto sem aspas nem `\` (`g\it`, `"gi"t` e `'g'h` são `git` e `gh` para o bash).
+    sem_aspas=${comando//\'/}
+    sem_aspas=${sem_aspas//\"/}
+    sem_aspas=${sem_aspas//\\/}
+    case "$comando$sem_cr$sem_aspas" in
+      *git*|*gh*|*[cC][uU][rR][lL]*|*[wW][gG][eE][tT]*)
+        analisar_comando "$comando"
+        if [ "$sem_cr" != "$comando" ]; then analisar_comando "$sem_cr"; fi
+        ;;
     esac
     ;;
 esac

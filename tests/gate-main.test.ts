@@ -52,6 +52,7 @@ let ghLog = ''
 // "ramo-main-verde" -> base main, origem homolog, ponta abc0030, CLEAN; "ramo-main-fix" -> base main, origem fix/x;
 // "ramo-main-fork" -> base main, origem homolog, mas PR de fork (isCrossRepository true).
 // PRs 43 e 44 (base main, origem homolog, tudo verde): 43 -> head.repo de fork (fork/r); 44 -> head.repo null.
+// Issue #226: PR 60 e o seletor "ramo-main-cr" têm a base `main` seguida de CR (o gh do Windows pode devolver CRLF).
 // Check-runs (`*/commits/SHA/check-runs`): QA success para qualquer SHA, exceto os dedicados acima (abc0020 e
 // abc0022 failure; abc0021 lista vazia; abc0023 o gh falha; abc0024 conclusion null; abc0025..abc0029 dois QA, #121).
 // O gh falso devolve JSON e aplica o --jq com o jq de verdade, para o filtro do hook também ser testado.
@@ -82,6 +83,9 @@ qa() { saida '{"check_runs":['"$1"']}'; exit 0; }
 runs() { saida '{"total_count":'"$2"',"check_runs":['"$1"']}'; exit 0; }
 if [ "$a1" = api ]; then
   case "$a2" in
+    # Issue #226: no repositório x/y (GH_REPO=x/y) o PR 3 é de base develop e o PR 1 é de base main; no atual é o inverso.
+    repos/x/y/pulls/3) pr develop fix/x abc0003 "$ok" ;;
+    repos/x/y/pulls/1) pr main fix/x abc0001 "$ok2" ;;
     */pulls/1) pr develop fix/x abc0001 "$ok" ;;
     */pulls/2) pr homolog fix/x abc0002 "$ok" ;;
     */pulls/3) pr main fix/x abc0003 "$ok" ;;
@@ -119,6 +123,7 @@ if [ "$a1" = api ]; then
     */pulls/43) pr main homolog abc0043 "$ok2" clean fork ;;
     */pulls/44) pr main homolog abc0044 "$ok2" clean nulo ;;
     */pulls/4[5-9]|*/pulls/5[0-3]) n=$(basename "$a2"); pr main homolog "abc00$n" "$ok2" ;;
+    */pulls/60) pr 'main\\r' homolog abc0060 "$ok2" ;;
     */compare/develop...abc0002) cmp behind ;;
     */compare/develop...abc0004) cmp behind ;;
     */compare/develop...abc0005) cmp ahead ;;
@@ -166,6 +171,7 @@ if [ "$a1" = pr ] && [ "$a2" = view ]; then
     ramo-main-verde) case "$todos" in *headRefOid*) vista homolog abc0030 "$ok2" ;; *baseRefName*) echo main; exit 0 ;; esac ;;
     ramo-main-fix) case "$todos" in *headRefOid*) vista fix/x abc0030 "$ok2" ;; *baseRefName*) echo main; exit 0 ;; esac ;;
     ramo-main-fork) case "$todos" in *headRefOid*) vista homolog abc0030 "$ok2" true ;; *baseRefName*) echo main; exit 0 ;; esac ;;
+    ramo-main-cr) case "$todos" in *baseRefName*) printf 'main\\r\\n'; exit 0 ;; esac ;;
   esac
 fi
 exit 1
@@ -1410,7 +1416,8 @@ describe('gate-main: git push sem destino explícito resolve o branch atual', ()
   // Issue #224, medido no windows-latest: o jq do Windows escreve CR+LF no lugar de cada LF. O `jq` falso (`jqWindows`)
   // faz o mesmo no Linux, então estes casos reprovam sem o hook trocar CR/LF por marcadores no jq. Como o hook vê os
   // bytes exatos do comando, ele segue o bash de verdade: `\`+LF continua a linha; `\`+CR+LF NÃO (o `\` só escapa o CR e
-  // o LF encerra o comando), então o que vem depois é outro comando e é analisado à parte.
+  // o LF encerra o comando), então o que vem depois é outro comando e é analisado à parte. Com CR, o hook ainda faz uma
+  // segunda análise sem CR (bash com igncr, issue #226).
   it('o jq do Windows (LF vira CRLF) não esconde a continuação com `\\` nem o destino na main', async () => {
     const r = await jqWindows('git push origin \\\n main', naFeature)
     expect(r.code).toBe(2)
@@ -1444,9 +1451,13 @@ describe('gate-main: git push sem destino explícito resolve o branch atual', ()
     }
   })
 
-  it('CR e LF do comando chegam exatos ao hook: `git push origin \\`+CR+LF+`main` é outro comando, não destino', async () => {
+  // O hook analisa o comando duas vezes quando há CR: com os bytes exatos (bash normal, onde `\`+CR+LF não continua a
+  // linha) e com todo CR apagado (bash com `set -o igncr`, Cygwin/MSYS, onde `\`+CR+LF continua e `ma`+CR+`in` é `main`).
+  // Qualquer uma que bloqueia, bloqueia: é mais restrito que o hook só com os bytes exatos, nunca mais frouxo.
+  it('CR e LF do comando chegam ao hook e ele cobre o bash com e sem igncr: `git push origin \\`+CR+LF+`main` bloqueia', async () => {
     for (const via of [bash, jqWindows]) {
-      expect((await via('git push origin \\\r\n main', naFeature)).code).toBe(0)
+      expect((await via('git push origin \\\r\n main', naFeature)).code).toBe(2)
+      // Sem CR vira `originmain`: um remoto só, resolve em feature/x e passa.
       expect((await via('git push origin\rmain', naFeature)).code).toBe(0)
     }
   })
@@ -1487,6 +1498,319 @@ describe('gate-main: git push sem destino explícito resolve o branch atual', ()
   it('--all e --mirror continuam barrados', async () => {
     expect((await bash('git push --all origin', naFeature)).code).toBe(2)
     expect((await bash('git push --mirror origin', naFeature)).code).toBe(2)
+  })
+})
+
+// Issue #226: limites do hook que eram aceitos e agora fecham. Cada caso reprova sem a mudança correspondente no hook.
+describe('gate-main: limites fechados na issue #226', () => {
+  let base = ''
+  let naFeature = ''
+  let gitFalsoDir = ''
+
+  beforeAll(() => {
+    base = mkdtempSync(join(tmpdir(), 'gittools-gatemain-226-'))
+    naFeature = join(base, 'na-feature')
+    mkdirSync(naFeature)
+    for (const args of [['init', '-q'], ['symbolic-ref', 'HEAD', 'refs/heads/feature/x']]) {
+      expect(spawnSync('git', args, { cwd: naFeature, encoding: 'utf8' }).status, args.join(' ')).toBe(0)
+    }
+    // `git` falso: o `symbolic-ref` devolve `main` com CR no fim (o git do Windows em modo texto); o resto vai ao git de verdade.
+    if (process.platform !== 'win32') {
+      const real = spawnSync('bash', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim()
+      gitFalsoDir = join(base, 'git-falso')
+      mkdirSync(gitFalsoDir)
+      writeFileSync(join(gitFalsoDir, 'git'), `#!/usr/bin/env bash\ncase "$*" in\n  *symbolic-ref*) printf 'main\\r\\n'; exit 0 ;;\nesac\nexec "${real}" "$@"\n`)
+      chmodSync(join(gitFalsoDir, 'git'), 0o755)
+    }
+  })
+
+  afterAll(() => {
+    rmSync(base, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+  })
+
+  const emNaFeature = (comando: string) => bash(comando, naFeature)
+
+  // Item 1: CR no fim do que o gh ou o git devolvem não pode esconder a main.
+  it('base do PR com CR no fim (API e seletor) continua sendo a main', async () => {
+    const porNumero = await bash('gh pr merge 60 --squash -R o/r')
+    expect(porNumero.code).toBe(2)
+    expect(porNumero.stderr).toContain('GATE DA MAIN')
+    const porSeletor = await bash('gh pr merge ramo-main-cr --squash')
+    expect(porSeletor.code).toBe(2)
+    expect(porSeletor.stderr).toContain('GATE DA MAIN')
+  })
+
+  it.skipIf(process.platform === 'win32')('branch atual com CR no fim (git do Windows) continua sendo a main', async () => {
+    const path = `${dir}${delimiter}${gitFalsoDir}${delimiter}${process.env.PATH ?? ''}`
+    const r = await bash('git push', naFeature, { PATH: path })
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('checkout na main')
+  })
+
+  // Item 2: bash com `set -o igncr` (Cygwin/MSYS) apaga todo CR.
+  it('com CR no comando o hook cobre também o bash com igncr', async () => {
+    for (const via of [bash, jqWindows]) {
+      expect((await via('git push origin ma\rin', naFeature)).code).toBe(2)
+      expect((await via('git push origin main\r', naFeature)).code).toBe(2)
+      expect((await via('git push origin \\\r\n main', naFeature)).code).toBe(2)
+      expect((await via('echo x \\\r\ngit push origin main', naFeature)).code).toBe(2)
+      expect((await via('git push origin feature/x\r', naFeature)).code).toBe(0)
+      expect((await via('git push origin\rmain', naFeature)).code).toBe(0)
+    }
+  })
+
+  // Item 3
+  it('`\\gh` e `\\git` (barra invertida no programa) não escapam', async () => {
+    expect((await bash('\\gh pr merge 30 --squash -R o/r --match-head-commit abc0030')).code).toBe(2)
+    expect((await emNaFeature('\\git push origin main')).code).toBe(2)
+    expect((await emNaFeature('/usr/bin/\\git push origin main')).code).toBe(2)
+  })
+
+  // Item 4
+  it.each([
+    'nice git push origin main',
+    'nice -n 5 git push origin main',
+    'nice -n5 git push origin main',
+    'nice -10 git push origin main',
+    'nice --adjustment=5 git push origin main',
+    'ionice -c 3 git push origin main',
+    'ionice -c3 -n7 gh pr merge 30 --squash -R o/r --match-head-commit abc0030',
+    'stdbuf -oL git push origin main',
+    'stdbuf -o L git push origin main',
+    'nice ionice -c 3 stdbuf -o L git push origin main',
+  ])('wrapper nice, ionice e stdbuf não esconde o comando: %s', async (comando) => {
+    expect((await emNaFeature(comando)).code).toBe(2)
+  })
+
+  it('wrapper com push para outra branch passa', async () => {
+    expect((await emNaFeature('nice -n 5 git push origin feature/x')).code).toBe(0)
+    expect((await emNaFeature('ionice -c 3 -n 7 git push origin feature/x')).code).toBe(0)
+  })
+
+  // Item 5
+  it.each([
+    'gh api -X PUT repos/o/r//pulls/30/merge -f merge_method=squash -f sha=abc0030',
+    'gh api -X PUT repos/o/r/./pulls/30/merge -f merge_method=squash -f sha=abc0030',
+    'gh api -X PUT repos/o/r/x/../pulls/30/merge -f merge_method=squash -f sha=abc0030',
+    'gh api -X POST repos/o//r/merges -f base=main -f head=x',
+    // Sem a normalização estes não casavam com /merges nem /contents e passavam.
+    'gh api -X POST repos/o//r/merges -f head=x',
+    'gh api -X POST repos/o/r/x/../merges -f head=x',
+    'gh api -X PUT repos/o//r/contents/a.txt -f message=m -f content=Yg==',
+    'gh api -X PUT repos/o/r/./contents/a.txt -f message=m -f content=Yg==',
+    'gh api -X POST repos/o/r/merges -F base=@arquivo -f head=x',
+  ])('endpoint com // , /./ ou .. no meio não escapa: %s', async (comando) => {
+    expect((await bash(comando)).code).toBe(2)
+  })
+
+  it('endpoint correto segue passando', async () => {
+    expect((await bash('gh api -X PUT repos/o/r/pulls/30/merge -f merge_method=merge -f sha=abc0030')).code).toBe(0)
+  })
+
+  // Item 6
+  it.each([
+    'curl -H "Authorization: token $(gh auth token)" -X PUT https://api.github.com/repos/o/r/pulls/30/merge -d \'{"merge_method":"squash"}\'',
+    'curl -XPOST https://api.github.com/repos/o/r/merges --data @x',
+    'curl -sS --request=DELETE https://api.github.com/repos/o/r/git/refs/heads/x',
+    'curl -sSX PATCH https://api.github.com/repos/o/r/pulls/1',
+    'curl -F a=b https://api.github.com/repos/o/r/x',
+    'curl --json @x https://api.github.com/repos/o/r/x',
+    'wget --method=PATCH https://api.github.com/repos/o/r/git/refs/heads/main',
+    'wget --post-data=a=b https://ghe.corp/api/v3/repos/o/r/x',
+    '/usr/bin/curl -d x https://API.GITHUB.COM/repos/o/r/x',
+  ])('curl ou wget escrevendo na API do GitHub bloqueia: %s', async (comando) => {
+    const r = await bash(comando)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('gh')
+  })
+
+  it.each([
+    'curl -s https://api.github.com/repos/o/r/pulls/30',
+    'curl -X GET https://api.github.com/repos/o/r',
+    'curl -I https://api.github.com/repos/o/r',
+    'curl -X POST https://example.com/x -d a=b',
+    'curl-config --version',
+    'echo curl_x https://api.github.com -d x',
+  ])('curl ou wget que lê, ou que não fala com a API do GitHub, passa: %s', async (comando) => {
+    expect((await bash(comando)).code).toBe(0)
+  })
+
+  // Item 7
+  it.each([
+    'git -c remote.origin.push=refs/heads/x:refs/heads/main push origin',
+    'git -c Push.Default=upstream push',
+    'git -c alias.p=push p origin main',
+    'git --config-env=push.default=VAR push',
+    'git --config-env push.default=VAR push',
+    'git -c include.path=/tmp/x status',
+    'git config push.default upstream',
+    'git config --global branch.x.merge refs/heads/main',
+    'git config alias.p push',
+    'git config --add remote.origin.push x:main',
+    'git config set remote.origin.push x:main',
+    'git config --file /tmp/x remote.pushdefault o',
+    'git config includeIf.gitdir:/x.path /tmp/y',
+    "gh alias set mg 'pr merge --squash'",
+    'gh alias import /tmp/x',
+    'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=push.default GIT_CONFIG_VALUE_0=upstream git push origin',
+    'export GIT_CONFIG_GLOBAL=/tmp/x; git push origin feature/x',
+  ])('alias e configuração que mudam o destino do push bloqueiam: %s', async (comando) => {
+    expect((await emNaFeature(comando)).code).toBe(2)
+  })
+
+  it.each([
+    'git config --get push.default',
+    'git config --get-regexp alias',
+    'git config get push.default',
+    'git config user.name',
+    'git config user.name x',
+    'git config --unset push.default',
+    'git -c user.name=x commit -m y',
+    'git config --list',
+    'git config list',
+    'gh alias list',
+    'GIT_CONFIG_COUNT=1 gh pr list',
+  ])('leitura e configuração sem relação com o destino passam: %s', async (comando) => {
+    expect((await emNaFeature(comando)).code).toBe(0)
+  })
+
+  // Item 8
+  it.each([
+    'cd /tmp && git push',
+    'pushd /tmp; git push origin HEAD',
+    'git --git-dir=/x/.git push',
+    'git --git-dir /x/.git push origin',
+    'git --work-tree=/x push',
+    'GIT_DIR=/x git push',
+    'export GIT_WORK_TREE=/x; git push',
+  ])('push sem destino depois de trocar o diretório pede destino explícito: %s', async (comando) => {
+    const r = await emNaFeature(comando)
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('passe o destino explícito')
+  })
+
+  it('trocar o diretório não atrapalha o que tem destino explícito', async () => {
+    expect((await emNaFeature('cd /tmp && git push origin feature/x')).code).toBe(0)
+    expect((await emNaFeature('cd /tmp && git push origin main')).code).toBe(2)
+  })
+
+  it('gh pr merge sem -R depois de cd bloqueia, a menos que tenha -R ou URL completa', async () => {
+    const r = await emNaFeature('cd /tmp && gh pr merge 1 --merge')
+    expect(r.code).toBe(2)
+    expect(r.stderr).toContain('-R')
+    expect((await emNaFeature('cd /tmp && gh pr merge 1 --merge -R o/r')).code).toBe(0)
+    expect((await emNaFeature('cd /tmp && gh pr merge https://github.com/o/r/pull/1 --merge')).code).toBe(0)
+    expect((await emNaFeature('gh pr merge 1 --merge')).code).toBe(0)
+  })
+
+  // Item 9
+  it('GH_REPO= no comando define o repositório que o hook consulta', async () => {
+    const r = await bash('GH_REPO=x/y gh pr merge 30 --merge --match-head-commit abc0030')
+    expect(r.code).toBe(0)
+    // O hook não sabe se o GH_REPO chega ao gh (atribuição solta, `unset`, `env -u`): consulta os DOIS repositórios.
+    const log = readFileSync(ghLog, 'utf8')
+    expect(log).toContain('repos/x/y/pulls/30')
+    expect(log).toContain('repos/{owner}/{repo}/pulls/30')
+    rmSync(ghLog, { force: true })
+    expect((await bash('export GH_REPO=x/y; gh pr merge 30 --merge --match-head-commit abc0030')).code).toBe(0)
+    expect(readFileSync(ghLog, 'utf8')).toContain('repos/x/y/pulls/30')
+  })
+
+  it('-R vale mais que GH_REPO, como no gh', async () => {
+    expect((await bash('GH_REPO=x/y gh pr merge 30 --merge -R o/r --match-head-commit abc0030')).code).toBe(0)
+    const log = readFileSync(ghLog, 'utf8')
+    expect(log).toContain('repos/o/r/pulls/30')
+    expect(log).not.toContain('x/y')
+  })
+
+  // O GH_REPO pode não chegar ao gh: o repositório atual também precisa passar (no atual o PR 3 é de base main, no x/y é develop).
+  it.each([
+    'GH_REPO=x/y; gh pr merge 3 --merge',
+    'GH_REPO=x/y true && gh pr merge 3 --merge',
+    'export GH_REPO=x/y; unset GH_REPO; gh pr merge 3 --merge',
+    'GH_REPO=x/y env -u GH_REPO gh pr merge 3 --merge',
+    'GH_REPO=x/y env -i gh pr merge 3 --merge',
+    '(export GH_REPO=x/y); gh pr merge 3 --merge',
+    '(export GH_REPO=x/y); gh pr merge 5 --squash',
+  ])('GH_REPO que pode não chegar ao gh: o repositório atual também é conferido: %s', async (comando) => {
+    expect((await bash(comando)).code).toBe(2)
+  })
+
+  it('gh api com {owner}/{repo} também confere o repositório do GH_REPO (no x/y o PR 1 é de base main)', async () => {
+    const r = await bash('GH_REPO=x/y; gh api -X PUT repos/{owner}/{repo}/pulls/1/merge -f merge_method=merge')
+    expect(r.code).toBe(2)
+    expect(readFileSync(ghLog, 'utf8')).toContain('repos/x/y/pulls/1')
+    expect((await bash('gh api -X PUT repos/{owner}/{repo}/pulls/1/merge -f merge_method=merge')).code).toBe(0)
+    expect((await bash('GH_REPO=$R gh api -X PUT repos/{owner}/{repo}/pulls/1/merge -f merge_method=merge')).code).toBe(2)
+  })
+
+  // Barra invertida sem aspas no meio do token: o bash a tira (`g\it` é `git`, `m\ain` é `main`).
+  it('`\\` no meio do token não esconde o comando nem o destino', async () => {
+    expect((await emNaFeature('g\\it push origin main')).code).toBe(2)
+    expect((await emNaFeature('git push origin m\\ain')).code).toBe(2)
+    expect((await bash('g\\h pr merge 30 --squash -R o/r --match-head-commit abc0030')).code).toBe(2)
+    expect((await emNaFeature('git push origin feature/\\x')).code).toBe(0)
+  })
+
+  // `env` com opções escondia o comando atrás de `-i`, `-u X`, `--`.
+  it.each([
+    'env -i git push origin main',
+    'env -u X git push origin main',
+    'env -uX git push origin main',
+    'env --unset X git push origin main',
+    'env -- git push origin main',
+    'env FOO=1 git push origin main',
+    'env -i FOO=1 git push origin main',
+    'env -C /tmp git push',
+    'env --chdir=/tmp git push',
+  ])('env com opções não esconde o git: %s', async (comando) => {
+    expect((await emNaFeature(comando)).code).toBe(2)
+  })
+
+  // `env -S` recebe o comando inteiro como UM argumento (`env -S "git push origin main"`); como as aspas saem antes de
+  // segmentar, o que vem depois do `-S` é o próprio programa. Colado (`-Sgit`, `--split-string=git`), o resto é o programa.
+  it.each([
+    'env -S git push origin main',
+    'env -S "git push origin main"',
+    'env --split-string="git push origin main"',
+    'env --split-string git push origin main',
+    'env -Sgit push origin main',
+  ])('env -S não esconde o git: %s', async (comando) => {
+    expect((await emNaFeature(comando)).code).toBe(2)
+  })
+
+  it('env -S com push para outra branch passa', async () => {
+    expect((await emNaFeature('env -S "git push origin feature/x"')).code).toBe(0)
+  })
+
+  // O filtro de entrada do caso Bash olha o texto sem aspas nem `\`: `"gi"t` e `'g'h` são `git` e `gh` para o bash.
+  it('aspas no meio do nome do programa não escondem o comando do filtro de entrada', async () => {
+    expect((await emNaFeature('"gi"t push origin main')).code).toBe(2)
+    expect((await bash("'g'h pr merge 30 --squash -R o/r --match-head-commit abc0030")).code).toBe(2)
+    expect((await emNaFeature('"gi"t push origin feature/x')).code).toBe(0)
+  })
+
+  it('env com opções e push para outra branch passa', async () => {
+    expect((await emNaFeature('env -u X git push origin feature/x')).code).toBe(0)
+    expect((await emNaFeature('env -i FOO=1 git push origin feature/x')).code).toBe(0)
+  })
+
+  it('builtin cd troca o diretório como o cd', async () => {
+    expect((await emNaFeature('builtin cd /tmp && git push')).code).toBe(2)
+    expect((await emNaFeature('builtin cd /tmp && git push origin feature/x')).code).toBe(0)
+  })
+
+  it('env -C troca o diretório: gh pr merge sem -R bloqueia', async () => {
+    expect((await bash('env -C /tmp gh pr merge 1 --merge')).code).toBe(2)
+    expect((await bash('env -C /tmp gh pr merge 1 --merge -R o/r')).code).toBe(0)
+  })
+
+  it('GH_REPO vazio ou com variável, e GH_HOST, bloqueiam o gh pr merge e o gh api', async () => {
+    expect((await bash('GH_REPO=$R gh pr merge 1 --merge')).code).toBe(2)
+    expect((await bash('GH_REPO= gh pr merge 1 --merge')).code).toBe(2)
+    expect((await bash('GH_HOST=ghe gh pr merge 1 --merge -R o/r')).code).toBe(2)
+    expect((await bash('GH_HOST=ghe gh api repos/o/r/pulls/1')).code).toBe(2)
+    expect((await bash('GH_HOST=ghe gh pr list')).code).toBe(0)
   })
 })
 
