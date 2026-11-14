@@ -8,10 +8,13 @@
 # create|edit|comment; gh api com -f/-F/--field/--raw-field/--input ou -X/--method POST|PATCH|PUT) e nas ferramentas
 # mcp__github__* que gravam texto. Leitura (`git log | grep 'Co-Authored-By:'`, `gh pr list`, `gh api` GET) e qualquer
 # outra ferramenta saem com 0: quem só procura o termo não pode ser barrado.
-# Fora do alcance (limites conhecidos, não tentar contornar):
+# Fora do alcance DESTE hook (limites conhecidos, não tentar contornar). Três deles agora são pegos no CI pelo check
+# "Validar fluxo de branches" (scripts/atribuicao-gate.mjs, #254), que confere as mensagens dos commits do PR e o corpo:
 #   - o rodapé que a PLATAFORMA acrescenta sozinha depois do envio (editar o corpo para removê-lo também é proibido);
-#   - texto que só existe na hora da execução: `-m "$(cat arquivo)"`, `-F "$VAR"`;
-#   - `--amend`, `-c` e `-C` sem `-m` (reaproveitam a mensagem antiga) e `cherry-pick` de commit que já tem trailer;
+#     segue limite conhecido: o check de CI ignora a linha exata dele de propósito;
+#   - texto que só existe na hora da execução: `-m "$(cat arquivo)"`, `-F "$VAR"` (pego no CI, #254);
+#   - `--amend`, `-c` e `-C` sem `-m` (reaproveitam a mensagem antiga) e `cherry-pick` de commit que já tem trailer
+#     (pegos no CI, #254);
 #   - arquivo de mensagem relativo é resolvido contra o cwd da chamada, não contra `git -C dir` nem `cd sub &&`;
 #   - `escreve` vale para o comando inteiro: um comando que mistura escrita e busca (`rg "git commit" -e "Co-Authored-By:"`)
 #     pode dar falso positivo raro; é o preço de não interpretar o shell.
