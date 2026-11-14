@@ -5,7 +5,7 @@ Toda mudança segue três PRs, nesta ordem. A `develop` é o ambiente livre de i
 ```
 branch de trabalho ──PR──▶ develop        (validação completa na develop)
 branch de trabalho ──PR──▶ homolog        (a mesma branch, já validada na develop; validação completa na homolog)
-homolog ──PR──▶ main                      (o Claude só abre o PR; o merge é do dono)
+homolog ──PR──▶ main                      (o Claude abre o PR e pode fazer o merge pela via estreita abaixo)
 ```
 
 | Branch | Para que serve | Recebe PR de | Aceita push direto? |
@@ -35,7 +35,7 @@ homolog ──PR──▶ main                      (o Claude só abre o PR; o m
    ```bash
    git push -u origin feature/nome-da-mudanca
    ```
-3. Depois do merge na `develop` e da validação lá, remover `docs/HANDOFF.md` (se existir) e abrir o PR da **mesma branch de trabalho** com base `homolog`. Validada a homolog, abrir o PR `homolog → main` (o merge é do dono).
+3. Depois do merge na `develop` e da validação lá, remover `docs/HANDOFF.md` (se existir) e abrir o PR da **mesma branch de trabalho** com base `homolog`. Validada a homolog (rótulo `validada-homolog`), abrir o PR `homolog → main`; com as duas validações, o `QA` e os demais checks verdes e o comentário de evidência no PR, o Claude faz o merge por merge commit (`gate-main.sh` confere). O merge dispara a publicação da extensão (`.claude/rules/github.md`, "Efeitos de um merge na `main`").
 
 ## Ciclo de vida das branches
 
