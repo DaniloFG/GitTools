@@ -46,8 +46,8 @@ paths:
 - **Falso positivo do portão**: ele é largo de propósito (falso negativo é o que não pode). Termo barrado que é
   vocabulário do produto (`hook`, `agent`, `pull request`, `model`, `session`) se resolve descrevendo o efeito sem a
   palavra, nunca afrouxando a regra: "this working session" vira "this window"; "git hooks" vira "scripts that git
-  runs"; "pull request" vira "merge request on the host". Termos de git como branch, merge, commit, rebase,
-  cherry-pick, worktree e staging passam.
+  runs"; "pull request" vira "the proposed change" (os três exemplos passam no portão; há teste). Termos de git como
+  branch, merge, commit, rebase, cherry-pick e worktree passam; `staging` só passa nas frases exatas de `EXCECOES`.
 - **O portão é uma lista de bloqueio, não prova de que o texto é de usuário**: a revisão do PR confere a regra positiva
   (cada bullet descreve o que o usuário vê, usa ou ganha; o checklist do PR cobra isso). Uma pessoa aprova o
   `## [Unreleased]` antes de uma minor ou de uma tag: a decisão de publicar a minor é do dono.
@@ -61,7 +61,8 @@ paths:
   "batch actions" (a tela de conflitos tem ações em lote no rodapé), na tabela `EXCECOES`. A palavra `issue` sozinha
   não é barrada (só "issue + número" e "sub-issue"). `v0` só reprova sozinho; "v0.13.0" (versão) passa.
 - **O que o portão não pega** (a revisão humana é a defesa): "upstream", "stand-up notes", "roadmap item",
-  "validation run", hash de commit de 6 hexadecimais (o limiar é 7) e qualquer jargão novo. Lista de bloqueio nunca é completa.
+  "validation run", "Release notes now built from the changelog", "Merged from dev branch", "Publishing runs an
+  automatic check first", hash de commit de 6 hexadecimais (o limiar é 7) e qualquer jargão novo. Lista de bloqueio nunca é completa.
 - **Patch automático não ganha seção**: o release dele usa o texto de `## [Unreleased]`. Sem seção da versão e com o
   `Unreleased` vazio (sem bullet, ou só `- Nothing yet.`), o push na branch publica a nota fixa
   `- Maintenance release: stability improvements.` (modo `neutro`, ligado só por `github.event_name == 'push'` e

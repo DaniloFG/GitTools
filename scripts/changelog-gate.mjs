@@ -160,6 +160,18 @@ export const RULES = [
   palavra('agentic', 'agentic'),
   // Os agentes do projeto (gt-juiz, gt-escritor, gt-leitor, gt-planejador, gt-validador).
   palavra('gt-agente', 'gt-[a-z]+'),
+  // Os mesmos agentes com qualquer separador ou sem ele: gt_escritor, "gt leitor", gt.validador, gt/escritor, gtescritor.
+  padrao('gt-agente-nome', `${ANTES}gt${NS}*(?:juiz|escritor|leitor|planejador|validador)`, 'giu'),
+  // Skills do repositório (separador amplo). "simplify" e "central" são palavras comuns: o falso positivo é aceito.
+  // "run-gittools" só com hífen, sublinhado, ponto, barra ou colado: "Run GitTools" (comando do VS Code) é texto do produto.
+  palavra('skill-nome', 'security\\s*review|run[-_./]?gittools|code\\s*review|simplify|planejar|etapa|central|backlog|validar'),
+  palavra('cline', 'cline'),
+  palavra('kiro', 'kiro'),
+  // "rodada 3", "round 3", "Tracked in 228", "Per the judge": vocabulário das revisões do trabalho.
+  { rule: 'rodada', re: new RegExp(`${ANTES}(?:rodadas?|rounds?)${numero()}${DEPOIS}`, 'giu') },
+  { rule: 'tracked-in', re: new RegExp(`${ANTES}tracked${NS}*in${numero()}${DEPOIS}`, 'giu') },
+  palavra('judge', 'judges?'),
+  palavra('per-the-judge', 'per\\s*the\\s*judge'),
   // Assistente de código: só junto de código ou IA, porque "assistente" sozinho pode ser recurso do produto.
   palavra(
     'assistente-ia',
@@ -410,6 +422,8 @@ export const RULES = [
   padrao('hash-commit', `${ANTES}(?=[0-9a-f]*\\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,64}${DEPOIS}`, 'giu'),
   // Arquivo de workflow ou de configuração YAML do projeto (validacao.yml, qa.yml...).
   padrao('arquivo-yaml', '[\\w.-]+\\.ya?ml(?![\\p{L}\\p{N}])', 'giu'),
+  // Script, módulo e arquivo local internos do projeto (lembrete-issue.sh, issue.local, changelog-gate.mjs).
+  padrao('arquivo-interno', '[\\w.-]+\\.(?:sh|local|mjs|cjs)(?![\\p{L}\\p{N}])', 'giu'),
   // "pull/228" sem o domínio, e o arquivo de donos do repositório.
   padrao('pull-numero', `${ANTES}pull[/\\\\]\\d+`, 'giu'),
   palavra('codeowners', 'code[-_]?owners?'),
@@ -443,7 +457,8 @@ export const RULES = [
   padrao('precisa-refinamento', `${ANTES}${separar('(?:precisa[-\\s]refinamento|needs[-\\s]refinement)')}`, 'giu'),
   padrao('wip', `${ANTES}wip\\s*:`, 'giu'),
   // Rodapés de atribuição de commit.
-  padrao('co-authored-by', separar('Co[-\\s]?Authored[-\\s]?By'), 'giu'),
+  // "By" é opcional: "Co-authored with Jane" e "Coauthored: Jane" também são atribuição.
+  padrao('co-authored-by', separar('Co[-\\s]?Authored'), 'giu'),
   padrao('generated-with', separar('Generated\\s+with'), 'giu'),
 ]
 

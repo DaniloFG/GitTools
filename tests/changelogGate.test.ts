@@ -571,6 +571,36 @@ const RUINS: [regra: string, texto: string][] = [
   ['numero-solto', '- Veja no. 228.'],
   ['chave-rastreador', '- Fixed JIRA-123.'],
   ['chave-rastreador', '- Fixed GIT-228.'],
+
+  // --- rodada 10 ---
+  ['gt-agente-nome', '- Reviewed by gt_escritor.'],
+  ['gt-agente-nome', '- Reviewed by gt leitor.'],
+  ['gt-agente-nome', '- Reviewed by gt.validador.'],
+  ['gt-agente-nome', '- Reviewed by gt/escritor.'],
+  ['gt-agente-nome', '- Reviewed by gtescritor.'],
+  ['gt-agente-nome', '- Reviewed by gt-juiz.'],
+  ['gt-agente-nome', '- Reviewed by gt planejador.'],
+  ['co-authored-by', 'Co-authored with Jane'],
+  ['co-authored-by', 'Coauthored: Jane'],
+  ['skill-nome', '- Ran security-review.'],
+  ['skill-nome', '- Ran run-gittools.'],
+  ['skill-nome', '- Ran code_review.'],
+  ['skill-nome', '- Ran simplify.'],
+  ['skill-nome', '- Ran planejar.'],
+  ['skill-nome', '- Ran etapa.'],
+  ['skill-nome', '- Ran central.'],
+  ['skill-nome', '- Ran backlog.'],
+  ['skill-nome', '- Ran validar.'],
+  ['cline', '- Written with Cline.'],
+  ['kiro', '- Written with Kiro.'],
+  ['arquivo-interno', '- Edited lembrete-issue.sh.'],
+  ['arquivo-interno', '- Edited issue.local.'],
+  ['arquivo-interno', '- Edited changelog-gate.mjs.'],
+  ['rodada', '- Resolvido na rodada 3.'],
+  ['rodada', '- Fixed in round 3.'],
+  ['tracked-in', '- Tracked in 228.'],
+  ['judge', "- Approved by the judge's call."],
+  ['per-the-judge', '- Per the judge, changed it.'],
 ]
 
 // Texto que o usuário lê sem problema, inclusive palavras que contêm um termo proibido sem serem ele.
@@ -613,6 +643,7 @@ const BONS = [
   '- Opens the 3rd file after the 1st.',
   '- Saved as UTF-8 or ISO-8859-1, hashed with SHA-256.',
   '- Q&A style help text.',
+  '- Run **GitTools: Open** from the command palette.',
   '- Passou: tudo certo na tela.',
   '- Opens 2 of 300 items in 5 seconds.',
   '- Fixed the colour in version v0.13.0.',
@@ -684,6 +715,13 @@ describe('findForbidden: textos de usuário passam', () => {
     expect(findForbidden('\uFF30\uFF32 em largura total').map((a) => a.rule)).toContain('pr')
     expect(findForbidden('pipe\u200Bline').map((a) => a.rule)).toEqual(['invisivel', 'pipeline'])
     expect(findForbidden('pipe\u200Bline')[0].match).toBe('U+200B')
+  })
+})
+
+// Os exemplos de reescrita de .claude/rules/publicacao.md: o que a doc manda escrever precisa passar no próprio portão.
+describe('exemplos de reescrita da doc passam no portão', () => {
+  it.each(['this window', 'scripts that git runs', 'the proposed change', 'the line you are on'])('passa "%s"', (frase) => {
+    expect(findForbidden(`- ${frase}.`)).toEqual([])
   })
 })
 
