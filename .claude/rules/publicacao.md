@@ -4,6 +4,7 @@ paths:
   - "extension/CHANGELOG.md"
   - "package.json"
   - "scripts/extension-version.mjs"
+  - "scripts/changelog-gate.mjs"
   - "scripts/apply-branch-protection.sh"
   - ".github/**/*"
   - "CONTRIBUTING.md"
@@ -32,6 +33,16 @@ paths:
   curto e concreto; sem número de issue, nome de pessoa nem termo interno.
 - **Ao subir minor ou major** em `extension/package.json`, o mesmo PR troca `## [Unreleased]` pela seção
   `## [x.y.z] - AAAA-MM-DD` e abre um `## [Unreleased]` novo no topo, com `- Nothing yet.`.
+- **O changelog de usuário (o arquivo e o corpo do release) só tem assunto do app**: o que o usuário vê, usa ou ganha.
+  O que é interno (pipeline, CI, workflow, hook, gate, fila, lote, HANDOFF, skill, agente, Claude, IA, modelo, sessão,
+  dúvida, número de issue ou de PR, nome de branch, validação ou QA) vai para commit, PR e issue, nunca para ele.
+  Termo de jargão técnico que o usuário não entende também sai: escreva o efeito, não o mecanismo.
+- **O corpo do release vem da seção do CHANGELOG, nunca gerado de PR ou de commit** (`generate_release_notes` fica
+  `false`). `scripts/changelog-gate.mjs` grava as notas (`notes`) e as confere (`check`) no workflow de publicação,
+  antes de empacotar e de publicar: se achar termo interno, nada é publicado (Marketplace, Open VSX e release).
+- **Patch automático não ganha seção**: o release dele usa o texto de `## [Unreleased]`. Sem seção da versão e com o
+  `Unreleased` vazio (sem bullet, ou só `- Nothing yet.`), o publish falha de propósito: escreva o que mudou antes.
 - **`tests/extensionChangelog.test.ts` confere** a seção da versão do `package.json`, o `Unreleased` com bullet, a
-  ordem decrescente das versões e bullet em cada seção. O patch que o workflow publica sozinho não sobe o arquivo e
-  não ganha seção; o teste não o cobre.
+  ordem decrescente das versões, bullet em cada seção e a ausência de termo interno no arquivo inteiro.
+  `tests/changelogGate.test.ts` cobre cada regra do portão e `tests/workflows-publicacao.test.ts`, a ordem dos passos
+  do workflow. O patch que o workflow publica sozinho não sobe o arquivo e não ganha seção.

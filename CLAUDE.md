@@ -185,7 +185,7 @@ Regra que impede o pedido não se contorna em silêncio: explique o custo, propo
   porque `develop` e `homolog` podem ter o que a `main` não tem; assuntos diferentes correm em paralelo. Segue por PR branch → `develop`,
   a mesma branch → `homolog` (nunca `develop` → `homolog`) e `homolog` → `main`; PR é obrigatório; merge na `main` é só do dono.
   O Claude não apaga branches (`.claude/rules/github.md`). Ao fim, remova o worktree (`git worktree remove`, `git worktree prune`). Nada de force push,
-  reescrita de histórico ou `--no-verify` em branch compartilhada. Versão automática: não suba o patch à mão. Mudança visível: `extension/CHANGELOG.md` no mesmo PR (`publicacao.md`).
+  reescrita de histórico ou `--no-verify` em branch compartilhada. Versão automática: não suba o patch à mão. Mudança visível: `extension/CHANGELOG.md` no mesmo PR, só com assunto do app, sem jargão interno (`publicacao.md`).
 - Branch, commit e PR: sem Claude, IA, modelo ou ferramenta, nem `Co-Authored-By`, `Claude-Session` ou "Generated with".
 - **Este guia é código.** Mudou comando, pasta, orçamento ou jeito de trabalhar: corrija o `CLAUDE.md` e o `.claude/`
   juntos. Regra de área vai a `.claude/rules/`; procedimento, a skill; teto de 199 linhas (`/doctor prompt-audit`).

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { findForbidden, gateProblems } from '../scripts/changelog-gate.mjs'
 
 // Formato Keep a Changelog. Cada `## ` abre uma seção: `## [x.y.z] - data` é uma versão e `## [Unreleased]` é o que
 // ainda não saiu. Bullet é linha que começa com "- " dentro da seção; `### Added` não conta.
@@ -140,11 +141,21 @@ describe('problemasDoChangelog', () => {
 })
 
 describe('extension/CHANGELOG.md', () => {
+  const pacote = JSON.parse(
+    readFileSync(fileURLToPath(new URL('../extension/package.json', import.meta.url)), 'utf8'),
+  ) as { version: string }
+  const texto = readFileSync(fileURLToPath(new URL('../extension/CHANGELOG.md', import.meta.url)), 'utf8')
+
   it('confere com a versão de extension/package.json', () => {
-    const pacote = JSON.parse(
-      readFileSync(fileURLToPath(new URL('../extension/package.json', import.meta.url)), 'utf8'),
-    ) as { version: string }
-    const texto = readFileSync(fileURLToPath(new URL('../extension/CHANGELOG.md', import.meta.url)), 'utf8')
     expect(problemasDoChangelog(pacote.version, texto)).toEqual([])
+  })
+
+  // O changelog é o que o usuário lê (arquivo e corpo do release): só assunto do app, nunca o processo interno.
+  it('o arquivo inteiro não tem termo interno (pipeline, CI, número de issue, Claude...)', () => {
+    expect(findForbidden(texto)).toEqual([])
+  })
+
+  it('o Unreleased e a seção da versão do package.json passam no portão de publicação', () => {
+    expect(gateProblems(texto, pacote.version, '')).toEqual([])
   })
 })

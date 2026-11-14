@@ -37,28 +37,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The Conflicts screen no longer closes when a cherry-pick stops at a new conflict.
 - Cherry-pick of commits with the same date applies the parent commit first.
 - Symbolic links that point outside the repository, or are broken, no longer break the diff of untracked files or the details of conflicted files.
-- Conflict details no longer read files outside the repository through a relative path.
-- Changes made in the repository right after an action in the app are no longer ignored by the watcher, so the view refreshes.
+- Conflict details can no longer open files from outside the repository.
+- Changes made in the repository right after an action in the app are no longer missed, so the screen refreshes.
 - The "Open in new window" action in History shows the diff of a renamed file.
 - The side-by-side diff keeps a text selection on the side where the mouse was pressed.
-- The splitter of the dock can no longer shrink the Commit diff to its headers only.
+- Resizing panels can no longer shrink the Commit diff to just its headers.
 - The "Open" button of the uncommitted row in History fits in 320 px wide windows.
 - Dashboards at 320 px wide no longer scroll sideways.
 - The column resize handle in History can be clicked.
 - Controls reached by keyboard have accessible names and a visible focus ring.
-- On Windows, a git command that finishes no longer fails with an EBUSY error.
+- On Windows, a git command no longer fails with a "file is busy" error when it finishes.
 
 ## [0.13.0] - 2026-11-11
 
 ### Changed
 
 - The GitTools panel in VS Code opens without waiting for the workspace scan, which runs in the background.
-- Only the active interface language is loaded at first, so the first load is smaller.
-- Screens that are not shown at startup load on demand.
-- Dashboards keep their results in memory and on disk until the history changes.
-- Branches, tags, stashes and file icons do less repeated work on each redraw.
-- The sidebar list draws only the rows on screen.
-- The Changes screen redraws less when it opens.
+- Only the interface language in use is loaded at startup, so there is less to load when the panel opens.
+- Screens that are not shown at startup are loaded only when you open them.
+- Dashboards save their results and reuse them until the history changes.
+- Branches, tags, stashes and file icons are drawn with less repeated work.
+- The sidebar list only draws the rows you can see.
+- The Changes screen does less work when it opens.
 
 ### Fixed
 
@@ -187,7 +187,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Faster refresh: overlapping refreshes become one, and the log is reloaded only when HEAD, branches or tags change.
+- Faster refresh: overlapping refreshes become one, and the history is reloaded only when the current commit, branches or tags change.
 
 ## [0.5.1] - 2026-10-22
 
