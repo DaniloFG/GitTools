@@ -54,13 +54,14 @@ paths:
 - **Palavra do produto que o portão barra** (`cursor`, `token`, `assistant`, `staging`, `bots`): reescreva descrevendo
   o efeito ("the line you are on", não "the cursor line"). Só entra em `EXCECOES` (frase exata, com a origem
   comentada) o que o README, a interface ou uma seção já publicada do CHANGELOG exigem: "git assistant bubble" passa,
-  "Thanks to the git assistant" não. Termo composto aceita espaço, `_`, `-` e `/` entre as palavras
-  (`pull_request_target` e `code-review` reprovam como `pull request`).
+  "Thanks to the git assistant" não. Termo composto aceita qualquer caractere que não seja letra nem dígito entre as palavras
+  (`pull_request_target`, `code-review` e `pipe.line` reprovam); palavra de processo vale como radical (`queued`,
+  `hooking`, `gatekeeper`, `questionable`). A busca roda com e sem acentos ("Cláude" reprova; "gateway" passa).
 - **`batch`, `queue` e `lot` são barrados** (são "lote" e "fila" em inglês). A única exceção é a frase exata
   "batch actions" (a tela de conflitos tem ações em lote no rodapé), na tabela `EXCECOES`. A palavra `issue` sozinha
   não é barrada (só "issue + número" e "sub-issue"). `v0` só reprova sozinho; "v0.13.0" (versão) passa.
 - **O que o portão não pega** (a revisão humana é a defesa): "upstream", "stand-up notes", "roadmap item",
-  "validation run" e qualquer jargão novo. Lista de bloqueio nunca é completa.
+  "validation run", hash de commit de 6 hexadecimais (o limiar é 7) e qualquer jargão novo. Lista de bloqueio nunca é completa.
 - **Patch automático não ganha seção**: o release dele usa o texto de `## [Unreleased]`. Sem seção da versão e com o
   `Unreleased` vazio (sem bullet, ou só `- Nothing yet.`), o push na branch publica a nota fixa
   `- Maintenance release: stability improvements.` (modo `neutro`, ligado só por `github.event_name == 'push'` e

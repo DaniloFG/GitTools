@@ -30,16 +30,33 @@ const VERSION = /^\d+\.\d+\.\d+$/
 const ANTES = '(?<![\\p{L}\\p{N}])'
 const DEPOIS = '(?![\\p{L}\\p{N}])'
 
-// Separador entre as palavras de um termo composto: espaço, `_`, `-` ou `/`. Quem escreve "pull_request_target",
-// "code-review" ou "rate/limit" não escapa de uma regra escrita com um espaço só.
-const SEP = '[\\s_/-]'
+// Separador entre as palavras de um termo composto: QUALQUER caractere que não seja letra nem dígito (espaço, `_`, `-`,
+// `/`, `.`, `·`, `\`, `:`, `=`...). Quem escreve "pipe.line", "work·flow" ou "Co.Authored.By" não escapa de uma regra
+// escrita com um espaço só. Não há como listar todos os separadores; por isso a exceção é a letra e o dígito.
+const NS = '[^\\p{L}\\p{N}]'
 
-/** Escreve o termo composto com SEP: `\s+` vira SEP+ e as classes `[-\s]`/`[-_\s]` ganham `_` e `/`. */
+// Número depois de uma palavra de rastreador ("issue 228", "ticket: 42", "issue n.228", "ticket nº 42", "job id 42"):
+// separadores, um prefixo opcional (n., nº, no., №, number, id) e os dígitos. `min` é o mínimo de dígitos.
+const numero = (min = 1) => `${NS}*(?:(?:n[º°o.]*|№|number|id)${NS}*)?\\d{${min},}`
+
+/**
+ * Escreve o termo composto com NS: `\s+` vira NS+, `\s*` e `\s?` viram NS*, e as classes feitas só de separadores
+ * (`[-\s]`, `[\s_/-]`, `[\s_/:#-]`...) viram NS (com o `?` ou `*` que vierem depois virando NS*).
+ */
 const separar = (fonte) =>
-  fonte.replaceAll('\\s+', `${SEP}+`).replaceAll('[-\\s]', SEP).replaceAll('[-_\\s]', SEP)
+  fonte
+    .replace(/\[(?:-|\\s|_|\/|:|#)+\]([?*]?)/g, (_, q) => (q ? `${NS}*` : NS))
+    .replace(/\\s\+/g, `${NS}+`)
+    .replace(/\\s[?*]/g, `${NS}*`)
 
 /** Palavra inteira sem diferença de caixa: "Pipeline", "PIPELINES" e "pipeline" casam. Termos compostos usam SEP. */
 const palavra = (rule, fonte) => ({ rule, re: new RegExp(`${ANTES}(?:${separar(fonte)})${DEPOIS}`, 'giu') })
+
+/**
+ * Radical: palavra que COMEÇA assim, com qualquer fim ("queue" pega queued e queueing). Mantém a fronteira no começo
+ * (não pega "webhook" por "hook"), mas não no fim. O falso positivo ("Hooker") é aceito.
+ */
+const radical = (rule, fonte) => ({ rule, re: new RegExp(`${ANTES}(?:${separar(fonte)})[\\p{L}\\p{N}]*`, 'giu') })
 
 /** Palavra inteira só com a caixa escrita: siglas em MAIÚSCULAS, para não pegar "ia" (verbo) ou "ai" de outras palavras. */
 const sigla = (rule, fonte) => ({ rule, re: new RegExp(`${ANTES}(?:${fonte})${DEPOIS}`, 'gu') })
@@ -75,6 +92,9 @@ const HOMOGLIFOS = new Map(
 
 // Hifens e travessões tipográficos (U+2010 a U+2015) e o sinal de menos (U+2212): parecem "-" e escapariam das regras
 // que usam o hífen como separador ("Co‐Authored‐By", "claude‐code"). Viram o hífen comum antes da busca.
+// Marcas combinantes (acentos) que o NFD separa da letra.
+const MARCAS_RE = /\p{M}/gu
+
 const HIFENS_RE = /[\u2010-\u2015\u2212]/gu
 
 /** Troca os homóglifos pela letra latina parecida e os hifens tipográficos pelo hífen. */
@@ -107,9 +127,9 @@ export const RULES = [
   sigla('sigla-ia', 'IA'),
   // "ai" em qualquer caixa e palavra inteira ("Ai-powered", "built with ai"); "ia" só maiúsculo, porque é verbo em português.
   palavra('sigla-ai', 'ai'),
-  palavra('ia-sufixo', '(?:ai|ia)[\\s_/-]*(?:powered|assisted|driven|based|generated|written)'),
+  palavra('ia-sufixo', '(?:ai|ia)\\s*(?:powered|assisted|driven|based|generated|written)'),
   // "QA" e "Q.A." em qualquer caixa: "qa" não é palavra comum em inglês nem em português.
-  palavra('sigla-qa', 'q\\.?a\\.?'),
+  palavra('sigla-qa', 'q\\.?a\\.?s?'),
   // "A.I.": a mesma sigla escrita com pontos.
   palavra('sigla-a-i', 'a\\.\\s?i\\.?'),
   // C.I., P.R., I.A., A.I., Q.A.: letras separadas por ponto (e "C I", "P R" em maiúsculas separadas por espaço).
@@ -120,7 +140,10 @@ export const RULES = [
   sigla('sigla-ci-cd', 'CI/CD'),
   palavra('pr', 'prs?'),
   // "PR42", "PR-42", "pr_42", "P.R. 42": o número colado à sigla tira a palavra inteira, então tem regra própria.
-  palavra('pr-numero', '(?:pr|p\\.\\s?r\\.)[-_\\s]?\\d+'),
+  {
+    rule: 'pr-numero',
+    re: new RegExp(`${ANTES}(?:pr|p\\.${NS}*r\\.)${numero()}${DEPOIS}`, 'giu'),
+  },
 
   // --- Ferramentas e fluxo de trabalho internos: palavra inteira, sem diferença de caixa -------------------------
   // Quem gera o código e o texto: nome de ferramenta ou de empresa de IA.
@@ -167,12 +190,12 @@ export const RULES = [
   // Limites do serviço de IA ou do repositório (a causa das pausas do trabalho).
   palavra('limite-uso', 'limite\\s+de\\s+uso|usage\\s+limits?|rate\\s+limit(?:s|ing)?'),
   // Incremento numerado do trabalho em etapas.
-  palavra('incremento', 'incremento\\s+\\d+|increments?\\s+\\d+'),
+  { rule: 'incremento', re: new RegExp(`${ANTES}(?:incremento|increments?)${numero()}${DEPOIS}`, 'giu') },
   // Pedido de merge de outros hospedeiros: "merge request", "MR 42", "MR-42".
   palavra('merge-request', 'merge\\s+requests?'),
-  palavra('mr-numero', 'mr[-_\\s]?\\d+'),
+  { rule: 'mr-numero', re: new RegExp(`${ANTES}mr${numero()}${DEPOIS}`, 'giu') },
   // Rastreador de tarefas: chamado, tracker.
-  palavra('chamado', 'chamados?[\\s_/-]*(?:#|n[º°o]\\.?\\s*)?\\d+'),
+  { rule: 'chamado', re: new RegExp(`${ANTES}chamados?${numero()}${DEPOIS}`, 'giu') },
   palavra('rastreador', 'rastreador(?:es)?|(?:issue\\s+)?trackers?'),
   // Mais ferramentas de IA e agentes de código.
   palavra('genai', 'gen[\\s_-]?ai'),
@@ -215,8 +238,9 @@ export const RULES = [
   palavra('automation', 'automation'),
   palavra('qa-extenso', 'quality[\\s_/-]+assurance|garantia[\\s_/-]+de[\\s_/-]+qualidade'),
   // Execução de CI com número curto ("Job 7", "run 4521", "build 1234"). O id longo (8+ dígitos) tem regra própria abaixo.
-  palavra('execucao-numero', '(?:run|job|build)[\\s_#/-]*\\d+'),
-  palavra('id-numerico', '(?:runs?|jobs?|ids?)[\\s_/:#-]*\\d{8,}'),
+  { rule: 'execucao-numero', re: new RegExp(`${ANTES}(?:runs?|jobs?|builds?)${numero()}${DEPOIS}`, 'giu') },
+  { rule: 'bug-numero', re: new RegExp(`${ANTES}bugs?${numero()}${DEPOIS}`, 'giu') },
+  { rule: 'id-numerico', re: new RegExp(`${ANTES}(?:runs?|jobs?|ids?)${numero(8)}${DEPOIS}`, 'giu') },
   palavra('producao', 'production\\s+environment'),
   palavra('publicando-em', 'publish(?:ing|ed)?\\s+(?:to|on)\\s+(?:open\\s+vsx|(?:vs\\s+(?:code\\s+)?)?marketplace)'),
   palavra('notas-agora-vem', 'release\\s+notes\\s+now\\s+come'),
@@ -226,7 +250,7 @@ export const RULES = [
   palavra('segunda-revisao', 'segunda\\s+revis[ãa]o'),
   palavra('acceptance-criteria', 'acceptance\\s+criteria|crit[ée]rios?\\s+de\\s+aceite'),
   palavra('tech-debt', 'tech(?:nical)?\\s+debt|d[ée]bitos?\\s+t[ée]cnicos?'),
-  palavra('fase-numero', '(?:phase|fase)[\\s_/-]*\\d+'),
+  { rule: 'fase-numero', re: new RegExp(`${ANTES}(?:phase|fase)${numero()}${DEPOIS}`, 'giu') },
   palavra('test-suite', 'test\\s+suites?'),
   palavra('added-tests', 'added\\s+tests?'),
   palavra('fixed-build', 'fixed\\s+the\\s+build'),
@@ -236,7 +260,7 @@ export const RULES = [
   // Rotinas e cerimônias do projeto: job noturno, Renovate, sprint, épico, kanban, re-run, sign-off.
   palavra('nightly', 'nightly[\\s_/-]+(?:jobs?|builds?)'),
   palavra('renovate', 'renovate(?:bot)?'),
-  palavra('sprint', 'sprints?[\\s_/-]*\\d+'),
+  { rule: 'sprint', re: new RegExp(`${ANTES}sprints?${numero()}${DEPOIS}`, 'giu') },
   palavra('epico', '[ée]picos?|epics?'),
   palavra('kanban', 'kanban'),
   palavra('re-run', 're[-_\\s]?runs?'),
@@ -244,10 +268,11 @@ export const RULES = [
   // Dependabot: título de PR de atualização de dependência.
   padrao('bump', 'Bump\\s+\\S+\\s+from\\s+\\S+\\s+to\\s+\\S+', 'giu'),
   // Infraestrutura de entrega.
-  palavra('pipeline', 'pipe[\\s_/-]*lin[\\p{L}\\p{N}]*'),
-  palavra('workflow', 'work[\\s_/-]*flows?'),
-  palavra('hook', 'hooks?|hooked'),
-  palavra('gate', 'gates?|gated|gating'),
+  radical('pipeline', 'pipe\\s*lin'),
+  radical('workflow', 'work\\s*flow'),
+  radical('hook', 'hook'),
+  // "gateway" (endereço de rede) é palavra comum e não é a porta do processo.
+  radical('gate', 'gate(?!ways?(?![\\p{L}\\p{N}]))|gating'),
   palavra('github-actions', 'github\\s+actions?'),
   palavra('pull-request', 'pull\\s+requests?'),
   palavra('esteira', 'esteiras?'),
@@ -264,19 +289,19 @@ export const RULES = [
   // "orquestr" e "orchestr" como trecho: Orchestrator, Orquestração, orquestrador(es).
   padrao('orquestrador', 'orquestr|orchestr', 'giu'),
   palavra('planejador', 'planejad(?:or|ora)(?:es|as)?|planners?'),
-  palavra('skill', 'skill(?:s|sets?)?'),
+  radical('skill', 'skill'),
   palavra('prompt', 'prompts?'),
   // Organização do trabalho: lote, fila, handoff, backlog, etapa, sessão, fábrica, triagem, escada, juiz.
   palavra('lote', 'lotes?'),
   // "lote" e "fila" em inglês; "batch actions" (recurso do produto) passa só pela frase exata em EXCECOES.
-  palavra('batch', 'batch(?:es)?'),
-  palavra('queue', 'queues?'),
+  radical('batch', 'batch'),
+  radical('queue', 'queue'),
   palavra('lot', 'lots?'),
   palavra('fila', 'filas?'),
   palavra('handoff', 'hand[-\\s]?offs?'),
   palavra('backlog', 'backlogs?'),
   palavra('etapa', 'etapas?'),
-  palavra('sessao', 'sess(?:[ãa]o|[õo]es)|sessions?'),
+  radical('sessao', 'sess(?:i|[ãa]o|[õo]es)'),
   palavra('fabrica', 'f[áa]bricas?'),
   palavra('triagem', 'triag(?:e|ens|em)'),
   palavra('escada', 'escadas?'),
@@ -292,7 +317,7 @@ export const RULES = [
   // Dúvidas e perguntas do processo de trabalho (do assistente ao dono).
   palavra('duvida', 'd[úu]vidas?'),
   palavra('pergunta', 'perguntas?'),
-  palavra('question', 'questions?'),
+  radical('question', 'question|quest(?:[ãa]o|[õo]es)'),
   // Dúvida em inglês ("doubt"): mesma origem do processo de trabalho.
   palavra('doubt', 'doubts?'),
   // Modelos de linguagem. "modelo" e "model" sozinhos também reprovam: é o jeito de falar do modelo de IA, e o
@@ -326,6 +351,9 @@ export const RULES = [
   palavra('validacao-interna', 'valida[çc][ãa]o\\s+interna'),
   // Validação e verificações internas em inglês: o usuário não vê nada disso.
   palavra('internal-validation', 'internal\\s+validation'),
+  // "internal config", "internal settings" e variações (configuration, setting...): radical depois do segundo termo.
+  radical('internal-config', 'internal\\s*(?:config|setting)'),
+  radical('configuracao-interna', 'configura[çc](?:[ãa]o|[õo]es)\\s*internas?'),
   palavra('internal-check', 'internal\\s+(?:qa|tests?|checks?)'),
   // "Validação da pipeline/homolog/develop": é a validação do projeto, não de um formulário do app.
   palavra('validacao-pipeline', 'valida[çc][ãa]o\\s+(?:do|da)\\s+(?:pipeline|homolog\\w*|develop)'),
@@ -341,14 +369,17 @@ export const RULES = [
   // "!42": número de merge request (GitLab) com exclamação.
   padrao('bang-numero', '!\\d+'),
   // "issue 198", "issue #198", "issue number 198": o número escrito por extenso, sem o "#".
-  palavra('issue-numero', 'issues?[\\s_/-]*(?:#|number\\s+|no\\.?\\s*)?\\d+'),
+  { rule: 'issue-numero', re: new RegExp(`${ANTES}issues?${numero()}${DEPOIS}`, 'giu') },
   // Issue filha: palavra do rastreador do projeto.
   palavra('sub-issue', 'sub[-\\s]?issues?'),
   // "Refs 228", "Closes GH 228", "Fixes #228": o rodapé de commit que aponta para a issue.
-  palavra('refs-numero', '(?:refs?|closes?|closed|fix(?:es|ed)?|resolves?|resolved)\\s+(?:gh[-_\\s]?)?#?\\d+'),
+  {
+    rule: 'refs-numero',
+    re: new RegExp(`${ANTES}(?:refs?|closes?|closed|fix(?:es|ed)?|resolves?|resolved)${NS}*(?:gh${NS}*)?${numero()}${DEPOIS}`, 'giu'),
+  },
   // "GH-198" e "ticket 198": outros jeitos de apontar para um item do rastreador.
-  palavra('gh-numero', 'gh[-_\\s]?#?\\d+'),
-  palavra('ticket-numero', 'tickets?[\\s_/-]*(?:#|number\\s+)?\\d+'),
+  { rule: 'gh-numero', re: new RegExp(`${ANTES}gh${numero()}${DEPOIS}`, 'giu') },
+  { rule: 'ticket-numero', re: new RegExp(`${ANTES}tickets?${numero()}${DEPOIS}`, 'giu') },
   // "@nome": menção de pessoa (também pega e-mail, o que é bom: contato pessoal não vai para o changelog).
   padrao('mencao', '@[\\p{L}\\d_-]+'),
   // Identificador de sessão do assistente ("session_018B...").
@@ -367,7 +398,7 @@ export const RULES = [
   // Branch de sessão remota (ccr-...).
   padrao('branch-ccr', `${ANTES}ccr-[\\w-]+`, 'giu'),
   // Nome de branch de trabalho: tipo/assunto.
-  padrao('branch-nome', `${ANTES}(?:feature|feat|fix|chore|docs|refactor|revert|hotfix|bugfix|release|wip|perf|test|build|ci)/[\\w.-]+`, 'giu'),
+  padrao('branch-nome', `${ANTES}(?:feature|feat|fix|chore|docs|refactor|revert|hotfix|bugfix|release|wip|perf|test|build|ci)[/\\\\][\\w.-]+`, 'giu'),
   // Referência remota do git (origin/main, origin/develop).
   padrao('origin-ref', `${ANTES}origin/\\S`, 'giu'),
   // Commit convencional no começo do bullet ou da linha: "feat: ...", "fix(core)!: ...".
@@ -384,7 +415,7 @@ export const RULES = [
   // O que o release gerado pelo GitHub escreve sozinho (títulos de PR e autores).
   padrao('notas-geradas', "What'?s Changed|Full Changelog|New Contributors", 'giu'),
   // Plano numerado de trabalho ("Plano 4").
-  padrao('plano-numerado', `${ANTES}${separar('Plan(?:o)?\\s+\\d+')}`, 'giu'),
+  padrao('plano-numerado', `${ANTES}Plan(?:o)?${numero()}${DEPOIS}`, 'giu'),
   // Rótulos do rastreador do projeto: status:, prioridade:, area:, precisa-refinamento, wip:, "label status".
   padrao('rotulo-status', `${ANTES}(?:status|prioridade|priority|area|[áa]rea):[a-z][a-z-]*`, 'giu'),
   padrao('rotulo-palavra', `${ANTES}${separar('(?:labels?|r[óo]tulos?)\\s+(?:status|prioridade|priority|area|[áa]rea)')}`, 'giu'),
@@ -441,14 +472,25 @@ export function findForbidden(text, rules = RULES) {
   // NFKC: acento decomposto ("fábrica" com a + acento solto) e variantes de largura ("ＰＲ", "ﬁ") viram o texto
   // comum antes da busca. Os invisíveis saem e os homóglifos viram latim depois, para uma palavra disfarçada ser
   // achada; as regras `invisivel` e `script-misto` olham o texto antes dessa limpeza.
+  // Cada linha é buscada duas vezes: com os acentos (as regras escritas com acento, como "fábrica") e sem eles
+  // (NFD sem as marcas combinantes: "Cláude" e "Clàude" viram "Claude"). Um achado que aparece nas duas versões
+  // é contado uma vez, pela posição.
   String(text)
     .split(/\r?\n/)
     .forEach((content, index) => {
       const cru = content.normalize('NFKC')
       const limpo = semExcecoes(desconfundir(cru.replace(INVISIVEIS_RE, '')))
+      const semAcento = semExcecoes(desconfundir(cru.normalize('NFD').replace(MARCAS_RE, '').replace(INVISIVEIS_RE, '')))
       for (const { rule, re, cru: usaCru } of rules) {
-        for (const m of (usaCru ? cru : limpo).matchAll(re)) {
-          found.push({ line: index + 1, rule, match: rule === 'invisivel' ? codigo(m[0]) : m[0] })
+        const vistos = new Set()
+        const versoes = usaCru ? [cru] : [limpo, semAcento]
+        for (const versao of versoes) {
+          for (const m of versao.matchAll(re)) {
+            const chave = `${m.index}:${m[0].length}`
+            if (vistos.has(chave)) continue
+            vistos.add(chave)
+            found.push({ line: index + 1, rule, match: rule === 'invisivel' ? codigo(m[0]) : m[0] })
+          }
         }
       }
     })
