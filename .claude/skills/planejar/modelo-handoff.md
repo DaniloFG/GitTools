@@ -67,4 +67,4 @@ Só com a palavra do dono de que o trabalho acabou.
 - [ ] Resumo para o PR: o que mudou, antes e depois medidos, o que não foi conferido
 - [ ] Issues das etapas validadas (evidência comentada, `status:validada`, fechadas); issue-mãe fechada por último
 - [ ] PR branch → `develop` mergeado e validado; `git rm docs/HANDOFF.md` em commit; PR da mesma branch → `homolog`
-  (rótulo `validada-develop`) mergeado e validado; PR `homolog` → `main` aberto e deixado ao dono (`.claude/rules/github.md`)
+  (rótulo `validada-develop`) mergeado e validado; PR `homolog` → `main` (rótulos `validada-develop` e `validada-homolog`) mergeado pela via estreita e workflows da `main` acompanhados (`.claude/rules/github.md`)
