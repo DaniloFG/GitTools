@@ -49,14 +49,45 @@ const TIPOS_ESCOPO = 'feat|fix|chore|docs|refactor|perf|test|build|ci'
 const INVISIVEIS = '\\u00AD\\u200B-\\u200F\\u202A-\\u202E\\u2060-\\u2064\\u2066-\\u2069\\uFEFF'
 const INVISIVEIS_RE = new RegExp(`[${INVISIVEIS}]`, 'gu')
 
+// Letras de outros alfabetos que se parecem com letras latinas (homóglifos). Quem quer esconder "pipeline" troca o
+// "p" por um "р" cirílico; antes da busca, estas letras viram a latina que imitam. Mapa curto e escolhido a dedo:
+// só o que se confunde de verdade a olho nu.
+const HOMOGLIFOS = new Map(
+  Object.entries({
+    // Cirílico
+    А: 'A', В: 'B', Е: 'E', К: 'K', М: 'M', Н: 'H', О: 'O', Р: 'P', С: 'C', Т: 'T', Х: 'X', У: 'Y', І: 'I', Ј: 'J', Ѕ: 'S',
+    а: 'a', в: 'b', е: 'e', к: 'k', о: 'o', р: 'p', с: 'c', у: 'y', х: 'x', і: 'i', ј: 'j', ѕ: 's', ԁ: 'd', һ: 'h', ӏ: 'l', ԛ: 'q', ԝ: 'w', ѵ: 'v',
+    // Grego
+    Α: 'A', Β: 'B', Ε: 'E', Ζ: 'Z', Η: 'H', Ι: 'I', Κ: 'K', Μ: 'M', Ν: 'N', Ο: 'O', Ρ: 'P', Τ: 'T', Υ: 'Y', Χ: 'X',
+    α: 'a', ε: 'e', ι: 'i', κ: 'k', ν: 'v', ο: 'o', ρ: 'p', τ: 't', υ: 'u', χ: 'x',
+    // i sem ponto (turco)
+    ı: 'i',
+  }),
+)
+
+/** Troca os homóglifos pela letra latina parecida. */
+const desconfundir = (texto) => [...texto].map((letra) => HOMOGLIFOS.get(letra) ?? letra).join('')
+
 /**
  * Tabela das regras. Cada uma tem `rule` (nome estável, usado nas mensagens e nos testes) e `re` (com flag `g` e `u`).
- * `cru: true` roda a regra antes de os invisíveis serem removidos (só a própria regra `invisivel` precisa disso).
+ * `cru: true` roda a regra antes de os invisíveis serem removidos e dos homóglifos serem trocados (`invisivel` e
+ * `script-misto` precisam do texto como foi escrito).
  * Nomes únicos: o teste exige um exemplo ruim para cada um.
  */
 export const RULES = [
   // --- Caracteres escondidos -------------------------------------------------------------------------------------
   { ...padrao('invisivel', `[${INVISIVEIS}]`), cru: true },
+  // Letra cirílica ou grega dentro de uma palavra com letra latina: o disfarce clássico de um termo proibido
+  // ("рipeline" com "р" cirílico). Palavra inteira em outro alfabeto não reprova por esta regra (e os homóglifos dela
+  // ainda são convertidos antes da busca das demais).
+  {
+    ...padrao(
+      'script-misto',
+      `${ANTES}(?=[\\p{L}\\p{N}]*\\p{Script=Latin})(?=[\\p{L}\\p{N}]*[\\p{Script=Cyrillic}\\p{Script=Greek}])[\\p{L}\\p{N}]+`,
+      'giu',
+    ),
+    cru: true,
+  },
 
   // --- Siglas internas -------------------------------------------------------------------------------------------
   // "IA"/"AI"/"QA": só MAIÚSCULAS, porque "ia" é verbo em português e "ai" aparece em outras línguas.
@@ -69,16 +100,20 @@ export const RULES = [
   palavra('ci', 'ci'),
   sigla('sigla-ci-cd', 'CI/CD'),
   palavra('pr', 'prs?'),
+  // "PR42", "PR-42", "pr_42", "P.R. 42": o número colado à sigla tira a palavra inteira, então tem regra própria.
+  palavra('pr-numero', '(?:pr|p\\.\\s?r\\.)[-_\\s]?\\d+'),
 
   // --- Ferramentas e fluxo de trabalho internos: palavra inteira, sem diferença de caixa -------------------------
   // Quem gera o código e o texto: nome de ferramenta ou de empresa de IA.
-  palavra('claude', 'claude'),
-  palavra('anthropic', 'anthropic'),
-  palavra('copilot', 'copilot'),
+  // Nomes de IA: busca como TRECHO, não como palavra inteira, para pegar "claudecode", "claude-code", "gpt4" e
+  // "GitHubCopilot". O falso positivo (uma palavra comum que contenha o trecho) é raro e seguro.
+  padrao('claude', 'claude', 'giu'),
+  padrao('anthropic', 'anthropic', 'giu'),
+  padrao('copilot', 'copilot', 'giu'),
   palavra('chatgpt', 'chatgpt'),
-  palavra('openai', 'openai'),
-  palavra('gemini', 'gemini'),
-  palavra('codex', 'codex'),
+  padrao('openai', 'openai', 'giu'),
+  padrao('gemini', 'gemini', 'giu'),
+  padrao('codex', 'codex', 'giu'),
   palavra('agentic', 'agentic'),
   // Os agentes do projeto (gt-juiz, gt-escritor, gt-leitor, gt-planejador, gt-validador).
   palavra('gt-agente', 'gt-[a-z]+'),
@@ -107,24 +142,29 @@ export const RULES = [
   // Agentes (em inglês e em português); "subagent" não casa "agent" por ser uma palavra só, então tem regra própria.
   palavra('subagente', 'subagents?|subagentes?'),
   palavra('agente', 'agents?|agentes?'),
-  palavra('orquestrador', 'orquestrador(?:es)?'),
+  // "orquestr" e "orchestr" como trecho: Orchestrator, Orquestração, orquestrador(es).
+  padrao('orquestrador', 'orquestr|orchestr', 'giu'),
+  palavra('planejador', 'planejad(?:or|ora)(?:es|as)?|planners?'),
   palavra('skill', 'skills?'),
   palavra('prompt', 'prompts?'),
   // Organização do trabalho: lote, fila, handoff, backlog, etapa, sessão, fábrica, triagem, escada, juiz.
   palavra('lote', 'lotes?'),
   palavra('fila', 'filas?'),
-  palavra('handoff', 'hand-?offs?'),
-  palavra('backlog', 'backlog'),
+  palavra('handoff', 'hand[-\\s]?offs?'),
+  palavra('backlog', 'backlogs?'),
   palavra('etapa', 'etapas?'),
   palavra('sessao', 'sess(?:[ãa]o|[õo]es)|sessions?'),
   palavra('fabrica', 'f[áa]bricas?'),
-  palavra('triagem', 'triagem'),
-  palavra('escada', 'escada'),
-  palavra('juiz', 'juiz'),
+  palavra('triagem', 'triag(?:e|ens|em)'),
+  palavra('escada', 'escadas?'),
+  palavra('juiz', 'ju[ií]z(?:es)?'),
+  // Quem manda no projeto: qualquer menção ao dono ("the owner", "o dono") é conversa interna.
+  palavra('dono', 'donos?|donas?'),
+  palavra('owner', 'owners?'),
   palavra('pedido-dono', 'a\\s+pedido\\s+do\\s+dono|owner[\'’]?s\\s+request'),
-  palavra('plano-fase', 'phase\\s+\\d+\\s+of\\s+the\\s+plan|fase\\s+\\d+\\s+do\\s+plano'),
+  palavra('plano-fase', '(?:phase|stage|step|fase|etapa)\\s+\\d+\\s+(?:of|do|da)\\s+(?:the\\s+)?(?:plan|plano)'),
   // Branches de integração do projeto (a `main` fica de fora de propósito: é palavra comum).
-  palavra('homolog', 'homolog(?:a[çc][ãa]o)?'),
+  palavra('homolog', 'homolog(?:a[çc](?:[ãa]o|[õo]es))?s?'),
   palavra('develop', 'develop'),
   // Dúvidas e perguntas do processo de trabalho (do assistente ao dono).
   palavra('duvida', 'd[úu]vidas?'),
@@ -137,21 +177,29 @@ export const RULES = [
   palavra('modelo', 'modelos?'),
   palavra('model', 'models?'),
   palavra('llm', 'llms?|language\\s+models?'),
-  palavra('gpt', 'gpt'),
+  padrao('gpt', 'gpt', 'giu'),
   palavra('sonnet', 'sonnet'),
   palavra('opus', 'opus'),
   palavra('haiku', 'haiku'),
   // Ferramentas de teste e de verificação.
   palavra('e2e', 'e2e'),
   palavra('vitest', 'vitest'),
-  palavra('typecheck', 'typecheck'),
+  palavra('typecheck', 'type[-\\s]?check(?:s|ing)?'),
   palavra('playwright', 'playwright'),
   palavra('lint', 'lint(?:ers?|ing)?'),
-  palavra('tsconfig', 'tsconfig'),
+  palavra('tsconfig', 'tsconfigs?'),
   palavra('tsc', 'tsc'),
   palavra('runGit', 'runGit'),
   palavra('npm-run', 'npm\\s+run'),
-  palavra('teste-unitario', 'unit\\s+tests?|test\\s+coverage|cobertura\\s+de\\s+testes?'),
+  palavra(
+    'teste-unitario',
+    '(?:unit|integration)\\s+tests?|testes?\\s+unit[áa]rios?|testes?\\s+de\\s+integra[çc][ãa]o|' +
+      'test\\s+coverage|cobertura\\s+de\\s+testes?',
+  ),
+  palavra(
+    'integracao-continua',
+    'continuous\\s+(?:integration|delivery|deployment)|(?:integra[çc][ãa]o|entrega)\\s+cont[íi]nua',
+  ),
   palavra('validacao-interna', 'valida[çc][ãa]o\\s+interna'),
   // Validação e verificações internas em inglês: o usuário não vê nada disso.
   palavra('internal-validation', 'internal\\s+validation'),
@@ -168,9 +216,13 @@ export const RULES = [
   // "#123": número de issue ou de PR.
   padrao('numero-issue-pr', '#\\d+'),
   // "issue 198", "issue #198", "issue number 198": o número escrito por extenso, sem o "#".
-  palavra('issue-numero', 'issues?\\s*(?:#|number\\s+)?\\d+'),
+  palavra('issue-numero', 'issues?[\\s_-]*(?:#|number\\s+|no\\.?\\s*)?\\d+'),
+  // Issue filha: palavra do rastreador do projeto.
+  palavra('sub-issue', 'sub[-\\s]?issues?'),
+  // "Refs 228", "Closes GH 228", "Fixes #228": o rodapé de commit que aponta para a issue.
+  palavra('refs-numero', '(?:refs?|closes?|closed|fix(?:es|ed)?|resolves?|resolved)\\s+(?:gh[-_\\s]?)?#?\\d+'),
   // "GH-198" e "ticket 198": outros jeitos de apontar para um item do rastreador.
-  palavra('gh-numero', 'gh-\\d+'),
+  palavra('gh-numero', 'gh[-_\\s]?#?\\d+'),
   palavra('ticket-numero', 'tickets?\\s*(?:#|number\\s+)?\\d+'),
   // "@nome": menção de pessoa (também pega e-mail, o que é bom: contato pessoal não vai para o changelog).
   padrao('mencao', '@[\\p{L}\\d_-]+'),
@@ -180,15 +232,18 @@ export const RULES = [
   // que são só letras, e números puros, como datas, não casam).
   padrao('hash-commit', `${ANTES}(?=[0-9a-f]*\\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,64}${DEPOIS}`, 'giu'),
   // Caminho de pasta do repositório: o usuário não conhece a estrutura do código.
-  padrao('caminho-repo', `${ANTES}(?:src|tests|scripts)/|\\.github/|\\.claude/`, 'giu'),
+  // Barra comum ou invertida (caminho do Windows).
+  padrao('caminho-repo', `${ANTES}(?:src|tests|scripts)[/\\\\]|\\.github[/\\\\]|\\.claude[/\\\\]`, 'giu'),
   // Branch de sessão remota (ccr-...).
   padrao('branch-ccr', `${ANTES}ccr-[\\w-]+`, 'giu'),
   // Nome de branch de trabalho: tipo/assunto.
   padrao('branch-nome', `${ANTES}(?:feature|feat|fix|chore|docs|refactor|revert|hotfix|perf|test|build|ci)/[\\w.-]+`, 'giu'),
   // Commit convencional no começo do bullet ou da linha: "feat: ...", "fix(core)!: ...".
-  padrao('commit-prefixo', `^\\s*(?:[-*+]\\s+)?(?:${TIPOS_PREFIXO})(?:\\([^)]*\\))?!?:`, 'giu'),
+  // Vale depois de bullet, de lista numerada ("1. fix: z"), de citação ("> fix: z") e de marcação (**, `), com ou sem
+  // espaço antes do escopo ("Fix (core): x").
+  padrao('commit-prefixo', `^\\s*(?:[-*+>_\`"']+\\s*|\\d+[.)]\\s+)*(?:${TIPOS_PREFIXO})\\s*(?:\\([^)]*\\))?!?\\s*:`, 'giu'),
   // Commit convencional em qualquer ponto: "... fix(core): ...".
-  padrao('commit-escopo', `${ANTES}(?:${TIPOS_ESCOPO})\\([\\w-]+\\):`, 'giu'),
+  padrao('commit-escopo', `${ANTES}(?:${TIPOS_ESCOPO})\\s*\\([\\w-]+\\)\\s*:`, 'giu'),
   // Pasta e arquivo de configuração do assistente.
   padrao('pasta-claude', '\\.claude(?![\\p{L}\\p{N}])', 'giu'),
   padrao('claude-md', 'CLAUDE\\.md', 'giu'),
@@ -197,9 +252,14 @@ export const RULES = [
   // O que o release gerado pelo GitHub escreve sozinho (títulos de PR e autores).
   padrao('notas-geradas', "What'?s Changed|Full Changelog|New Contributors", 'giu'),
   // Plano numerado de trabalho ("Plano 4").
-  padrao('plano-numerado', `${ANTES}Plano\\s+\\d+`, 'giu'),
+  padrao('plano-numerado', `${ANTES}Plan(?:o)?\\s+\\d+`, 'giu'),
+  // Rótulos do rastreador do projeto: status:, prioridade:, area:, precisa-refinamento, wip:, "label status".
+  padrao('rotulo-status', `${ANTES}(?:status|prioridade|priority|area|[áa]rea):[a-z][a-z-]*`, 'giu'),
+  padrao('rotulo-palavra', `${ANTES}(?:labels?|r[óo]tulos?)\\s+(?:status|prioridade|priority|area|[áa]rea)`, 'giu'),
+  padrao('precisa-refinamento', `${ANTES}(?:precisa[-\\s]refinamento|needs[-\\s]refinement)`, 'giu'),
+  padrao('wip', `${ANTES}wip\\s*:`, 'giu'),
   // Rodapés de atribuição de commit.
-  padrao('co-authored-by', 'Co-Authored-By', 'giu'),
+  padrao('co-authored-by', 'Co[-\\s]?Authored[-\\s]?By', 'giu'),
   padrao('generated-with', 'Generated\\s+with', 'giu'),
 ]
 
@@ -214,13 +274,13 @@ const codigo = (texto) =>
 export function findForbidden(text, rules = RULES) {
   const found = []
   // NFKC: acento decomposto ("fábrica" com a + acento solto) e variantes de largura ("ＰＲ", "ﬁ") viram o texto
-  // comum antes da busca. Os invisíveis saem depois, para uma palavra partida por eles ser achada; a regra
-  // `invisivel` olha o texto antes dessa limpeza.
+  // comum antes da busca. Os invisíveis saem e os homóglifos viram latim depois, para uma palavra disfarçada ser
+  // achada; as regras `invisivel` e `script-misto` olham o texto antes dessa limpeza.
   String(text)
     .split(/\r?\n/)
     .forEach((content, index) => {
       const cru = content.normalize('NFKC')
-      const limpo = cru.replace(INVISIVEIS_RE, '')
+      const limpo = desconfundir(cru.replace(INVISIVEIS_RE, ''))
       for (const { rule, re, cru: usaCru } of rules) {
         for (const m of (usaCru ? cru : limpo).matchAll(re)) {
           found.push({ line: index + 1, rule, match: rule === 'invisivel' ? codigo(m[0]) : m[0] })
