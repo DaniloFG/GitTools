@@ -50,7 +50,14 @@ export function useWrapLines(): [boolean, (wrap: boolean) => void] {
  * guardada até o padrão das configurações mudar. Quem busca o diff a inclui no pedido (`fullFile`).
  */
 export function useFullFile(): [boolean, (full: boolean) => void] {
-  const preferred = useContext(AppSettingsContext)?.settings.diffFullFile ?? DEFAULT_SETTINGS.diffFullFile
+  return useFullFileOf(useContext(AppSettingsContext)?.settings.diffFullFile ?? DEFAULT_SETTINGS.diffFullFile)
+}
+
+/**
+ * Como `useFullFile`, com o padrão das configurações dado. Para quem fornece o contexto de configurações e, por isso,
+ * não o lê acima de si (a janela de diff): lá o contexto ainda não existe, e `useFullFile` cairia no padrão de fábrica.
+ */
+export function useFullFileOf(preferred: boolean): [boolean, (full: boolean) => void] {
   const [override, setOverride] = useLayout<{ preferred: boolean; full: boolean } | undefined>('diff.fullFile', parseFullFileOverride)
   // Se o padrão mudar nas configurações, a escolha temporária deixa de valer.
   const full = override && override.preferred === preferred ? override.full : preferred
