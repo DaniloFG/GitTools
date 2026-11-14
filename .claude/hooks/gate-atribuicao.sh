@@ -11,7 +11,10 @@
 # Fora do alcance (limites conhecidos, não tentar contornar):
 #   - o rodapé que a PLATAFORMA acrescenta sozinha depois do envio (editar o corpo para removê-lo também é proibido);
 #   - texto que só existe na hora da execução: `-m "$(cat arquivo)"`, `-F "$VAR"`;
-#   - `--amend`, `-c` e `-C` sem `-m` (reaproveitam a mensagem antiga) e `cherry-pick` de commit que já tem trailer.
+#   - `--amend`, `-c` e `-C` sem `-m` (reaproveitam a mensagem antiga) e `cherry-pick` de commit que já tem trailer;
+#   - arquivo de mensagem relativo é resolvido contra o cwd da chamada, não contra `git -C dir` nem `cd sub &&`;
+#   - `escreve` vale para o comando inteiro: um comando que mistura escrita e busca (`rg "git commit" -e "Co-Authored-By:"`)
+#     pode dar falso positivo raro; é o preço de não interpretar o shell.
 # Bash 3.2 (macOS) e Git Bash: sem ${v,,}, mapfile, declare -A nem \b no grep; o conteúdo nunca passa por eval.
 entrada=$(cat)
 
@@ -84,11 +87,22 @@ $(head -c 1048576 "$arq" 2>/dev/null)"
     # 3 depois de `gh pr|issue`, esperando a ação; 5 dentro de um comando que escreve, lendo as opções.
     # ctx diz de quem são as opções (git, gh ou api); `ler` guarda o que o próximo token é (arquivo ou campo=@arquivo).
     escreve=0 estado=0 ctx= grupo= pular=0 ler= metodo=0
+    # Operadores colados (`cd x&&git commit`, `a;git commit`, `(git commit)`) viram tokens próprios; sem isso o `git`
+    # grudado no operador não seria reconhecido. `&&` e `||` primeiro; `&` e `|` simples depois só repetem o separador.
+    # O bash 5.2 dá sentido especial ao `&` na substituição (patsub_replacement): desligado para o `&` ser literal.
+    shopt -u patsub_replacement 2>/dev/null
+    separado=${comando//&&/ && }
+    separado=${separado//||/ || }
+    separado=${separado//;/ ; }
+    separado=${separado//|/ | }
+    separado=${separado//&/ & }
+    separado=${separado//(/ ( }
+    separado=${separado//)/ ) }
     set -f
-    for tok in $comando; do
+    for tok in $separado; do
       t=${tok#\"}; t=${t#\'}; t=${t%\"}; t=${t%\'}
       case "$t" in
-        '&&'|'||'|'|'|';'|'&') estado=0 ctx= ler= metodo=0 pular=0; continue ;;
+        '&&'|'||'|'|'|';'|'&'|'('|')') estado=0 ctx= ler= metodo=0 pular=0; continue ;;
       esac
       if [ -n "$ler" ]; then
         case "$ler" in
@@ -138,6 +152,7 @@ $(head -c 1048576 "$arq" 2>/dev/null)"
         5)
           case "$ctx:$t" in
             git:-F|git:--file|git:--body-file|gh:-F|gh:--file|gh:--body-file) ler=arquivo ;;
+            git:-F?*|gh:-F?*) acrescentar_arquivo "${t#-F}" ;;
             git:--file=*|gh:--file=*) acrescentar_arquivo "${t#--file=}" ;;
             git:--body-file=*|gh:--body-file=*) acrescentar_arquivo "${t#--body-file=}" ;;
             # No `gh api`, -F/--field é campo (`campo=@arquivo` lê o arquivo) e -f/--raw-field é campo literal.
@@ -174,7 +189,7 @@ normalizado=$(printf '%s' "$texto" | tr -d '\r')
 achados=
 dica_trailer=
 dica_rodape=
-if printf '%s\n' "$normalizado" | grep -Eiq "(^|[[:space:]\"'=])(co-authored-by|claude-session):"; then
+if printf '%s\n' "$normalizado" | grep -Eiq "(^|[[:space:]\"'=])(co-authored-by|claude-session)[[:space:]]*[:=]"; then
   achados="$achados trailer Co-Authored-By/Claude-Session;"
   dica_trailer=' Para citar o trailer em prosa, escreva-o entre crases e sem dois-pontos.'
 fi

@@ -72,6 +72,26 @@ describe('gate-atribuicao: reprova', () => {
     expect((await bash('git commit --trailer=Co-authored-by: y')).code).toBe(2)
   })
 
+  it('operador colado ao git: cd x&&git commit, a;git commit e (git commit)', async () => {
+    const trailer = '-m "Co-Authored-By: y"'
+    expect((await bash(`cd x&&git commit ${trailer}`)).code).toBe(2)
+    expect((await bash(`git add .;git commit ${trailer}`)).code).toBe(2)
+    expect((await bash(`(git commit ${trailer})`)).code).toBe(2)
+    expect((await bash(`true||git commit ${trailer}`)).code).toBe(2)
+    expect((await bash(`echo a|git commit ${trailer}`)).code).toBe(2)
+    expect((await bash('cd x&&git status;git log|grep "Co-Authored-By:"')).code).toBe(0)
+  })
+
+  it('--trailer com "=" no lugar de ":" (o git aceita)', async () => {
+    expect((await bash('git commit --trailer Co-authored-by=Nome')).code).toBe(2)
+    expect((await bash('git commit --trailer "Claude-Session=x"')).code).toBe(2)
+  })
+
+  it('-F colado ao nome do arquivo (git commit -Fcolado.txt)', async () => {
+    writeFileSync(join(dir, 'colado.txt'), 'titulo\n\nCo-Authored-By: Z <z@z>\n')
+    expect((await bash('git commit -Fcolado.txt')).code).toBe(2)
+  })
+
   it('git commit -F arquivo, com o trailer dentro do arquivo (CRLF)', async () => {
     writeFileSync(join(dir, 'msg.txt'), 'titulo\r\n\r\nCo-Authored-By: Z <z@z>\r\n')
     expect((await bash('git commit -F msg.txt')).code).toBe(2)
@@ -138,6 +158,7 @@ describe('gate-atribuicao: passa', () => {
 
   it('commit que explica a regra: termo entre crases e sem dois-pontos', async () => {
     expect((await bash('git commit -m "barra `Co-Authored-By` e `Claude-Session` no commit"')).code).toBe(0)
+    expect((await bash('git commit -m "o trailer `Co-Authored-By` e `Claude-Session`; sem = nem :"')).code).toBe(0)
   })
 
   it('echo com trailer, sem git nem gh', async () => {
