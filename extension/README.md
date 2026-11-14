@@ -188,7 +188,7 @@ Git assistant in the editor**.
 
 ![The inline git assistant following the cursor while editing a file](media/readme/inline-assistant.gif)
 
-![The editor with the assistant bubble at the end of the cursor line](media/readme/editor-inline.png)
+![The editor with the git assistant bubble at the end of the cursor line](media/readme/editor-inline.png)
 
 ## Focus on a few branches
 

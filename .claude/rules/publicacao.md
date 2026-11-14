@@ -48,6 +48,8 @@ paths:
   palavra, nunca afrouxando a regra: "this working session" vira "this window"; "git hooks" vira "scripts that git
   runs"; "pull request" vira "merge request on the host". Termos de git como branch, merge, commit, rebase,
   cherry-pick, worktree e staging passam.
+- **O portão é uma lista de bloqueio, não prova de que o texto é de usuário**: a revisão do PR confere a regra positiva
+  (cada bullet descreve o que o usuário vê, usa ou ganha).
 - **Patch automático não ganha seção**: o release dele usa o texto de `## [Unreleased]`. Sem seção da versão e com o
   `Unreleased` vazio (sem bullet, ou só `- Nothing yet.`), o push na branch publica a nota fixa
   `- Maintenance release: stability improvements.` (modo `neutro`, ligado só por `github.event_name == 'push'` e

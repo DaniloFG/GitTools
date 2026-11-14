@@ -123,6 +123,38 @@ export const RULES = [
     '(?:code|c[óo]digo|ai|ia)\\s+(?:assistants?|assistentes?)|' +
       '(?:assistants?|assistentes?)\\s+(?:for\\s+|de\\s+|para\\s+)?(?:code|c[óo]digo|ai|ia)',
   ),
+  // IA por extenso e robôs: o jeito de falar de IA sem usar a sigla.
+  palavra('ia-extenso', 'intelig[êe]ncia\\s+artificial|artificial\\s+intelligence|machine\\s+learning|aprendizado\\s+de\\s+m[áa]quina'),
+  palavra('chatbot', 'chat-?bots?'),
+  // "Hide bots" é o nome do filtro do Dashboards no produto (README e interface); só ele passa.
+  palavra('bot', '(?<!(?:hide|ocultar) )bots?'),
+  palavra('robo', 'rob[ôo]s?|robots?'),
+  palavra('bot-publicacao', 'bot\\s+de\\s+publica[çc][ãa]o|publishing\\s+bot|release\\s+bot'),
+  // Assistente em geral. "git assistant" (o assistente do editor, "inline git assistant" no 0.7.0 já publicado) é um
+  // recurso do produto (e o nome do arquivo de mídia "inline-assistant.gif" do README); qualquer outro assistente reprova, porque costuma ser o assistente de código que escreveu o texto.
+  palavra('assistente', '(?<!git |inline-)assistants?|assistentes?'),
+  // Verificação ponta a ponta e seus nomes: é a rotina de teste do projeto.
+  palavra('ponta-a-ponta', 'ponta\\s+a\\s+ponta|end[-\\s]to[-\\s]end'),
+  palavra('smoke-test', 'smoke[-\\s]?tests?'),
+  palavra('headless', 'headless'),
+  palavra('cenario-teste', 'cen[áa]rios?\\s+de\\s+testes?|test\\s+scenarios?|scenario\\s+coverage|cobertura\\s+de\\s+cen[áa]rios?'),
+  // Verificação obrigatória do repositório.
+  palavra('check-obrigatorio', 'checks?\\s+obrigat[óo]rios?|required\\s+checks?|status\\s+checks?'),
+  // Pessoas e papéis do repositório: quem mantém, revisa ou aprova.
+  palavra('mantenedor', 'mantenedor(?:es|as?)?|maintainers?'),
+  palavra('revisor', 'code\\s+reviewers?|revisor(?:es|as?)?|reviewers?'),
+  palavra('aprovado-por', 'reviewed\\s+by|approved\\s+by|aprovad[oa]s?\\s+por|autorizad[oa]s?\\s+pel[oa]s?'),
+  palavra('revisao-codigo', 'revis[ãa]o\\s+(?:do|de)\\s+c[óo]digo|code\\s+reviews?'),
+  // Limites do serviço de IA ou do repositório (a causa das pausas do trabalho).
+  palavra('limite-uso', 'limite\\s+de\\s+uso|usage\\s+limits?|rate\\s+limit(?:s|ing)?'),
+  // Incremento numerado do trabalho em etapas.
+  palavra('incremento', 'incremento\\s+\\d+|increments?\\s+\\d+'),
+  // Pedido de merge de outros hospedeiros: "merge request", "MR 42", "MR-42".
+  palavra('merge-request', 'merge\\s+requests?'),
+  palavra('mr-numero', 'mr[-_\\s]?\\d+'),
+  // Rastreador de tarefas: chamado, tracker.
+  palavra('chamado', 'chamados?\\s*(?:#|n[º°o]\\.?\\s*)?\\d+'),
+  palavra('rastreador', 'rastreador(?:es)?|(?:issue\\s+)?trackers?'),
   // Infraestrutura de entrega.
   palavra('pipeline', 'pipelines?'),
   palavra('workflow', 'workflows?'),
@@ -215,6 +247,8 @@ export const RULES = [
   // --- Padrões que denunciam o histórico do repositório ----------------------------------------------------------
   // "#123": número de issue ou de PR.
   padrao('numero-issue-pr', '#\\d+'),
+  // "!42": número de merge request (GitLab) com exclamação.
+  padrao('bang-numero', '!\\d+'),
   // "issue 198", "issue #198", "issue number 198": o número escrito por extenso, sem o "#".
   palavra('issue-numero', 'issues?[\\s_-]*(?:#|number\\s+|no\\.?\\s*)?\\d+'),
   // Issue filha: palavra do rastreador do projeto.
