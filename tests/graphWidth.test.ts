@@ -42,10 +42,6 @@ describe('clampGraphWidth', () => {
     expect(clampGraphWidth(53.4)).toBe(53)
     expect(clampGraphWidth(53.5)).toBe(54)
   })
-
-  it('NaN não tem posição e vai para o mínimo', () => {
-    expect(clampGraphWidth(NaN)).toBe(GRAPH_MIN_WIDTH)
-  })
 })
 
 describe('resolveGraphWidth', () => {
@@ -58,12 +54,12 @@ describe('resolveGraphWidth', () => {
   it('com preferência usa o valor levado para o intervalo, não a automática', () => {
     expect(resolveGraphWidth(176, 300)).toBe(300)
     expect(resolveGraphWidth(176, 52)).toBe(52)
-    expect(resolveGraphWidth(176, 300.5)).toBe(301)
+    expect(resolveGraphWidth(176, parseGraphWidth(300.5))).toBe(301)
   })
 
-  it('preferência fora do intervalo é cortada nos limites', () => {
-    expect(resolveGraphWidth(176, 10)).toBe(GRAPH_MIN_WIDTH)
-    expect(resolveGraphWidth(176, 9999)).toBe(GRAPH_MAX_WIDTH)
-    expect(resolveGraphWidth(176, -Infinity)).toBe(GRAPH_MIN_WIDTH)
+  it('preferência fora do intervalo chega cortada, porque é lida com parseGraphWidth', () => {
+    expect(resolveGraphWidth(176, parseGraphWidth(10))).toBe(GRAPH_MIN_WIDTH)
+    expect(resolveGraphWidth(176, parseGraphWidth(9999))).toBe(GRAPH_MAX_WIDTH)
+    expect(resolveGraphWidth(176, parseGraphWidth(-Infinity))).toBe(176)
   })
 })

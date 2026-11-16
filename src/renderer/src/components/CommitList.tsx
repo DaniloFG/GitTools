@@ -54,8 +54,6 @@ const DEFAULT_WIDTHS: ColumnWidths = { author: 140, date: 152, sha: 76 }
 const MIN_WIDTH = 44
 const MAX_WIDTH = 480
 const isSized = (c: Column): c is SizedColumn => c === 'author' || c === 'date' || c === 'sha'
-/** Colunas com alça de largura: as de largura fixa e o Graph (que o usuário também pode ajustar). */
-const hasHandle = (c: Column) => c === 'graph' || isSized(c)
 
 function parseWidths(value: unknown): ColumnWidths {
   const raw = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
@@ -140,28 +138,19 @@ export function CommitList({
     '--user-sha': `${widths.sha}px`
   } as React.CSSProperties
 
-  /** Arrastar a borda de uma coluna: a borda virada para o assunto é a que se move. */
-  const resizeColumn = (e: React.PointerEvent, column: SizedColumn) => {
-    const rtl = getComputedStyle(e.currentTarget).direction === 'rtl'
-    const afterSubject = columns.indexOf(column) > columns.indexOf('subject')
-    const start = widths[column]
-    startResize(e, 'col-resize', (_event, dx) => {
-      const delta = (rtl ? -dx : dx) * (afterSubject ? -1 : 1)
-      setWidths((prev) => ({ ...prev, [column]: Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, start + delta))) }))
-    })
-  }
   /**
-   * Arrastar a borda do Graph: mesma regra das colunas de largura fixa (a borda virada para o assunto é a que se move).
-   * O ponto de partida é a largura que está na tela agora, automática ou escolhida. Um movimento por quadro,
-   * e o layout só é gravado ao soltar (startResize).
+   * Arrastar a borda de uma coluna com alça (largura fixa ou o Graph): a borda virada para o assunto é a que se move.
+   * O Graph parte da largura na tela agora (automática ou escolhida) e grava em `history.graphWidth`.
    */
-  const resizeGraph = (e: React.PointerEvent) => {
+  const afterSubject = (c: Column) => columns.indexOf(c) > columns.indexOf('subject')
+  const resizeColumn = (e: React.PointerEvent, column: Column) => {
     const rtl = getComputedStyle(e.currentTarget).direction === 'rtl'
-    const afterSubject = columns.indexOf('graph') > columns.indexOf('subject')
-    const start = graphWidth
+    const sign = (afterSubject(column) ? -1 : 1) * (rtl ? -1 : 1)
+    const start = isSized(column) ? widths[column] : graphWidth
     startResize(e, 'col-resize', (_event, dx) => {
-      const delta = (rtl ? -dx : dx) * (afterSubject ? -1 : 1)
-      setUserGraphWidth(clampGraphWidth(start + delta))
+      const next = start + dx * sign
+      if (isSized(column)) setWidths((prev) => ({ ...prev, [column]: Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, next))) }))
+      else setUserGraphWidth(clampGraphWidth(next))
     })
   }
   const selectedSet = new Set(selected)
@@ -429,19 +418,19 @@ export function CommitList({
         {columns.map((column) => (
           <span
             key={column}
-            className={`commit-column-head ${COLUMN_CLASS[column]} ${hasHandle(column) ? (columns.indexOf(column) > columns.indexOf('subject') ? 'resize-start' : 'resize-end') : ''}`}
+            className={`commit-column-head ${COLUMN_CLASS[column]} ${column === 'subject' ? '' : afterSubject(column) ? 'resize-start' : 'resize-end'}`}
             data-reorder="history-columns"
             data-reorder-id={column}
             onPointerDown={(e) => startReorder(e, 'history-columns', column, (a, b) => moveColumn(a as Column, b as Column))}
           >
             <span className="commit-column-label">{t(COLUMN_LABELS[column])}</span>
-            {hasHandle(column) && (
+            {column !== 'subject' && (
               <span
                 className="column-resize"
                 role="separator"
                 aria-orientation="vertical"
                 title={t('workbench.resizeColumn')}
-                onPointerDown={(e) => (isSized(column) ? resizeColumn(e, column) : resizeGraph(e))}
+                onPointerDown={(e) => resizeColumn(e, column)}
                 // Duplo clique volta à largura padrão: a automática no Graph, a de sempre nas outras.
                 onDoubleClick={() => (isSized(column) ? setWidths((prev) => ({ ...prev, [column]: DEFAULT_WIDTHS[column] })) : setUserGraphWidth(null))}
               />

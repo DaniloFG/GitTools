@@ -8,26 +8,21 @@ export const GRAPH_MAX_WIDTH = 1200
 
 /**
  * Lê o valor gravado. Número finito vira largura (inteira, dentro do intervalo); qualquer outra coisa, inclusive
- * texto, NaN e Infinity, é "automática" (null). Assim um valor corrompido no disco volta ao padrão em vez de quebrar a coluna.
+ * texto, NaN e Infinity, é "automática" (null). Assim um valor corrompido no disco volta ao padrão.
  */
 export function parseGraphWidth(value: unknown): number | null {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null
-  return clampGraphWidth(value)
+  return Number.isFinite(value) ? clampGraphWidth(value as number) : null
 }
 
-/**
- * Leva a largura para dentro do intervalo, em pixel inteiro (o SVG e a grade de colunas pedem inteiro).
- * NaN não tem posição: vai para o mínimo, que é o valor mais seguro para a coluna.
- */
+/** Leva a largura para dentro do intervalo, em pixel inteiro (o SVG e a grade pedem inteiro). */
 export function clampGraphWidth(width: number): number {
-  if (Number.isNaN(width)) return GRAPH_MIN_WIDTH
   return Math.min(GRAPH_MAX_WIDTH, Math.max(GRAPH_MIN_WIDTH, Math.round(width)))
 }
 
 /**
- * Largura que vale para o desenho. Sem preferência do usuário (null), a automática (a de sempre, que depende das
- * trilhas do histórico) passa sem mudança, para a saída ser idêntica à de antes da alça existir.
+ * Largura que vale para o desenho. A preferência já chega levada para o intervalo (é o que `parseGraphWidth` devolve
+ * ao ler o layout), e sem preferência (null) a automática passa sem mudança.
  */
 export function resolveGraphWidth(auto: number, user: number | null): number {
-  return user === null ? auto : clampGraphWidth(user)
+  return user ?? auto
 }
