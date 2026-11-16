@@ -685,6 +685,8 @@ body.resizing * {
 }
 .graph {
   flex-shrink: 0;
+  /* Largura escolhida pelo usuário pode ser menor que as trilhas: o que passa da coluna é cortado, sem empurrar o layout. */
+  overflow: hidden;
 }
 .commit-main {
   flex: 1;
