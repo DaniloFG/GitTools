@@ -14,6 +14,7 @@ import { errorMessage, fullDate, relativeDate, shortSha, statusLabel } from '../
 import { startReorder, useOrder } from '../reorder'
 import { useLayout } from '../layout'
 import { startResize } from '../resize'
+import { clampGraphWidth, GRAPH_MIN_WIDTH, parseGraphWidth, resolveGraphWidth } from '../graphWidth'
 import { git } from '../git'
 import { dateFormatKey, formatGridDateTime, getCurrentLocale, t, type MessageKey } from '../i18n'
 import { graphFor, laneColor, matchesCommit, refName, type GraphRow } from '../graph'
@@ -53,6 +54,8 @@ const DEFAULT_WIDTHS: ColumnWidths = { author: 140, date: 152, sha: 76 }
 const MIN_WIDTH = 44
 const MAX_WIDTH = 480
 const isSized = (c: Column): c is SizedColumn => c === 'author' || c === 'date' || c === 'sha'
+/** Colunas com alça de largura: as de largura fixa e o Graph (que o usuário também pode ajustar). */
+const hasHandle = (c: Column) => c === 'graph' || isSized(c)
 
 function parseWidths(value: unknown): ColumnWidths {
   const raw = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
@@ -114,10 +117,14 @@ export function CommitList({
   const locale = getCurrentLocale()
   const commits = data.log
   const rows = graphFor(commits, data.status.headSha)
-  const graphWidth = useMemo(() => {
+  /** Largura automática: as trilhas do histórico, até 12. Vale enquanto o usuário não arrasta a borda do Graph. */
+  const autoGraphWidth = useMemo(() => {
     const lanes = rows.reduce((max, r) => Math.max(max, r.lanesIn.length, r.lanesOut.length, r.column + 1), 1)
-    return Math.max(52, Math.min(lanes, 12) * LANE + 8)
+    return Math.max(GRAPH_MIN_WIDTH, Math.min(lanes, 12) * LANE + 8)
   }, [rows])
+  /** Largura que o usuário escolheu para o Graph (null = automática). Só muda ao arrastar ou ao duplo clique. */
+  const [userGraphWidth, setUserGraphWidth] = useLayout<number | null>('history.graphWidth', parseGraphWidth)
+  const graphWidth = resolveGraphWidth(autoGraphWidth, userGraphWidth)
   const searching = deferredQuery.trim() !== ''
   /**
    * Mesmas colunas no cabeçalho e em cada linha (grid): nenhuma invade a outra; o assunto ocupa o que
@@ -141,6 +148,20 @@ export function CommitList({
     startResize(e, 'col-resize', (_event, dx) => {
       const delta = (rtl ? -dx : dx) * (afterSubject ? -1 : 1)
       setWidths((prev) => ({ ...prev, [column]: Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, start + delta))) }))
+    })
+  }
+  /**
+   * Arrastar a borda do Graph: mesma regra das colunas de largura fixa (a borda virada para o assunto é a que se move).
+   * O ponto de partida é a largura que está na tela agora, automática ou escolhida. Um movimento por quadro,
+   * e o layout só é gravado ao soltar (startResize).
+   */
+  const resizeGraph = (e: React.PointerEvent) => {
+    const rtl = getComputedStyle(e.currentTarget).direction === 'rtl'
+    const afterSubject = columns.indexOf('graph') > columns.indexOf('subject')
+    const start = graphWidth
+    startResize(e, 'col-resize', (_event, dx) => {
+      const delta = (rtl ? -dx : dx) * (afterSubject ? -1 : 1)
+      setUserGraphWidth(clampGraphWidth(start + delta))
     })
   }
   const selectedSet = new Set(selected)
@@ -408,20 +429,21 @@ export function CommitList({
         {columns.map((column) => (
           <span
             key={column}
-            className={`commit-column-head ${COLUMN_CLASS[column]} ${isSized(column) ? (columns.indexOf(column) > columns.indexOf('subject') ? 'resize-start' : 'resize-end') : ''}`}
+            className={`commit-column-head ${COLUMN_CLASS[column]} ${hasHandle(column) ? (columns.indexOf(column) > columns.indexOf('subject') ? 'resize-start' : 'resize-end') : ''}`}
             data-reorder="history-columns"
             data-reorder-id={column}
             onPointerDown={(e) => startReorder(e, 'history-columns', column, (a, b) => moveColumn(a as Column, b as Column))}
           >
             <span className="commit-column-label">{t(COLUMN_LABELS[column])}</span>
-            {isSized(column) && (
+            {hasHandle(column) && (
               <span
                 className="column-resize"
                 role="separator"
                 aria-orientation="vertical"
                 title={t('workbench.resizeColumn')}
-                onPointerDown={(e) => resizeColumn(e, column)}
-                onDoubleClick={() => setWidths((prev) => ({ ...prev, [column]: DEFAULT_WIDTHS[column] }))}
+                onPointerDown={(e) => (isSized(column) ? resizeColumn(e, column) : resizeGraph(e))}
+                // Duplo clique volta à largura padrão: a automática no Graph, a de sempre nas outras.
+                onDoubleClick={() => (isSized(column) ? setWidths((prev) => ({ ...prev, [column]: DEFAULT_WIDTHS[column] })) : setUserGraphWidth(null))}
               />
             )}
           </span>
