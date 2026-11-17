@@ -168,7 +168,7 @@ tarefa. Se você não consegue escrever os itens 2 a 5, ainda não entendeu a ta
 3. **Quantos processos git, e quanto mede?** Conte com `--trace`, meça antes e depois (`medir`) e compare com os
    orçamentos. Em mudança de desempenho, o número é a prova: os dois vão no commit e na descrição do PR.
 4. **Tamanho do pacote.** `npm run perf:bundle`, depois dos dois builds: o CI reprova acima dos tetos do roteiro
-   (700.000 bytes de JavaScript na primeira carga). Subir um teto, só com o motivo no commit.
+   (710.000 bytes de JavaScript na primeira carga). Subir um teto, só com o motivo no commit.
 5. **Teste, tela e verde.** Mudança visível: cenário e2e (skill `qa`); `npm run typecheck` e `npm test` verdes após a última alteração.
 6. **Diga a verdade na entrega**: o que mudou, o que foi verificado (comando e resultado), antes e depois se mediu, e o
    que não foi conferido. Número só com a saída do comando que o gerou; medido fica separado de hipótese.

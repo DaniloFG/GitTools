@@ -25,12 +25,13 @@ const ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)))
 
 /**
  * Tetos em bytes.
- * - primeiraCarga: meta da Fase 5 em docs/PERFORMANCE.md ("JavaScript da primeira carga em até 700 KB").
+ * - primeiraCarga: meta da Fase 5 em docs/PERFORMANCE.md, subida de 700 KB para 710 KB a pedido do dono (a alça de largura
+ *   da coluna Graph encostou no teto antigo); o código novo já foi enxugado antes de subir.
  * - css, processoPrincipal, extensao: tamanho atual com folga de uns 20%. Para subir um teto, mude o número aqui
  *   e explique o porquê no commit; não suba em silêncio.
  */
 const TETOS = {
-  primeiraCarga: 700_000,
+  primeiraCarga: 710_000,
   css: 100_000,
   processoPrincipal: 100_000,
   extensao: 100_000

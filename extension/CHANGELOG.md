@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Settings search looks across the sections and shows where each match is.
 - Cherry-pick Studio has a search box.
 - Compare: "Apply whole file" in the menu.
+- The History graph column can be resized by dragging its header border; double-click it to return to automatic width.
 
 ### Changed
 
