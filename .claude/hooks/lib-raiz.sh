@@ -11,8 +11,15 @@
 # Caminho do Windows (C:\x\y, C:/x/y) vira o formato do Git Bash (/c/x/y); fora do Windows não muda nada.
 # A letra do drive é minúscula para "C:" e "/c" compararem iguais, e "\" vira "/". É o formato ÚNICO dos hooks: tudo o
 # que vem do git (`--show-toplevel`, `--git-common-dir` saem como "C:/...") e do Node passa por aqui antes de comparar.
+# "\" só vira "/" quando o caminho tem forma de drive ("C:...") ou o bash é MSYS/Cygwin (Git Bash). Fora disso a "\" é
+# caractere válido de nome (worktree "a\b" em Linux/macOS) e trocá-la fazia o caminho apontar para uma pasta que não existe (#262).
+# $OSTYPE é variável do próprio bash: sem processo, e o bash 3.2 do macOS também a tem.
 para_posix() {
-  local c=${1//\\//}
+  local c=$1
+  case "$c" in
+    [A-Za-z]:*) c=${c//\\//} ;;
+    *) case "${OSTYPE:-}" in msys*|cygwin*|win32*) c=${c//\\//} ;; esac ;;
+  esac
   if [[ $c =~ ^([A-Za-z]):(/.*)?$ ]]; then
     local d=${BASH_REMATCH[1]} resto=${BASH_REMATCH[2]}
     # Minúscula sem `${d,,}` (bash 4+; o macOS traz o 3.2) e sem processo: a letra do drive é uma só.

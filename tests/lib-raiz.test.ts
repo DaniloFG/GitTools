@@ -29,6 +29,34 @@ describe('para_posix', () => {
   ])('%s -> %s', (entrada, esperado) => {
     expect(bash('para_posix "$1"'.replace('"$1"', JSON.stringify(entrada).replace(/\$/g, '\\$'))).out).toBe(esperado)
   })
+
+  // A entrada vai por variável de ambiente: sem escape de aspas no script, a `\` chega ao bash exatamente como está.
+  const converte = (entrada: string, prefixo = '') => bash(`${prefixo}para_posix "$ENTRADA"`, { ENTRADA: entrada }).out
+
+  it.each([
+    ['C:\\x', '/c/x'],
+    ['C:/x', '/c/x'],
+    ['c:\\x\\y', '/c/x/y'],
+    ['C:', '/c'],
+  ])('drive %s -> %s (igual em qualquer sistema)', (entrada, esperado) => {
+    expect(converte(entrada)).toBe(esperado)
+  })
+
+  // Fora do Windows `\` é caractere válido de nome (#262): worktree "a\b" não pode virar "a/b", senão o caminho some.
+  // No Windows o Node já entrega `\` como separador, então o caso só vale nos outros sistemas.
+  it.skipIf(process.platform === 'win32')('preserva a barra invertida de caminho POSIX fora do Windows', () => {
+    expect(converte('/tmp/wt\\feature')).toBe('/tmp/wt\\feature')
+    expect(converte('relativo\\x')).toBe('relativo\\x')
+    // Sem forma de drive, mesmo com ":" no meio do nome.
+    expect(converte('/tmp/a:b\\c')).toBe('/tmp/a:b\\c')
+  })
+
+  // Git Bash (MSYS) é Windows de verdade: ali `\` é separador mesmo sem letra de drive (caminho relativo, UNC).
+  it('converte a barra invertida quando o bash é MSYS/Cygwin', () => {
+    expect(converte('relativo\\x', 'OSTYPE=msys; ')).toBe('relativo/x')
+    expect(converte('/tmp/wt\\feature', 'OSTYPE=cygwin; ')).toBe('/tmp/wt/feature')
+    expect(converte('C:\\x', 'OSTYPE=msys; ')).toBe('/c/x')
+  })
 })
 
 describe('marcador_da_raiz e raiz_de_trabalho', () => {
