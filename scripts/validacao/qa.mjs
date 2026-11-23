@@ -27,9 +27,24 @@ const INTERVALO = 50
 const INTERVALO_GIT = 600
 /** Paradas de Tab por tela na fase de teclado. */
 const TABS_POR_TELA = 40
+/**
+ * Rolagem do histórico (tarefas longas e tempo por quadro): uma passada de aquecimento, descartada, e `RODADAS_ROLAGEM`
+ * passadas medidas. O valor reportado é a mediana delas. Tarefa longa é um limiar de 50 ms de relógio de parede: com o
+ * contêiner disputado (ou no primeiro quadro, com a lista ainda fria) uma tarefa de ~40 ms cruza o limiar e a contagem
+ * de uma única passada oscila (16, 12, 1 e 1 no mesmo commit, issue #270). A mediana de passadas ímpares ignora a
+ * passada atingida por um pico de carga; regressão real aparece em todas e continua reprovando. O teto não muda.
+ */
+const AQUECIMENTO_ROLAGEM = 1
+const RODADAS_ROLAGEM = 5
 
 const mensagem = (erro) => String(erro?.message ?? erro)
 const ausente = (erro) => /playwright não encontrado|Chromium não encontrado/.test(mensagem(erro))
+/** Mediana de uma lista não vazia de números (nas listas de tamanho par, a média dos dois do meio). */
+const mediana = (valores) => {
+  const ordenados = [...valores].sort((a, b) => a - b)
+  const meio = ordenados.length >> 1
+  return ordenados.length % 2 ? ordenados[meio] : (ordenados[meio - 1] + ordenados[meio]) / 2
+}
 const dormir = (ms) => new Promise((resolver) => setTimeout(resolver, ms))
 
 /**
@@ -295,24 +310,34 @@ async function faseDesempenho(orc, relatorio) {
     const aba = (nome) => page.locator('.screen-tab:not(.dashboards-tab)').filter({ hasText: nome }).first()
     const posSelecionada = () => page.evaluate(() => document.querySelector('.commit-row.selected')?.dataset.pos ?? null)
 
-    const longas = async () => {
-      const { n, max } = await page.evaluate(() => {
-        const lista = window.__long ?? []
+    /**
+     * Tarefas longas que COMEÇARAM em [de, ate] (relógio da página, o mesmo de `performance.now()`). O observador entrega
+     * as entradas de forma assíncrona: `takeRecords` puxa as pendentes antes de contar, senão uma tarefa do fim da
+     * janela só chegaria na leitura seguinte e seria contada na janela errada. `de` e `ate` ausentes: tudo, e zera.
+     */
+    const longas = (de = -Infinity, ate = Infinity) =>
+      page.evaluate(([inicio, fim]) => {
+        window.__long.push(...window.__obsLong.takeRecords().map((e) => ({ inicio: e.startTime, duracao: Math.round(e.duration) })))
+        const dentro = window.__long.filter((e) => e.inicio >= inicio && e.inicio <= fim)
         window.__long = []
-        return { n: lista.length, max: Math.max(0, ...lista) }
-      })
-      return { n, max }
-    }
-    /** Rola o elemento `passos` vezes, um passo por quadro, e devolve o tempo médio por quadro (ms). */
+        return { n: dentro.length, max: Math.max(0, ...dentro.map((e) => e.duracao)) }
+      }, [de, ate])
+    /**
+     * Uma passada de rolagem: volta ao topo, espera dois quadros, rola o elemento `passos` vezes (um passo por quadro) e
+     * devolve o tempo médio por quadro (ms) e a janela [de, ate] da rolagem em relógio da página.
+     */
     const rolar = (seletor, passos, px) =>
       page.evaluate(async ([sel, n, passo]) => {
         const el = document.querySelector(sel)
+        el.scrollTop = 0
+        for (let i = 0; i < 2; i++) await new Promise((pronto) => requestAnimationFrame(pronto))
         const inicio = performance.now()
         for (let i = 0; i < n; i++) {
           el.scrollTop += passo
           await new Promise((pronto) => requestAnimationFrame(pronto))
         }
-        return (performance.now() - inicio) / n
+        const fim = performance.now()
+        return { porQuadro: (fim - inicio) / n, de: inicio, ate: fim }
       }, [seletor, passos, px])
 
     // O launch devolve com a carga inicial ainda gerando processos: espera a primeira lista e o git assentarem, para o
@@ -330,9 +355,10 @@ async function faseDesempenho(orc, relatorio) {
     await anotarDom()
     await page.evaluate(() => {
       window.__long = []
-      new PerformanceObserver((lista) => {
-        for (const entrada of lista.getEntries()) window.__long.push(Math.round(entrada.duration))
-      }).observe({ entryTypes: ['longtask'] })
+      window.__obsLong = new PerformanceObserver((lista) => {
+        for (const entrada of lista.getEntries()) window.__long.push({ inicio: entrada.startTime, duracao: Math.round(entrada.duration) })
+      })
+      window.__obsLong.observe({ entryTypes: ['longtask'] })
     })
 
     // A janela ganha o foco: o app relê o repositório.
@@ -356,13 +382,20 @@ async function faseDesempenho(orc, relatorio) {
     await esperarGit({ arranque: true })
     medido.gitSetas10x = await contar()
 
-    // 30 quadros × 400 px = 12.000 px, dentro dos primeiros 500 commits (como scripts/perf/ui.mjs).
-    await longas()
-    const porQuadro = await rolar('.commit-list .list-body', 30, 400)
-    medido.msPorQuadroRolagem = Math.round(porQuadro * 10) / 10
-    const l = await longas()
-    medido.tarefasLongasRolagem = l.n
-    medido.maiorTarefaLongaMs = l.max
+    // 30 quadros × 400 px = 12.000 px, dentro dos primeiros 500 commits (como scripts/perf/ui.mjs). Uma passada de
+    // aquecimento (descartada) e RODADAS_ROLAGEM medidas, cada uma contando só as tarefas longas da própria janela de
+    // rolagem; vale a mediana (ver AQUECIMENTO_ROLAGEM).
+    const passadas = []
+    for (let i = 0; i < AQUECIMENTO_ROLAGEM + RODADAS_ROLAGEM; i++) {
+      const { porQuadro, de, ate } = await rolar('.commit-list .list-body', 30, 400)
+      const l = await longas(de, ate)
+      if (i >= AQUECIMENTO_ROLAGEM) passadas.push({ porQuadro, ...l })
+    }
+    medido.msPorQuadroRolagem = Math.round(mediana(passadas.map((p) => p.porQuadro)) * 10) / 10
+    medido.tarefasLongasRolagem = mediana(passadas.map((p) => p.n))
+    medido.maiorTarefaLongaMs = mediana(passadas.map((p) => p.max))
+    // As passadas, uma a uma, ficam no relatório: a oscilação entre elas é o que a mediana esconde da contagem.
+    relatorio.detalhes.rolagem = passadas.map((p) => ({ msPorQuadro: Math.round(p.porQuadro * 10) / 10, tarefasLongas: p.n, maiorMs: p.max }))
     await anotarDom()
     await page.evaluate(() => { document.querySelector('.commit-list .list-body').scrollTop = 0 })
     await esperarGit({ arranque: false })
@@ -400,7 +433,7 @@ async function faseDesempenho(orc, relatorio) {
     applyScenario(dir, 'clean')
   }
   if (!Object.hasOwn(medido, 'nosDom') && nosMax) medido.nosDom = nosMax
-  relatorio.detalhes = { cpu, cenario }
+  relatorio.detalhes = { ...relatorio.detalhes, cpu, cenario }
   const tetosSemStage = Object.fromEntries(Object.entries(tetos).filter(([chave]) => chave !== 'gitStage'))
   relatorio.tetos(medido, semStage ? tetosSemStage : tetos)
 }
