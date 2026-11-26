@@ -27,15 +27,16 @@ export function isValidDate(date: string): boolean {
   if (!match) return false
   const [year, month, day, hour, minute, second] = match.slice(1).map((part) => (part === undefined ? 0 : Number(part)))
   if (year < 1970) return false
-  const parsed = new Date(year, month - 1, day, hour, minute, second)
+  // UTC na reconstrução: o fuso local tem horas que não existem (mudança de horário) e não pode reprovar a data.
+  const parsed = new Date(Date.UTC(year, month - 1, day, hour, minute, second))
   if (Number.isNaN(Date.parse(date))) return false
   return (
-    parsed.getFullYear() === year &&
-    parsed.getMonth() === month - 1 &&
-    parsed.getDate() === day &&
-    parsed.getHours() === hour &&
-    parsed.getMinutes() === minute &&
-    parsed.getSeconds() === second
+    parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day &&
+    parsed.getUTCHours() === hour &&
+    parsed.getUTCMinutes() === minute &&
+    parsed.getUTCSeconds() === second
   )
 }
 
