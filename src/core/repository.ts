@@ -1072,6 +1072,18 @@ export class GitRepository implements RepoApi {
     await this.git(['branch', force ? '-D' : '-d', name])
   }
 
+  /**
+   * Apaga uma branch no remoto (`git push --delete`); o git também remove a referência de rastreamento local
+   * (`refs/remotes/<remote>/<name>`), então não há processo extra. Os dois valores vêm da interface e viram
+   * argumentos separados (sem shell); a validação recusa vazio, `-` inicial, espaço e NUL, e o `--` garante que
+   * nada depois dele seja lido como opção. A branch local de mesmo nome não é tocada.
+   */
+  async deleteRemoteBranch(remote: string, name: string): Promise<void> {
+    assertRef(remote)
+    assertRef(name, 'branch')
+    await this.git(['push', '--delete', '--', remote, name])
+  }
+
   /** Cria uma tag; com mensagem, a tag é anotada. */
   async createTag(name: string, ref = 'HEAD', message?: string): Promise<void> {
     assertRef(name, 'tagName')

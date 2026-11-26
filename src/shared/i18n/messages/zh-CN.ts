@@ -78,6 +78,7 @@ export const zhCN: Messages = {
     copyingVersion: '正在复制版本',
     creatingBranch: '正在创建 {name}',
     deletingBranch: '正在删除 {name}',
+    deletingRemoteBranch: '正在删除远程分支 {name}',
     droppingStash: '正在丢弃贮藏',
     fetch: '正在获取',
     merge: '正在合并 {ref}',
@@ -182,6 +183,7 @@ export const zhCN: Messages = {
       newBranch: '从此处新建分支…',
       rename: '重命名…',
       delete: '删除…',
+      deleteRemote: '删除远程分支…',
       checkoutDetached: '检出（分离的 HEAD）',
       newBranchFromTag: '从此标签新建分支…',
       push: '推送…',
@@ -412,6 +414,11 @@ export const zhCN: Messages = {
       title: '删除分支',
       message: '删除本地分支“{name}”？\n不在其他分支上的提交将无法访问。',
       confirm: '删除'
+    },
+    deleteRemoteBranch: {
+      title: '删除远程分支',
+      message: '确定要删除远程分支 {name} 吗？',
+      confirm: '是，删除'
     },
     renameBranch: { title: '重命名分支', label: '新名称', confirm: '重命名' },
     cherryPick: {

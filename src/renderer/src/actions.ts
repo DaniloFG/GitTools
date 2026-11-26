@@ -160,6 +160,24 @@ export function useActions() {
     if (ok) await run(t('busy.deletingBranch', { name: branch.name }), () => git.deleteBranch(branch.name, true))
   }
 
+  /**
+   * Apaga uma branch remota (ex.: `origin/x`) depois de confirmar. Afeta todos que usam o remoto, por isso a
+   * confirmação é sempre pedida e cancelar não chama o git. Falha do remoto (rede, permissão, branch já apagada) sobe
+   * pelo tratamento de erro de `run`, como nas outras ações.
+   */
+  async function deleteRemoteBranch(branch: BranchInfo) {
+    const { remote, name } = branch
+    if (!remote) return
+    const short = name.slice(remote.length + 1)
+    const ok = await confirm({
+      title: t('actions.deleteRemoteBranch.title'),
+      message: t('actions.deleteRemoteBranch.message', { name }),
+      confirmLabel: t('actions.deleteRemoteBranch.confirm'),
+      danger: true
+    })
+    if (ok) await run(t('busy.deletingRemoteBranch', { name }), () => git.deleteRemoteBranch(remote, short))
+  }
+
   async function renameBranch(branch: BranchInfo) {
     const name = await prompt({
       title: t('actions.renameBranch.title'),
@@ -378,6 +396,7 @@ export function useActions() {
     createTag,
     deleteTag,
     deleteBranch,
+    deleteRemoteBranch,
     renameBranch,
     cherryPickCommits,
     branchOntoBranch,
