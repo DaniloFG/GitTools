@@ -162,6 +162,7 @@ button.link {
 }
 
 input[type='text'],
+input[type='datetime-local'],
 input:not([type]),
 textarea,
 select {
@@ -1430,8 +1431,15 @@ button.ghost.danger-text:hover:not(:disabled) {
   align-items: center;
   gap: 4px 14px;
 }
-.commit-options select {
+.commit-options select,
+.commit-options input[type='text'],
+.commit-options input[type='datetime-local'] {
   padding: 2px 6px;
+}
+/* Autor do amend: ocupa o que sobra da linha, sem empurrar a caixa para fora do painel estreito. */
+.commit-options input[type='text'] {
+  flex: 1 1 180px;
+  min-width: 0;
 }
 .commit-hint {
   margin: 0;
