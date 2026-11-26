@@ -79,6 +79,7 @@ export const en: Messages = {
     copyingVersion: 'Copying version',
     creatingBranch: 'Creating {name}',
     deletingBranch: 'Deleting {name}',
+    deletingRemoteBranch: 'Deleting remote branch {name}',
     droppingStash: 'Dropping stash',
     fetch: 'Fetching',
     merge: 'Merging {ref}',
@@ -183,6 +184,7 @@ export const en: Messages = {
       newBranch: 'New branch from here…',
       rename: 'Rename…',
       delete: 'Delete…',
+      deleteRemote: 'Delete remote branch…',
       checkoutDetached: 'Checkout (detached HEAD)',
       newBranchFromTag: 'New branch from this tag…',
       push: 'Push…',
@@ -419,6 +421,11 @@ export const en: Messages = {
       title: 'Delete branch',
       message: 'Delete the local branch "{name}"?\nCommits that are not on another branch will become unreachable.',
       confirm: 'Delete'
+    },
+    deleteRemoteBranch: {
+      title: 'Delete remote branch',
+      message: 'Are you sure you want to delete the remote branch {name}?',
+      confirm: 'Yes, delete'
     },
     renameBranch: { title: 'Rename branch', label: 'New name', confirm: 'Rename' },
     cherryPick: {
