@@ -43,7 +43,11 @@ export function useBranchMenu(onScope: (scope: HistoryScope) => void, { forcePus
       { label: t('sidebar.menu.newBranch'), onClick: () => actions.createBranch(branch.name) },
       { label: t('sidebar.menu.newTag'), onClick: () => actions.createTag(branch.name) },
       ...(isRemote
-        ? []
+        ? [
+            // Apagar no remoto afeta todos que o usam: fica separado e em vermelho; a confirmação é da ação.
+            'separator' as const,
+            { label: t('sidebar.menu.deleteRemote'), onClick: () => actions.deleteRemoteBranch(branch), danger: true }
+          ]
         : [
             'separator' as const,
             { label: t('sidebar.menu.push'), onClick: () => actions.pushDialog(branch.name) },

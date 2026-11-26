@@ -50,3 +50,28 @@ describe('useBranchMenu: Force push', () => {
     expect(without).toEqual(withForce)
   })
 })
+
+describe('useBranchMenu: Delete remote branch', () => {
+  beforeEach(() => void setLocale('pt-BR'))
+
+  const deleteRemote = () => t('sidebar.menu.deleteRemote')
+
+  it('a branch remota tem o item de apagar no remoto, em vermelho e logo após um separador', () => {
+    const items = useBranchMenu(() => {})(remote)
+    const index = items.findIndex((i) => i !== 'separator' && i.label === deleteRemote())
+    expect(index).toBeGreaterThan(0)
+    expect(items[index - 1]).toBe('separator')
+    const item = items[index]
+    expect(item !== 'separator' && item.danger).toBe(true)
+  })
+
+  it('a branch remota tem o item também no menu da etiqueta do histórico (forcePush: false)', () => {
+    expect(labels(useBranchMenu(() => {}, { forcePush: false })(remote))).toContain(deleteRemote())
+  })
+
+  it('a branch local não tem o item de apagar no remoto', () => {
+    for (const options of [undefined, { forcePush: false }]) {
+      expect(labels(useBranchMenu(() => {}, options)(local))).not.toContain(deleteRemote())
+    }
+  })
+})
