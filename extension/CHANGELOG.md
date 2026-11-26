@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Cherry-pick Studio has a search box.
 - Compare: "Apply whole file" in the menu.
 - The History graph column can be resized by dragging its header border; double-click it to return to automatic width.
+- Commit box: when amending the last commit, "Set author date" and "Set author" rewrite the commit with the date or author you choose.
 
 ### Changed
 
