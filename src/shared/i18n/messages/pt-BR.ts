@@ -80,6 +80,7 @@ export const ptBR = {
     copyingVersion: 'Copiando versão',
     creatingBranch: 'Criando {name}',
     deletingBranch: 'Excluindo {name}',
+    deletingRemoteBranch: 'Excluindo a branch remota {name}',
     droppingStash: 'Descartando stash',
     fetch: 'Fetch',
     merge: 'Merge de {ref}',
@@ -184,6 +185,7 @@ export const ptBR = {
       newBranch: 'Nova branch a partir desta…',
       rename: 'Renomear…',
       delete: 'Excluir…',
+      deleteRemote: 'Excluir branch remota…',
       checkoutDetached: 'Checkout (HEAD destacado)',
       newBranchFromTag: 'Nova branch a partir desta tag…',
       push: 'Enviar (push)…',
@@ -344,6 +346,11 @@ export const ptBR = {
     trash: 'Arraste arquivos não staged aqui para descartar as alterações',
     commitPlaceholder: 'Mensagem do commit (Ctrl+Enter para confirmar)',
     amend: 'Corrigir o último commit (amend)',
+    setAuthorDate: 'Definir data do autor',
+    setAuthor: 'Definir autor',
+    authorPlaceholder: 'Nome <e-mail>',
+    authorInvalid: 'Use o formato Nome <e-mail> para o autor.',
+    authorDateInvalid: 'Informe uma data e hora do autor válidas.',
     amendButton: 'Corrigir commit',
     commit: 'Commit',
     commitInto: 'Commit em {branch}',
@@ -415,6 +422,11 @@ export const ptBR = {
       title: 'Excluir branch',
       message: 'Excluir a branch local "{name}"?\nCommits que não estiverem em outra branch ficarão inacessíveis.',
       confirm: 'Excluir'
+    },
+    deleteRemoteBranch: {
+      title: 'Excluir branch remota',
+      message: 'Tem certeza de que deseja excluir a branch remota {name}?',
+      confirm: 'Sim, excluir'
     },
     renameBranch: { title: 'Renomear branch', label: 'Novo nome', confirm: 'Renomear' },
     cherryPick: {
@@ -1038,6 +1050,9 @@ export const ptBR = {
       apply: { one: '{count} linha aplicada.', other: '{count} linhas aplicadas.' }
     },
     commitMessageRequired: 'Escreva uma mensagem de commit.',
+    commitOptionsNeedAmend: 'O autor e a data do autor só podem ser trocados ao corrigir o último commit.',
+    authorInvalid: 'O autor deve estar no formato "Nome <e-mail>".',
+    authorDateInvalid: 'A data do autor não é válida. Use o formato AAAA-MM-DDTHH:mm.',
     conflictsToResolve: 'Há conflitos para resolver.',
     operationStopped: 'A operação parou e precisa da sua decisão.',
     mergeDone: 'Merge de {ref} concluído.',

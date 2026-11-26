@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { access, lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, isAbsolute, join, resolve } from 'node:path'
-import type { LogOptions, RepoApi } from '../shared/api'
+import type { CommitIdentity, LogOptions, RepoApi } from '../shared/api'
 import type {
   Analytics,
   AnalyticsCommit,
@@ -42,6 +42,7 @@ import type {
 import { buildPartialPatch, parseDiff, quotePath, trimTruncated } from './diff'
 import { DIFF_MAX_BYTES } from '../shared/types'
 import { t } from '../shared/i18n'
+import { invalidIdentityField } from '../shared/commitIdentity'
 import { chunkArgs } from './chunk'
 import { GitError, runGit, type RunOptions, type RunResult } from './exec'
 import { openRegularFile, readRegularFile, resolveInside, resolveInsideParent, resolveInsideReal } from './paths'
@@ -997,9 +998,34 @@ export class GitRepository implements RepoApi {
     return { ok: true, message: t(`core.lines.${action}`, { count: lines.length }), conflicts: [] }
   }
 
-  async commit(message: string, amend = false): Promise<void> {
+  /**
+   * `options` troca o autor e/ou a data do autor do commit refeito, e só faz sentido com `amend`. A validação vem antes
+   * de qualquer processo git, e cada valor vai como UM argumento (`--author=...`, `--date=...`), sem shell.
+   * `--date` muda só a data do AUTOR: a data do committer vira "agora", como em todo amend. `--author` sozinho mantém
+   * a data do autor original e `--date` sozinho mantém o autor (conferido no git 2.43), então nada é lido do HEAD.
+   * Sem `options` os argumentos são exatamente os de antes.
+   */
+  async commit(message: string, amend = false, options?: CommitIdentity | null): Promise<void> {
     if (!message.trim()) throw new Error(t('core.commitMessageRequired'))
-    await this.git(['commit', '-F', '-', ...(amend ? ['--amend'] : [])], { input: message })
+    // `null` chega pelo canal da extensão (JSON troca `undefined` por `null`).
+    const { author, date } = options ?? {}
+    if (author !== undefined || date !== undefined) {
+      if (!amend) throw new Error(t('core.commitOptionsNeedAmend'))
+      const invalid = invalidIdentityField({ author, date })
+      if (invalid === 'author') throw new Error(t('core.authorInvalid'))
+      if (invalid === 'date') throw new Error(t('core.authorDateInvalid'))
+    }
+    await this.git(
+      [
+        'commit',
+        '-F',
+        '-',
+        ...(amend ? ['--amend'] : []),
+        ...(author !== undefined ? [`--author=${author}`] : []),
+        ...(date !== undefined ? [`--date=${date}`] : [])
+      ],
+      { input: message }
+    )
   }
 
   /** Troca só a mensagem do HEAD: o `--only` sem caminhos deixa de fora o que estiver em stage. */
@@ -1044,6 +1070,18 @@ export class GitRepository implements RepoApi {
   async deleteBranch(name: string, force = false): Promise<void> {
     assertRef(name, 'branch')
     await this.git(['branch', force ? '-D' : '-d', name])
+  }
+
+  /**
+   * Apaga uma branch no remoto (`git push --delete`); o git também remove a referência de rastreamento local
+   * (`refs/remotes/<remote>/<name>`), então não há processo extra. Os dois valores vêm da interface e viram
+   * argumentos separados (sem shell); a validação recusa vazio, `-` inicial, espaço e NUL, e o `--` garante que
+   * nada depois dele seja lido como opção. A branch local de mesmo nome não é tocada.
+   */
+  async deleteRemoteBranch(remote: string, name: string): Promise<void> {
+    assertRef(remote)
+    assertRef(name, 'branch')
+    await this.git(['push', '--delete', '--', remote, name])
   }
 
   /** Cria uma tag; com mensagem, a tag é anotada. */

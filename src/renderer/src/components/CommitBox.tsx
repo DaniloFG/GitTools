@@ -6,6 +6,7 @@ import { git } from '../git'
 import { commitBlock, effectivePushMode, parsePushMode, type CommitBlock, type PushMode } from '../feedback'
 import { useLayout } from '../layout'
 import { t, type MessageKey } from '../i18n'
+import { formatAuthor, invalidIdentityField, toDateInput, type CommitIdentity } from '../../../shared/commitIdentity'
 
 /** Explicação de cada motivo que impede o commit. */
 const BLOCK_TEXT: Record<CommitBlock, MessageKey> = {
@@ -14,12 +15,26 @@ const BLOCK_TEXT: Record<CommitBlock, MessageKey> = {
   nothing: 'feedback.blocked.commitNothing'
 }
 
+/** Explicação de cada opção de autor do amend que está marcada mas vazia ou inválida. */
+const IDENTITY_TEXT = { author: 'changes.authorInvalid', date: 'changes.authorDateInvalid' } as const satisfies Record<'author' | 'date', MessageKey>
+
+interface Draft {
+  message: string
+  amend: boolean
+  /** "Definir data do autor" marcada e o valor do `datetime-local`. */
+  dateOn: boolean
+  date: string
+  /** "Definir autor" marcada e o texto `Nome <email>`. */
+  authorOn: boolean
+  author: string
+}
+
 /**
- * Mensagem e "corrigir o último commit" digitados, por repositório. A caixa sai da tela quando o usuário troca de
- * menu; guardar aqui (e não só no componente) faz o texto continuar lá quando ele voltar.
+ * Mensagem, "corrigir o último commit" e as opções de autor do amend digitados, por repositório. A caixa sai da tela
+ * quando o usuário troca de menu; guardar aqui (e não só no componente) faz o texto continuar lá quando ele voltar.
  */
-const drafts = new Map<string, { message: string; amend: boolean }>()
-const draftOf = (root: string) => drafts.get(root) ?? { message: '', amend: false }
+const drafts = new Map<string, Draft>()
+const draftOf = (root: string): Draft => drafts.get(root) ?? { message: '', amend: false, dateOn: false, date: '', authorOn: false, author: '' }
 
 /**
  * Caixa de commit: as opções se combinam livremente — corrigir o último commit (amend) e enviar em seguida
@@ -35,7 +50,11 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
   const { confirmForce } = useActions()
   const [message, setMessageState] = useState(() => draftOf(repo.root).message)
   const [amend, setAmendState] = useState(() => draftOf(repo.root).amend)
-  const keep = (patch: Partial<{ message: string; amend: boolean }>) => drafts.set(repo.root, { ...draftOf(repo.root), ...patch })
+  const [dateOn, setDateOnState] = useState(() => draftOf(repo.root).dateOn)
+  const [date, setDateState] = useState(() => draftOf(repo.root).date)
+  const [authorOn, setAuthorOnState] = useState(() => draftOf(repo.root).authorOn)
+  const [author, setAuthorState] = useState(() => draftOf(repo.root).author)
+  const keep = (patch: Partial<Draft>) => drafts.set(repo.root, { ...draftOf(repo.root), ...patch })
   const setMessage = (text: string) => {
     setMessageState(text)
     keep({ message: text })
@@ -44,18 +63,48 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
     setAmendState(on)
     keep({ amend: on })
   }
+  const setDateOn = (on: boolean) => {
+    setDateOnState(on)
+    keep({ dateOn: on })
+  }
+  const setDate = (text: string) => {
+    setDateState(text)
+    keep({ date: text })
+  }
+  const setAuthorOn = (on: boolean) => {
+    setAuthorOnState(on)
+    keep({ authorOn: on })
+  }
+  const setAuthor = (text: string) => {
+    setAuthorState(text)
+    keep({ author: text })
+  }
+  /** Marcar a opção pré-preenche com o autor e a data do HEAD (se o campo está vazio); o usuário edita a partir daí. */
+  const prefill = async (field: 'date' | 'author') => {
+    if (!status.headSha || draftOf(repo.root)[field]) return
+    const head = await git.commitDetails('HEAD')
+    // O usuário pode ter digitado enquanto a leitura voltava: o que ele escreveu vence.
+    if (draftOf(repo.root)[field]) return
+    if (field === 'date') setDate(toDateInput(head.date))
+    else setAuthor(formatAuthor(head.author, head.email))
+  }
   const [push, setPush] = useLayout<boolean>('pref.commitPush', (v) => v === true)
   const [chosenMode, setMode] = useLayout<PushMode>('pref.commitPushMode', parsePushMode)
   const { status } = data
   const block = commitBlock({ message, staged: status.staged.length, picked: picked.length, amend, conflicted: status.conflicted.length })
-  const canCommit = block === null
+  // As opções de autor só existem com o amend ligado; desmarcado, somem e nada delas é enviado.
+  const identity: CommitIdentity | undefined =
+    amend && (dateOn || authorOn) ? { ...(dateOn ? { date } : {}), ...(authorOn ? { author: author.trim() } : {}) } : undefined
+  const invalidField = identity ? invalidIdentityField(identity) : null
+  const blockText = block ? t(BLOCK_TEXT[block]) : invalidField ? t(IDENTITY_TEXT[invalidField]) : undefined
+  const canCommit = blockText === undefined
   const { needsForce, mode } = effectivePushMode({ push, amend, hasUpstream: !!status.upstream, ahead: status.ahead, chosen: chosenMode })
   const forced = push && mode !== 'normal'
 
   const commit = async () => {
     // Com operação em andamento, ou com a pergunta de force push já aberta, a chamada extra (Ctrl+Enter repetido) não faz nada.
     if (busy !== null || confirming.current) return
-    if (block) return toast('warning', t(BLOCK_TEXT[block]))
+    if (blockText) return toast('warning', blockText)
     if (push && mode === 'force') {
       confirming.current = true
       let confirmed: boolean
@@ -70,7 +119,9 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
     const result = await run(push ? t('busy.commitPush') : amend ? t('busy.amending') : t('busy.commit'), async () => {
       // Os arquivos marcados na lista de não staged entram no commit: são staged antes dele.
       if (picked.length > 0) await git.stageFiles(picked)
-      await git.commit(message, amend)
+      // Sem opções, a chamada é a de sempre (dois argumentos): um `undefined` no fim viraria `null` no canal da extensão.
+      if (identity) await git.commit(message, amend, identity)
+      else await git.commit(message, amend)
       committed = true
       if (!push) return true
       try {
@@ -86,6 +137,10 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
     if (result || committed) {
       setMessage('')
       setAmend(false)
+      setDateOn(false)
+      setDate('')
+      setAuthorOn(false)
+      setAuthor('')
       onCommitted?.()
     }
   }
@@ -133,6 +188,52 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
           />
           {t('changes.amend')}
         </label>
+        {amend && (
+          <>
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={dateOn}
+                onChange={(e) => {
+                  setDateOn(e.target.checked)
+                  if (e.target.checked) void prefill('date')
+                }}
+              />
+              {t('changes.setAuthorDate')}
+            </label>
+            {dateOn && (
+              <input
+                type="datetime-local"
+                step={1}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                aria-label={t('changes.setAuthorDate')}
+                aria-invalid={invalidField === 'date'}
+              />
+            )}
+            <label className="checkbox">
+              <input
+                type="checkbox"
+                checked={authorOn}
+                onChange={(e) => {
+                  setAuthorOn(e.target.checked)
+                  if (e.target.checked) void prefill('author')
+                }}
+              />
+              {t('changes.setAuthor')}
+            </label>
+            {authorOn && (
+              <input
+                type="text"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder={t('changes.authorPlaceholder')}
+                aria-label={t('changes.setAuthor')}
+                aria-invalid={invalidField === 'author'}
+              />
+            )}
+          </>
+        )}
         <label className="checkbox">
           <input
             type="checkbox"
@@ -159,7 +260,7 @@ export function CommitBox({ picked = [], onCommitted }: { picked?: string[]; onC
         <button
           className={mode === 'force' && push ? 'danger' : 'primary'}
           disabled={!canCommit || busy !== null}
-          title={block ? t(BLOCK_TEXT[block]) : undefined}
+          title={blockText}
           onClick={commit}
         >
           {label}

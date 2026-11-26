@@ -79,6 +79,7 @@ export const en: Messages = {
     copyingVersion: 'Copying version',
     creatingBranch: 'Creating {name}',
     deletingBranch: 'Deleting {name}',
+    deletingRemoteBranch: 'Deleting remote branch {name}',
     droppingStash: 'Dropping stash',
     fetch: 'Fetching',
     merge: 'Merging {ref}',
@@ -183,6 +184,7 @@ export const en: Messages = {
       newBranch: 'New branch from here…',
       rename: 'Rename…',
       delete: 'Delete…',
+      deleteRemote: 'Delete remote branch…',
       checkoutDetached: 'Checkout (detached HEAD)',
       newBranchFromTag: 'New branch from this tag…',
       push: 'Push…',
@@ -343,6 +345,11 @@ export const en: Messages = {
     trash: 'Drag unstaged files here to discard their changes',
     commitPlaceholder: 'Commit message (Ctrl+Enter to commit)',
     amend: 'Amend the last commit',
+    setAuthorDate: 'Set author date',
+    setAuthor: 'Set author',
+    authorPlaceholder: 'Name <email>',
+    authorInvalid: 'Use the format Name <email> for the author.',
+    authorDateInvalid: 'Enter a valid author date and time.',
     amendButton: 'Amend commit',
     commit: 'Commit',
     commitInto: 'Commit to {branch}',
@@ -414,6 +421,11 @@ export const en: Messages = {
       title: 'Delete branch',
       message: 'Delete the local branch "{name}"?\nCommits that are not on another branch will become unreachable.',
       confirm: 'Delete'
+    },
+    deleteRemoteBranch: {
+      title: 'Delete remote branch',
+      message: 'Are you sure you want to delete the remote branch {name}?',
+      confirm: 'Yes, delete'
     },
     renameBranch: { title: 'Rename branch', label: 'New name', confirm: 'Rename' },
     cherryPick: {
@@ -1037,6 +1049,9 @@ export const en: Messages = {
       apply: { one: '{count} line applied.', other: '{count} lines applied.' }
     },
     commitMessageRequired: 'Write a commit message.',
+    commitOptionsNeedAmend: 'The author and the author date can only be changed when amending the last commit.',
+    authorInvalid: 'The author must be in the format "Name <email>".',
+    authorDateInvalid: 'The author date is not valid. Use the format YYYY-MM-DDTHH:mm.',
     conflictsToResolve: 'There are conflicts to resolve.',
     operationStopped: 'The operation stopped and needs your decision.',
     mergeDone: 'Merge of {ref} completed.',

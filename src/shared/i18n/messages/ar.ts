@@ -87,6 +87,7 @@ export const ar: Messages = {
     copyingVersion: 'جارٍ نسخ النسخة',
     creatingBranch: 'جارٍ إنشاء {name}',
     deletingBranch: 'جارٍ حذف {name}',
+    deletingRemoteBranch: 'جارٍ حذف الفرع البعيد {name}',
     droppingStash: 'جارٍ حذف التخبئة',
     fetch: 'جارٍ الجلب',
     merge: 'جارٍ دمج {ref}',
@@ -191,6 +192,7 @@ export const ar: Messages = {
       newBranch: 'فرع جديد من هنا…',
       rename: 'إعادة تسمية…',
       delete: 'حذف…',
+      deleteRemote: 'حذف الفرع البعيد…',
       checkoutDetached: 'الانتقال (HEAD منفصل)',
       newBranchFromTag: 'فرع جديد من هذا الوسم…',
       push: 'دفع…',
@@ -352,6 +354,11 @@ export const ar: Messages = {
     trash: 'اسحب الملفات غير المجهزة إلى هنا لتجاهل تغييراتها',
     commitPlaceholder: 'رسالة الإيداع (Ctrl+Enter للتأكيد)',
     amend: 'تعديل آخر إيداع (amend)',
+    setAuthorDate: 'تعيين تاريخ المؤلف',
+    setAuthor: 'تعيين المؤلف',
+    authorPlaceholder: 'الاسم <البريد الإلكتروني>',
+    authorInvalid: 'استخدم الصيغة الاسم <البريد الإلكتروني> للمؤلف.',
+    authorDateInvalid: 'أدخل تاريخًا ووقتًا صالحين للمؤلف.',
     amendButton: 'تعديل الإيداع',
     commit: 'إيداع',
     commitInto: 'إيداع في {branch}',
@@ -423,6 +430,11 @@ export const ar: Messages = {
       title: 'حذف الفرع',
       message: 'حذف الفرع المحلي "{name}"؟\nالإيداعات غير الموجودة في فرع آخر ستصبح غير قابلة للوصول.',
       confirm: 'حذف'
+    },
+    deleteRemoteBranch: {
+      title: 'حذف الفرع البعيد',
+      message: 'هل أنت متأكد من أنك تريد حذف الفرع البعيد {name}؟',
+      confirm: 'نعم، احذف'
     },
     renameBranch: { title: 'إعادة تسمية الفرع', label: 'الاسم الجديد', confirm: 'إعادة تسمية' },
     cherryPick: {
@@ -1049,6 +1061,9 @@ export const ar: Messages = {
       apply: { one: 'تم تطبيق سطر واحد.', two: 'تم تطبيق سطرين.', other: 'الأسطر المطبقة: {count}.' }
     },
     commitMessageRequired: 'اكتب رسالة للإيداع.',
+    commitOptionsNeedAmend: 'لا يمكن تغيير المؤلف وتاريخ المؤلف إلا عند تعديل آخر إيداع.',
+    authorInvalid: 'يجب أن يكون المؤلف بصيغة "الاسم <البريد الإلكتروني>".',
+    authorDateInvalid: 'تاريخ المؤلف غير صالح. استخدم الصيغة YYYY-MM-DDTHH:mm.',
     conflictsToResolve: 'توجد تعارضات يجب حلها.',
     operationStopped: 'توقفت العملية وتحتاج إلى قرارك.',
     mergeDone: 'اكتمل دمج {ref}.',

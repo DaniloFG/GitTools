@@ -79,6 +79,7 @@ export const es: Messages = {
     copyingVersion: 'Copiando versión',
     creatingBranch: 'Creando {name}',
     deletingBranch: 'Eliminando {name}',
+    deletingRemoteBranch: 'Eliminando la rama remota {name}',
     droppingStash: 'Descartando stash',
     fetch: 'Fetch',
     merge: 'Merge de {ref}',
@@ -183,6 +184,7 @@ export const es: Messages = {
       newBranch: 'Nueva rama desde aquí…',
       rename: 'Renombrar…',
       delete: 'Eliminar…',
+      deleteRemote: 'Eliminar rama remota…',
       checkoutDetached: 'Checkout (HEAD desacoplado)',
       newBranchFromTag: 'Nueva rama desde esta etiqueta…',
       push: 'Enviar (push)…',
@@ -343,6 +345,11 @@ export const es: Messages = {
     trash: 'Arrastra aquí archivos sin stage para descartar sus cambios',
     commitPlaceholder: 'Mensaje del commit (Ctrl+Enter para confirmar)',
     amend: 'Corregir el último commit (amend)',
+    setAuthorDate: 'Definir fecha del autor',
+    setAuthor: 'Definir autor',
+    authorPlaceholder: 'Nombre <correo>',
+    authorInvalid: 'Usa el formato Nombre <correo> para el autor.',
+    authorDateInvalid: 'Introduce una fecha y hora del autor válidas.',
     amendButton: 'Corregir commit',
     commit: 'Commit',
     commitInto: 'Commit en {branch}',
@@ -414,6 +421,11 @@ export const es: Messages = {
       title: 'Eliminar rama',
       message: '¿Eliminar la rama local "{name}"?\nLos commits que no estén en otra rama quedarán inaccesibles.',
       confirm: 'Eliminar'
+    },
+    deleteRemoteBranch: {
+      title: 'Eliminar rama remota',
+      message: '¿Seguro que quieres eliminar la rama remota {name}?',
+      confirm: 'Sí, eliminar'
     },
     renameBranch: { title: 'Renombrar rama', label: 'Nuevo nombre', confirm: 'Renombrar' },
     cherryPick: {
@@ -1037,6 +1049,9 @@ export const es: Messages = {
       apply: { one: '{count} línea aplicada.', other: '{count} líneas aplicadas.' }
     },
     commitMessageRequired: 'Escribe un mensaje de commit.',
+    commitOptionsNeedAmend: 'El autor y la fecha del autor solo se pueden cambiar al corregir el último commit.',
+    authorInvalid: 'El autor debe tener el formato "Nombre <correo>".',
+    authorDateInvalid: 'La fecha del autor no es válida. Usa el formato AAAA-MM-DDTHH:mm.',
     conflictsToResolve: 'Hay conflictos por resolver.',
     operationStopped: 'La operación se detuvo y necesita tu decisión.',
     mergeDone: 'Merge de {ref} completado.',

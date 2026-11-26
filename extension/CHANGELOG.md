@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Remote branches have a "Delete remote branch" item in the right-click menu, with a confirmation before the branch is removed from the remote.
 - Conflicts screen: lists the conflicted files with filters, edits each file in an embedded editor, and applies batch actions from a footer.
 - Guided tour of the interface, offered on the welcome screen and available in Settings, in all six languages.
 - Optional automatic continue after the last conflict of a cherry-pick, revert or rebase (off by default). Choices of "ours" or "theirs" carry over to the next stop, after a summary to apply or ignore them.
@@ -17,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Cherry-pick Studio has a search box.
 - Compare: "Apply whole file" in the menu.
 - The History graph column can be resized by dragging its header border; double-click it to return to automatic width.
+- Commit box: when amending the last commit, "Set author date" and "Set author" rewrite the commit with the date or author you choose.
 
 ### Changed
 

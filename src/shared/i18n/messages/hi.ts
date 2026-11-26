@@ -82,6 +82,7 @@ export const hi: Messages = {
     copyingVersion: 'संस्करण कॉपी किया जा रहा है',
     creatingBranch: '{name} बनाई जा रही है',
     deletingBranch: '{name} हटाई जा रही है',
+    deletingRemoteBranch: 'रिमोट branch {name} हटाई जा रही है',
     droppingStash: 'Stash हटाया जा रहा है',
     fetch: 'Fetch',
     merge: '{ref} का merge',
@@ -186,6 +187,7 @@ export const hi: Messages = {
       newBranch: 'यहाँ से नई branch…',
       rename: 'नाम बदलें…',
       delete: 'हटाएँ…',
+      deleteRemote: 'रिमोट branch हटाएँ…',
       checkoutDetached: 'Checkout (अलग HEAD)',
       newBranchFromTag: 'इस tag से नई branch…',
       push: 'Push करें…',
@@ -346,6 +348,11 @@ export const hi: Messages = {
     trash: 'बदलाव हटाने के लिए unstaged फ़ाइलें यहाँ खींचें',
     commitPlaceholder: 'Commit संदेश (पुष्टि के लिए Ctrl+Enter)',
     amend: 'पिछला commit सुधारें (amend)',
+    setAuthorDate: 'लेखक की तारीख तय करें',
+    setAuthor: 'लेखक तय करें',
+    authorPlaceholder: 'नाम <ईमेल>',
+    authorInvalid: 'लेखक के लिए नाम <ईमेल> प्रारूप का उपयोग करें।',
+    authorDateInvalid: 'लेखक की मान्य तारीख और समय दर्ज करें।',
     amendButton: 'Commit सुधारें',
     commit: 'Commit',
     commitInto: '{branch} में commit',
@@ -417,6 +424,11 @@ export const hi: Messages = {
       title: 'Branch हटाएँ',
       message: 'लोकल branch "{name}" हटाएँ?\nजो commits किसी और branch में नहीं हैं, वे पहुँच से बाहर हो जाएँगे।',
       confirm: 'हटाएँ'
+    },
+    deleteRemoteBranch: {
+      title: 'रिमोट branch हटाएँ',
+      message: 'क्या आप सचमुच रिमोट branch {name} हटाना चाहते हैं?',
+      confirm: 'हाँ, हटाएँ'
     },
     renameBranch: { title: 'Branch का नाम बदलें', label: 'नया नाम', confirm: 'नाम बदलें' },
     cherryPick: {
@@ -1040,6 +1052,9 @@ export const hi: Messages = {
       apply: { one: '{count} लाइन लागू की गई।', other: '{count} लाइनें लागू की गईं।' }
     },
     commitMessageRequired: 'Commit संदेश लिखें।',
+    commitOptionsNeedAmend: 'लेखक और लेखक की तारीख केवल पिछला commit सुधारते समय बदली जा सकती है।',
+    authorInvalid: 'लेखक "नाम <ईमेल>" प्रारूप में होना चाहिए।',
+    authorDateInvalid: 'लेखक की तारीख मान्य नहीं है। YYYY-MM-DDTHH:mm प्रारूप का उपयोग करें।',
     conflictsToResolve: 'हल करने के लिए टकराव हैं।',
     operationStopped: 'ऑपरेशन रुक गया है और आपके निर्णय की ज़रूरत है।',
     mergeDone: '{ref} का merge पूरा हुआ।',

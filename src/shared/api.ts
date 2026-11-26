@@ -1,4 +1,5 @@
 import type { DiffLayout, Settings } from './settings'
+import type { CommitIdentity } from './commitIdentity'
 import type { TerminalCommandResult } from './terminal'
 import type {
   Analytics,
@@ -41,6 +42,8 @@ import type {
   TagInfo
 } from './types'
 
+export type { CommitIdentity }
+
 export interface LogOptions {
   /** Ref a partir da qual listar; ignorado quando `all` é verdadeiro. */
   ref?: string
@@ -75,7 +78,8 @@ export interface RepoApi {
   unstageFiles(paths: string[]): Promise<void>
   discardFiles(paths: string[]): Promise<void>
   applyLines(source: DiffSource, path: string, lines: LineKey[], action: LineAction): Promise<OperationResult>
-  commit(message: string, amend?: boolean): Promise<void>
+  /** `options` (autor e data do autor) só valem com `amend`; o núcleo recusa sem ele. */
+  commit(message: string, amend?: boolean, options?: CommitIdentity): Promise<void>
   /** Troca a mensagem do HEAD sem incluir o que está em stage. */
   rewordHead(message: string): Promise<void>
 
@@ -83,6 +87,7 @@ export interface RepoApi {
   checkout(ref: string): Promise<void>
   createBranch(name: string, startPoint?: string, checkout?: boolean): Promise<void>
   deleteBranch(name: string, force?: boolean): Promise<void>
+  deleteRemoteBranch(remote: string, name: string): Promise<void>
   renameBranch(oldName: string, newName: string): Promise<void>
   createTag(name: string, ref?: string, message?: string): Promise<void>
   deleteTag(name: string): Promise<void>
@@ -194,6 +199,7 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'checkout',
   'createBranch',
   'deleteBranch',
+  'deleteRemoteBranch',
   'renameBranch',
   'createTag',
   'deleteTag',

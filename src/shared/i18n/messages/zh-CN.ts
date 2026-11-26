@@ -78,6 +78,7 @@ export const zhCN: Messages = {
     copyingVersion: '正在复制版本',
     creatingBranch: '正在创建 {name}',
     deletingBranch: '正在删除 {name}',
+    deletingRemoteBranch: '正在删除远程分支 {name}',
     droppingStash: '正在丢弃贮藏',
     fetch: '正在获取',
     merge: '正在合并 {ref}',
@@ -182,6 +183,7 @@ export const zhCN: Messages = {
       newBranch: '从此处新建分支…',
       rename: '重命名…',
       delete: '删除…',
+      deleteRemote: '删除远程分支…',
       checkoutDetached: '检出（分离的 HEAD）',
       newBranchFromTag: '从此标签新建分支…',
       push: '推送…',
@@ -336,6 +338,11 @@ export const zhCN: Messages = {
     trash: '把未暂存的文件拖到这里以丢弃其更改',
     commitPlaceholder: '提交信息（Ctrl+Enter 确认）',
     amend: '修改上一次提交（amend）',
+    setAuthorDate: '设置作者日期',
+    setAuthor: '设置作者',
+    authorPlaceholder: '姓名 <邮箱>',
+    authorInvalid: '作者请使用“姓名 <邮箱>”的格式。',
+    authorDateInvalid: '请输入有效的作者日期和时间。',
     amendButton: '修改提交',
     commit: '提交',
     commitInto: '提交到 {branch}',
@@ -407,6 +414,11 @@ export const zhCN: Messages = {
       title: '删除分支',
       message: '删除本地分支“{name}”？\n不在其他分支上的提交将无法访问。',
       confirm: '删除'
+    },
+    deleteRemoteBranch: {
+      title: '删除远程分支',
+      message: '确定要删除远程分支 {name} 吗？',
+      confirm: '是，删除'
     },
     renameBranch: { title: '重命名分支', label: '新名称', confirm: '重命名' },
     cherryPick: {
@@ -1006,6 +1018,9 @@ export const zhCN: Messages = {
       apply: { other: '已应用 {count} 行。' }
     },
     commitMessageRequired: '请填写提交信息。',
+    commitOptionsNeedAmend: '只有在修改上一次提交时才能更改作者和作者日期。',
+    authorInvalid: '作者必须使用“姓名 <邮箱>”的格式。',
+    authorDateInvalid: '作者日期无效，请使用 YYYY-MM-DDTHH:mm 格式。',
     conflictsToResolve: '有冲突需要解决。',
     operationStopped: '操作已暂停，需要你做出决定。',
     mergeDone: '{ref} 合并完成。',
