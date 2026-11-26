@@ -87,6 +87,7 @@ export const ar: Messages = {
     copyingVersion: 'جارٍ نسخ النسخة',
     creatingBranch: 'جارٍ إنشاء {name}',
     deletingBranch: 'جارٍ حذف {name}',
+    deletingRemoteBranch: 'جارٍ حذف الفرع البعيد {name}',
     droppingStash: 'جارٍ حذف التخبئة',
     fetch: 'جارٍ الجلب',
     merge: 'جارٍ دمج {ref}',
@@ -191,6 +192,7 @@ export const ar: Messages = {
       newBranch: 'فرع جديد من هنا…',
       rename: 'إعادة تسمية…',
       delete: 'حذف…',
+      deleteRemote: 'حذف الفرع البعيد…',
       checkoutDetached: 'الانتقال (HEAD منفصل)',
       newBranchFromTag: 'فرع جديد من هذا الوسم…',
       push: 'دفع…',
@@ -423,6 +425,11 @@ export const ar: Messages = {
       title: 'حذف الفرع',
       message: 'حذف الفرع المحلي "{name}"؟\nالإيداعات غير الموجودة في فرع آخر ستصبح غير قابلة للوصول.',
       confirm: 'حذف'
+    },
+    deleteRemoteBranch: {
+      title: 'حذف الفرع البعيد',
+      message: 'هل أنت متأكد من أنك تريد حذف الفرع البعيد {name}؟',
+      confirm: 'نعم، احذف'
     },
     renameBranch: { title: 'إعادة تسمية الفرع', label: 'الاسم الجديد', confirm: 'إعادة تسمية' },
     cherryPick: {

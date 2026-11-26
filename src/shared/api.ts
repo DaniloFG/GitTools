@@ -83,6 +83,7 @@ export interface RepoApi {
   checkout(ref: string): Promise<void>
   createBranch(name: string, startPoint?: string, checkout?: boolean): Promise<void>
   deleteBranch(name: string, force?: boolean): Promise<void>
+  deleteRemoteBranch(remote: string, name: string): Promise<void>
   renameBranch(oldName: string, newName: string): Promise<void>
   createTag(name: string, ref?: string, message?: string): Promise<void>
   deleteTag(name: string): Promise<void>
@@ -194,6 +195,7 @@ export const REPO_METHODS: readonly RepoMethod[] = [
   'checkout',
   'createBranch',
   'deleteBranch',
+  'deleteRemoteBranch',
   'renameBranch',
   'createTag',
   'deleteTag',

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { runGit } from '../src/core/exec'
+import { onGitCommand, runGit } from '../src/core/exec'
 import { createRepo } from './helpers'
 
 const dirs: string[] = []
@@ -44,13 +44,12 @@ describe('deleteRemoteBranch', () => {
 
   it('abre um único processo git', async () => {
     const t = await withRemote()
-    const { onGitCommand } = await import('../src/core/exec')
     const started: string[][] = []
     const off = onGitCommand((entry) => {
       if (entry.exitCode === undefined) started.push(entry.args)
     })
     await t.repo.deleteRemoteBranch('origin', 'feature/x')
-    off?.()
+    off()
     expect(started).toHaveLength(1)
     expect(started[0]).toContain('push')
   })

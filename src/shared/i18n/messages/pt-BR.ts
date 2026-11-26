@@ -80,6 +80,7 @@ export const ptBR = {
     copyingVersion: 'Copiando versão',
     creatingBranch: 'Criando {name}',
     deletingBranch: 'Excluindo {name}',
+    deletingRemoteBranch: 'Excluindo a branch remota {name}',
     droppingStash: 'Descartando stash',
     fetch: 'Fetch',
     merge: 'Merge de {ref}',
@@ -184,6 +185,7 @@ export const ptBR = {
       newBranch: 'Nova branch a partir desta…',
       rename: 'Renomear…',
       delete: 'Excluir…',
+      deleteRemote: 'Excluir branch remota…',
       checkoutDetached: 'Checkout (HEAD destacado)',
       newBranchFromTag: 'Nova branch a partir desta tag…',
       push: 'Enviar (push)…',
@@ -415,6 +417,11 @@ export const ptBR = {
       title: 'Excluir branch',
       message: 'Excluir a branch local "{name}"?\nCommits que não estiverem em outra branch ficarão inacessíveis.',
       confirm: 'Excluir'
+    },
+    deleteRemoteBranch: {
+      title: 'Excluir branch remota',
+      message: 'Tem certeza de que deseja excluir a branch remota {name}?',
+      confirm: 'Sim, excluir'
     },
     renameBranch: { title: 'Renomear branch', label: 'Novo nome', confirm: 'Renomear' },
     cherryPick: {

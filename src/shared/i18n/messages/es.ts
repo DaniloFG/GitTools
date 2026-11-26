@@ -79,6 +79,7 @@ export const es: Messages = {
     copyingVersion: 'Copiando versión',
     creatingBranch: 'Creando {name}',
     deletingBranch: 'Eliminando {name}',
+    deletingRemoteBranch: 'Eliminando la rama remota {name}',
     droppingStash: 'Descartando stash',
     fetch: 'Fetch',
     merge: 'Merge de {ref}',
@@ -183,6 +184,7 @@ export const es: Messages = {
       newBranch: 'Nueva rama desde aquí…',
       rename: 'Renombrar…',
       delete: 'Eliminar…',
+      deleteRemote: 'Eliminar rama remota…',
       checkoutDetached: 'Checkout (HEAD desacoplado)',
       newBranchFromTag: 'Nueva rama desde esta etiqueta…',
       push: 'Enviar (push)…',
@@ -414,6 +416,11 @@ export const es: Messages = {
       title: 'Eliminar rama',
       message: '¿Eliminar la rama local "{name}"?\nLos commits que no estén en otra rama quedarán inaccesibles.',
       confirm: 'Eliminar'
+    },
+    deleteRemoteBranch: {
+      title: 'Eliminar rama remota',
+      message: '¿Seguro que quieres eliminar la rama remota {name}?',
+      confirm: 'Sí, eliminar'
     },
     renameBranch: { title: 'Renombrar rama', label: 'Nuevo nombre', confirm: 'Renombrar' },
     cherryPick: {

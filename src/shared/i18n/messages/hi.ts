@@ -82,6 +82,7 @@ export const hi: Messages = {
     copyingVersion: 'संस्करण कॉपी किया जा रहा है',
     creatingBranch: '{name} बनाई जा रही है',
     deletingBranch: '{name} हटाई जा रही है',
+    deletingRemoteBranch: 'रिमोट branch {name} हटाई जा रही है',
     droppingStash: 'Stash हटाया जा रहा है',
     fetch: 'Fetch',
     merge: '{ref} का merge',
@@ -186,6 +187,7 @@ export const hi: Messages = {
       newBranch: 'यहाँ से नई branch…',
       rename: 'नाम बदलें…',
       delete: 'हटाएँ…',
+      deleteRemote: 'रिमोट branch हटाएँ…',
       checkoutDetached: 'Checkout (अलग HEAD)',
       newBranchFromTag: 'इस tag से नई branch…',
       push: 'Push करें…',
@@ -417,6 +419,11 @@ export const hi: Messages = {
       title: 'Branch हटाएँ',
       message: 'लोकल branch "{name}" हटाएँ?\nजो commits किसी और branch में नहीं हैं, वे पहुँच से बाहर हो जाएँगे।',
       confirm: 'हटाएँ'
+    },
+    deleteRemoteBranch: {
+      title: 'रिमोट branch हटाएँ',
+      message: 'क्या आप सचमुच रिमोट branch {name} हटाना चाहते हैं?',
+      confirm: 'हाँ, हटाएँ'
     },
     renameBranch: { title: 'Branch का नाम बदलें', label: 'नया नाम', confirm: 'नाम बदलें' },
     cherryPick: {
